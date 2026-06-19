@@ -7,6 +7,12 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <!-- Three.js r128 (глобальный THREE, без модулей — проще для одного файла) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script type="module">
+  // настоящая 3D-физика (cannon-es). Кладём в глобал, чтобы основной скрипт мог использовать.
+  try{ const C = await import('https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js'); window.CANNON = C; }
+  catch(e){ console.warn('cannon-es не загрузился — физика fallback', e); }
+  window.__cannonDone = true;
+</script>
 <style>
   :root{
     --ton:#0098EA; --ton-light:#34c2ff; --cyan:#7df9ff;
@@ -28,8 +34,9 @@
     transform:translate(-50%,-50%);opacity:0.8;pointer-events:none;z-index:7;display:none;}
 
   /* ===== HUD ===== */
-  #hud{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top)+10px) 14px 0;
-    display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:5;}
+  #hud{position:fixed;top:calc(env(safe-area-inset-top)+10px);left:0;right:0;pointer-events:none;z-index:5;}
+  #score{position:fixed;left:14px;top:calc(env(safe-area-inset-top)+10px);}
+  #timer{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+10px);}
   .pill{background:var(--panel);border:1px solid var(--panel-border);border-radius:16px;
     padding:8px 14px;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,.35);}
   .pill .lbl{font-size:10px;letter-spacing:.12em;color:var(--text-dim);text-transform:uppercase;}
@@ -38,16 +45,16 @@
   #timer.low .val{color:var(--danger);}
   /* таймер раунда — отдельно, ПОД панелью целей (справа), чтобы не накладывались */
   #timer{position:fixed;right:10px;top:calc(env(safe-area-inset-top)+124px);z-index:6;}
-  #growthWrap{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom)+14px);
-    height:14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid var(--panel-border);
+  #growthWrap{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+78px);
+    width:min(56vw,280px);height:12px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid var(--panel-border);
     overflow:hidden;z-index:5;pointer-events:none;}
   #growthFill{height:100%;width:0;background:linear-gradient(90deg,var(--ton),var(--ton-light));
     box-shadow:0 0 14px var(--ton);transition:width .12s linear;}
-  #tierBadge{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom)+34px);
+  #tierBadge{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+60px);
     font-size:11px;letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase;z-index:5;pointer-events:none;}
   #tierBadge b{color:var(--ton-light);font-size:13px;}
-  #buffs{position:fixed;right:14px;top:calc(env(safe-area-inset-top)+64px);display:flex;flex-direction:column;
-    gap:6px;z-index:5;pointer-events:none;align-items:flex-end;}
+  #buffs{position:fixed;left:14px;top:calc(env(safe-area-inset-top)+66px);display:flex;flex-direction:column;
+    gap:6px;z-index:5;pointer-events:none;align-items:flex-start;}
   #goalPanel{position:fixed;right:10px;top:calc(env(safe-area-inset-top)+10px);z-index:6;pointer-events:none;
     background:rgba(6,16,32,.74);border:1px solid var(--panel-border);border-radius:14px;padding:8px 10px;
     display:flex;flex-direction:column;gap:5px;min-width:118px;backdrop-filter:blur(4px);}
@@ -108,6 +115,8 @@
   .lb-pts{color:var(--gold);font-weight:800;}
   .lb-empty{color:var(--text-dim);padding:18px;font-size:14px;}
   .lb-note{color:var(--text-dim);font-size:11px;max-width:380px;line-height:1.4;}
+  #verTag{position:fixed;left:8px;bottom:6px;z-index:25;pointer-events:none;
+    font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.45);}
   #loading{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
     background:#04060f;color:var(--text-dim);font-size:14px;letter-spacing:.1em;padding:24px;text-align:center;}
   @media (prefers-reduced-motion:reduce){#growthFill,.btn{transition:none;}}
@@ -115,6 +124,7 @@
 </head>
 <body>
   <div id="loading">Загрузка 3D…</div>
+  <div id="verTag"></div>
   <canvas id="c"></canvas>
   <div id="joyBase"></div>
   <div id="joyKnob"></div>
@@ -220,27 +230,29 @@ const Store={
    • Эскалация по «волнам»: каждые wave сек растут бомбы и этажность.
    • Зональность: чем дальше от центра, тем выше здания и ценнее (см. spawnObject).  */
 /* ===================== УРОВНИ (план: 1000; сейчас первые 5) ===================== */
+const VERSION = '2.15';   // версия сборки (видна в углу меню)
 const TOTAL_LEVELS = 1000;          // всего уровней будет 1000 (пока сделаны первые 5)
 const LEVELS = [
-  // map — размер карты (меньше = плотнее), items — всего предметов (≈×4), bombs, time(сек, +1мин),
-  // clusters — число куч, cRmin/cRmax — радиус кучи (плотность/«стопкой»), walls — ограждения
-  { map:300, items:200, bombs:0, time:155, clusters:6,  cRmin:26, cRmax:46, walls:3 },
-  { map:320, items:260, bombs:2, time:150, clusters:7,  cRmin:24, cRmax:44, walls:4 },
-  { map:340, items:320, bombs:3, time:148, clusters:8,  cRmin:24, cRmax:42, walls:5 },
-  { map:360, items:380, bombs:5, time:144, clusters:9,  cRmin:22, cRmax:40, walls:6 },
-  { map:380, items:440, bombs:7, time:140, clusters:10, cRmin:22, cRmax:40, walls:7 }
+  // Реальная физика: пол целиком замощён плитками, у ВСЕХ предметов есть тела →
+  // карты компактные (помещается дыра до 6-го размера), предметов меньше, но честно падают.
+  { map:200, items:90,  bombs:0, time:175, clusters:6,  cRmin:26, cRmax:46, walls:0 },
+  { map:225, items:115, bombs:1, time:175, clusters:7,  cRmin:28, cRmax:50, walls:0 },
+  { map:250, items:140, bombs:2, time:170, clusters:8,  cRmin:30, cRmax:54, walls:0 },
+  { map:275, items:165, bombs:3, time:170, clusters:9,  cRmin:32, cRmax:58, walls:0 },
+  { map:300, items:190, bombs:4, time:165, clusters:10, cRmin:34, cRmax:62, walls:0 }
 ];
 let currentLevel=1, D=LEVELS[0];
 let lastReason='';
 
 /* ===================== БАЛАНС / МАТЕМАТИКА РОСТА ===================== */
-const R0 = 5;            // радиус дыры на 1-м уровне (старт)
-const GROW = 1.22;       // +22%/уровень — чтобы 6 размеров предметов заметно различались (было 10%, мало)
+const R0 = 7.0;          // старт дыры (под увеличенное поле)
+const GROW = 1.25;       // +25%/уровень — 6 размеров заметно различаются
 const MAX_LEVEL = 12;
 function levelRadius(L){ return R0 * Math.pow(GROW, Math.min(L,MAX_LEVEL)-1); }   // радиус дыры на уровне L
-function stepToNext(L){ return Math.round(20 * Math.pow(2, L-1)); }              // очков на апгрейд: 1→2=20, 2→3=40…
+function stepToNext(L){ return Math.round(12 * Math.pow(1.4, L-1)); }   // мягкий рост порогов (раньше ×2 — рост быстро застревал)
+function pointsToLevel(L){ let s=0; for(let i=1;i<L;i++) s+=stepToNext(i); return s; }  // сколько очков до уровня L
 // 6 уровней размера предметов. footR — что должно влезть (footR ≤ радиус дыры → нужен тот уровень дыры).
-function tierFootR(t){ return t<=1 ? R0*0.5 : levelRadius(t)*0.97; }   // тир t съедается с дыры уровня t
+function tierFootR(t){ return t<=1 ? R0*0.78 : levelRadius(t)*0.95; }   // тир t съедается с дыры уровня t
 function tierScale(t){ return tierFootR(t)*0.96; }                      // видимый размер предмета
 const TIER_VAL=[0,1,2,4,7,11,16];                                       // очки по тиру (индекс = тир)
 const VIEW = { SCREEN_Y:-25, FOV:58, TILT:0.34 };
@@ -266,7 +278,11 @@ const SUPERS = {
 };
 
 /* ===================== THREE.JS ===================== */
-let renderer, scene, camera, ground, holeMesh, holeRing, holeGlow, dirLight, fog;
+let renderer, scene, camera, ground, holeMesh, holeRing, holeGlow, dirLight, fog, pitWall, pitBottom;
+function maskMat(){ const m=new THREE.MeshBasicMaterial(); m.colorWrite=false; m.depthWrite=false; m.depthTest=false;
+  m.stencilWrite=true; m.stencilRef=1; m.stencilFunc=THREE.AlwaysStencilFunc; m.stencilZPass=THREE.ReplaceStencilOp; return m; }
+function applyGroundStencil(mat){ mat.stencilWrite=true; mat.stencilRef=1; mat.stencilFunc=THREE.NotEqualStencilFunc;
+  mat.stencilFail=THREE.KeepStencilOp; mat.stencilZFail=THREE.KeepStencilOp; mat.stencilZPass=THREE.KeepStencilOp; return mat; }
 let W=innerWidth, H=innerHeight, DPR=Math.min(devicePixelRatio||1,2);
 let ray, groundPlane, tmpV, tmpV2, ndc, GEO, MAT, buildTex, TYPE_RENDER, SUPER_RENDER;
 let walls=[];        // ограждения: {x,z,w,d, mesh}
@@ -274,7 +290,7 @@ let walls=[];        // ограждения: {x,z,w,d, mesh}
 function buildAssets(){
   GEO = {
     gem:  new THREE.OctahedronGeometry(1,0),
-    coin: new THREE.CylinderGeometry(1,1,0.22,36),   // монета (грани: обод + 2 лицевые стороны)
+    coin: new THREE.CylinderGeometry(1,1,0.5,36),    // монета с ОБЪЁМОМ (толстая, чтобы стопка читалась)
     box:  new THREE.BoxGeometry(1,1,1),
     bomb: new THREE.SphereGeometry(1,12,10),
     ring: new THREE.TorusGeometry(1,0.22,8,28),
@@ -286,11 +302,18 @@ function buildAssets(){
     cone: new THREE.ConeGeometry(0.8,1.8,7),
     egg:  makeEggGeometry(),                          // 3D-яйцо (овоид с сужением кверху)
     disc: new THREE.CircleGeometry(1,40),
-    hring:new THREE.RingGeometry(0.72,1.05,48),
+    pit:  new THREE.CylinderGeometry(1,1,1,48,1,true),     // стенки цилиндра-дыры (без крышек)
+    hring:new THREE.RingGeometry(0.965,1.0,64),   // тонкое очертание рим-края (раньше толстое 0.72–1.05)
     hglow:new THREE.RingGeometry(1.0,1.9,48),
     shadow:new THREE.CircleGeometry(1,18)
   };
   for(const kk in GEO) GEO[kk].computeBoundingBox();   // для точной посадки объектов на землю
+  (function tintPit(){                                   // стенки дыры: чёрные снизу, лёгкая серая тень сверху
+    const g=GEO.pit, pos=g.attributes.position, col=[];
+    for(let i=0;i<pos.count;i++){ const t=pos.getY(i)+0.5;   // 0 низ … 1 верх
+      const v=0.015+0.14*t; col.push(v,v,v*1.05); }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
+  })();
   const cv=document.createElement('canvas'); cv.width=cv.height=64; const x=cv.getContext('2d');
   x.fillStyle='#0c2238'; x.fillRect(0,0,64,64);
   for(let i=0;i<8;i++)for(let j=0;j<8;j++){ x.fillStyle=Math.random()>0.45?'#1b4e7a':'#34c2ff';
@@ -326,7 +349,7 @@ function buildAssets(){
     bomb: new THREE.MeshLambertMaterial({color:0x2a2f3a, emissive:0x661018}),
     fence:new THREE.MeshLambertMaterial({color:0xffb24d, emissive:0x5a2e00}),
     holeDisc:new THREE.MeshBasicMaterial({color:0x01030a, fog:false}),
-    holeRing:new THREE.MeshBasicMaterial({color:0x9bf6ff, side:THREE.DoubleSide, depthTest:false, fog:false}),
+    holeRing:new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.85, side:THREE.DoubleSide, depthTest:false, fog:false}),
     shadow:new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:0.32, depthWrite:false})
   };
 }
@@ -405,7 +428,7 @@ function initScene(){
   ray=new THREE.Raycaster(); groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   tmpV=new THREE.Vector3(); tmpV2=new THREE.Vector3(); ndc=new THREE.Vector2();
 
-  renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'), antialias:DPR<2, powerPreference:'high-performance'});
+  renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'), antialias:DPR<2, stencil:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(DPR); renderer.setSize(W,H);
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x04060f);
@@ -418,19 +441,26 @@ function initScene(){
   buildAssets();
 
   ground=new THREE.Mesh(new THREE.PlaneGeometry(LEVELS[0].map,LEVELS[0].map),
-                        new THREE.MeshLambertMaterial({map:buildGroundTexture(LEVELS[0].map), color:0xbfe4ff}));
-  ground.rotation.x=-Math.PI/2; scene.add(ground);
+                        applyGroundStencil(new THREE.MeshLambertMaterial({map:buildGroundTexture(LEVELS[0].map), color:0xbfe4ff})));
+  ground.rotation.x=-Math.PI/2; ground.renderOrder=2; scene.add(ground);
 
-  // Дыра в плоскости: тёмный диск + яркое кольцо-обод + мягкое свечение. Всё плоское,
-  // кольцо/свечение рисуются поверх (depthTest off) — здания не перекрывают дыру.
-  holeMesh=new THREE.Mesh(GEO.disc, MAT.holeDisc); holeMesh.rotation.x=-Math.PI/2; holeMesh.position.y=0.06; scene.add(holeMesh);
-  holeRing=new THREE.Mesh(GEO.hring, MAT.holeRing); holeRing.rotation.x=-Math.PI/2; holeRing.position.y=0.09; holeRing.renderOrder=6; scene.add(holeRing);
+  // НАСТОЯЩАЯ ДЫРА: holeMesh — маска-стенсил (вырезает землю), под ней виден 3D-колодец (стенки + дно).
+  holeMesh=new THREE.Mesh(GEO.disc, maskMat()); holeMesh.rotation.x=-Math.PI/2; holeMesh.position.y=0.02; holeMesh.renderOrder=1; scene.add(holeMesh);
+  pitWall=new THREE.Mesh(GEO.pit, new THREE.MeshBasicMaterial({vertexColors:true, side:THREE.BackSide, fog:false}));
+  pitWall.renderOrder=3; scene.add(pitWall);
+  pitBottom=new THREE.Mesh(GEO.disc, new THREE.MeshBasicMaterial({color:0x040406, fog:false}));
+  pitBottom.rotation.x=-Math.PI/2; pitBottom.renderOrder=3; scene.add(pitBottom);
+  holeRing=new THREE.Mesh(GEO.hring, MAT.holeRing); holeRing.rotation.x=-Math.PI/2; holeRing.position.y=0.05; holeRing.renderOrder=6; scene.add(holeRing);
 
   buildPools();
+  initPhysics();   // включить реальную физику (cannon-es), если доступна
+  if(REAL_PHYS){   // пол теперь из видимых клеток → прячем текстурную землю/маску/колодец, оставляем кольцо
+    ground.visible=false; holeMesh.visible=false;   // пол теперь клетки; стенки дыры (pitWall/pitBottom) показываем
+  }
 }
 
 /* ===================== ПУЛЫ ===================== */
-const POOL_SIZE=480;
+const POOL_SIZE=720;
 let pool=[];
 function buildPools(){
   pool=[];
@@ -439,7 +469,10 @@ function buildPools(){
     const m=new THREE.Mesh(GEO.gem, placeholder); m.visible=false; scene.add(m);
     const sh=new THREE.Mesh(GEO.shadow, MAT.shadow); sh.rotation.x=-Math.PI/2; sh.position.y=0.04; sh.visible=false; scene.add(sh);
     pool.push({mesh:m, shadow:sh, active:false, kind:'item', type:'ton', tier:1, super:null, footR:1.6,
-               restY:1, val:0, eat:false, committed:false, vy:0, angVx:0, angVz:0, _mat:null, x:0, z:0, spin:Math.random()*6});
+               restY:1, val:0, eat:false, committed:false,
+               px:0, py:0, pz:0, vx:0, vy:0, vz:0, wx:0, wy:0, wz:0,   // физика падения
+               body:null,                                              // тело cannon-es (если включена реальная физика)
+               _mat:null, x:0, z:0, spin:Math.random()*6});
   }
 }
 function freeSlot(){ for(const o of pool) if(!o.active) return o; return null; }
@@ -513,7 +546,7 @@ function overlaps(x,z,footR){
   // пересекается ли с уже разложенным объектом (по горизонтали) — нельзя «один в одном»
   for(const o of pool){
     if(!o.active) continue;
-    if(Math.hypot(o.x-x, o.z-z) < (o.footR+footR)*0.9) return true;
+    if(Math.hypot(o.x-x, o.z-z) < (o.footR+footR)*1.22) return true;   // не «один в одном» — только касание
   }
   return false;
 }
@@ -583,7 +616,7 @@ function collideWalls(){
 function spawnObject(kind, arg, opts){
   opts=opts||{};
   const o=freeSlot(); if(!o) return false;
-  o.active=true; o.eat=false; o.committed=false; o.kind=kind; o.super=null;
+  o.active=true; o.eat=false; o.committed=false; o.kind=kind; o.super=null; o.body=null; o.yOff=(opts.yOff||0);
   // 1) определяем размер (footR) ДО расстановки — нужен для проверки пересечений
   let geo='coin', sc, baseY;
   if(kind==='item'){
@@ -611,35 +644,72 @@ function spawnObject(kind, arg, opts){
   return o;
 }
 function regenMap(){
-  for(const o of pool){ o.active=false; o.eat=false; o.committed=false; o.mesh.visible=false; o.shadow.visible=false; }
+  for(const o of pool){ if(o.body&&CW){ CW.removeBody(o.body); } o.body=null; o.active=false; o.eat=false; o.committed=false; o.mesh.visible=false; o.shadow.visible=false; }
   buildWalls();
-  // центры кластеров (сгущений)
+  // ГЕНЕРАТОР РАСКЛАДКИ: предметы ставятся СИММЕТРИЧНЫМИ паттернами (сетка, ряд, башня, кольцо),
+  // без наложений (текстура в текстуре). Башни/стопки разрешены (по вертикали).
   clusters=[];
-  const want=D.clusters; let tries=0;
-  while(clusters.length<want && tries++<want*12){
-    const x=rand(-mapHalf*0.8, mapHalf*0.8), z=rand(-mapHalf*0.8, mapHalf*0.8);
-    if(Math.hypot(x,z)<R0+30 || insideWall(x,z,6)) continue;
-    clusters.push({x,z, r:rand(D.cRmin,D.cRmax)});
-  }
-  // РАСКЛАДЫВАЕМ предметы 6 тиров. Мелочи (тир 1) — много (топливо для роста, ~×2 к норме).
-  const TIER_W=[0,60,15,11,7,4,3];                 // вес тира 1..6 (сумма 100) — мелких больше
   const byTier={}; TYPES.forEach(t=>{ (byTier[t.tier]=byTier[t.tier]||[]).push(t.id); });
-  const counts={};
-  function pickTier(){ let r=Math.random()*100, a=0; for(let t=1;t<=6;t++){ a+=TIER_W[t]; if(r<a) return t; } return 1; }
-  let placed=0, guard=0;
-  while(placed<D.items && guard++<D.items*3){
-    const t=pickTier(); const ids=byTier[t]; const id=ids[Math.floor(Math.random()*ids.length)];
-    const base=spawnObject('item', id);
-    if(!base) break;
-    counts[id]=(counts[id]||0)+1; placed++;
-    // СТОПКА МОНЕТ: для мелких тиров иногда кладём 1–3 сверху (как стопка монет, по вертикали)
-    if(t<=2 && Math.random()<0.4 && placed<D.items){
-      const step=0.22*tierScale(t), k=1+Math.floor(Math.random()*3);
-      for(let s=1;s<=k && placed<D.items;s++){
-        const m=spawnObject('item', id, {fixed:{x:base.x,z:base.z}, yOff:s*step});
-        if(!m) break; counts[id]=(counts[id]||0)+1; placed++;
-      }
+  const TIER_W=[0,60,15,11,7,4,3];
+  const counts={}; const countInc=id=>{ counts[id]=(counts[id]||0)+1; };
+  const pickTier=()=>{ let r=Math.random()*100,a=0; for(let t=1;t<=6;t++){ a+=TIER_W[t]; if(r<a) return t; } return 1; };
+  const lim=mapHalf-8;
+  const patterns=[];
+  function anchor(rad){
+    for(let tr=0;tr<80;tr++){
+      const x=rand(-lim,lim), z=rand(-lim,lim);
+      if(Math.hypot(x,z) < hole.r+rad+8) continue;            // не на старте дыры
+      let ok=true; for(const p of patterns){ if(Math.hypot(p.x-x,p.z-z) < p.r+rad+4){ ok=false; break; } }
+      if(ok) return {x,z};
     }
+    return null;
+  }
+  const emit=(id,x,z,yOff)=>{ const o=spawnObject('item',id,{fixed:{x,z},yOff:yOff||0}); if(o) countInc(id); return o; };
+
+  let placed=0, guard=0;
+  function placePattern(){
+    const t=pickTier(); const id=byTier[t][Math.floor(Math.random()*byTier[t].length)];
+    const fr=tierFootR(t), step=fr*2.3;
+    const remaining=D.items-placed;
+    let pts=[], rad=fr, tower=0; const k=Math.random();
+    if(t>=4 || remaining<4){                                   // крупные — одиночки
+      pts=[[0,0]];
+    } else if(k<0.34){                                         // СЕТКА n×n (3×3, 6×6 …)
+      const nn = t<=2 ? (Math.random()<0.5?3:6) : 3;
+      const half=(nn-1)/2;
+      for(let i=0;i<nn;i++)for(let j=0;j<nn;j++) pts.push([(i-half)*step,(j-half)*step]);
+      rad=half*step+fr;
+    } else if(k<0.6){                                          // РЯД
+      const n=2+Math.floor(Math.random()*5), horiz=Math.random()<0.5, half=(n-1)/2;
+      for(let i=0;i<n;i++){ const o=(i-half)*step; pts.push(horiz?[o,0]:[0,o]); }
+      rad=half*step+fr;
+    } else if(k<0.8 && t<=3){                                  // БАШНЯ (вертикальный стек)
+      tower=2+Math.floor(Math.random()*3); pts=[[0,0]];
+    } else {                                                   // КОЛЬЦО
+      const n=5+Math.floor(Math.random()*4), rr=Math.max(fr*2.2, fr*1.3/Math.sin(Math.PI/n));
+      for(let i=0;i<n;i++){ const a=i/n*Math.PI*2; pts.push([Math.cos(a)*rr,Math.sin(a)*rr]); }
+      rad=rr+fr;
+    }
+    if(rad>lim*0.85){ pts=[[0,0]]; rad=fr; tower=0; }
+    const a=anchor(rad); if(!a) return false;
+    patterns.push({x:a.x,z:a.z,r:rad}); clusters.push({x:a.x,z:a.z,r:rad});
+    if(tower>0){ const stepY=fr*0.55; for(let s=0;s<tower;s++){ emit(id,a.x,a.z,s*stepY); placed++; } }
+    else { for(const p of pts){ emit(id,a.x+p[0],a.z+p[1]); placed++; } }
+    return true;
+  }
+  while(placed<D.items && guard++<D.items*4){ if(!placePattern()) break; }
+
+  // ЗАПАС ДЛЯ РОСТА: топлива (предметы МЕНЬШЕ самого большого) хватает дорасти на +3 уровня.
+  let maxTier=1; Object.keys(counts).forEach(id=>{ maxTier=Math.max(maxTier, TYPE_BY_ID[id].tier); });
+  const needFuel=pointsToLevel(Math.min(MAX_LEVEL, maxTier+3));
+  const fuelNow=()=>{ let s=0; Object.keys(counts).forEach(id=>{ const t=TYPE_BY_ID[id].tier; if(t<maxTier) s+=TIER_VAL[t]*counts[id]; }); return s; };
+  const t1ids=TYPES.filter(t=>t.tier===1).map(t=>t.id);
+  let guard2=0;
+  while(fuelNow()<needFuel && guard2++<2000){
+    const id=t1ids[Math.floor(Math.random()*t1ids.length)];
+    const fr=tierFootR(1), step=fr*2.3, nn=3, half=1, rad=half*step+fr;
+    const a=anchor(rad); if(!a) break; patterns.push({x:a.x,z:a.z,r:rad}); clusters.push({x:a.x,z:a.z,r:rad});
+    for(let i=0;i<nn;i++)for(let j=0;j<nn;j++) emit(id, a.x+(i-half)*step, a.z+(j-half)*step);
   }
   // СУПЕР-предметы: часы 1–3; статуэтка — до 3, каждая с шансом 30%; магнит 1–2
   const clocks=1+Math.floor(Math.random()*3);
@@ -661,13 +731,14 @@ function startGame(){
   D=LEVELS[Math.min(currentLevel,LEVELS.length)-1]; mapHalf=D.map/2;
   ground.geometry.dispose(); ground.geometry=new THREE.PlaneGeometry(D.map,D.map);
   if(ground.material.map) ground.material.map.dispose();
-  ground.material=new THREE.MeshLambertMaterial({map:buildGroundTexture(D.map), color:0xbfe4ff});
+  ground.material=applyGroundStencil(new THREE.MeshLambertMaterial({map:buildGroundTexture(D.map), color:0xbfe4ff}));
 
   score=0; elapsed=0; timeLeft=D.time; buffMag=0; buffX2=0;
   hole.level=1; hole.r=R0; hole.grow=0; hole.x=hole.tx=0; hole.z=hole.tz=0;
-  camDist=hole.r*5+80; markerPulse=0; joyActive=false; joyDX=0; joyDY=0; joyHide();
+  camDist=hole.r*7+30; markerPulse=0; joyActive=false; joyDX=0; joyDY=0; joyHide();
   hudScore=hudTime=hudTier=hudGrow=-1; hudBuffKey='';
   regenMap(); updateBuffs();
+  if(REAL_PHYS){ clearBodies(); clearColliders(); buildTileVisual(); }   // полная видимая сетка; коллайдеры/тела — лениво у дыры
   els.menu.classList.add('hidden'); els.over.classList.add('hidden'); els.rate.classList.add('hidden');
   try{ tg&&tg.BackButton&&tg.BackButton.hide(); }catch(e){}
   state='playing'; last=performance.now(); paused=false;
@@ -696,6 +767,148 @@ function goMenu(){
 }
 
 /* ===================== UPDATE ===================== */
+/* ===================== ФИЗИКА ПАДЕНИЯ (твёрдое тело) ===================== */
+const PHYS = { G:95, REST:0.34, FRIC:0.6, VMAX:130 };   // гравитация (земная по ощущению), упругость, трение→качение, лимит скорости
+const _wq=new THREE.Quaternion(), _dq=new THREE.Quaternion();
+function integrateSpin(q, wx,wy,wz, h){               // dq/dt = ½ ω⊗q  (кватернионное вращение)
+  _wq.set(wx*h, wy*h, wz*h, 0); _dq.copy(_wq).multiply(q);
+  q.x+=0.5*_dq.x; q.y+=0.5*_dq.y; q.z+=0.5*_dq.z; q.w+=0.5*_dq.w; q.normalize();
+}
+function cloneDarkenable(o,m){                         // отдельный материал, чтобы темнить именно этот объект в глубине
+  m.material = Array.isArray(m.material) ? m.material.map(x=>x.clone())
+                                         : m.material.clone();
+  o._mat=true;
+}
+function startFalling(o){
+  const m=o.mesh; o.eat=true; o.committed=false;
+  o.px=o.x; o.py=o.restY; o.pz=o.z;
+  o.vx=0; o.vy=0; o.vz=0;
+  // начальный наклон В сторону дыры (момент от неподпёртого свеса над кромкой)
+  let rx=o.x-hole.x, rz=o.z-hole.z, dh=Math.hypot(rx,rz)||1e-4;
+  const nx=rx/dh, nz=rz/dh, S=2.6+Math.random()*1.6;
+  o.wx=-nz*S; o.wz=nx*S; o.wy=(Math.random()-0.5)*1.5;   // ось наклона ⟂ радиусу → верх валится к центру
+  m.rotation.set(0,o.spin,0);                            // синхронизируем кватернион со стартовой позой
+}
+/* ===================== РЕАЛЬНАЯ ФИЗИКА — ГИБРИД (мелкая видимая сетка + коллайдеры только у дыры) ===================== */
+/* Видимая сетка ПОЛНАЯ и мелкая (InstancedMesh, дёшево для GPU). Физические тела-плитки —
+   ТОЛЬКО в окне вокруг дыры (там идёт падение): сотни тел вместо десятков тысяч. Внутри окна
+   у плиток в круге дыры выключен коллайдер → частичная опора → честное опрокидывание.
+   Тела предметов создаются лениво у дыры; ушли — снимаются (ложатся на пол статиком). TN — частота. */
+let CW=null, REAL_PHYS=false, gMat=null, oMat=null, TN=112, tileSize=1, tileMesh=null;
+const _tileDummy = (typeof THREE!=='undefined') ? new THREE.Object3D() : null;
+let colTiles=new Map(), colPool=[], hiddenCells=new Set();
+const COL_W=2.6;   // радиус окна коллайдеров ≈ COL_W × радиус дыры (в единицах)
+function initPhysics(){
+  if(!window.CANNON){ REAL_PHYS=false; return; }
+  try{
+    CW=new CANNON.World({gravity:new CANNON.Vec3(0,-95,0)});
+    CW.broadphase=new CANNON.SAPBroadphase(CW); CW.allowSleep=true; CW.solver.iterations=14;
+    gMat=new CANNON.Material('g'); oMat=new CANNON.Material('o');
+    CW.addContactMaterial(new CANNON.ContactMaterial(gMat,oMat,{friction:0.5,restitution:0.05}));
+    CW.addContactMaterial(new CANNON.ContactMaterial(oMat,oMat,{friction:0.4,restitution:0.05}));
+    REAL_PHYS=true;
+  }catch(e){ console.warn('initPhysics fail \u2192 fallback', e); CW=null; REAL_PHYS=false; }
+}
+function buildTileVisual(){                               // ПОЛНАЯ видимая сетка (только картинка, без тел)
+  if(!CW) return;
+  if(tileMesh){ scene.remove(tileMesh); tileMesh.geometry.dispose(); tileMesh.material.dispose(); tileMesh=null; }
+  hiddenCells.clear();
+  tileSize=(mapHalf*2)/TN;
+  const half=mapHalf, count=TN*TN;
+  const geo=new THREE.BoxGeometry(tileSize*0.9,0.4,tileSize*0.9);
+  const mat=new THREE.MeshLambertMaterial({color:0x2b3e62});
+  tileMesh=new THREE.InstancedMesh(geo,mat,count); tileMesh.frustumCulled=false;
+  tileMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(tileMesh);
+  const d=_tileDummy; let k=0;
+  for(let i=0;i<TN;i++) for(let j=0;j<TN;j++){
+    const x=-half+tileSize*(i+0.5), z=-half+tileSize*(j+0.5);
+    d.position.set(x,-0.2,z); d.scale.set(1,1,1); d.updateMatrix(); tileMesh.setMatrixAt(k,d.matrix); k++;
+  }
+  tileMesh.instanceMatrix.needsUpdate=true;
+}
+function setTileVisible(k,vis){
+  const i=Math.floor(k/TN), j=k%TN, half=mapHalf, x=-half+tileSize*(i+0.5), z=-half+tileSize*(j+0.5), s=vis?1:0.0001;
+  _tileDummy.position.set(x,-0.2,z); _tileDummy.scale.set(s,s,s); _tileDummy.updateMatrix(); tileMesh.setMatrixAt(k,_tileDummy.matrix);
+}
+function updateVisualHole(){                              // прячем КАРТИНКУ клеток в круге дыры (только изменившиеся)
+  if(!tileMesh) return;
+  const half=mapHalf, R2=hole.r*hole.r;
+  const ci=Math.round((hole.x+half)/tileSize-0.5), cj=Math.round((hole.z+half)/tileSize-0.5);
+  const W=Math.ceil(hole.r/tileSize)+1; let changed=false;
+  for(let i=ci-W;i<=ci+W;i++)for(let j=cj-W;j<=cj+W;j++){
+    if(i<0||i>=TN||j<0||j>=TN) continue;
+    const cx=-half+tileSize*(i+0.5), cz=-half+tileSize*(j+0.5), k=i*TN+j;
+    if((cx-hole.x)*(cx-hole.x)+(cz-hole.z)*(cz-hole.z)<R2 && !hiddenCells.has(k)){ hiddenCells.add(k); setTileVisible(k,false); changed=true; }
+  }
+  for(const k of hiddenCells){
+    const i=Math.floor(k/TN), j=k%TN, cx=-half+tileSize*(i+0.5), cz=-half+tileSize*(j+0.5);
+    if((cx-hole.x)*(cx-hole.x)+(cz-hole.z)*(cz-hole.z)>=R2){ hiddenCells.delete(k); setTileVisible(k,true); changed=true; }
+  }
+  if(changed) tileMesh.instanceMatrix.needsUpdate=true;
+}
+function colGet(){
+  let b=colPool.pop();
+  if(!b) b=new CANNON.Body({mass:0,type:CANNON.Body.STATIC,material:gMat,shape:new CANNON.Box(new CANNON.Vec3(tileSize/2,0.2,tileSize/2))});
+  return b;
+}
+function updateColliders(){                               // тела-плитки ТОЛЬКО в окне вокруг дыры
+  if(!CW) return;
+  const half=mapHalf, R2=hole.r*hole.r;
+  const ci=Math.round((hole.x+half)/tileSize-0.5), cj=Math.round((hole.z+half)/tileSize-0.5);
+  const W=Math.ceil((hole.r*COL_W)/tileSize)+1;
+  for(let i=ci-W;i<=ci+W;i++)for(let j=cj-W;j<=cj+W;j++){
+    if(i<0||i>=TN||j<0||j>=TN) continue;
+    const k=i*TN+j;
+    if(!colTiles.has(k)){ const b=colGet(), x=-half+tileSize*(i+0.5), z=-half+tileSize*(j+0.5);
+      b.position.set(x,-0.2,z); b.aabbNeedsUpdate=true; b.collisionResponse=true; b._cx=x; b._cz=z; b._i=i; b._j=j;
+      CW.addBody(b); colTiles.set(k,b); }
+  }
+  for(const [k,b] of colTiles){
+    if(b._i<ci-W||b._i>ci+W||b._j<cj-W||b._j>cj+W){ CW.removeBody(b); colPool.push(b); colTiles.delete(k); continue; }
+    const dx=b._cx-hole.x, dz=b._cz-hole.z; b.collisionResponse=(dx*dx+dz*dz)>=R2;   // в круге дыры опоры нет
+  }
+}
+function clearColliders(){ if(!CW) return; for(const [,b] of colTiles) CW.removeBody(b); colTiles.clear(); colPool.length=0; }
+function makeBody(o){
+  const isBomb=o.kind==='bomb';
+  const hy=isBomb? o.footR*0.85 : Math.max(0.28,o.footR*0.26), hw=o.footR*0.7;
+  const shape = isBomb ? new CANNON.Sphere(o.footR*0.85) : new CANNON.Box(new CANNON.Vec3(hw,hy,hw));
+  const vol = isBomb ? (4/3)*Math.PI*Math.pow(o.footR*0.85,3) : (2*hw)*(2*hy)*(2*hw);
+  const y0 = (isBomb? o.footR*0.85 : hy)+0.04+(o.yOff||0);   // на полу, как в покое (без «прыжка»)
+  const b=new CANNON.Body({ mass:Math.max(0.4, vol*0.3), material:oMat, shape, position:new CANNON.Vec3(o.x,y0,o.z) });
+  b.allowSleep=true; b.sleepSpeedLimit=0.15; b.sleepTimeLimit=0.4; b.linearDamping=0.02; b.angularDamping=0.05;
+  CW.addBody(b); o.body=b; b.sleep();
+}
+function dropBody(o,settle){
+  if(o.body){ CW.removeBody(o.body); o.body=null; }
+  if(settle){ o.mesh.position.set(o.x,o.restY,o.z); o.mesh.rotation.set(0,o.spin,0); o.shadow.position.set(o.x,0.04,o.z); o.shadow.visible=true; }
+}
+function clearBodies(){ if(!CW) return; for(const o of pool){ if(o.body){ CW.removeBody(o.body); o.body=null; } } }
+function teardownPhysics(){ clearBodies(); clearColliders(); if(tileMesh){scene.remove(tileMesh);tileMesh=null;} CW=null; REAL_PHYS=false; }
+function stepPhysics(dt){
+  updateColliders();
+  updateVisualHole();
+  for(const o of pool){ if(!o.active) continue;
+    const dx=o.x-hole.x, dz=o.z-hole.z, d2=dx*dx+dz*dz;
+    if(!o.body && d2 < (hole.r*1.5)*(hole.r*1.5) && o.footR<=hole.r*1.25) makeBody(o);
+    if(o.body && d2 < (hole.r+6)*(hole.r+6) && o.body.sleepState!==0) o.body.wakeUp();
+  }
+  CW.step(1/60, dt, 6);
+  for(const o of pool){
+    if(!o.active || !o.body) continue;
+    const b=o.body, m=o.mesh;
+    m.position.copy(b.position); m.quaternion.copy(b.quaternion);
+    o.x=b.position.x; o.z=b.position.z;
+    if(b.position.y>-1){ o.shadow.position.set(o.x,0.04,o.z); o.shadow.visible=true; } else o.shadow.visible=false;
+    if(b.position.y < -DEPTH){
+      if(o.kind==='bomb'){ CW.removeBody(b); o.body=null; explode(o); return; }
+      CW.removeBody(b); o.body=null; consume(o); continue;
+    }
+    const ex=o.x-hole.x, ez=o.z-hole.z;                    // ушёл из зоны и стоит → снять тело (ляжет статиком)
+    if(ex*ex+ez*ez > (hole.r*2.1)*(hole.r*2.1) && b.position.y>-0.5 && b.velocity.length()<0.7) dropBody(o,true);
+  }
+}
+/* ===================== ОСНОВНОЙ ШАГ ===================== */
 function update(dt){
   elapsed+=dt; timeLeft-=dt;
   if(timeLeft<=0){ timeLeft=0; updateHUD(); endGame('time'); return; }
@@ -709,36 +922,55 @@ function update(dt){
   hole.z=clamp(hole.z,-mapHalf+hole.r,mapHalf-hole.r);
   collideWalls(); // ограждения — дыра не проходит, игрок обходит
 
+  if(REAL_PHYS){ try{ stepPhysics(dt); }catch(e){ console.warn('phys err → fallback', e); teardownPhysics(); } }
+  else
   for(const o of pool){
     if(!o.active) continue;
     const m=o.mesh;
 
     if(o.eat){
-      // === ФИЗИКА ПАДЕНИЯ: объект теряет опору над дырой, заваливается и падает под гравитацией. ===
+      // === НАСТОЯЩАЯ ФИЗИКА: гравитация + кватернионное вращение + столкновения со стенкой шахты ===
       o.shadow.visible=false;
-      o.vy -= dt*55; m.position.y += o.vy*dt;                       // гравитация
-      m.rotation.x += o.angVx*dt; m.rotation.z += o.angVz*dt;        // кувырок
-      const dd=Math.hypot(o.x-hole.x, o.z-hole.z);
-      if(!o.committed){
-        // ещё над краем: подползает в отверстие; если провалился ниже обода — фиксируем «проглочен»
-        o.x += (hole.x-o.x)*Math.min(1,dt*3.5); o.z += (hole.z-o.z)*Math.min(1,dt*3.5);
-        m.position.x=o.x; m.position.z=o.z;
-        if(m.position.y < -1.6){                                     // прошёл обод — проглочен
-          o.committed=true;
-          m.material = Array.isArray(m.material) ? m.material.map(x=>{const c=x.clone();c.depthTest=false;return c;})
-                                                 : (function(){const c=m.material.clone();c.depthTest=false;return c;})();
-          o._mat=true; m.renderOrder=9;
-        } else if(dd >= hole.r){                                     // дыра ушла — объект встаёт обратно
-          o.eat=false; o.vy=0; m.position.y=o.restY; m.rotation.set(0,o.spin,0);
-          o.shadow.position.set(o.x,0.04,o.z); o.shadow.visible=true; continue;
+      const rb=o.footR*0.9;
+      const steps=Math.min(5, Math.max(1, Math.ceil(dt/0.009)));   // подшаги — без «протыкания» стенок
+      const h=dt/steps;
+      for(let s=0;s<steps;s++){
+        o.vy -= PHYS.G*h;
+        if(o.vy<-PHYS.VMAX) o.vy=-PHYS.VMAX;
+        o.px+=o.vx*h; o.py+=o.vy*h; o.pz+=o.vz*h;
+        let rx=o.px-hole.x, rz=o.pz-hole.z, dh=Math.hypot(rx,rz)||1e-4;
+        const nx=rx/dh, nz=rz/dh;
+        // ВОРОНКА/ЧАША: чем глубже — тем сильнее тянет к центру (склон чаши, как в Jelly)
+        const depthFrac=Math.min(1, Math.max(0, -o.py/DEPTH));
+        if(o.py < 0.1){
+          o.vx -= nx*(8 + 34*depthFrac)*h;     // ускорение к оси по склону воронки
+          o.vz -= nz*(8 + 34*depthFrac)*h;
         }
-      } else {
-        m.position.x += (hole.x-m.position.x)*Math.min(1,dt*6);      // уходит в шахту по центру
-        m.position.z += (hole.z-m.position.z)*Math.min(1,dt*6);
-        const f=Math.max(0,1-dt*2.4);                               // темнеет в глубине
-        (Array.isArray(m.material)?m.material:[m.material]).forEach(x=>{ x.color&&x.color.multiplyScalar(f); x.emissive&&x.emissive.multiplyScalar(f); });
-        if(m.position.y < -DEPTH){ finishEat(o); }
+        // стенка сужающейся воронки: радиус уменьшается книзу
+        const coneR=Math.max(0.5, hole.r*(1 - depthFrac*0.85));
+        const lim=Math.max(0.4, coneR-rb*0.5);
+        if(o.py<0.1 && dh>lim){
+          const pen=dh-lim; o.px-=nx*pen; o.pz-=nz*pen;       // вернуть на склон
+          const vn=o.vx*nx+o.vz*nz;
+          if(vn>0){ o.vx-=(1+PHYS.REST)*vn*nx; o.vz-=(1+PHYS.REST)*vn*nz; }
+          const tx=-nz, tz=nx, vt=o.vx*tx+o.vz*tz;            // трение по касательной → качение
+          o.vx-=tx*vt*PHYS.FRIC; o.vz-=tz*vt*PHYS.FRIC;
+          o.wx+=(-nz)*(vt*PHYS.FRIC/rb); o.wz+=(nx)*(vt*PHYS.FRIC/rb);
+        }
+        integrateSpin(m.quaternion, o.wx,o.wy,o.wz, h);
       }
+      o.x=o.px; o.z=o.pz; m.position.set(o.px,o.py,o.pz);
+      // прошёл обод → «проглочен» (отдельный материал, темнеет в глубине)
+      if(!o.committed && o.py<-1.4){ o.committed=true; cloneDarkenable(o,m); }
+      if(o.committed){
+        const f=Math.max(0,1-dt*2.2);
+        (Array.isArray(m.material)?m.material:[m.material]).forEach(x=>{ x.color&&x.color.multiplyScalar(f); x.emissive&&x.emissive.multiplyScalar(f); });
+      } else if(o.py>-rb && Math.hypot(o.px-hole.x,o.pz-hole.z) >= hole.r + o.footR*0.6){
+        // дыра ушла, объект ещё у поверхности → встаёт обратно (не провалился)
+        o.eat=false; o.vx=o.vy=o.vz=o.wx=o.wy=o.wz=0; m.position.set(o.x,o.restY,o.z); m.rotation.set(0,o.spin,0);
+        o.shadow.position.set(o.x,0.04,o.z); o.shadow.visible=true; continue;
+      }
+      if(o.py < -DEPTH){ finishEat(o); }
       continue;
     }
 
@@ -746,19 +978,16 @@ function update(dt){
     if(o.kind==='bomb'){ if(d<hole.r*0.9){ explode(o); return; } continue; }          // бомба = конец
     if(o.kind==='super'){ m.rotation.y=elapsed*1.4; o.restY=1.6+Math.sin(elapsed*3)*0.3; } // супер слегка парит/вертится
 
-    // Объект теряет опору, когда его ЦЕНТР оказывается над пустотой дыры (и он влезает) → начинает падать.
+    // Падает, когда край объекта заходит за обод воронки (свес над пустотой) и он влезает.
     const fits = o.footR <= hole.r;
-    if(fits && d < hole.r){
-      o.eat=true; o.committed=false; o.vy=0;
-      const dx=hole.x-o.x, dz=hole.z-o.z, dl=Math.hypot(dx,dz)||1;   // заваливается В сторону дыры
-      o.angVx = (dz/dl)*5*(0.7+Math.random()*0.6);
-      o.angVz = -(dx/dl)*5*(0.7+Math.random()*0.6);
-      continue;
-    }
-    // притяжение: магнит-бонус (×5 к текущему размеру дыры). Обычной подтяжки нет — это дыра, не чёрная дыра.
-    if(buffMag>0 && fits && d < hole.r*5){
-      const pull=Math.min(1, dt*6);
-      o.x+=(hole.x-o.x)*pull; o.z+=(hole.z-o.z)*pull;
+    if(fits && d < hole.r + o.footR*0.45){ startFalling(o); continue; }
+    // лёгкий сбор у кромки (стекание в воронку, как в Jelly) + магнит-бонус (×5)
+    if(fits){
+      const gatherR = buffMag>0 ? hole.r*5 : hole.r + o.footR*1.1;
+      if(d < gatherR){
+        const k = buffMag>0 ? dt*6 : dt*2.4;
+        o.x += (hole.x-o.x)*Math.min(0.6,k); o.z += (hole.z-o.z)*Math.min(0.6,k);
+      }
     }
     // стоит на месте
     m.position.set(o.x, o.restY, o.z);
@@ -770,13 +999,15 @@ function update(dt){
 
   hole.r += (levelRadius(hole.level)-hole.r)*Math.min(1,dt*6);
   const gpul = 1 + (markerPulse>0?markerPulse*1.5:0);
-  holeMesh.position.set(hole.x,0.06,hole.z); holeMesh.scale.set(hole.r,hole.r,1);
-  holeRing.position.set(hole.x,0.09,hole.z); holeRing.scale.set(hole.r*gpul,hole.r*gpul,1);
+  holeMesh.position.set(hole.x,0.02,hole.z); holeMesh.scale.set(hole.r,hole.r,1);
+  pitWall.position.set(hole.x,-DEPTH/2,hole.z); pitWall.scale.set(hole.r*0.99,DEPTH,hole.r*0.99);
+  pitBottom.position.set(hole.x,-DEPTH+0.1,hole.z); pitBottom.scale.set(hole.r*0.98,hole.r*0.98,1);
+  holeRing.position.set(hole.x,0.05,hole.z); holeRing.scale.set(hole.r*gpul,hole.r*gpul,1);
 
   // === Камера: центр дыры ЖЁСТКО на экране (X=0, Y=VIEW.SCREEN_Y) ===
   // Слежение по плоскости мгновенное (дыра не «уплывает»), плавно меняется только зум.
   const SCREEN_Y=VIEW.SCREEN_Y, FOV=VIEW.FOV, TILT=VIEW.TILT;
-  camDist += ((hole.r*5+80) - camDist)*Math.min(1, dt*4);     // плавный зум
+  camDist += ((hole.r*7+30) - camDist)*Math.min(1, dt*4);     // плавный зум
   const halfFov=FOV*Math.PI/360;
   const alpha=Math.atan((-SCREEN_Y/100)*Math.tan(halfFov));
   const pitchHole=Math.atan2(Math.cos(TILT), Math.sin(TILT));
@@ -841,7 +1072,7 @@ window.addEventListener('pagehide',()=>{ if(rafId) cancelAnimationFrame(rafId); 
 /* ===================== ВВОД: ВИРТУАЛЬНЫЙ ДЖОЙСТИК ===================== */
 // Плавающий джойстик: появляется в точке касания, направление+амплитуда задают скорость дыры.
 const JOY_MAX=58;            // макс. ход стика, px
-const HOLE_SPEED=31;         // скорость дыры при полном отклонении, ед/с (снижена вдвое)
+const HOLE_SPEED=40;        // скорость дыры под увеличенное поле
 let joyActive=false, joyBX=0, joyBY=0, joyDX=0, joyDY=0;
 const joyBase=document.getElementById('joyBase'), joyKnob=document.getElementById('joyKnob');
 function joyShow(bx,by,kx,ky){
@@ -954,12 +1185,21 @@ document.getElementById('rateBackBtn').addEventListener('click',goMenu);
 /* ===================== СТАРТ ===================== */
 function boot(){
   if(!window.THREE){ els.loading.textContent='Не удалось загрузить 3D (Three.js). Проверьте интернет и перезапустите.'; return; }
+  let waited=0;
+  (function wait(){
+    if(window.__cannonDone || waited>3500){ start(); }
+    else { waited+=50; setTimeout(wait,50); }
+  })();
+}
+function start(){
   initScene();
   resize();
   try{ tg && tg.onEvent && tg.onEvent('viewportChanged', ()=>resize()); }catch(e){}
   setTimeout(resize,150); setTimeout(resize,500); setTimeout(resize,1200);  // догоняем разворот вьюпорта Telegram
   els.whoName.textContent=displayName();
   els.whoAva.textContent=(displayName()[0]||'?').toUpperCase();
+  document.getElementById('verTag').textContent='v'+VERSION+(REAL_PHYS?'':' (физика fallback)');
+  refreshLevelLabel();
   Store.get(b=>{ best=b; els.menuBest.textContent=b?('Твой рекорд: '+b+' Gram'):''; });
   els.loading.style.display='none';
   last=performance.now();
