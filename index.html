@@ -27,11 +27,11 @@
     user-select:none;-webkit-user-select:none;}
   #c{position:fixed;inset:0;display:block;touch-action:none;}
   #joyBase{position:fixed;width:124px;height:124px;border-radius:50%;
-    border:2px solid rgba(155,246,255,0.9);background:rgba(52,194,255,0.14);
-    transform:translate(-50%,-50%);opacity:0.8;pointer-events:none;z-index:6;display:none;}
+    border:2px solid rgba(255,255,255,0.28);background:rgba(255,255,255,0.05);
+    transform:translate(-50%,-50%);opacity:0.7;pointer-events:none;z-index:6;display:none;}
   #joyKnob{position:fixed;width:56px;height:56px;border-radius:50%;
-    background:rgba(155,246,255,0.9);box-shadow:0 0 18px rgba(52,194,255,0.9);
-    transform:translate(-50%,-50%);opacity:0.8;pointer-events:none;z-index:7;display:none;}
+    background:rgba(255,255,255,0.5);box-shadow:0 0 6px rgba(0,0,0,0.35);
+    transform:translate(-50%,-50%);opacity:0.75;pointer-events:none;z-index:7;display:none;}
 
   /* ===== HUD ===== */
   #hud{position:fixed;top:calc(env(safe-area-inset-top)+10px);left:0;right:0;pointer-events:none;z-index:5;}
@@ -43,14 +43,14 @@
   .pill .val{font-size:22px;font-weight:800;line-height:1.05;}
   #score .val{color:var(--gold);} #timer .val{color:var(--ton-light);}
   #timer.low .val{color:var(--danger);}
-  /* таймер раунда — отдельно, ПОД панелью целей (справа), чтобы не накладывались */
-  #timer{position:fixed;right:10px;top:calc(env(safe-area-inset-top)+124px);z-index:6;}
-  #growthWrap{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+78px);
+  /* таймер — по центру сверху (слева счёт, справа цели, по центру время+уровень+полоса) */
+  #timer{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+10px);z-index:6;}
+  #growthWrap{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+92px);
     width:min(56vw,280px);height:12px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid var(--panel-border);
     overflow:hidden;z-index:5;pointer-events:none;}
   #growthFill{height:100%;width:0;background:linear-gradient(90deg,var(--ton),var(--ton-light));
     box-shadow:0 0 14px var(--ton);transition:width .12s linear;}
-  #tierBadge{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+60px);
+  #tierBadge{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top)+70px);
     font-size:11px;letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase;z-index:5;pointer-events:none;}
   #tierBadge b{color:var(--ton-light);font-size:13px;}
   #buffs{position:fixed;left:14px;top:calc(env(safe-area-inset-top)+66px);display:flex;flex-direction:column;
@@ -117,6 +117,22 @@
   .lb-note{color:var(--text-dim);font-size:11px;max-width:380px;line-height:1.4;}
   #verTag{position:fixed;left:8px;bottom:6px;z-index:25;pointer-events:none;
     font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.45);}
+  #fps{position:fixed;left:8px;bottom:22px;z-index:25;pointer-events:none;
+    font-size:13px;font-weight:700;color:#7CFC9A;font-family:monospace;text-shadow:0 1px 2px #000;}
+  .floatScore{position:fixed;z-index:20;pointer-events:none;font-weight:800;font-size:20px;
+    color:#5ff0a8;text-shadow:0 2px 6px #000;transform:translate(-50%,-50%);
+    animation:floatUp .9s ease-out forwards;}
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,-50%) scale(.6);}
+    18%{opacity:1;} 100%{opacity:0;transform:translate(-50%,-170%) scale(1.15);}}
+  .levelBanner{position:fixed;left:50%;top:36%;z-index:21;pointer-events:none;
+    transform:translate(-50%,-50%);text-align:center;animation:lvlPop 1.3s ease-out forwards;}
+  .levelBanner b{display:block;font-size:46px;font-weight:900;color:#ffd24a;
+    text-shadow:0 3px 12px #000,0 0 26px rgba(255,210,74,.6);}
+  .levelBanner small{font-size:15px;color:#fff;opacity:.9;letter-spacing:.14em;}
+  @keyframes lvlPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.5);}
+    20%{opacity:1;transform:translate(-50%,-50%) scale(1.12);}
+    70%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0;transform:translate(-50%,-92%) scale(1);}}
   #loading{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
     background:#04060f;color:var(--text-dim);font-size:14px;letter-spacing:.1em;padding:24px;text-align:center;}
   @media (prefers-reduced-motion:reduce){#growthFill,.btn{transition:none;}}
@@ -125,6 +141,7 @@
 <body>
   <div id="loading">Загрузка 3D…</div>
   <div id="verTag"></div>
+  <div id="fps"></div>
   <canvas id="c"></canvas>
   <div id="joyBase"></div>
   <div id="joyKnob"></div>
@@ -230,30 +247,31 @@ const Store={
    • Эскалация по «волнам»: каждые wave сек растут бомбы и этажность.
    • Зональность: чем дальше от центра, тем выше здания и ценнее (см. spawnObject).  */
 /* ===================== УРОВНИ (план: 1000; сейчас первые 5) ===================== */
-const VERSION = '2.15';   // версия сборки (видна в углу меню)
+const VERSION = '2.31';   // версия сборки (видна в углу меню)
 const TOTAL_LEVELS = 1000;          // всего уровней будет 1000 (пока сделаны первые 5)
 const LEVELS = [
   // Реальная физика: пол целиком замощён плитками, у ВСЕХ предметов есть тела →
   // карты компактные (помещается дыра до 6-го размера), предметов меньше, но честно падают.
-  { map:200, items:90,  bombs:0, time:175, clusters:6,  cRmin:26, cRmax:46, walls:0 },
-  { map:225, items:115, bombs:1, time:175, clusters:7,  cRmin:28, cRmax:50, walls:0 },
-  { map:250, items:140, bombs:2, time:170, clusters:8,  cRmin:30, cRmax:54, walls:0 },
-  { map:275, items:165, bombs:3, time:170, clusters:9,  cRmin:32, cRmax:58, walls:0 },
-  { map:300, items:190, bombs:4, time:165, clusters:10, cRmin:34, cRmax:62, walls:0 }
+  { map:400, items:175, bombs:0, time:195, clusters:6,  cRmin:26, cRmax:46, walls:0 },
+  { map:450, items:225, bombs:1, time:195, clusters:7,  cRmin:28, cRmax:50, walls:0 },
+  { map:500, items:275, bombs:2, time:190, clusters:8,  cRmin:30, cRmax:54, walls:0 },
+  { map:550, items:325, bombs:3, time:190, clusters:9,  cRmin:32, cRmax:58, walls:0 },
+  { map:600, items:375, bombs:4, time:185, clusters:10, cRmin:34, cRmax:62, walls:0 }
 ];
 let currentLevel=1, D=LEVELS[0];
 let lastReason='';
 
 /* ===================== БАЛАНС / МАТЕМАТИКА РОСТА ===================== */
-const R0 = 7.0;          // старт дыры (под увеличенное поле)
+const R0 = 3.5;          // старт дыры ×0.5
 const GROW = 1.25;       // +25%/уровень — 6 размеров заметно различаются
 const MAX_LEVEL = 12;
-function levelRadius(L){ return R0 * Math.pow(GROW, Math.min(L,MAX_LEVEL)-1); }   // радиус дыры на уровне L
+function levelRadius(L){ return R0 + 1.25*(Math.min(L,MAX_LEVEL)-1); }  // линейный рост: старт 3.5, +1.25/уровень
 function stepToNext(L){ return Math.round(12 * Math.pow(1.4, L-1)); }   // мягкий рост порогов (раньше ×2 — рост быстро застревал)
 function pointsToLevel(L){ let s=0; for(let i=1;i<L;i++) s+=stepToNext(i); return s; }  // сколько очков до уровня L
 // 6 уровней размера предметов. footR — что должно влезть (footR ≤ радиус дыры → нужен тот уровень дыры).
-function tierFootR(t){ return t<=1 ? R0*0.78 : levelRadius(t)*0.95; }   // тир t съедается с дыры уровня t
-function tierScale(t){ return tierFootR(t)*0.96; }                      // видимый размер предмета
+const OBJ_SCALE = 1.0;   // компенсирует ×0.5 дыры → предметы остаются прежнего размера
+function tierFootR(t){ return (t<=1 ? R0*0.78 : levelRadius(t)*0.95) * OBJ_SCALE; }   // тир t съедается с дыры уровня t
+function tierScale(t){ return tierFootR(t)*0.96; }                      // видимый размер предмета (наследует ×0.5)
 const TIER_VAL=[0,1,2,4,7,11,16];                                       // очки по тиру (индекс = тир)
 const VIEW = { SCREEN_Y:-25, FOV:58, TILT:0.34 };
 const DEPTH = 14;        // видимая глубина дыры (объект проваливается на столько, темнея)
@@ -267,18 +285,29 @@ const TYPES = [
   {id:'hmstr', name:'HMSTR', tier:3, render:'coin', logo:'HMSTR', bg:'#3a1f06', fg:'#ff9d3a', edge:0xb9701f},
   {id:'major', name:'MAJOR', tier:4, render:'coin', logo:'MAJOR', bg:'#3a0d0d', fg:'#ff6a6a', edge:0xb93a3a},
   {id:'ston',  name:'STON',  tier:5, render:'coin', logo:'STON',  bg:'#102a3a', fg:'#7ec8ff', edge:0x3a7fae},
-  {id:'grc',   name:'GRC',   tier:6, render:'coin', logo:'GRC',   bg:'#2a0d33', fg:'#d08bff', edge:0x7e3fae}
+  {id:'grc',   name:'GRC',   tier:6, render:'coin', logo:'GRC',   bg:'#2a0d33', fg:'#d08bff', edge:0x7e3fae},
+  // 🥚 ЯЙЦА (NFT-вид) — те же тиры/ценности, что у монет
+  {id:'egg_green',   name:'Зелёное яйцо',    tier:1, render:'egg', c:'#43c46f'},
+  {id:'egg_yellow',  name:'Жёлтое яйцо',     tier:1, render:'egg', c:'#ffd23a'},
+  {id:'egg_red',     name:'Красное яйцо',    tier:2, render:'egg', c:'#ff5252'},
+  {id:'egg_blue',    name:'Синее яйцо',      tier:2, render:'egg', c:'#4f8cff'},
+  {id:'egg_pink',    name:'Розовое яйцо',    tier:3, render:'egg', c:'#ff86d6'},
+  {id:'egg_cyan',    name:'Голубое яйцо',    tier:3, render:'egg', c:'#71daff'},
+  {id:'egg_emerald', name:'Изумрудное яйцо', tier:4, render:'egg', c:'#10c074', gem:true},
+  {id:'egg_ruby',    name:'Рубиновое яйцо',  tier:5, render:'egg', c:'#e22a4a', gem:true},
+  {id:'egg_gold',    name:'Золотое яйцо',    tier:6, render:'egg', c:'#ffd23a', metal:true}
 ];
 const TYPE_BY_ID={}; TYPES.forEach(t=>{ TYPE_BY_ID[t.id]=t; });
 // Супер-предметы (размер тира 1, едятся сразу): часы +20с, статуэтка Дурова +50 очк, магнит — притяжение
 const SUPERS = {
   clock:     { icon:'clock',  name:'Часы',      addTime:20 },
   statuette: { icon:'statue', name:'Статуэтка', addScore:50 },
-  magnet:    { icon:'magnet', name:'Магнит',    magnet:true }
+  magnet:    { icon:'magnet', name:'Магнит',    magnet:true },
+  x2:        { icon:'x2',     name:'×2 Gram',   x2:true }
 };
 
 /* ===================== THREE.JS ===================== */
-let renderer, scene, camera, ground, holeMesh, holeRing, holeGlow, dirLight, fog, pitWall, pitBottom;
+let renderer, scene, camera, ground, holeMesh, holeRing, holeGlow, holeCollar, dirLight, fog, pitWall, pitBottom;
 function maskMat(){ const m=new THREE.MeshBasicMaterial(); m.colorWrite=false; m.depthWrite=false; m.depthTest=false;
   m.stencilWrite=true; m.stencilRef=1; m.stencilFunc=THREE.AlwaysStencilFunc; m.stencilZPass=THREE.ReplaceStencilOp; return m; }
 function applyGroundStencil(mat){ mat.stencilWrite=true; mat.stencilRef=1; mat.stencilFunc=THREE.NotEqualStencilFunc;
@@ -304,6 +333,7 @@ function buildAssets(){
     disc: new THREE.CircleGeometry(1,40),
     pit:  new THREE.CylinderGeometry(1,1,1,48,1,true),     // стенки цилиндра-дыры (без крышек)
     hring:new THREE.RingGeometry(0.965,1.0,64),   // тонкое очертание рим-края (раньше толстое 0.72–1.05)
+    collar:new THREE.RingGeometry(1.0,1.95,72),   // «воротник» цвета пола: внутр. ребро = идеальный круг дыры
     hglow:new THREE.RingGeometry(1.0,1.9,48),
     shadow:new THREE.CircleGeometry(1,18)
   };
@@ -329,7 +359,11 @@ function buildAssets(){
       const side=new THREE.MeshLambertMaterial({color:t.edge});
       TYPE_RENDER[t.id]={ geo:'coin', mat:[side,cap,cap] };
     } else if(t.render==='egg'){
-      TYPE_RENDER[t.id]={ geo:'egg', mat:new THREE.MeshLambertMaterial({map:eggTexture(t.c), color:0xffffff}) };
+      const m=new THREE.MeshPhongMaterial({ map:eggTexture(t.c,t.gem), color:0xffffff,
+        specular: t.metal?0xfff0c0 : t.gem?0xffffff : 0xc8c8c8,
+        shininess: t.metal?95 : t.gem?80 : 42,
+        emissive: t.gem? new THREE.Color(t.c).multiplyScalar(0.14) : 0x000000 });
+      TYPE_RENDER[t.id]={ geo:'egg', mat:m };
     } else {
       const geo = t.render==='boulder'?'boulder' : t.render==='star'?'star' : t.render==='rock'?'rock':'gem';
       TYPE_RENDER[t.id]={ geo, mat:new THREE.MeshLambertMaterial({color:t.c, flatShading:true}) };
@@ -337,7 +371,7 @@ function buildAssets(){
   });
   // супер-предметы — диск с нарисованной иконкой (часы / статуэтка Дурова / магнит)
   SUPER_RENDER = {};
-  const superEdge={clock:0x1f6f9e, statue:0xb98f1f, magnet:0xb5352f};
+  const superEdge={clock:0x1f6f9e, statue:0xb98f1f, magnet:0xb5352f, x2:0x2a8f5e};
   Object.keys(SUPERS).forEach(k=>{
     const cap=new THREE.MeshLambertMaterial({map:superTexture(SUPERS[k].icon), color:0xffffff});
     const side=new THREE.MeshLambertMaterial({color:superEdge[SUPERS[k].icon]||0x888888});
@@ -355,10 +389,10 @@ function buildAssets(){
 }
 /* 3D-яйцо: сфера, вытянутая по вертикали и сужённая кверху */
 function makeEggGeometry(){
-  const g=new THREE.SphereGeometry(1,24,18), pos=g.attributes.position;
+  const g=new THREE.SphereGeometry(1,32,24), pos=g.attributes.position;
   for(let i=0;i<pos.count;i++){
-    const y=pos.getY(i); pos.setY(i,y*1.35);
-    const t=(y+1)/2, taper=1-0.16*t;                 // верх уже низа → форма яйца
+    const y=pos.getY(i); pos.setY(i,y*1.28);
+    const t=(y+1)/2, taper=1-0.22*t;                 // верх чуть уже низа → форма яйца
     pos.setX(i,pos.getX(i)*taper); pos.setZ(i,pos.getZ(i)*taper);
   }
   pos.needsUpdate=true; g.computeVertexNormals(); return g;
@@ -374,21 +408,29 @@ function coinTexture(label,bg,fg){
   const t=new THREE.CanvasTexture(c); t.anisotropy=4; return t;
 }
 /* Текстура яйца: базовый цвет, крапинки, блик */
-function eggTexture(base){
-  const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
-  x.fillStyle=base; x.fillRect(0,0,128,128);
-  for(let i=0;i<46;i++){ x.fillStyle='rgba(60,40,20,'+(0.06+Math.random()*0.16)+')';
-    const r=2+Math.random()*7; x.beginPath(); x.arc(Math.random()*128,Math.random()*128,r,0,7); x.fill(); }
-  x.fillStyle='rgba(255,255,255,0.28)'; x.beginPath(); x.ellipse(46,40,14,24,-0.5,0,7); x.fill();
+function eggShade(hex,f){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.min(255,r*f)|0; g=Math.min(255,g*f)|0; b=Math.min(255,b*f)|0; return 'rgb('+r+','+g+','+b+')'; }
+function eggTexture(base, gem){
+  const c=document.createElement('canvas'); c.width=128; c.height=256; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256);                 // вертикальный градиент: верх светлее, низ темнее
+  g.addColorStop(0, eggShade(base,1.55)); g.addColorStop(0.4, base); g.addColorStop(1, eggShade(base,0.5));
+  x.fillStyle=g; x.fillRect(0,0,128,256);
+  x.globalAlpha=gem?0.5:0.36; x.fillStyle='#ffffff';          // главный глянцевый блик
+  x.beginPath(); x.ellipse(44,70,15,40,-0.35,0,7); x.fill();
+  x.globalAlpha=gem?0.2:0.12;                                 // вторичный мягкий блик
+  x.beginPath(); x.ellipse(90,150,9,28,0.3,0,7); x.fill();
+  x.globalAlpha=1;
+  if(gem){ x.fillStyle='rgba(255,255,255,0.95)';              // искры для самоцветов
+    for(let i=0;i<5;i++){ x.beginPath(); x.arc(20+Math.random()*88,40+Math.random()*180,1+Math.random()*1.7,0,7); x.fill(); } }
   const t=new THREE.CanvasTexture(c); return t;
 }
 // Иконки супер-предметов (своя отрисовка, НЕ ассеты Telegram): часы, золотая статуэтка, магнит.
 function superTexture(kind){
   const c=document.createElement('canvas'); c.width=c.height=160; const x=c.getContext('2d');
   // фон-диск
-  x.fillStyle = kind==='clock'?'#0c2f44' : kind==='statue'?'#332407' : '#3a0f0d';
+  x.fillStyle = kind==='clock'?'#0c2f44' : kind==='statue'?'#332407' : kind==='x2'?'#0d3320' : '#3a0f0d';
   x.beginPath(); x.arc(80,80,80,0,7); x.fill();
-  x.lineWidth=9; x.strokeStyle = kind==='clock'?'#5fd3ff' : kind==='statue'?'#ffd24a' : '#ff6a5a';
+  x.lineWidth=9; x.strokeStyle = kind==='clock'?'#5fd3ff' : kind==='statue'?'#ffd24a' : kind==='x2'?'#5ff0a8' : '#ff6a5a';
   x.beginPath(); x.arc(80,80,70,0,7); x.stroke();
   x.lineCap='round'; x.lineJoin='round';
   if(kind==='clock'){
@@ -405,6 +447,9 @@ function superTexture(kind){
     x.beginPath(); x.moveTo(58,108); x.quadraticCurveTo(80,64,102,108); x.closePath(); x.fill(); x.stroke();  // торс
     x.fillRect(54,108,52,12); x.strokeRect(54,108,52,12);                 // постамент
     x.fillStyle='#fff3c4'; x.font='bold 24px Arial'; x.textAlign='center'; x.fillText('+50',80,144);
+  } else if(kind==='x2'){
+    x.fillStyle='#eaffe9'; x.font='bold 80px Arial'; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText('×2',80,86);
   } else {
     // магнит (подкова)
     x.strokeStyle='#ff5a4a'; x.lineWidth=18; x.lineCap='butt';
@@ -450,6 +495,8 @@ function initScene(){
   pitWall.renderOrder=3; scene.add(pitWall);
   pitBottom=new THREE.Mesh(GEO.disc, new THREE.MeshBasicMaterial({color:0x040406, fog:false}));
   pitBottom.rotation.x=-Math.PI/2; pitBottom.renderOrder=3; scene.add(pitBottom);
+  holeCollar=new THREE.Mesh(GEO.collar, new THREE.MeshBasicMaterial({color:0x2b3e62, fog:false}));
+  holeCollar.rotation.x=-Math.PI/2; holeCollar.position.y=0.03; holeCollar.renderOrder=4; scene.add(holeCollar);
   holeRing=new THREE.Mesh(GEO.hring, MAT.holeRing); holeRing.rotation.x=-Math.PI/2; holeRing.position.y=0.05; holeRing.renderOrder=6; scene.add(holeRing);
 
   buildPools();
@@ -460,7 +507,7 @@ function initScene(){
 }
 
 /* ===================== ПУЛЫ ===================== */
-const POOL_SIZE=720;
+const POOL_SIZE=1000;
 let pool=[];
 function buildPools(){
   pool=[];
@@ -656,8 +703,10 @@ function regenMap(){
   const lim=mapHalf-8;
   const patterns=[];
   function anchor(rad){
+    const L=lim-rad;                                          // чтобы ВЕСЬ паттерн (якорь±rad) уместился в карте
+    if(L < hole.r+rad+8) return null;                         // паттерн не влезает в досягаемую зону
     for(let tr=0;tr<80;tr++){
-      const x=rand(-lim,lim), z=rand(-lim,lim);
+      const x=rand(-L,L), z=rand(-L,L);
       if(Math.hypot(x,z) < hole.r+rad+8) continue;            // не на старте дыры
       let ok=true; for(const p of patterns){ if(Math.hypot(p.x-x,p.z-z) < p.r+rad+4){ ok=false; break; } }
       if(ok) return {x,z};
@@ -666,9 +715,10 @@ function regenMap(){
   }
   const emit=(id,x,z,yOff)=>{ const o=spawnObject('item',id,{fixed:{x,z},yOff:yOff||0}); if(o) countInc(id); return o; };
 
-  let placed=0, guard=0;
+  let placed=0, guard=0, fails=0;
   function placePattern(){
     const t=pickTier(); const id=byTier[t][Math.floor(Math.random()*byTier[t].length)];
+    const isEgg = TYPE_BY_ID[id] && TYPE_BY_ID[id].render==='egg';   // яйца — высокие, в стек нельзя
     const fr=tierFootR(t), step=fr*2.3;
     const remaining=D.items-placed;
     let pts=[], rad=fr, tower=0; const k=Math.random();
@@ -683,7 +733,7 @@ function regenMap(){
       const n=2+Math.floor(Math.random()*5), horiz=Math.random()<0.5, half=(n-1)/2;
       for(let i=0;i<n;i++){ const o=(i-half)*step; pts.push(horiz?[o,0]:[0,o]); }
       rad=half*step+fr;
-    } else if(k<0.8 && t<=3){                                  // БАШНЯ (вертикальный стек)
+    } else if(k<0.8 && t<=3 && !isEgg){                        // БАШНЯ (вертикальный стек) — НЕ для яиц
       tower=2+Math.floor(Math.random()*3); pts=[[0,0]];
     } else {                                                   // КОЛЬЦО
       const n=5+Math.floor(Math.random()*4), rr=Math.max(fr*2.2, fr*1.3/Math.sin(Math.PI/n));
@@ -697,7 +747,9 @@ function regenMap(){
     else { for(const p of pts){ emit(id,a.x+p[0],a.z+p[1]); placed++; } }
     return true;
   }
-  while(placed<D.items && guard++<D.items*4){ if(!placePattern()) break; }
+  while(placed<D.items && guard++<D.items*6){
+    if(placePattern()) fails=0; else if(++fails>50) break;     // упёрлись (карта забита) → стоп
+  }
 
   // ЗАПАС ДЛЯ РОСТА: топлива (предметы МЕНЬШЕ самого большого) хватает дорасти на +3 уровня.
   let maxTier=1; Object.keys(counts).forEach(id=>{ maxTier=Math.max(maxTier, TYPE_BY_ID[id].tier); });
@@ -717,6 +769,7 @@ function regenMap(){
   for(let i=0;i<3;i++){ if(Math.random()<0.30) spawnObject('super','statuette'); }
   const magnets=1+Math.floor(Math.random()*2);
   for(let i=0;i<magnets;i++) spawnObject('super','magnet');
+  for(let i=0;i<2;i++){ if(Math.random()<0.5) spawnObject('super','x2'); }   // ×2 Gram: 0–2
   // опасности
   for(let i=0;i<D.bombs;i++) spawnObject('bomb');
   // ЦЕЛЬ: 3 случайных типа из присутствующих (с достаточным числом), нужно съесть 70% каждого
@@ -738,7 +791,7 @@ function startGame(){
   camDist=hole.r*7+30; markerPulse=0; joyActive=false; joyDX=0; joyDY=0; joyHide();
   hudScore=hudTime=hudTier=hudGrow=-1; hudBuffKey='';
   regenMap(); updateBuffs();
-  if(REAL_PHYS){ clearBodies(); clearColliders(); buildTileVisual(); }   // полная видимая сетка; коллайдеры/тела — лениво у дыры
+  if(REAL_PHYS){ clearBodies(); clearColliders(); buildTileVisual(); buildBodies(); }   // у всех предметов тело (объём/столкновения), плитки у дыры — лениво
   els.menu.classList.add('hidden'); els.over.classList.add('hidden'); els.rate.classList.add('hidden');
   try{ tg&&tg.BackButton&&tg.BackButton.hide(); }catch(e){}
   state='playing'; last=performance.now(); paused=false;
@@ -796,7 +849,8 @@ function startFalling(o){
    Тела предметов создаются лениво у дыры; ушли — снимаются (ложатся на пол статиком). TN — частота. */
 let CW=null, REAL_PHYS=false, gMat=null, oMat=null, TN=112, tileSize=1, tileMesh=null;
 const _tileDummy = (typeof THREE!=='undefined') ? new THREE.Object3D() : null;
-let colTiles=new Map(), colPool=[], hiddenCells=new Set();
+let colTiles=new Map(), colPool=[], hiddenCells=new Set(); let colStep=2.0;   // шаг коллайдеров дыры (отвязан от видимой сетки)
+const G_OBJ=1, G_PLANE=2, G_TILE=4; let planeBody=null;   // группы столкновений: предмет / общий пол / плитки дыры
 const COL_W=2.6;   // радиус окна коллайдеров ≈ COL_W × радиус дыры (в единицах)
 function initPhysics(){
   if(!window.CANNON){ REAL_PHYS=false; return; }
@@ -805,7 +859,10 @@ function initPhysics(){
     CW.broadphase=new CANNON.SAPBroadphase(CW); CW.allowSleep=true; CW.solver.iterations=14;
     gMat=new CANNON.Material('g'); oMat=new CANNON.Material('o');
     CW.addContactMaterial(new CANNON.ContactMaterial(gMat,oMat,{friction:0.5,restitution:0.05}));
-    CW.addContactMaterial(new CANNON.ContactMaterial(oMat,oMat,{friction:0.4,restitution:0.05}));
+    CW.addContactMaterial(new CANNON.ContactMaterial(oMat,oMat,{friction:0.45,restitution:0.08}));
+    // ОБЩИЙ ПОЛ-ПЛОСКОСТЬ — на нём лежат все дальние предметы (чтобы у всех всегда было тело и объём)
+    planeBody=new CANNON.Body({mass:0,type:CANNON.Body.STATIC,material:gMat,collisionFilterGroup:G_PLANE,collisionFilterMask:G_OBJ});
+    planeBody.addShape(new CANNON.Plane()); planeBody.quaternion.setFromEuler(-Math.PI/2,0,0); CW.addBody(planeBody);
     REAL_PHYS=true;
   }catch(e){ console.warn('initPhysics fail \u2192 fallback', e); CW=null; REAL_PHYS=false; }
 }
@@ -832,9 +889,9 @@ function setTileVisible(k,vis){
 }
 function updateVisualHole(){                              // прячем КАРТИНКУ клеток в круге дыры (только изменившиеся)
   if(!tileMesh) return;
-  const half=mapHalf, R2=hole.r*hole.r;
+  const half=mapHalf, Rh=hole.r+tileSize*0.5, R2=Rh*Rh;   // прячем с запасом — клетки не торчат в круг
   const ci=Math.round((hole.x+half)/tileSize-0.5), cj=Math.round((hole.z+half)/tileSize-0.5);
-  const W=Math.ceil(hole.r/tileSize)+1; let changed=false;
+  const W=Math.ceil(hole.r/tileSize)+2; let changed=false;
   for(let i=ci-W;i<=ci+W;i++)for(let j=cj-W;j<=cj+W;j++){
     if(i<0||i>=TN||j<0||j>=TN) continue;
     const cx=-half+tileSize*(i+0.5), cz=-half+tileSize*(j+0.5), k=i*TN+j;
@@ -848,35 +905,43 @@ function updateVisualHole(){                              // прячем КАР
 }
 function colGet(){
   let b=colPool.pop();
-  if(!b) b=new CANNON.Body({mass:0,type:CANNON.Body.STATIC,material:gMat,shape:new CANNON.Box(new CANNON.Vec3(tileSize/2,0.2,tileSize/2))});
+  if(!b) b=new CANNON.Body({mass:0,type:CANNON.Body.STATIC,material:gMat,collisionFilterGroup:G_TILE,collisionFilterMask:G_OBJ,shape:new CANNON.Box(new CANNON.Vec3(colStep/2,0.2,colStep/2))});
   return b;
 }
-function updateColliders(){                               // тела-плитки ТОЛЬКО в окне вокруг дыры
+function updateColliders(){                               // тела-плитки ТОЛЬКО в окне вокруг дыры (свой мелкий шаг colStep)
   if(!CW) return;
   const half=mapHalf, R2=hole.r*hole.r;
-  const ci=Math.round((hole.x+half)/tileSize-0.5), cj=Math.round((hole.z+half)/tileSize-0.5);
-  const W=Math.ceil((hole.r*COL_W)/tileSize)+1;
-  for(let i=ci-W;i<=ci+W;i++)for(let j=cj-W;j<=cj+W;j++){
-    if(i<0||i>=TN||j<0||j>=TN) continue;
-    const k=i*TN+j;
-    if(!colTiles.has(k)){ const b=colGet(), x=-half+tileSize*(i+0.5), z=-half+tileSize*(j+0.5);
-      b.position.set(x,-0.2,z); b.aabbNeedsUpdate=true; b.collisionResponse=true; b._cx=x; b._cz=z; b._i=i; b._j=j;
+  const gi=Math.floor((hole.x+half)/colStep), gj=Math.floor((hole.z+half)/colStep);
+  const W=Math.ceil((hole.r*COL_W)/colStep)+1;
+  for(let i=gi-W;i<=gi+W;i++)for(let j=gj-W;j<=gj+W;j++){
+    const x=-half+colStep*(i+0.5), z=-half+colStep*(j+0.5);
+    if(x<-half||x>half||z<-half||z>half) continue;
+    const k=i*100003+j;
+    if(!colTiles.has(k)){ const b=colGet();
+      b.position.set(x,-0.2,z); b.aabbNeedsUpdate=true; b.collisionResponse=true; b._cx=x; b._cz=z; b._gi=i; b._gj=j;
       CW.addBody(b); colTiles.set(k,b); }
   }
   for(const [k,b] of colTiles){
-    if(b._i<ci-W||b._i>ci+W||b._j<cj-W||b._j>cj+W){ CW.removeBody(b); colPool.push(b); colTiles.delete(k); continue; }
+    if(b._gi<gi-W||b._gi>gi+W||b._gj<gj-W||b._gj>gj+W){ CW.removeBody(b); colPool.push(b); colTiles.delete(k); continue; }
     const dx=b._cx-hole.x, dz=b._cz-hole.z; b.collisionResponse=(dx*dx+dz*dz)>=R2;   // в круге дыры опоры нет
   }
 }
 function clearColliders(){ if(!CW) return; for(const [,b] of colTiles) CW.removeBody(b); colTiles.clear(); colPool.length=0; }
 function makeBody(o){
-  const isBomb=o.kind==='bomb';
-  const hy=isBomb? o.footR*0.85 : Math.max(0.28,o.footR*0.26), hw=o.footR*0.7;
+  const isBomb=o.kind==='bomb', isSuper=o.kind==='super';
+  const isEgg = o.kind==='item' && TYPE_BY_ID[o.type] && TYPE_BY_ID[o.type].render==='egg';
+  const hw = isEgg ? o.footR*0.30 : o.footR*0.7;   // у яйца УЗКАЯ опора → не «мостит» дыру, проваливается стоя по центру
+  // полу-высота тела = высота посадки меша (низ объекта ровно на полу) → высокие яйца не тонут и не висят
+  const hy = isBomb ? o.footR*0.85
+           : isSuper ? Math.max(0.24, o.footR*0.26)
+           : Math.max(0.24, (o.restY||0) - (o.yOff||0));
   const shape = isBomb ? new CANNON.Sphere(o.footR*0.85) : new CANNON.Box(new CANNON.Vec3(hw,hy,hw));
   const vol = isBomb ? (4/3)*Math.PI*Math.pow(o.footR*0.85,3) : (2*hw)*(2*hy)*(2*hw);
-  const y0 = (isBomb? o.footR*0.85 : hy)+0.04+(o.yOff||0);   // на полу, как в покое (без «прыжка»)
-  const b=new CANNON.Body({ mass:Math.max(0.4, vol*0.3), material:oMat, shape, position:new CANNON.Vec3(o.x,y0,o.z) });
+  const y0 = (isBomb? o.footR*0.85 : hy)+0.04+(o.yOff||0);   // центр тела = высота посадки → низ у пола
+  const b=new CANNON.Body({ mass:Math.max(0.4, vol*0.3), material:oMat, shape, position:new CANNON.Vec3(o.x,y0,o.z),
+                            collisionFilterGroup:G_OBJ, collisionFilterMask:G_OBJ|G_PLANE });   // объём + взаимные столкновения везде
   b.allowSleep=true; b.sleepSpeedLimit=0.15; b.sleepTimeLimit=0.4; b.linearDamping=0.02; b.angularDamping=0.05;
+  if(isEgg){ b.fixedRotation=true; b.updateMassProperties(); }   // яйцо всегда стоит вертикально
   CW.addBody(b); o.body=b; b.sleep();
 }
 function dropBody(o,settle){
@@ -884,14 +949,23 @@ function dropBody(o,settle){
   if(settle){ o.mesh.position.set(o.x,o.restY,o.z); o.mesh.rotation.set(0,o.spin,0); o.shadow.position.set(o.x,0.04,o.z); o.shadow.visible=true; }
 }
 function clearBodies(){ if(!CW) return; for(const o of pool){ if(o.body){ CW.removeBody(o.body); o.body=null; } } }
+function buildBodies(){ if(!CW) return; for(const o of pool){ if(o.active && !o.body) makeBody(o); } }   // тела у ВСЕХ предметов сразу
 function teardownPhysics(){ clearBodies(); clearColliders(); if(tileMesh){scene.remove(tileMesh);tileMesh=null;} CW=null; REAL_PHYS=false; }
 function stepPhysics(dt){
   updateColliders();
   updateVisualHole();
-  for(const o of pool){ if(!o.active) continue;
-    const dx=o.x-hole.x, dz=o.z-hole.z, d2=dx*dx+dz*dz;
-    if(!o.body && d2 < (hole.r*1.5)*(hole.r*1.5) && o.footR<=hole.r*1.25) makeBody(o);
-    if(o.body && d2 < (hole.r+6)*(hole.r+6) && o.body.sleepState!==0) o.body.wakeUp();
+  const magOn = buffMag>0;
+  const nearSq=(hole.r*2.4)*(hole.r*2.4), wakeSq=(hole.r*2.2)*(hole.r*2.2), magSq=(hole.r*3)*(hole.r*3);
+  for(const o of pool){ if(!o.active || !o.body) continue;
+    const b=o.body, dx=o.x-hole.x, dz=o.z-hole.z, d2=dx*dx+dz*dz;
+    const floorBit = (d2 < nearSq) ? G_TILE : G_PLANE;       // у дыры — плитки (наклон/падение), вдали — общий пол
+    const wantMask = G_OBJ | floorBit;
+    if(b.collisionFilterMask!==wantMask){ b.collisionFilterMask=wantMask; b.wakeUp(); }
+    const eat = o.kind!=='bomb' && o.footR<=hole.r*1.25;
+    if(magOn && eat && d2 < magSq){                          // 🧲 магнит: толкаем ТЕЛОМ к дыре (расталкивая других)
+      const d=Math.sqrt(d2)||1, pull=hole.r*0.8+6;
+      b.wakeUp(); b.velocity.x=(-dx/d)*pull; b.velocity.z=(-dz/d)*pull;
+    } else if(d2 < wakeSq && b.sleepState!==0) b.wakeUp();
   }
   CW.step(1/60, dt, 6);
   for(const o of pool){
@@ -904,8 +978,6 @@ function stepPhysics(dt){
       if(o.kind==='bomb'){ CW.removeBody(b); o.body=null; explode(o); return; }
       CW.removeBody(b); o.body=null; consume(o); continue;
     }
-    const ex=o.x-hole.x, ez=o.z-hole.z;                    // ушёл из зоны и стоит → снять тело (ляжет статиком)
-    if(ex*ex+ez*ez > (hole.r*2.1)*(hole.r*2.1) && b.position.y>-0.5 && b.velocity.length()<0.7) dropBody(o,true);
   }
 }
 /* ===================== ОСНОВНОЙ ШАГ ===================== */
@@ -1002,6 +1074,7 @@ function update(dt){
   holeMesh.position.set(hole.x,0.02,hole.z); holeMesh.scale.set(hole.r,hole.r,1);
   pitWall.position.set(hole.x,-DEPTH/2,hole.z); pitWall.scale.set(hole.r*0.99,DEPTH,hole.r*0.99);
   pitBottom.position.set(hole.x,-DEPTH+0.1,hole.z); pitBottom.scale.set(hole.r*0.98,hole.r*0.98,1);
+  holeCollar.position.set(hole.x,0.03,hole.z); holeCollar.scale.set(hole.r,hole.r,1);
   holeRing.position.set(hole.x,0.05,hole.z); holeRing.scale.set(hole.r*gpul,hole.r*gpul,1);
 
   // === Камера: центр дыры ЖЁСТКО на экране (X=0, Y=VIEW.SCREEN_Y) ===
@@ -1025,17 +1098,33 @@ function consume(o){
     if(s.addTime){ timeLeft+=s.addTime; }
     else if(s.addScore){ score+=s.addScore; }
     else if(s.magnet){ buffMag=7; updateBuffs(); }
+    else if(s.x2){ buffX2=12; updateBuffs(); }
     return;
   }
   const gain=o.val*(buffX2>0?2:1);
   score+=gain; hole.grow+=o.val; markerPulse=0.16;
+  floatScore(gain, o.x, o.z);
   // учёт цели: если съеденный тип — один из 3 целевых, увеличиваем счётчик
   const g=goalTypes.find(g=>g.type===o.type);
   if(g){ g.eaten++; if(g.eaten===g.req) Haptic.notify('success'); updateGoalPanel(); }
   Haptic.imp('light');
   while(hole.level<MAX_LEVEL && hole.grow>=stepToNext(hole.level)){
-    hole.grow-=stepToNext(hole.level); hole.level++; Haptic.imp('medium');
+    hole.grow-=stepToNext(hole.level); hole.level++; Haptic.imp('medium'); levelUpFx(hole.level); markerPulse=0.3;
   }
+}
+let _lastFloat=0;
+function worldToScreen(x,y,z){ tmpV.set(x,y,z).project(camera); return { x:(tmpV.x*0.5+0.5)*window.innerWidth, y:(-tmpV.y*0.5+0.5)*window.innerHeight }; }
+function floatScore(n,x,z){
+  const now=performance.now(); if(now-_lastFloat<90) return; _lastFloat=now;   // не спамим DOM при быстром сборе
+  const s=worldToScreen(x,2,z); if(s.x<-40||s.x>window.innerWidth+40) return;
+  const d=document.createElement('div'); d.className='floatScore'; d.textContent='+'+n+(buffX2>0?' ×2':'');
+  d.style.left=s.x+'px'; d.style.top=s.y+'px'; document.body.appendChild(d);
+  setTimeout(()=>d.remove(),900);
+}
+function levelUpFx(lvl){
+  const d=document.createElement('div'); d.className='levelBanner';
+  d.innerHTML='<b>Уровень '+lvl+'</b><small>ДЫРА РАСТЁТ</small>'; document.body.appendChild(d);
+  setTimeout(()=>d.remove(),1300);
 }
 function explode(o){ o.active=false; o.mesh.visible=false; o.shadow.visible=false; endGame('bomb'); }
 
@@ -1059,12 +1148,15 @@ function updateBuffs(){
 }
 
 /* ===================== ЦИКЛ ===================== */
+let fpsFrames=0, fpsLast=0;
 function loop(ts){
   rafId=requestAnimationFrame(loop);
-  if(state!=='playing'||paused){ last=ts; return; }
+  if(state!=='playing'||paused){ last=ts; fpsLast=ts; fpsFrames=0; return; }
   let dt=(ts-last)/1000; last=ts; if(dt>0.05) dt=0.05;
   update(dt);
   if(state==='playing'){ renderer.render(scene,camera); }
+  fpsFrames++;                                            // счётчик FPS (по реальному времени кадра)
+  if(ts-fpsLast>=500){ const el=document.getElementById('fps'); if(el) el.textContent=Math.round(fpsFrames*1000/(ts-fpsLast))+' fps'; fpsFrames=0; fpsLast=ts; }
 }
 document.addEventListener('visibilitychange',()=>{ paused=document.hidden; if(!paused) last=performance.now(); });
 window.addEventListener('pagehide',()=>{ if(rafId) cancelAnimationFrame(rafId); });
@@ -1072,7 +1164,7 @@ window.addEventListener('pagehide',()=>{ if(rafId) cancelAnimationFrame(rafId); 
 /* ===================== ВВОД: ВИРТУАЛЬНЫЙ ДЖОЙСТИК ===================== */
 // Плавающий джойстик: появляется в точке касания, направление+амплитуда задают скорость дыры.
 const JOY_MAX=58;            // макс. ход стика, px
-const HOLE_SPEED=40;        // скорость дыры под увеличенное поле
+const HOLE_SPEED=20;        // макс. скорость дыры −50%
 let joyActive=false, joyBX=0, joyBY=0, joyDX=0, joyDY=0;
 const joyBase=document.getElementById('joyBase'), joyKnob=document.getElementById('joyKnob');
 function joyShow(bx,by,kx,ky){
