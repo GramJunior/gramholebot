@@ -140,7 +140,7 @@ function villagePaint(x, z, n) {
   if (d < 0) return d < -0.6 ? PATH : PATHD; if (d < 0.5) return MOSS; return null;
 }
 function buildEnv(zone, radius, clearR, paint) {
-  while (env.children.length) env.remove(env.children[0]);
+  while (env.children.length) { const c = env.children[0]; env.remove(c); if (c.isMesh && !c.isInstancedMesh) c.geometry.dispose(); }
   const Z = M.zones[zone]; seed = 11 + Z.zone * 7;
   env.add(groundMesh(Z.ground, 160, paint));
   if (zone === 'crypt' || zone === 'lair') { // stone floor tiles near the action
@@ -308,9 +308,10 @@ function measure() {
 }
 function statsText() {
   const s = EVAssets.stats(); const mi = R.info.memory;
-  return 'FPS ' + ST.fps.toFixed(0) + '  ' + QL.toUpperCase() + (BEFORE ? ' (до)' : '') + '\nсцена: ' + ST.scCalls + ' DC · ' + (ST.tris / 1000).toFixed(1) + 'k △\nкадр: ' + R.info.render.calls + ' DC (с постом)\nтекстур ' + s.textures + ' · ' + s.textureMB + ' МБ\nгеом ' + mi.geometries + ' · акторов ' + s.actors;
+  return 'FPS ' + ST.fps.toFixed(0) + '  ' + QL.toUpperCase() + (BEFORE ? ' (до)' : '') + '\nсцена: ' + ST.scCalls + ' DC · ' + (ST.tris / 1000).toFixed(1) + 'k △\nпост: ' + fx.passes + ' прох.\nтекстур в кадре ' + sceneTex().n + ' · ' + sceneTex().mb + ' МБ\nгеом ' + mi.geometries + ' · акторов ' + s.actors;
 }
-window.__ev = { setScene, setZone, setQ, measure, stats: () => ({ scene: SCENE, zone: ZONE, q: QL, sceneCalls: ST.scCalls, tris: ST.tris, frameCalls: R.info.render.calls, geometries: R.info.memory.geometries, textures: R.info.memory.textures, ev: EVAssets.stats(), fps: ST.fps }) };
+function sceneTex() { const seen = new Set(); let b = 0; scene.traverse((o) => { if (!o.visible || !o.material) return; for (const m of [].concat(o.material)) { const t = m.map; if (t && !seen.has(t) && t.image) { seen.add(t); b += t.image.width * t.image.height * 4 * (t.generateMipmaps === false ? 1 : 1.33); } } }); return { n: seen.size, mb: +(b / 1048576).toFixed(2) }; }
+window.__ev = { setScene, setZone, setQ, measure, sceneTex, stats: () => ({ sceneTex: sceneTex(), passes: fx.passes, scene: SCENE, zone: ZONE, q: QL, sceneCalls: ST.scCalls, tris: ST.tris, frameCalls: R.info.render.calls, geometries: R.info.memory.geometries, textures: R.info.memory.textures, ev: EVAssets.stats(), fps: ST.fps }) };
 
 // ---------------------------------------------------------------- camera / input
 let drag = null;

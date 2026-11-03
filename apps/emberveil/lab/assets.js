@@ -23,9 +23,9 @@
 
   // ------------------------------------------------------------------ quality presets
   const QUALITY = {
-    low:  { outline: 'none',  outlinePx: 0,   animStepFar: 3, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
-    med:  { outline: 'chars', outlinePx: 1.6, animStepFar: 2, maxAnisotropy: 1, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true },
-    high: { outline: 'all',   outlinePx: 2.0, animStepFar: 1, maxAnisotropy: 4, texMip: true,  shadow: false, hullProps: true,  mergeSkinned: true },
+    low:  { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 3, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
+    med:  { maxTex: 256, outline: 'chars', outlinePx: 1.6, animStepFar: 2, maxAnisotropy: 1, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true },
+    high: { maxTex: 256, outline: 'all',   outlinePx: 2.0, animStepFar: 1, maxAnisotropy: 4, texMip: true,  shadow: false, hullProps: true,  mergeSkinned: true },
   };
 
   const S = {
@@ -74,6 +74,8 @@
     if (!t) return null;
     const key = t.name || (t.name = texFingerprint(t));
     if (S.tex[key]) { if (S.tex[key] !== t) t.dispose(); return S.tex[key]; }
+    const im = t.image, mx = S.Q.maxTex || 256;
+    if (im && im.width > mx) { const cv = document.createElement('canvas'); cv.width = cv.height = mx; const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, mx, mx); t.image = cv; if (im.close) im.close(); }
     t.encoding = S.linear ? T.LinearEncoding : T.sRGBEncoding; // game renders linear-out; atlas colours are used as-is
     t.anisotropy = S.Q.maxAnisotropy; t.flipY = false;
     if (!S.Q.texMip) { t.generateMipmaps = false; t.minFilter = T.LinearFilter; }
@@ -315,6 +317,15 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this.meshes = []; this.parts = {}; this.slots = {}; this.matList = [];
       this.model.traverse((o) => { if (o.isMesh) this.meshes.push(o); if (!o.isBone && o.name) this.parts[o.name] = this.parts[o.name] || o; });
       this.bones = {}; this.model.traverse((o) => { if (o.isBone) this.bones[o.name] = o; });
+      // SkeletonUtils.clone gives every SkinnedMesh its own Skeleton (=> one bone texture + one bone-matrix
+      // update per part). All parts come from one glTF skin, so share a single Skeleton per actor.
+      this.skeleton = null;
+      for (const m of this.meshes) {
+        if (!m.isSkinnedMesh) continue;
+        if (!this.skeleton) { this.skeleton = m.skeleton; continue; }
+        const a = this.skeleton, b = m.skeleton;
+        if (a.bones.length === b.bones.length && a.bones.every((x, i) => x === b.bones[i]) && a.boneInverses[1].equals(b.boneInverses[1])) { b.dispose(); m.bind(a, m.bindMatrix); }
+      }
       this.handR = this.bones.handslotr || this.bones['handslot.r']; this.handL = this.bones.handslotl || this.bones['handslot.l'];
       this.chest = this.bones.chest; this.head = this.bones.head;
       // per-actor materials (flash/tint independent per actor; programs are shared)
@@ -445,6 +456,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     dispose() {
       this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.model);
       for (const m of this.matList) m.dispose();
+      const sks = new Set(); this.model.traverse((o) => { if (o.isSkinnedMesh && o.skeleton) sks.add(o.skeleton); }); sks.forEach((k) => k.dispose());
       if (this.root.parent) this.root.parent.remove(this.root); S.actors.delete(this);
     }
   }
