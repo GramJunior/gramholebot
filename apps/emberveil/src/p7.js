@@ -415,7 +415,7 @@ function updateProjs(dt){
     }
     if(dead){ if(p.boom){ fx('boom',p.x,1,p.z,{r:p.boom,col:0xff8a2a}); sfxAt('boom',p.x,p.z,.7); shake(.3); for(const e of G.enemies) if(e.alive&&!e.burrowed&&Math.hypot(e.x-p.x,e.z-p.z)<p.boom+e.r) dmgEnemy(e,p.dmg,{els:['fire'],kb:4,dir:Math.atan2(e.x-p.x,e.z-p.z),src:p.src||G.P,heavy:1}); if(W.oils&&W.oils.length) igniteAt(p.x,p.z,p.boom*.6,p.dmg*.15); for(const o of W.objs) if(o.alive&&(o.brk||o.res)&&Math.hypot(o.x-p.x,o.z-p.z)<p.boom) hitObj(o,p.dmg); }
       else if(p.team==='p'&&!p.arc) fx('hit',p.x,p.y,p.z,{col:p.col||(p.el?ELC[p.el]:0xfff0c0),n:.5});
-      worldRoot.remove(p.m); if(p.m.material!==MT) p.m.material.dispose(); G.projs.splice(i,1); }
+      worldRoot.remove(p.m); if(p.decal) DECALS.kill(p.decal); if(p.m.material!==MT) p.m.material.dispose(); G.projs.splice(i,1); }
   }
 }
 

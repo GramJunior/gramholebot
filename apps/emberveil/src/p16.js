@@ -24,3 +24,12 @@ Object.assign(window.__game,{
   bossForce:(n)=>{ const e=G.boss; if(!e) return 'noboss'; const A=W.arenaNode; if(n==='collapse') bossCollapse(e,A,3); else if(n==='mirrors') bossMirrors(e,A); else if(n==='hearts'){ e.phase=1; } else { e.cur={n,t:0,f:{}}; } return 'ok'; },
   bossTp:()=>{ const A=W.arenaNode; G.P.x=A.x; G.P.z=A.z+A.r*.3; }, boss:()=>G.boss?{k:G.boss.kind,hp:Math.round(G.boss.hp),ph:G.boss.phase,shield:!!G.boss.bossShield,stun:G.boss.bstun>0}:null,
 });
+Object.assign(window.__game,{
+  puz:()=>{ const Z=W&&W.puzzle; if(!Z) return null; return {type:Z.type,solved:Z.solved,order:Z.order,prog:Z.prog,phase:Z.phase,seq:Z.seq,round:Z.round,mir:Z.mirrors&&Z.mirrors.map(m=>m.ori),d1:Z.grid&&Z.grid.d1,vault:Z.vault&&{x:Z.vault.x,z:Z.vault.z,sealed:Z.vault.sealed,opened:Z.vault.opened},room:{x:Z.room.x,z:Z.room.z,r:Z.room.r}}; },
+  puzTp:(f)=>{ const Z=W.puzzle; const c=Z.room; G.P.x=c.x+Z.ux*(f===undefined?Z.room.r-1.5:f); G.P.z=c.z+Z.uz*(f===undefined?Z.room.r-1.5:f); CAMR.x=G.P.x; CAMR.z=G.P.z; },
+  puzHit:(pk,i)=>{ const o=W.objs.filter(o=>o.hitme&&o.pk===pk)[i||0]; if(o){ o.cd=0; puzzleHit(o); return true; } return false; },
+  puzStand:(k)=>{ const Z=W.puzzle; const p=(Z.plates||[])[k]; if(p){ G.P.x=p.x; G.P.z=p.z; } },
+  puzBlocks:()=>{ const Z=W.puzzle; Z.blocks.forEach((b,i)=>{ b.x=Z.plates[i].x; b.z=Z.plates[i].z; }); },
+  puzVault:()=>{ const Z=W.puzzle; G.P.x=Z.vault.x+Z.ux*1.2; G.P.z=Z.vault.z+Z.uz*1.2; },
+});
+window.__game.spawnE=(k,x,z,o)=>spawnEnemy(k,x,z,W.lvl||1,Object.assign({aggro:1},o||{}));

@@ -182,7 +182,7 @@ h1,h2,h3{font-weight:400}
 .dn.water{color:#7ac8ff}.dn.txt{font-size:14px;color:#f3dcb0}.dn.gold{color:#ffd34a;font-size:14px}
 
 /* toasts */
-#toasts{position:fixed;left:50%;top:calc(var(--st) + 168px);transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;width:92vw}
+#toasts{position:fixed;left:50%;top:calc(var(--st) + 168px);transform:translateX(-50%);z-index:29;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;width:92vw}
 .toast{font-family:var(--body);font-size:14px;padding:8px 14px 8px 12px;border-radius:4px 10px 4px 10px;max-width:340px;display:flex;align-items:center;gap:9px;
   animation:tin .3s ease-out,tout .4s ease-in forwards;animation-delay:0s,var(--d,2.6s)}
 .toast .ti{width:30px;height:30px;flex:0 0 30px;border-radius:5px;background:#2a170b center/contain no-repeat;box-shadow:0 0 0 1.5px var(--rc,#c9973f)}
@@ -369,6 +369,8 @@ h1,h2,h3{font-weight:400}
 /* raid prep overlay */
 #raidUI{position:fixed;inset:0;z-index:28;pointer-events:none}
 #raidUI .pe{pointer-events:auto}
+#raidSocks{position:absolute;inset:0;z-index:0;pointer-events:none}
+#raidTop,#raidGo,#raidSheet{z-index:2}
 #raidTop{position:absolute;top:calc(var(--st) + 8px);left:calc(var(--sl) + 8px);right:calc(var(--sr) + 8px);display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
 #raidTop .woodframe{flex:0 1 auto;width:min(540px,calc(100vw - 16px - var(--sl) - var(--sr)))}
 #raidTop .inner{padding:6px 9px;font-size:12.5px;line-height:1.3}
@@ -398,7 +400,7 @@ html.needrot #rot{display:flex}
 #rot small{font-family:var(--sc);letter-spacing:.25em;font-size:11px;color:#b9976a}
 @media (pointer:coarse){
   .btn.small{min-height:44px}
-  .tnode .btn{min-height:40px}
+  .tnode .btn{min-height:40px;min-width:44px}
   .seg button{min-height:40px;padding:8px 11px}
   .tab{min-height:44px}
 }
@@ -481,8 +483,10 @@ html.land .star{width:38px;height:38px;font-size:38px}
 html.land #res .card{columns:3!important}
 /* boons */
 html.land #boons{padding:calc(var(--st) + 8px) calc(var(--sr) + 12px) calc(var(--sb) + 8px) calc(var(--sl) + 12px);gap:8px}
-html.land .boonRow{display:flex;gap:12px;justify-content:center;width:100%;flex-wrap:wrap}
-html.land .boon{width:min(260px,30vw);flex-direction:column;text-align:center;padding:12px 10px}
+html.land .boonRow{display:flex;flex-direction:row;gap:12px;justify-content:center;width:100%;flex-wrap:nowrap}
+html.land .boon{width:min(260px,30vw);flex-direction:column;text-align:center;padding:10px 8px;gap:6px}
+html.land.short .boon .bi{width:44px;height:44px;flex-basis:44px;font-size:22px}
+html.land.short #boons h2{font-size:21px}
 .boonRow{display:flex;flex-direction:column;gap:12px;align-items:center;width:100%}
 /* short landscape (≤430px tall: most phones) */
 html.land.short #hQuest .q+.q{display:none}
@@ -496,6 +500,13 @@ html.land.xshort .btn{min-height:44px;padding:8px 14px;font-size:15px}
 html.land.xshort #tMenu .btn{min-height:44px}
 html.land.xshort #title .tlogo p{display:none}
 html.land.xshort #pHead h2 small{display:none}
+html.land.short .raidMore{display:none}
+html.land.short #raidTop .woodframe{width:min(400px,46vw)}
+html.land.xshort #raidHint{display:none}
+html.land.xshort .star{width:30px;height:30px;font-size:30px}
+html.land.xshort #res h2{font-size:20px}
+html.land.xshort .lootrow .slot{width:40px}
+html.land.xshort #res .muted{font-size:11px}
 /* tablets / desktop landscape: more room */
 html.land.roomy #pFrame{width:min(1120px,94vw)}
 html.land.roomy #pBody{font-size:15px}
@@ -560,7 +571,8 @@ function plural(n,a,b,c){n=Math.abs(n)%100;const n1=n%10;if(n>10&&n<20)return c;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- storage (every access guarded) ----------
-const SKEY='emberveil_save_v1';
+const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
+const SAVE_V=2;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -569,11 +581,11 @@ const Store={
 };
 function newSave(){
   return {
-    v:1, created:Date.now(), started:false, look:0,
+    v:SAVE_V, created:Date.now(), started:false, look:0,
     hero:{lvl:1,xp:0,tp:0,talents:{sword:{},axe:{},bow:{},staff:{}}},
     gear:{weapon:null,offhand:null,helm:null,chest:null,gloves:null,boots:null,amulet:null,ring1:null,ring2:null},
     inv:[], uid:1,
-    res:{gold:120,wood:40,ore:20,ess:5,shards:0},
+    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0},
     gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0}, keys:0, potMax:3,
     pets:{owned:{},active:[null,null],eggs:[]},
     bld:{hall:1,forge:0,alch:0,pen:0,tavern:0,temple:0,store:0,walls:0,saw:0,mine:0,well:0,houses:0},
@@ -583,18 +595,30 @@ function newSave(){
     st:{kills:0,boss:0,deaths:0,chests:0,gold:0,elites:0,secrets:0,crafted:0,upgrades:0,hatched:0,built:0,floors:0,potions:0,kt:{}},
     lore:[], seen:{}, bless:{},
     endless:{best:0,runs:0},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1}
+    raid:{sockets:{},militia:0,next:0,wins:0,losses:0,trophies:{},tiers:{},dmg:null},
+    comp:{owned:{},active:null}, exp:{list:[]}, syn:{seen:{}}, puz:{},
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true}
   };
 }
 let S=newSave();
 function loadGame(){
   const raw=Store.get(SKEY); if(!raw) return false;
   try{
-    const d=JSON.parse(raw); if(!d||d.v!==1) return false;
+    const d=JSON.parse(raw); if(!d||typeof d!=='object'||!(d.v>=1)) return false;
+    migrateSave(d);
     const base=newSave();
-    (function merge(t,s){for(const k in s){ if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])&&t[k]&&typeof t[k]==='object'&&!Array.isArray(t[k])) merge(t[k],s[k]); else t[k]=s[k]; }})(base,d);
-    S=base; return true;
+    (function merge(t,s){for(const k in s){ if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])&&t[k]&&typeof t[k]==='object'&&!Array.isArray(t[k])) merge(t[k],s[k]); else if(s[k]!==undefined&&s[k]!==null||t[k]===undefined) t[k]=s[k]; }})(base,d);
+    S=base; S.v=Math.max(SAVE_V,d.v); return true;
   }catch(e){return false;}
+}
+// миграции старых сохранений: каждая ступень поднимает версию на 1, новые поля заполняются значениями из newSave()
+function migrateSave(d){
+  if(d.v<2){ // v1 → v2: набеги, спутники, походы, синергии, загадки, знаки доблести
+    d.res=d.res||{}; if(d.res.marks===undefined) d.res.marks=0;
+    if(d.raid&&typeof d.raid!=='object') delete d.raid;
+    if(d.exp&&!Array.isArray(d.exp.list)) d.exp.list=[];
+    d.v=2; }
+  return d;
 }
 let _saveT=0;
 function saveGame(now){ if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} }
@@ -3403,7 +3427,7 @@ function updateProjs(dt){
     }
     if(dead){ if(p.boom){ fx('boom',p.x,1,p.z,{r:p.boom,col:0xff8a2a}); sfxAt('boom',p.x,p.z,.7); shake(.3); for(const e of G.enemies) if(e.alive&&!e.burrowed&&Math.hypot(e.x-p.x,e.z-p.z)<p.boom+e.r) dmgEnemy(e,p.dmg,{els:['fire'],kb:4,dir:Math.atan2(e.x-p.x,e.z-p.z),src:p.src||G.P,heavy:1}); if(W.oils&&W.oils.length) igniteAt(p.x,p.z,p.boom*.6,p.dmg*.15); for(const o of W.objs) if(o.alive&&(o.brk||o.res)&&Math.hypot(o.x-p.x,o.z-p.z)<p.boom) hitObj(o,p.dmg); }
       else if(p.team==='p'&&!p.arc) fx('hit',p.x,p.y,p.z,{col:p.col||(p.el?ELC[p.el]:0xfff0c0),n:.5});
-      worldRoot.remove(p.m); if(p.m.material!==MT) p.m.material.dispose(); G.projs.splice(i,1); }
+      worldRoot.remove(p.m); if(p.decal) DECALS.kill(p.decal); if(p.m.material!==MT) p.m.material.dispose(); G.projs.splice(i,1); }
   }
 }
 
@@ -4064,8 +4088,8 @@ function closePanel(){ show('panel',false); PANEL.kind=null; G.paused=false; AU.
 function renderPanel(){
   const k=PANEL.kind; let title='',sub='',tabs=[],body='';
   const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
-  if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','eye'],['codex','Летопись','book']]; PANEL.tab=PANEL.tab||'gear';
-    body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:pKnow,codex:pCodex})[PANEL.tab](); }
+  if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','book']]; PANEL.tab=PANEL.tab||'gear'; if(PANEL.tab==='codex') PANEL.tab='know';
+    body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:()=>pKnow()+pCodex()})[PANEL.tab](); }
   else if(k==='bld'){ const id=PANEL.opts.id; const B=BUILDINGS[id]; title=B.n; sub=S.bld[id]?`Уровень ${S.bld[id]}`:'Не построено';
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }
   else if(k==='settings'||k==='pause'){ title=k==='pause'?'Привал':'Настройки'; body=pSettings(k==='pause'); }
@@ -4203,13 +4227,15 @@ function pSettings(pause){
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="set"><label>Цифры урона</label>${seg('dmg',[[true,'Вкл'],[false,'Выкл']])}</div>
-  <div class="muted" style="margin-top:10px">Управление на ПК: WASD — бег, J/Пробел — атака, 1-3 — умения, R — Вспышка, Shift — кувырок, Q — зелье, F — бомба, E — взаимодействие, I — герой, M — карта.</div>
+  <div class="set"><label>Полный экран</label>${seg('fs',[[true,'Вкл'],[false,'Выкл']])}</div>
+  <div class="muted" style="margin-top:10px">Телефон: держите горизонтально. Левый большой палец — бег (джойстик появляется там, где коснулись), правый — атака, умения, кувырок. В деревне снизу — меню: Герой, Стройка, Отряд, Набег, Задания, Поход.</div>
+  <div class="muted" style="margin-top:6px">ПК: WASD — бег, J/Пробел — атака, 1-3 — умения, R — Вспышка, Shift — кувырок, Q — зелье, F — бомба, E — взаимодействие, I — герой, M — карта, Esc — пауза.</div>
   ${!Store.ok?'<div class="card" style="margin-top:8px">Хранилище браузера недоступно — прогресс не сохранится после закрытия.</div>':''}
   ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ Store.del(SKEY); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
   setTimeout(()=>{ const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='q'){ QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
 // ================= p8b: building panels, map, results =================
 function canBuildNow(id){ const lv=S.bld[id]; if(lv>=5) return false; if(bldUnlock(id)>S.bld.hall) return false; if(id!=='hall'&&lv+1>S.bld.hall) return false; return canPay(bldCost(id,lv+1)); }
 function bldTabs(id){
@@ -4597,10 +4623,12 @@ const OIL_MAT=new THREE.MeshBasicMaterial({color:0x1a120a,transparent:true,opaci
 const STEAM_C=new THREE.Color(0xe8eef4);
 function spawnOil(x,z,r,life){ W.oils=W.oils||[]; const m=new THREE.Mesh(cgeo('oilDisc',b=>{ b.add(new THREE.CircleGeometry(1,18),0x1a120a,{r:[-PI/2,0,0],ol:0}); },0),OIL_MAT); m.position.set(x,.05,z); m.scale.setScalar(r); m.renderOrder=1; worldRoot.add(m);
   const o={x,z,r,life:life||14,m,perm:life===9999}; W.oils.push(o); return o; }
+function pFire(x,z,r,life,dps){ const ex=W.hazards.find(h=>h.team==='p'&&Math.hypot(h.x-x,h.z-z)<Math.max(1.5,h.r*.8)); if(ex){ ex.life=Math.max(ex.life,life); ex.dps=Math.max(ex.dps,dps); return ex; }
+  const ps=W.hazards.filter(h=>h.team==='p'); if(ps.length>=7){ const o=ps.reduce((a,b)=>a.life<b.life?a:b); o.life=0; } return addHazard(x,z,r,'fire',life,dps,W.lvl,'p'); }
 function igniteAt(x,z,r,dps){
-  addHazard(x,z,r,'fire',4,dps,W.lvl,'p');
+  pFire(x,z,r,4,dps);
   for(const o of (W.oils||[])){ if(o.dead||Math.hypot(o.x-x,o.z-z)>o.r+r+.4) continue; o.dead=true; worldRoot.remove(o.m);
-    const h=addHazard(o.x,o.z,o.r*1.05,'fire',5,Math.max(dps,PS.atk*.6),W.lvl,'p'); fx('fire',o.x,.3,o.z,{k:20}); fx('boom',o.x,.2,o.z,{r:o.r,col:0xff8a2a,smoke:0x2a1a10});
+    const h=pFire(o.x,o.z,o.r*1.05,5,Math.max(dps,PS.atk*.6)); fx('fire',o.x,.3,o.z,{k:20}); fx('boom',o.x,.2,o.z,{r:o.r,col:0xff8a2a,smoke:0x2a1a10});
     if(o.raid){ o.relight=G.time+6; } }
   if(W.oils) W.oils=W.oils.filter(o=>!o.dead||o.raid);
 }
@@ -4865,7 +4893,7 @@ function bossLabels(){ if(!G.boss||!G.boss.alive||G.mode!=='stage'&&G.mode!=='ab
 }
 // new boss patterns
 Object.assign(BP,{
-  glob(e,p){ const P=G.P; if(once(p,'a',.5)){ const f=Math.atan2(P.x-e.x,P.z-e.z); const q=spawnProj('glob',e.x+Math.sin(f)*2,e.z+Math.cos(f)*2,f,{team:'e',dmg:BD(e,2.2),lvl:e.lvl,spd:6.5,src:e,el:'poison',life:4,r:.75,glob:1,col:0x8aff3a}); bossTip('glob','Плевок можно отбить! Ударьте его оружием или попадите выстрелом.'); AU.sfx('bolt'); }
+  glob(e,p){ const P=G.P; if(once(p,'a',.5)){ const f=Math.atan2(P.x-e.x,P.z-e.z); const q=spawnProj('glob',e.x+Math.sin(f)*(e.r+.6),e.z+Math.cos(f)*(e.r+.6),f,{team:'e',dmg:BD(e,2.2),lvl:e.lvl,spd:4.3,src:e,el:'poison',life:5,r:.75,glob:1,col:0x8aff3a,y:1.4}); q.decal=DECALS.spawn('circle',q.x,q.z,1.1,5,{follow:q,col:0x8aff3a,a:.8}); bossTip('glob','Плевок можно отбить! Ударьте его оружием или попадите выстрелом.'); AU.sfx('bolt'); }
     e.pose='cast'; return p.t>1.2; },
   gaze(e,p){ const P=G.P, M=W.bossMech, A=W.arenaNode;
     if(once(p,'a',0)){ banner('Взор Склепа!','Укройтесь за колонной'); bossTip('gaze','Встаньте так, чтобы колонна была между вами и Морвеном.'); AU.sfx('roar',.7); DECALS.spawn('circle',A.x,A.z,A.r-.3,2.4,{col:0x5affe0,a:.5});
@@ -5201,11 +5229,12 @@ function raidRenderUI(){
   const mc=militiaCost(plan.t); const mmax=raidMilitiaMax();
   const trophies=Object.keys(r.trophies).filter(k=>r.trophies[k]>0);
   let top=frame(`<div class="row" style="flex-wrap:wrap;gap:6px"><b style="font-family:var(--disp);font-size:17px;color:var(--ox)">${plan.periodic?'Набег Хмари':'Учебный набег'}</b><span class="pill">${ZONES[plan.t-1].n} · ур. ${plan.L}</span><span class="pill">${plan.waves.length} волн · ~${nE} врагов</span>${plan.periodic?'<span class="hpill">награда ×1.5</span>':''}</div>
-    <div class="muted" style="font-size:12px">Тропы: ${lanes}. Сердце Брода должно устоять.</div>
+    <div class="muted raidMore" style="font-size:12px">Тропы: ${lanes}. Сердце Брода должно устоять.</div>
     <div class="row" style="gap:8px;margin-top:3px"><span style="font-family:var(--sc);font-weight:700;font-size:12.5px">Оборона ${df.toFixed(1)} / угроза ${th.toFixed(1)}</span><div class="prog grow ${ratio>=1.05?'ok':ratio<.7?'bad':''}"><i style="width:${Math.round(clamp(ratio/1.5,0,1)*100)}%"></i></div></div>
-    <div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">${['gold','wood','ore','ess','marks'].map(k=>resChip(k,S.res[k]||0)).join('')}</div>
-    <div class="row" style="gap:6px;margin-top:5px;flex-wrap:wrap"><span style="font-family:var(--sc);font-weight:700;font-size:12.5px">${ico('helm')} Ополчение: ${r.militia}/${mmax}</span><button class="btn woodb small" style="min-width:44px" ${r.militia>0?'':'disabled'} ${act(()=>{ r.militia--; raidRenderUI(); })}>−</button><button class="btn woodb small" style="min-width:44px" ${r.militia<mmax?'':'disabled'} ${act(()=>{ r.militia++; raidRenderUI(); })}>+</button><span class="muted" style="font-size:11.5px">${costHtml(mc)} за бойца</span>
+    <div class="row raidMore" style="flex-wrap:wrap;gap:4px;margin-top:4px">${['gold','wood','ore','ess','marks'].map(k=>resChip(k,S.res[k]||0)).join('')}</div>
+    <div class="row" style="gap:6px;margin-top:5px;flex-wrap:wrap"><span style="font-family:var(--sc);font-weight:700;font-size:12.5px">${ico('helm')} Ополчение: ${r.militia}/${mmax}</span><button class="btn woodb small" style="min-width:44px" ${r.militia>0?'':'disabled'} ${act(()=>{ r.militia--; raidRenderUI(); })}>−</button><button class="btn woodb small" style="min-width:44px" ${r.militia<mmax?'':'disabled'} ${act(()=>{ r.militia++; raidRenderUI(); })}>+</button><span class="muted" style="font-size:11.5px">${costHtml(mc)}<span class="raidMore"> за бойца</span></span>
       ${compS().active&&!compBusy(compS().active)?`<span class="chip2">${ico('helm')} ${COMPANIONS[compS().active].n} с вами</span>`:''}</div>
+    ${r.dmg&&r.dmg.until>Date.now()?`<div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><span class="hpill">Повреждено: ${r.dmg.ids.map(i=>BUILDINGS[i].n).join(', ')}</span><button class="btn woodb small" ${canPay(raidRepairCost())?'':'disabled'} ${act(()=>{ if(pay(raidRepairCost())){ r.dmg=null; AU.sfx('build'); saveGame(); raidRenderUI(); } })}>${ico('hammer')} Починить ${costHtml(raidRepairCost())}</button></div>`:''}
     ${trophies.length?`<div class="muted" style="font-size:11.5px;margin-top:3px">${ico('crown')} Трофеи: ${trophies.map(k=>RAID_TROPHY[k-1]+(r.trophies[k]>1?' ×'+r.trophies[k]:'')).join(', ')} (+${trophies.length*5}% к наградам)</div>`:''}`);
   let sheet='';
   if(RP.sel){ const s=RAID_SOCKETS.find(x=>x.id===RP.sel); const cur=r.sockets[s.id]; const maxLv=raidMaxLv();
@@ -5733,6 +5762,15 @@ Object.assign(window.__game,{
   bossForce:(n)=>{ const e=G.boss; if(!e) return 'noboss'; const A=W.arenaNode; if(n==='collapse') bossCollapse(e,A,3); else if(n==='mirrors') bossMirrors(e,A); else if(n==='hearts'){ e.phase=1; } else { e.cur={n,t:0,f:{}}; } return 'ok'; },
   bossTp:()=>{ const A=W.arenaNode; G.P.x=A.x; G.P.z=A.z+A.r*.3; }, boss:()=>G.boss?{k:G.boss.kind,hp:Math.round(G.boss.hp),ph:G.boss.phase,shield:!!G.boss.bossShield,stun:G.boss.bstun>0}:null,
 });
+Object.assign(window.__game,{
+  puz:()=>{ const Z=W&&W.puzzle; if(!Z) return null; return {type:Z.type,solved:Z.solved,order:Z.order,prog:Z.prog,phase:Z.phase,seq:Z.seq,round:Z.round,mir:Z.mirrors&&Z.mirrors.map(m=>m.ori),d1:Z.grid&&Z.grid.d1,vault:Z.vault&&{x:Z.vault.x,z:Z.vault.z,sealed:Z.vault.sealed,opened:Z.vault.opened},room:{x:Z.room.x,z:Z.room.z,r:Z.room.r}}; },
+  puzTp:(f)=>{ const Z=W.puzzle; const c=Z.room; G.P.x=c.x+Z.ux*(f===undefined?Z.room.r-1.5:f); G.P.z=c.z+Z.uz*(f===undefined?Z.room.r-1.5:f); CAMR.x=G.P.x; CAMR.z=G.P.z; },
+  puzHit:(pk,i)=>{ const o=W.objs.filter(o=>o.hitme&&o.pk===pk)[i||0]; if(o){ o.cd=0; puzzleHit(o); return true; } return false; },
+  puzStand:(k)=>{ const Z=W.puzzle; const p=(Z.plates||[])[k]; if(p){ G.P.x=p.x; G.P.z=p.z; } },
+  puzBlocks:()=>{ const Z=W.puzzle; Z.blocks.forEach((b,i)=>{ b.x=Z.plates[i].x; b.z=Z.plates[i].z; }); },
+  puzVault:()=>{ const Z=W.puzzle; G.P.x=Z.vault.x+Z.ux*1.2; G.P.z=Z.vault.z+Z.uz*1.2; },
+});
+window.__game.spawnE=(k,x,z,o)=>spawnEnemy(k,x,z,W.lvl||1,Object.assign({aggro:1},o||{}));
 // ================= pz: boot =================
 boot();
 })();

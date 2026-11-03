@@ -87,10 +87,12 @@ const OIL_MAT=new THREE.MeshBasicMaterial({color:0x1a120a,transparent:true,opaci
 const STEAM_C=new THREE.Color(0xe8eef4);
 function spawnOil(x,z,r,life){ W.oils=W.oils||[]; const m=new THREE.Mesh(cgeo('oilDisc',b=>{ b.add(new THREE.CircleGeometry(1,18),0x1a120a,{r:[-PI/2,0,0],ol:0}); },0),OIL_MAT); m.position.set(x,.05,z); m.scale.setScalar(r); m.renderOrder=1; worldRoot.add(m);
   const o={x,z,r,life:life||14,m,perm:life===9999}; W.oils.push(o); return o; }
+function pFire(x,z,r,life,dps){ const ex=W.hazards.find(h=>h.team==='p'&&Math.hypot(h.x-x,h.z-z)<Math.max(1.5,h.r*.8)); if(ex){ ex.life=Math.max(ex.life,life); ex.dps=Math.max(ex.dps,dps); return ex; }
+  const ps=W.hazards.filter(h=>h.team==='p'); if(ps.length>=7){ const o=ps.reduce((a,b)=>a.life<b.life?a:b); o.life=0; } return addHazard(x,z,r,'fire',life,dps,W.lvl,'p'); }
 function igniteAt(x,z,r,dps){
-  addHazard(x,z,r,'fire',4,dps,W.lvl,'p');
+  pFire(x,z,r,4,dps);
   for(const o of (W.oils||[])){ if(o.dead||Math.hypot(o.x-x,o.z-z)>o.r+r+.4) continue; o.dead=true; worldRoot.remove(o.m);
-    const h=addHazard(o.x,o.z,o.r*1.05,'fire',5,Math.max(dps,PS.atk*.6),W.lvl,'p'); fx('fire',o.x,.3,o.z,{k:20}); fx('boom',o.x,.2,o.z,{r:o.r,col:0xff8a2a,smoke:0x2a1a10});
+    const h=pFire(o.x,o.z,o.r*1.05,5,Math.max(dps,PS.atk*.6)); fx('fire',o.x,.3,o.z,{k:20}); fx('boom',o.x,.2,o.z,{r:o.r,col:0xff8a2a,smoke:0x2a1a10});
     if(o.raid){ o.relight=G.time+6; } }
   if(W.oils) W.oils=W.oils.filter(o=>!o.dead||o.raid);
 }

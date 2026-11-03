@@ -87,7 +87,7 @@ function bossLabels(){ if(!G.boss||!G.boss.alive||G.mode!=='stage'&&G.mode!=='ab
 }
 // new boss patterns
 Object.assign(BP,{
-  glob(e,p){ const P=G.P; if(once(p,'a',.5)){ const f=Math.atan2(P.x-e.x,P.z-e.z); const q=spawnProj('glob',e.x+Math.sin(f)*2,e.z+Math.cos(f)*2,f,{team:'e',dmg:BD(e,2.2),lvl:e.lvl,spd:6.5,src:e,el:'poison',life:4,r:.75,glob:1,col:0x8aff3a}); bossTip('glob','Плевок можно отбить! Ударьте его оружием или попадите выстрелом.'); AU.sfx('bolt'); }
+  glob(e,p){ const P=G.P; if(once(p,'a',.5)){ const f=Math.atan2(P.x-e.x,P.z-e.z); const q=spawnProj('glob',e.x+Math.sin(f)*(e.r+.6),e.z+Math.cos(f)*(e.r+.6),f,{team:'e',dmg:BD(e,2.2),lvl:e.lvl,spd:4.3,src:e,el:'poison',life:5,r:.75,glob:1,col:0x8aff3a,y:1.4}); q.decal=DECALS.spawn('circle',q.x,q.z,1.1,5,{follow:q,col:0x8aff3a,a:.8}); bossTip('glob','Плевок можно отбить! Ударьте его оружием или попадите выстрелом.'); AU.sfx('bolt'); }
     e.pose='cast'; return p.t>1.2; },
   gaze(e,p){ const P=G.P, M=W.bossMech, A=W.arenaNode;
     if(once(p,'a',0)){ banner('Взор Склепа!','Укройтесь за колонной'); bossTip('gaze','Встаньте так, чтобы колонна была между вами и Морвеном.'); AU.sfx('roar',.7); DECALS.spawn('circle',A.x,A.z,A.r-.3,2.4,{col:0x5affe0,a:.5});

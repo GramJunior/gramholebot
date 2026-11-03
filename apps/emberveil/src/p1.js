@@ -19,7 +19,8 @@ function plural(n,a,b,c){n=Math.abs(n)%100;const n1=n%10;if(n>10&&n<20)return c;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // ---------- storage (every access guarded) ----------
-const SKEY='emberveil_save_v1';
+const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
+const SAVE_V=2;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -28,11 +29,11 @@ const Store={
 };
 function newSave(){
   return {
-    v:1, created:Date.now(), started:false, look:0,
+    v:SAVE_V, created:Date.now(), started:false, look:0,
     hero:{lvl:1,xp:0,tp:0,talents:{sword:{},axe:{},bow:{},staff:{}}},
     gear:{weapon:null,offhand:null,helm:null,chest:null,gloves:null,boots:null,amulet:null,ring1:null,ring2:null},
     inv:[], uid:1,
-    res:{gold:120,wood:40,ore:20,ess:5,shards:0},
+    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0},
     gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0}, keys:0, potMax:3,
     pets:{owned:{},active:[null,null],eggs:[]},
     bld:{hall:1,forge:0,alch:0,pen:0,tavern:0,temple:0,store:0,walls:0,saw:0,mine:0,well:0,houses:0},
@@ -42,18 +43,30 @@ function newSave(){
     st:{kills:0,boss:0,deaths:0,chests:0,gold:0,elites:0,secrets:0,crafted:0,upgrades:0,hatched:0,built:0,floors:0,potions:0,kt:{}},
     lore:[], seen:{}, bless:{},
     endless:{best:0,runs:0},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1}
+    raid:{sockets:{},militia:0,next:0,wins:0,losses:0,trophies:{},tiers:{},dmg:null},
+    comp:{owned:{},active:null}, exp:{list:[]}, syn:{seen:{}}, puz:{},
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true}
   };
 }
 let S=newSave();
 function loadGame(){
   const raw=Store.get(SKEY); if(!raw) return false;
   try{
-    const d=JSON.parse(raw); if(!d||d.v!==1) return false;
+    const d=JSON.parse(raw); if(!d||typeof d!=='object'||!(d.v>=1)) return false;
+    migrateSave(d);
     const base=newSave();
-    (function merge(t,s){for(const k in s){ if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])&&t[k]&&typeof t[k]==='object'&&!Array.isArray(t[k])) merge(t[k],s[k]); else t[k]=s[k]; }})(base,d);
-    S=base; return true;
+    (function merge(t,s){for(const k in s){ if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])&&t[k]&&typeof t[k]==='object'&&!Array.isArray(t[k])) merge(t[k],s[k]); else if(s[k]!==undefined&&s[k]!==null||t[k]===undefined) t[k]=s[k]; }})(base,d);
+    S=base; S.v=Math.max(SAVE_V,d.v); return true;
   }catch(e){return false;}
+}
+// миграции старых сохранений: каждая ступень поднимает версию на 1, новые поля заполняются значениями из newSave()
+function migrateSave(d){
+  if(d.v<2){ // v1 → v2: набеги, спутники, походы, синергии, загадки, знаки доблести
+    d.res=d.res||{}; if(d.res.marks===undefined) d.res.marks=0;
+    if(d.raid&&typeof d.raid!=='object') delete d.raid;
+    if(d.exp&&!Array.isArray(d.exp.list)) d.exp.list=[];
+    d.v=2; }
+  return d;
 }
 let _saveT=0;
 function saveGame(now){ if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} }
