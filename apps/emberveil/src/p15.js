@@ -6,9 +6,9 @@ DLG.raid_intro=[['elder','Хмарь учуяла наш огонь, Искро�
 const RAID_LANES=[{id:'n',n:'север',a:Math.atan2(-31,-6)},{id:'e',n:'восток',a:-.21},{id:'sw',n:'юго-запад',a:2.44},{id:'se',n:'юг',a:1.36,tier:3}];
 const RAID_SOCKETS=(()=>{ const out=[]; for(const L of RAID_LANES){ const c=Math.cos(L.a),s=Math.sin(L.a),vx=-s,vz=c;
     out.push({id:L.id+'w',lane:L.id,slot:'wall',x:c*24.4,z:s*24.4,ry:-L.a-PI/2});
-    out.push({id:L.id+'t1',lane:L.id,slot:'tower',x:c*20.8+vx*4.4,z:s*20.8+vz*4.4});
-    out.push({id:L.id+'t2',lane:L.id,slot:'tower',x:c*20.8-vx*4.4,z:s*20.8-vz*4.4});
-    out.push({id:L.id+'p',lane:L.id,slot:'trap',x:c*17,z:s*17}); }
+    out.push({id:L.id+'t1',lane:L.id,slot:'tower',x:c*20.2+vx*5.4,z:s*20.2+vz*5.4});
+    out.push({id:L.id+'t2',lane:L.id,slot:'tower',x:c*20.2-vx*5.4,z:s*20.2-vz*5.4});
+    out.push({id:L.id+'p',lane:L.id,slot:'trap',x:c*15.6,z:s*15.6}); }
   out.push({id:'it1',lane:null,slot:'tower',x:6.8,z:2.4}); out.push({id:'it2',lane:null,slot:'tower',x:-6.8,z:2.4}); return out; })();
 // N lane: wall right at the gate road (narrower) — move sockets onto the actual gate segment
 (()=>{ const g={x:-6,z:-31}; const w=RAID_SOCKETS.find(s=>s.id==='nw'); w.x=g.x*.8; w.z=g.z*.8; })();
@@ -75,13 +75,14 @@ function raidOpenPrep(){
   if(G.mode!=='village'||!raidUnlocked()) return; closePanel(); closeMap();
   const periodic=raidDue(); RP.periodic=periodic; RP.plan=raidPlan(raidTier(),periodic); RP.sel=null;
   G.mode='raidprep'; show('hud',false); G.input.mx=G.input.mz=0; G.input.atk=false; JOY.id=null;
-  const tf=Math.tan(cam.fov*PI/360); const Hv=cam.aspect<1?84:62; CAMR.override={x:cam.aspect>1.6?-3:0,z:-3.5,dist:Hv/(2*tf),pitch:1.18};
+  const tf=Math.tan(cam.fov*PI/360); const Hv=cam.aspect<1?70:46; CAMR.override={x:cam.aspect>1.6?2:0,z:-5.5,dist:Hv/(2*tf),pitch:1.2};
   for(const v of W.villagers) v.rig.root.visible=false;
+  RP.fog=[scene.fog.near,scene.fog.far]; scene.fog.near=110; scene.fog.far=260; RP.pan={x:CAMR.override.x,z:CAMR.override.z};
   RP.decals=[]; for(const L of raidLanesFor(RP.plan.t)){ const c=Math.cos(L.a),s=Math.sin(L.a); const d=DECALS.spawn('line',c*42,s*42,22,9999,{dir:Math.atan2(-c,-s),w:3.4,col:0xff4a1a,a:.45}); if(d) RP.decals.push(d); }
   RP.rings=[]; for(const s of RAID_SOCKETS){ if(raidS().sockets[s.id]) continue; const m=ringMesh(0xffcf8a,s.slot==='wall'?2.6:1.5,.14,.55); m.position.set(s.x,.12,s.z); worldRoot.add(m); RP.rings.push(m); }
   raidRenderUI(); AU.sfx('page'); AU.music('boss');
 }
-function raidClosePrep(){ for(const d of RP.decals||[]) DECALS.kill(d); for(const m of RP.rings||[]) worldRoot.remove(m); RP.decals=[]; RP.rings=[]; show('raidUI',false); $('raidUI').innerHTML=''; RP.els=[]; }
+function raidClosePrep(){ if(RP.fog){ scene.fog.near=RP.fog[0]; scene.fog.far=RP.fog[1]; RP.fog=null; } for(const d of RP.decals||[]) DECALS.kill(d); for(const m of RP.rings||[]) worldRoot.remove(m); RP.decals=[]; RP.rings=[]; show('raidUI',false); $('raidUI').innerHTML=''; RP.els=[]; }
 function raidCancel(){ raidClosePrep(); CAMR.override=null; G.mode='village'; for(const v of W.villagers) v.rig.root.visible=true; show('hud'); hudBuild(); AU.music('village'); }
 function raidRenderUI(){
   const r=raidS(), plan=RP.plan; const ui=$('raidUI'); show('raidUI');
@@ -105,7 +106,7 @@ function raidRenderUI(){
     else { for(const t in RAID_STRUCT){ const D=RAID_STRUCT[t]; if(D.slot!==s.slot) continue; const c=raidStructCost(t,1);
         h+=`<div class="card row"><span style="font-size:26px;color:#5a3b22">${ico(D.ic)}</span><div class="grow"><h4>${D.n}</h4><div class="muted" style="font-size:12.5px">${D.d}</div><div>${costHtml(c)}</div></div><button class="btn leather small" ${canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ r.sockets[s.id]={t,lv:1,el:t==='mage'?'fire':undefined}; AU.sfx('build'); vib('success'); raidAfterBuild(s); } })}>${ico('hammer')} Ставить</button></div>`; } }
     sheet=`<div id="raidSheet" class="pe">${frame(h)}</div>`; }
-  ui.innerHTML=`<div id="raidTop" class="pe">${top}</div>${sheet}<div id="raidGo" class="pe"><button class="btn woodb" ${act(raidCancel)}>${ico('close')} Назад</button><button class="btn leather" ${act(raidStart)}>${ico('sword')} В бой!</button></div><div id="raidSocks"></div>`;
+  ui.innerHTML=`<div id="raidTop" class="pe">${top}</div>${sheet}<div id="raidGo" class="pe"><div id="raidHint">${RP.sel?'':'ТАПНИТЕ МЕСТО ПОСТРОЙКИ · ТЯНИТЕ, ЧТОБЫ ОСМОТРЕТЬСЯ'}</div><button class="btn woodb" ${act(raidCancel)}>${ico('close')} Назад</button><button class="btn leather" ${act(raidStart)}>${ico('sword')} В бой!</button></div><div id="raidSocks"></div>`;
   for(const el of ui.querySelectorAll('[data-act]')){ el.addEventListener('click',ev=>{ ev.stopPropagation(); AU.init(); const f=ACT[el.dataset.act]; if(f){ AU.sfx('ui'); f(ev); } }); }
   const sk=$('raidSocks'); RP.els=[];
   for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; const b=document.createElement('button'); b.className='sock3 pe'+(st?'':' empty')+(RP.sel===s.id?' sel':'');
@@ -242,3 +243,11 @@ function raidBotInput(){ const P=G.P; if(!RAID||RAID.done) return {mx:0,mz:0,atk
   let mx=0,mz=0; const dx=tx-P.x,dz=tz-P.z,d=Math.hypot(dx,dz); if(d>.6){ mx=dx/d; mz=dz/d; }
   if(!walkable(P.x+mx*1.5,P.z+mz*1.5,.2)){ const a=Math.atan2(mz,mx)+(G.time%4<2?1:-1)*1.1; mx=Math.cos(a); mz=Math.sin(a); }
   G.input.atk=atk; return {mx,mz,atk}; }
+// drag to pan the overview in the placement phase (touch or mouse)
+(()=>{ let drag=null;
+  window.addEventListener('pointerdown',ev=>{ if(G.mode!=='raidprep'||!CAMR.override) return; if(ev.target.closest&&ev.target.closest('.pe,#panel')) return; drag={x:ev.clientX,y:ev.clientY,ox:CAMR.override.x,oz:CAMR.override.z,id:ev.pointerId}; },{passive:true});
+  window.addEventListener('pointermove',ev=>{ if(!drag||ev.pointerId!==drag.id||G.mode!=='raidprep'||!CAMR.override) return; const k=(CAMR.override.dist*Math.tan(cam.fov*PI/360)*2)/window.innerHeight;
+    CAMR.override.x=clamp(drag.ox-(ev.clientX-drag.x)*k,-26,26); CAMR.override.z=clamp(drag.oz-(ev.clientY-drag.y)*k*1.15,-30,26); },{passive:true});
+  const up=ev=>{ if(drag&&ev.pointerId===drag.id) drag=null; }; window.addEventListener('pointerup',up); window.addEventListener('pointercancel',up);
+  window.addEventListener('wheel',ev=>{ if(G.mode!=='raidprep'||!CAMR.override) return; CAMR.override.dist=clamp(CAMR.override.dist*(ev.deltaY>0?1.08:.93),45,140); },{passive:true});
+})();
