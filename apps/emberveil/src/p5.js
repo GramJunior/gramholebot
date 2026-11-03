@@ -139,7 +139,7 @@ function hatch(e){
 function randomEggKind(zone){ const pool=zone>=6?['drake','golem','fairy','owl','otter']:zone>=4?['golem','fairy','owl','mush','sala','otter']:zone>=3?['mush','owl','fairy','sala','wolf','otter']:zone>=2?['wolf','sala','owl','mush','otter']:['wolf','sala','owl','mush']; return pick(pool); }
 
 // ---------- economy / production ----------
-function prodRates(){ return {wood:S.bld.saw*30,ore:S.bld.mine*18,ess:S.bld.well*4,gold:S.bld.hall*30+S.bld.houses*25}; }
+function prodRates(){ const d=id=>(typeof raidDamaged==='function'&&raidDamaged(id))?.5:1; return {wood:S.bld.saw*30*d('saw'),ore:S.bld.mine*18*d('mine'),ess:S.bld.well*4*d('well'),gold:S.bld.hall*30+S.bld.houses*25*d('houses')}; }
 function prodCapHours(){ return 8+S.bld.store*4; }
 function collectProduction(){
   const now=Date.now(); const hrs=Math.min((now-S.lastCollect)/3600000,prodCapHours()); S.lastCollect=now;

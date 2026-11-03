@@ -49,7 +49,7 @@ function hudBuild(){
   <div id="hQuest" class="parch pe"></div>
   ${!v?'<div id="hObj"></div><div id="hBoss" class="hidden"><div class="bn" id="bossN"></div><div class="bar"><i class="lag" id="bossLag"></i><i class="v" id="bossV"></i></div><div class="ph" id="bossPh"></div></div>':''}
   <div id="banner"></div>
-  ${v?`<div id="hMenu"><button class="hbtn pe" id="mHero">${ico('bag')}<span class="t">Герой</span></button><button class="hbtn pe" id="mBuild">${ico('hall')}<span class="t">Стройка</span></button><button class="hbtn pe" id="mQuest">${ico('scroll')}<span class="t">Задания</span></button><button class="hbtn pe" id="mMap">${ico('map')}<span class="t">Поход</span></button></div>`:''}
+  ${v?`<div id="hMenu"><button class="hbtn pe" id="mHero">${ico('bag')}<span class="t">Герой</span></button><button class="hbtn pe" id="mBuild">${ico('hall')}<span class="t">Стройка</span></button><button class="hbtn pe" id="mSquad">${ico('helm')}<span class="t">Отряд</span></button>${raidUnlocked()?`<button class="hbtn pe" id="mRaid">${ico('tower')}<span class="t">Набег</span></button>`:''}<button class="hbtn pe" id="mQuest">${ico('scroll')}<span class="t">Задания</span></button><button class="hbtn pe" id="mMap">${ico('map')}<span class="t">Поход</span></button></div>`:''}
   <div id="joy"><div class="ring"></div><div class="knob" id="joyK"></div></div>
   ${G.mode==='village'?'':''}
   <div id="acts" class="${left?'left':''}">
@@ -76,6 +76,8 @@ function hudRefresh(){
     const u=$('bUlt'); if(u){ u.querySelector('.ic').innerHTML=ico(SKILLS[cls][3].ic); u.style.display=skillRank('ult')>0?'':'none'; } }
   const dot=$('mHero'); if(dot){ const n=(S.hero.tp>0?1:0)+(S.inv.some(i=>i.nw)?1:0); dot.querySelector('.dot')?.remove(); if(n) dot.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
   const mq=$('mQuest'); if(mq){ mq.querySelector('.dot')?.remove(); const ready=SIDE.some(q=>S.q.side[q.id]&&S.q.side[q.id].ready)||S.q.daily.list.some(q=>q.p>=q.v&&!q.c); if(ready) mq.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
+  const ms=$('mSquad'); if(ms){ ms.querySelector('.dot')?.remove(); if(expReadyCount()||COMP_ORDER.some(id=>!compOwned(id)&&compUnlocked(id)&&!Object.keys(COMPANIONS[id].cost).length)) ms.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
+  const mr=$('mRaid'); if(mr){ mr.querySelector('.dot')?.remove(); if(raidDue()) mr.insertAdjacentHTML('beforeend','<i class="dot"></i>'); mr.classList.toggle('due',raidDue()); }
   const mb=$('mBuild'); if(mb){ mb.querySelector('.dot')?.remove(); if(BLD_ORDER.some(id=>canBuildNow(id))) mb.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
 }
 function hudQuest(){
@@ -112,7 +114,7 @@ function bindHud(){
     const up=ev=>{ G.input.atk=false; }; atk.addEventListener('pointerup',up); atk.addEventListener('pointercancel',up); atk.addEventListener('lostpointercapture',up); }
   tap('bS1',()=>useSkill('s1')); tap('bS2',()=>useSkill('s2')); tap('bS3',()=>useSkill('s3')); tap('bUlt',()=>useSkill('ult'));
   tap('bDodge',()=>dodge()); tap('bPot',()=>drinkPotion()); tap('bBomb',()=>throwBomb());
-  tap('mHero',()=>openPanel('hero')); tap('mBuild',()=>openPanel('bld',{id:'hall'})); tap('mQuest',()=>openPanel('hero',{tab:'quests'})); tap('mMap',()=>openMap());
+  tap('mHero',()=>openPanel('hero')); tap('mSquad',()=>{ if(S.bld.tavern>0) openPanel('bld',{id:'tavern',tab:expReadyCount()?'exp':'roster'}); else openPanel('hero',{tab:'squad'}); }); tap('mRaid',()=>raidOpenPrep()); tap('mBuild',()=>openPanel('bld',{id:'hall'})); tap('mQuest',()=>openPanel('hero',{tab:'quests'})); tap('mMap',()=>openMap());
   tap('hQuest',()=>openPanel('hero',{tab:'quests'}));
   tap('hPort',()=>{ if(G.mode==='village') openPanel('hero'); });
 }
@@ -137,6 +139,7 @@ function setupInput(){
   window.addEventListener('keydown',ev=>{ if(ev.repeat&&!['KeyW','KeyA','KeyS','KeyD'].includes(ev.code)) { return; } AU.init(); keys[ev.code]=true; kv();
     if($('dlg')&&!$('dlg').classList.contains('hidden')&&(ev.code==='Space'||ev.code==='Enter')){ dlgNext(); return; }
     if(!$('panel').classList.contains('hidden')){ if(ev.code==='Escape'||ev.code==='KeyI') closePanel(); return; }
+    if(G.mode==='raidprep'){ if(ev.code==='Escape') raidCancel(); return; }
     if(G.mode==='village'){ if(ev.code==='KeyE'||ev.code==='Space'||ev.code==='KeyJ') villageInteract(); if(ev.code==='KeyI') openPanel('hero'); if(ev.code==='KeyM') openMap(); if(ev.code==='Escape') openPanel('settings'); return; }
     if(G.mode==='stage'||G.mode==='abyss'){
       if(ev.code==='KeyJ'||ev.code==='Space'){ G.input.atk=true; playerAttack(); }

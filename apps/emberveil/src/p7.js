@@ -309,7 +309,7 @@ function updateEnemy(e,dt){
   if(e.state==='chase'&&d<6&&!(mvx||mvz)) e.face=angTo(e.face,Math.atan2(dx,dz),dt*6);
   constrain(e,e.r*.8);
 }
-function hasLOS(e,t){ const n=6; for(let i=1;i<n;i++){ const x=lerp(e.x,t.x,i/n), z=lerp(e.z,t.z,i/n); for(const o of W.obst){ if(!o.dead&&o.r>.6&&Math.hypot(x-o.x,z-o.z)<o.r) return false; } } return true; }
+function hasLOS(e,t){ const n=6; for(let i=1;i<n;i++){ const x=lerp(e.x,t.x,i/n), z=lerp(e.z,t.z,i/n); for(const o of W.obst){ if(!o.dead&&o.r>.6&&Math.hypot(x-o.x,z-o.z)<o.r&&Math.hypot(t.x-o.x,t.z-o.z)>o.r+.7) return false; } } return true; }
 function startWind(e,k,t){
   e.state='wind'; e.st=0; e.wind={k,t}; e.hitDone=false; const P=G.P; const tg=enemyTarget(e);
   const fdir=Math.atan2(tg.x-e.x,tg.z-e.z); e.face=fdir;

@@ -63,7 +63,7 @@ function spawnCompanion(){ const id=compS().active; if(!id||compBusy(id)) return
   rig.root.traverse(m=>{ if(m.isMesh) a.meshes.push(m); }); G.allies.push(a); return a; }
 function spawnMilitia(x,z,lvl,i){ const rig=buildNPC(['v0','v1','v2'][i%3]); worldRoot.add(rig.root); rig.root.scale.setScalar(.95);
   const f=F(lvl); const a={type:'ally',kind:'militia',id:'m'+i,rig,x,z,y:0,face:PI,r:.4,hp:Math.round(70*f),maxHp:Math.round(70*f),atk:5*f,armor:2*f,state:'idle',st:0,move:0,cd:rand(.5,1.5),skCd:99,dead:false,downT:0,revive:0,
-    cls:'sword',role:'militia',el:null,ranged:false,alive:true,stat:{},hitT:0,home:{x,z},t:rand(5),meshes:[]};
+    cls:'sword',role:'militia',el:null,ranged:false,alive:true,stat:{},hitT:0,home:{x,z},t:rand(5),meshes:[],buff:{}};
   rig.root.traverse(m=>{ if(m.isMesh) a.meshes.push(m); }); G.allies.push(a); return a; }
 function allyHurt(a,raw,src){
   if(a.dead||G.god&&a.kind==='comp'&&false) return; const L=(src&&src.lvl)||W.lvl||1;
@@ -207,3 +207,6 @@ function expBody(){
   return h;
 }
 function expReadyCount(){ return expS().list.filter(x=>expLeft(x)<=0).length; }
+function compVillageSeq(seq){ if(stageDone('1-2')&&!compOwned('bran')&&!S.seen.bran_join){ seq.push(cb=>{ S.seen.bran_join=1; compS().owned.bran={lv:Math.max(1,S.hero.lvl-1),xp:0,g:{w:0,c:0},inj:0}; if(!compS().active) compS().active='bran';
+    toast(`<b>Бран</b>, спасённый с мельницы, вступает в отряд! «${COMPANIONS.bran.lines[0]}»`,compPortrait('bran'),1); spawnCompanion(); placePlayer(G.P.x,G.P.z,G.P.face); saveGame(); cb(); }); }
+  if(expReadyCount()) seq.push(cb=>{ later(.8,()=>toast(`Спутники вернулись из похода — встречайте в таверне (${expReadyCount()}).`,null,null,'quest')); cb(); }); }

@@ -220,13 +220,13 @@ const BUILDINGS={
   saw:{n:'Лесопилка',ic:'saw',npc:null,d:'Производит древесину, пока вас нет.',base:{gold:120,wood:40,ore:20},eff:l=>`+${l*30} древесины/ч.`},
   mine:{n:'Рудник',ic:'pick',npc:null,d:'Производит руду, пока вас нет.',base:{gold:160,wood:80},eff:l=>`+${l*18} руды/ч.`},
   well:{n:'Родник эссенции',ic:'well',npc:null,d:'Кристаллы сочатся эссенцией.',base:{gold:300,wood:100,ore:100},eff:l=>`+${l*4} эссенции/ч.`},
-  walls:{n:'Частокол и башни',ic:'tower',npc:null,d:'Башни отстреливают врагов при набегах на деревню.',base:{gold:250,wood:200,ore:60},eff:l=>`Башен: ${Math.min(4,l)}. Урон башен ×${l}.`},
+  walls:{n:'Частокол и башни',ic:'tower',npc:null,d:'Сторожевые башни по углам стреляют во время набегов, а мастера-плотники позволяют улучшать оборону на тропах.',base:{gold:250,wood:200,ore:60},eff:l=>`Угловых башен: ${Math.min(4,l+1)}. Оборона до ${1+Math.floor(l/2)} ур. Урон башен +${l*12}%.`},
   houses:{n:'Дома',ic:'house',npc:null,d:'Возвращают жителей. Каждый дом приносит золото.',base:{gold:100,wood:100},eff:l=>`Домов: ${l}. +${l*25} золота/ч.`}
 };
 const BLD_ORDER=['hall','forge','alch','pen','tavern','temple','store','saw','mine','well','walls','houses'];
 function bldCost(id,lv){ const b=BUILDINGS[id].base; const m=Math.pow(2.05,lv-1); const c={}; for(const k in b) c[k]=Math.round(b[k]*m); if(lv>=3&&!c.ess) c.ess=Math.round(5*lv*lv); return c; }
 function bldUnlock(id){ // required hall level to build at all
-  return {hall:1,forge:1,alch:1,pen:1,tavern:2,temple:2,store:1,saw:1,mine:2,well:3,walls:3,houses:1}[id]; }
+  return {hall:1,forge:1,alch:1,pen:1,tavern:2,temple:2,store:1,saw:1,mine:2,well:3,walls:2,houses:1}[id]; }
 const BLESS={
   might:{n:'Мощь',ic:'sword',d:r=>`+${r*4}% к урону`,st:r=>({dmgP:r*4})},
   life:{n:'Жизнь',ic:'heart',d:r=>`+${r*5}% здоровья`,st:r=>({hpP:r*5})},

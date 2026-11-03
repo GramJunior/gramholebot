@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Эмбервейл — ассет-лаб</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#1a0f08; --panel:rgba(26,15,8,.78); --ink:#f6e7cf; --mut:#c9b392; --acc:#ffb347; --acc2:#ff6a1a; --line:rgba(255,200,140,.22); }
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --panel:rgba(40,24,12,.8); } }
+  :root[data-theme="dark"]{ --panel:rgba(26,15,8,.78); }
+  *{box-sizing:border-box} html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:Rubik,system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .bar{position:fixed;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;z-index:5}
+  .bar::-webkit-scrollbar{display:none}
+  #top{top:max(6px,env(safe-area-inset-top))}
+  #bot{bottom:max(6px,env(safe-area-inset-bottom))}
+  .grp{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px;flex:0 0 auto;backdrop-filter:blur(4px)}
+  button{font:600 12px Rubik,sans-serif;color:var(--ink);background:transparent;border:0;border-radius:9px;padding:6px 9px;white-space:nowrap;cursor:pointer;min-height:28px}
+  button.on{background:linear-gradient(#ffb347,#e2731e);color:#2a1406;box-shadow:0 1px 0 #ffd9a0 inset}
+  button:active{transform:translateY(1px)}
+  .ttl{font:800 13px Rubik;letter-spacing:.06em;color:var(--acc);padding:0 6px;white-space:nowrap}
+  #stats{position:fixed;right:max(8px,env(safe-area-inset-right));top:46px;font:500 10.5px/1.35 ui-monospace,Menlo,monospace;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 8px;z-index:4;white-space:pre;color:var(--mut);pointer-events:none}
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:3}
+  .lb{position:absolute;transform:translate(-50%,-100%);font:700 10.5px Rubik;color:#fff4dc;text-shadow:0 1px 2px #000,0 0 6px #000;white-space:nowrap;text-align:center}
+  .lb small{display:block;font-weight:500;font-size:9px;color:#ffcf8a}
+  .lb.boss{font-size:12px;color:#ffd27a}
+  #load{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(circle at 50% 40%,#3a1e0e,#120904);z-index:9;transition:opacity .4s}
+  #load b{font:800 26px Rubik;letter-spacing:.12em;color:var(--acc);text-shadow:0 0 18px #ff6a1a}
+  #load .pb{width:min(320px,70vw);height:8px;border-radius:5px;background:#2a160a;overflow:hidden;border:1px solid var(--line)}
+  #load .pb i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6a1a,#ffd27a)}
+  #load small{color:var(--mut);font-size:11px}
+  #info{position:fixed;left:max(8px,env(safe-area-inset-left));top:46px;max-width:44vw;font:500 11px/1.35 Rubik;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 9px;z-index:4;color:var(--mut)}
+  #info b{color:var(--ink)}
+  @media (max-height:430px){ button{padding:5px 7px;font-size:11px;min-height:26px} #stats{top:40px;font-size:9.5px} #info{top:40px;font-size:10px} }
+  @media (orientation:portrait){ #rot{display:flex} }
+  #rot{display:none;position:fixed;inset:auto 8px 50px 8px;justify-content:center;z-index:6;font:600 12px Rubik;color:var(--acc)}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="labels"></div>
+<div id="top" class="bar">
+  <span class="ttl">ЭМБЕРВЕЙЛ · ЛАБ</span>
+  <div class="grp" id="scenes"></div>
+  <div class="grp" id="zones"></div>
+  <div class="grp" id="quals"></div>
+  <div class="grp"><button id="cmp">До / После</button></div>
+</div>
+<div id="bot" class="bar"></div>
+<div id="info"></div>
+<div id="stats"></div>
+<div id="rot">Поверните телефон горизонтально ↻</div>
+<div id="load"><b>ЭМБЕРВЕЙЛ</b><div class="pb"><i id="pbi"></i></div><small id="lmsg">Загрузка ассетов…</small></div>
+
+<script src="../vendor/three.min.js"></script>
+<script src="../vendor/GLTFLoader.js"></script>
+<script src="../vendor/SkeletonUtils.js"></script>
+<script src="../vendor/BufferGeometryUtils.js"></script>
+<script src="../vendor/libs/meshopt_decoder.js"></script>
+<script src="../vendor/shaders/CopyShader.js"></script>
+<script src="../vendor/shaders/LuminosityHighPassShader.js"></script>
+<script src="../vendor/shaders/FXAAShader.js"></script>
+<script src="../vendor/shaders/BokehShader.js"></script>
+<script src="../vendor/postprocessing/EffectComposer.js"></script>
+<script src="../vendor/postprocessing/ShaderPass.js"></script>
+<script src="../vendor/postprocessing/UnrealBloomPass.js"></script>
+<script src="../vendor/postprocessing/BokehPass.js"></script>
+<script src="assets.js"></script>
+<script src="postfx.js"></script>
+<script>
+"use strict";
+const Q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const PI = Math.PI, TAU = PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+let seed = 7; const srand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+// ---------------------------------------------------------------- renderer / scene (mirrors src/p2.js setup: linear output, toon ramp, hemi+sun)
+const R = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: false, powerPreference: 'high-performance', stencil: false });
+R.setClearColor(0x1a0f08, 1);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x9fc2a0, 40, 95);
+const cam = new THREE.PerspectiveCamera(36, 1, 0.5, 220);
+const hemi = new THREE.HemisphereLight(0xfff2d0, 0x5a6a3a, 0.75); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d0, 0.95); sun.position.set(-12, 24, 10); scene.add(sun); scene.add(sun.target);
+const RIM = { value: new THREE.Color(0xfff0c8) };
+const GRAD = (() => { const d = new Uint8Array([105, 105, 105, 180, 180, 180, 255, 255, 255]); const t = new THREE.DataTexture(d, 3, 1, THREE.RGBFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; })();
+const QPR = { low: 1.0, med: 1.6, high: 2 };
+let QL = Q.get('q') || (/Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'med' : 'high');
+let fx, M, ZONE = Q.get('zone') || 'meadow', SCENE = Q.get('scene') || 'hero', BEFORE = Q.get('before') === '1';
+const world = new THREE.Group(); scene.add(world);
+const env = new THREE.Group(); scene.add(env);
+let actors = [], updaters = [], labels = [], camT = { x: 0, y: 0, z: 0, dist: 14, pitch: 0.62, yaw: 0 }, orbit = { yaw: 0, auto: true };
+let ambient = null, trail = null;
+
+function resize() {
+  const w = innerWidth, h = innerHeight; const pr = Math.min(devicePixelRatio || 1, QPR[QL]);
+  R.setPixelRatio(pr); R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  if (fx) fx.setSize(w, h, pr); EVAssets.setViewport(w * pr, h * pr);
+}
+addEventListener('resize', resize);
+
+// ---------------------------------------------------------------- UI helpers
+function btns(el, items, cur, cb) {
+  el.innerHTML = '';
+  for (const [k, label] of items) { const b = document.createElement('button'); b.textContent = label; b.dataset.k = k; if (k === cur) b.classList.add('on'); b.onclick = () => { [...el.children].forEach((c) => c.classList.toggle('on', c === b)); cb(k); }; el.appendChild(b); }
+}
+function label(obj, text, sub, cls, y) { const d = document.createElement('div'); d.className = 'lb ' + (cls || ''); d.innerHTML = text + (sub ? '<small>' + sub + '</small>' : ''); $('labels').appendChild(d); labels.push({ d, obj, y: y || 2.4 }); }
+function clearScene() {
+  for (const a of actors) a.dispose && a.dispose(); actors = []; updaters = [];
+  while (world.children.length) world.remove(world.children[0]);
+  $('labels').innerHTML = ''; labels = []; $('bot').innerHTML = ''; if (trail) { trail.dispose(); trail = null; }
+}
+
+// ---------------------------------------------------------------- ground + zone environments
+const ZG = {};
+function groundMesh(col, size, paint) {
+  const g = new THREE.PlaneGeometry(size, size, paint ? 160 : 48, paint ? 160 : 48); g.rotateX(-PI / 2);
+  const c = new THREE.Color(col), cols = new Float32Array(g.attributes.position.count * 3), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); const n = Math.sin(x * 0.31) * Math.cos(z * 0.27) * 0.5 + Math.sin(x * 0.9 + z * 0.7) * 0.25 + (srand() - 0.5) * 0.25;
+    const k = 1 + n * 0.1; let cc = c; if (paint) { const pc = paint(x, z, n); if (pc) cc = pc; } cols[i * 3] = cc.r * k; cols[i * 3 + 1] = cc.g * k; cols[i * 3 + 2] = cc.b * k; }
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.computeVertexNormals();
+  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: GRAD });
+  return new THREE.Mesh(g, m);
+}
+const ZONE_PROPS = {
+  village: { trees: ['treeRound', 'n:tree_wide', 'pine', 'n:tree_bloom'], small: ['bush', 'n:bush_berry', 'rock', 'grass', 'grass', 'n:rock_small'], n: [60, 160] },
+  meadow:  { trees: ['treeRound', 'treeBirch', 'n:tree_wide', 'n:tree_bloom', 'pine'], small: ['bush', 'n:bush_box', 'rock', 'grass', 'grass', 'grass', 'hay', 'n:rock_small'], n: [70, 200] },
+  forest:  { trees: ['pine', 'n:fir', 'n:pine_dark', 'n:fir_dark', 'oakDark', 'n:tree_wide_dark'], small: ['n:bush_dark', 'fern', 'stone2', 'log', 'grass', 'fern'], n: [110, 160] },
+  swamp:   { trees: ['deadTree', 'n:dead_tree_thin', 'n:tree_swamp', 'deadTree'], small: ['bogRock', 'n:rock_bog_round', 'reeds', 'reeds', 'n:bush_swamp', 'stump'], n: [55, 170] },
+  crypt:   { trees: ['pillar', 'pillarBroken', 'h:tree_dead_large', 'wallSeg', 'h:crypt'], small: ['tomb', 'h:gravestone', 'h:grave_B', 'candles', 'bones', 'coffin', 'skulls', 'h:fence_broken', 'h:lantern_standing'], n: [34, 130], tiles: 1 },
+  ashlands:{ trees: ['charTree', 'n:dead_tree_red', 'h:tree_dead_medium', 'basalt'], small: ['lavaRock', 'skulls', 'n:rock_dark', 'bones', 'd:rubble_half', 'rib'], n: [50, 130] },
+  lair:    { trees: ['basalt', 'd:rocks', 'rib', 'd:rocks_gold'], small: ['goldPile', 'r:Gems_Chest', 'd:chest_gold', 'skulls', 'r:Gold_Bars_Stack_Small', 'd:coin_stack_large', 'lavaRock'], n: [36, 150] },
+};
+const PATH = new THREE.Color(0xcca868), PATHD = new THREE.Color(0xb08c52), MOSS = new THREE.Color(0x6a9a3a);
+function segD(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
+function villagePaint(x, z, n) {
+  let d = Math.hypot(x, z + 4) - 6.5; for (const k in VPOS) { const [bx, bz] = VPOS[k]; d = Math.min(d, segD(x, z, 0, -4, bx * 0.82, bz * 0.82) - 0.95 - n * 0.35); }
+  if (d < 0) return d < -0.6 ? PATH : PATHD; if (d < 0.5) return MOSS; return null;
+}
+function buildEnv(zone, radius, clearR, paint) {
+  while (env.children.length) env.remove(env.children[0]);
+  const Z = M.zones[zone]; seed = 11 + Z.zone * 7;
+  env.add(groundMesh(Z.ground, 160, paint));
+  if (zone === 'crypt' || zone === 'lair') { // stone floor tiles near the action
+    const ids = zone === 'crypt' ? ['d:floor_tile_large', 'd:floor_tile_large', 'd:floor_tile_large', 'd:floor_tile_large_rocks'] : ['d:floor_dirt_large'];
+    const mats = { }; ids.forEach((i) => (mats[i] = []));
+    for (let x = -5; x <= 5; x++) for (let z = -5; z <= 5; z++) { if (Math.hypot(x, z) > 5.6) continue; const id = ids[(Math.abs(x * 7 + z * 13 + x * z)) % ids.length]; mats[id].push(new THREE.Matrix4().makeTranslation(x * 2, 0.02, z * 2)); }
+    for (const i in mats) env.add(EVAssets.instanced(i, mats[i]));
+  }
+  const P = ZONE_PROPS[zone]; const place = (ids, count, rMin, rMax, sMin, sMax) => {
+    const by = {}; for (let i = 0; i < count; i++) { const a = srand() * TAU, r = rMin + Math.pow(srand(), 0.7) * (rMax - rMin); const x = Math.cos(a) * r, z = Math.sin(a) * r * 0.8 - 4; if (SCENE === 'hero' && z > -3 && Math.abs(x) < 9) continue;
+      const id = ids[(srand() * ids.length) | 0]; if (!EVAssets.has(id)) continue; const s = sMin + srand() * (sMax - sMin);
+      (by[id] = by[id] || []).push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, srand() * TAU, 0)), new THREE.Vector3(s, s, s))); }
+    for (const id in by) env.add(EVAssets.instanced(id, by[id]));
+  };
+  place(P.trees, P.n[0], clearR + 4, radius, 0.85, 1.25);
+  place(P.small, P.n[1], clearR, radius, 0.8, 1.3);
+  const Zp = M.zones[zone]; EVPostFX.applyZone(Zp, { scene, hemi, sun, rim: RIM, fx, renderer: R });
+  if (ambient) { scene.remove(ambient.mesh); EVFX.remove(ambient); }
+  const amb = { meadow: 'pollen', village: 'pollen', forest: 'firefly', swamp: 'bubble', crypt: 'wisp', ashlands: 'ash', lair: 'ember' }[zone];
+  ambient = EVFX.ambient({ kind: amb, count: QL === 'low' ? 80 : QL === 'med' ? 180 : 320, area: [36, zone === 'lair' || zone === 'ashlands' ? 9 : 6, 30] }); scene.add(ambient.mesh);
+  if (zone === 'lair' || zone === 'ashlands') { const a2 = EVFX.ambient({ kind: 'ember', count: QL === 'low' ? 40 : 120, area: [30, 10, 26] }); a2.mesh.userData.extra = 1; env.add(a2.mesh); }
+}
+
+// ---------------------------------------------------------------- scenes
+const NAMES = { goblin: ['Гоблин-рубака', 'Orc Raider'], goblinArcher: ['Гоблин-лучник', 'Orc Raider + лук'], wolf: ['Серогрив', 'Werewolf'], sapling: ['Корнеплёт', 'Plant Warrior'], bogling: ['Топлян', 'Monstrosity'],
+  skelShield: ['Костяной страж', 'Skeleton Warrior'], skelArcher: ['Костяной лучник', 'Skeleton Rogue'], wraith: ['Призрак', 'Skeleton Mage · ghost'], cultist: ['Культист Пепла', 'Rogue Hooded'], ashGolem: ['Пепельный голем', 'Frost Golem · lava'], imp: ['Бесёнок', 'Tiefling'],
+  gobKing: ['Брюхан', 'Orc Brute'], rotroot: ['Гнилокорень', 'Plant Warrior ×2'], bogMother: ['Матушка Трясина', 'Witch'], morven: ['Морвен', 'Black Knight'], colossus: ['Пепельный Колосс', 'Frost Golem · lava'], ashKing: ['Остен', 'Necromancer'],
+  elder: ['Ведана', 'старейшина'], smith: ['Горан', 'кузнец'], alch: ['Мира', 'алхимица'], beast: ['Ойка', 'звероведка'], stranger: ['Серый', 'странник'], king: ['Остен', 'король'],
+  'comp:knight': ['Рыцарь', 'спутник'], 'comp:barbarian': ['Варвар', 'спутник'], 'comp:mage': ['Маг', 'спутник'], 'comp:ranger': ['Следопыт', 'спутник'], 'comp:rogue': ['Плут', 'спутник'], 'comp:druid': ['Друид', 'спутник'],
+  'comp:cleric': ['Жрица', 'спутник'], 'comp:paladin': ['Паладин', 'спутник'], 'comp:ninja': ['Тень', 'спутник'], 'comp:avian': ['Сокол', 'спутник'], 'comp:tiefling': ['Тифлинг', 'спутник'], 'comp:brute': ['Громила', 'спутник'] };
+const ATTACK_LOOP = ['idle', 'attack', 'idle', 'heavy', 'run', 'hit'];
+function cycleAnims(a, list, period) { let i = 0, t = rand(0, period); updaters.push((dt) => { t += dt; if (t > period) { t = 0; i = (i + 1) % list.length; const n = list[i]; const once = !/idle|run|walk/.test(n); a.play(n, { once, fade: 0.2 }); } }); }
+
+const GEAR_SETS = {
+  'Новичок': { chest: 'ch_cloth0' },
+  'Страж Брода': { helm: 'hm_guard', chest: 'ch_plate', gloves: 'gl_plate', boots: 'bt_plate' },
+  'Пеплоход': { helm: 'hm_horn', chest: 'ch_mail', gloves: 'gl_leather', boots: 'bt_leather' },
+  'Ночная Сова': { helm: 'hm_hood', chest: 'ch_cloth', gloves: 'gl_mage', boots: 'bt_cloth' },
+  'Регалии Остена': { helm: 'hm_crown', chest: 'ch_robe', gloves: 'gl_mage', boots: 'bt_cloth' },
+  'Обруч + кольчуга': { helm: 'hm_circ', chest: 'ch_mail', gloves: 'gl_mail', boots: 'bt_heavy' },
+};
+const WEAPONS = [['sw1', 'Меч + щит', 'sh1'], ['sw3', 'Рунный клинок', 'sh2'], ['ax1', 'Секира', null], ['ax2', 'Молот', null], ['bw2', 'Длинный лук', 'qv1'], ['bw3', 'Рогатый лук', 'qv1'], ['st2', 'Кристальный посох', 'or1'], ['st3', 'Посох черепа', 'tm1']];
+const HERO_ANIMS = ['idle', 'run', 'attack', 'heavy', 'skill', 'roll', 'block', 'cast', 'hit', 'cheer', 'interact', 'death'];
+
+function sceneHero() {
+  buildEnv(ZONE, 34, 7);
+  const h = EVAssets.spawn('hero'); h.root.rotation.y = +(Q.get('hy') || 0.45); world.add(h.root); actors.push(h); window.hero = h;
+  let gearName = Q.get('set') || 'Страж Брода', wi = +(Q.get('w') || 0), look = 0; const apply = () => { const w = WEAPONS[wi]; h.setGear(Object.assign({ weapon: w[0], offhand: w[2] }, GEAR_SETS[gearName])); info(); };
+  apply(); h.play('idle');
+  trail = EVFX.slashTrail({ color: '#ffd27a', segments: 16 }); scene.add(trail.mesh);
+  const comp = EVAssets.spawn('comp:ranger'); comp.root.position.set(-2.6, 0, -1.2); comp.root.rotation.y = 0.5; world.add(comp.root); actors.push(comp); cycleAnims(comp, ['idle', 'attack', 'idle', 'cheer'], 2.2);
+  const pet = EVAssets.spawn('pet:golem'); pet.root.position.set(2.3, 0, -0.8); pet.root.rotation.y = -0.4; world.add(pet.root); actors.push(pet); cycleAnims(pet, ['idle', 'attack', 'idle', 'taunt'], 2.0);
+  label(comp.root, 'Следопыт', 'спутник', '', 2.4); label(pet.root, 'Каменыш', 'питомец-голем', '', 1.3);
+  const bar = $('bot');
+  const g1 = document.createElement('div'); g1.className = 'grp'; bar.appendChild(g1); btns(g1, WEAPONS.map((w, i) => [i, w[1]]), wi, (k) => { wi = +k; apply(); play(cur); });
+  const g2 = document.createElement('div'); g2.className = 'grp'; bar.appendChild(g2); btns(g2, Object.keys(GEAR_SETS).map((k) => [k, k]), gearName, (k) => { gearName = k; apply(); });
+  const g3 = document.createElement('div'); g3.className = 'grp'; bar.appendChild(g3); btns(g3, HERO_ANIMS.map((a) => [a, a]), 'idle', (k) => { auto = false; play(k); });
+  const g4 = document.createElement('div'); g4.className = 'grp'; bar.appendChild(g4); btns(g4, [[0, 'Кожа 1'], [1, 'Кожа 2'], [2, 'Кожа 3']], 0, (k) => { look = +k; h.setLook(look); });
+  let cur = 'idle', auto = Q.get('anim') ? false : true, t = 0, ai = 0, combo = 0;
+  function play(n) {
+    cur = n; const once = !/idle|run|blocking/.test(n);
+    if (n === 'attack') { h.play('attack', { once: true, combo: combo++, fade: 0.1 }); trail.emit = h.cls === 'sword' || h.cls === 'axe'; }
+    else if (n === 'skill' || n === 'heavy') { h.play(n, { once: true, fade: 0.1 }); trail.emit = h.cls === 'sword' || h.cls === 'axe'; if (h.cls === 'staff') setTimeout(() => EVFX.burst(scene, new THREE.Vector3(0, 0.1, 2.6), { color: '#6fd8ff', radius: 2.6 }), 500); }
+    else if (n === 'cast') { h.play('cast', { once: true }); setTimeout(() => EVFX.burst(scene, new THREE.Vector3(0, 0.1, 0), { color: '#ff8a3a', radius: 3 }), 700); }
+    else { h.play(n, { once, fade: 0.15, clamp: n === 'death' }); trail.emit = false; }
+  }
+  if (Q.get('anim')) { play(Q.get('anim')); }
+  const blade = () => h.slots.r || h.slots.l;
+  updaters.push((dt) => {
+    const b = blade(); if (b && trail.target !== b) trail.follow(b, new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1.25, 0));
+    if (!h.current || !h.current.isRunning() || /idle|run/.test(h.currentName)) trail.emit = false;
+    trail.update(dt);
+    if (!auto) return; t += dt; if (t > 1.6) { t = 0; ai = (ai + 1) % HERO_ANIMS.length; if (HERO_ANIMS[ai] === 'death') ai = 0; play(HERO_ANIMS[ai]); }
+  });
+  camT = { x: 0, y: 1.05, z: 0, dist: 7.2, pitch: 0.32, yaw: 0.35 }; orbit.auto = false;
+  function info() { $('info').innerHTML = '<b>Герой</b> — KayKit Knight + детали 8 персонажей на одном скелете · ' + WEAPONS[wi][1] + ' · комплект «' + gearName + '»<br>Анимации: общий Rig_Medium (' + EVAssets.clips('medium').length + ' клипов), смена оружия меняет набор атак.'; }
+}
+
+function sceneLineup() {
+  buildEnv(ZONE, 44, 10);
+  const enemies = ['goblin', 'goblinArcher', 'wolf', 'sapling', 'bogling', 'skelShield', 'skelArcher', 'wraith', 'cultist', 'imp', 'ashGolem'];
+  const bosses = ['gobKing', 'rotroot', 'bogMother', 'morven', 'colossus', 'ashKing'];
+  enemies.forEach((id, i) => { const a = EVAssets.spawn(id); const row = i % 2, col = (i - row) / 2; const x = (col - 2.5) * 2.7 + row * 1.35 - 0.6; a.root.position.set(x, 0, 3.6 - row * 2.3); world.add(a.root); actors.push(a); cycleAnims(a, ['idle', 'attack', 'idle', 'run', 'hit'], rand(1.6, 2.2)); label(a.root, NAMES[id][0], NAMES[id][1], '', a.height + 0.25); });
+  bosses.forEach((id, i) => { const a = EVAssets.spawn(id); const x = (i - (bosses.length - 1) / 2) * 3.9; a.root.position.set(x, 0, -3.6); world.add(a.root); actors.push(a); cycleAnims(a, ['idle', 'attack', 'idle', 'heavy', 'taunt'], rand(2.0, 2.6)); label(a.root, NAMES[id][0], NAMES[id][1], 'boss', a.height + 0.3); });
+  camT = { x: 0, y: 1.7, z: 0.2, dist: 19, pitch: 0.3, yaw: 0 }; orbit.auto = false;
+  $('info').innerHTML = '<b>Враги и боссы</b> — 11 из 15 врагов и 6 из 7 боссов на реальных моделях (кабан, пыхгриб, жабошаман, виверна и дракон остаются процедурными).';
+}
+
+function sceneNPC() {
+  buildEnv('village', 40, 8);
+  const npcs = ['elder', 'smith', 'alch', 'beast', 'stranger', 'king', 'v0', 'v1', 'v2'];
+  const comps = ['comp:knight', 'comp:barbarian', 'comp:mage', 'comp:ranger', 'comp:rogue', 'comp:druid', 'comp:cleric', 'comp:paladin', 'comp:ninja', 'comp:avian', 'comp:tiefling', 'comp:brute'];
+  npcs.forEach((id, i) => { const a = EVAssets.spawn(id); a.root.position.set((i - 4) * 2.0, 0, 2.4); world.add(a.root); actors.push(a); cycleAnims(a, id === 'smith' ? ['work', 'idle', 'interact'] : ['idle', 'interact', 'idle', 'cheer', 'wave'], rand(2, 3)); label(a.root, (NAMES[id] || [{ v0: 'Селянин', v1: 'Селянка', v2: 'Старик' }[id]])[0], NAMES[id] ? NAMES[id][1] : 'житель', '', a.height + 0.2); });
+  comps.forEach((id, i) => { const a = EVAssets.spawn(id); a.root.position.set((i - 5.5) * 1.75, 0, -1.6); world.add(a.root); actors.push(a); cycleAnims(a, ['idle', 'attack', 'idle', 'cheer'], rand(2, 2.8)); label(a.root, NAMES[id][0], NAMES[id][1], '', a.height + 0.2); });
+  camT = { x: 0, y: 1.3, z: 0.4, dist: 15, pitch: 0.4, yaw: 0 }; orbit.auto = false;
+  $('info').innerHTML = '<b>НПС и спутники</b> — 6 сюжетных НПС, 3 жителя, 12 героев таверны (перекраска атласа: волосы Веданы, плащ Серого).';
+}
+
+const VPOS = { hall: [0, -15, 0], forge: [-13, -6, 0.7], alch: [13, -7, -0.7], pen: [14, 8, -1.3], tavern: [-14, 8, 1.3], temple: [10, -19, -0.35], store: [-10, 17, 2.6], saw: [-20, -1, 1.5], mine: [20, -1, -1.5], well: [7, 16, 3.1] };
+const HOUSE_POS = [[-6, -22, 0.3], [-19, -13, 0.9], [19, -14, -0.9], [0, 21, PI], [17, 17, -2.3], [-17, 18, 2.3], [-21, 8, 1.6], [21, 8, -1.6]];
+const TOWER_POS = [[-22, -20], [22, -20], [-23, 20], [23, 20]];
+function sceneVillage() {
+  buildEnv('village', 50, 29, villagePaint);
+  let lv = +(Q.get('lv') || 3);
+  const grp = new THREE.Group(); world.add(grp);
+  function rebuild() {
+    while (grp.children.length) grp.remove(grp.children[0]);
+    for (const id in VPOS) { const [x, z, ry] = VPOS[id]; const l = id === 'hall' ? lv : Math.max(1, Math.min(5, lv + ((x * 7 + z) % 3 === 0 ? -1 : 0))); const b = EVAssets.building(id, l); b.position.set(x, 0, z); b.rotation.y = ry + PI; grp.add(b); }
+    for (let i = 0; i < Math.min(8, lv * 2); i++) { const [x, z, ry] = HOUSE_POS[i]; const b = EVAssets.building('houses', 1 + (i % 4)); b.position.set(x, 0, z); b.rotation.y = ry + PI; grp.add(b); }
+    for (let i = 0; i < Math.min(4, lv); i++) { const [x, z] = TOWER_POS[i]; const b = EVAssets.building('walls', lv); b.position.set(x, 0, z); grp.add(b); }
+    // fences / path props
+    const f = [], NF = 84; for (let i = 0; i < NF; i++) { const a = i / NF * TAU; if (Math.abs(a - PI / 2) < 0.12) continue; f.push(new THREE.Matrix4().compose(new THREE.Vector3(Math.cos(a) * 27, 0, Math.sin(a) * 27), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -a, 0)), new THREE.Vector3(1.1, 1.1, 1.25))); }
+    grp.add(EVAssets.instanced('fence', f));
+    const deco = [['v:barrel', -4, -9], ['v:crate_B_small', -5, -8.4], ['v:sack', 4.5, -9], ['v:wheelbarrow', 6, 6], ['h:haybale', -8, 12], ['v:resource_lumber', -16, 2], ['v:resource_stone', 16, 2.5], ['h:lantern_standing', 3, -3], ['h:lantern_standing', -3, -3], ['v:target', -6, 14]];
+    for (const [id, x, z] of deco) { const p = EVAssets.prop(id); p.position.set(x, 0, z); p.rotation.y = x * 0.3; grp.add(p); }
+    const heart = EVAssets.prop('h:shrine_candles', { s: 1.6 }); heart.position.set(0, 0, -4); grp.add(heart);
+    $('info').innerHTML = '<b>Тлеющий Брод</b> — уровень построек ' + lv + ' · Medieval Hexagon Pack, уровни 1–5 = смена модели + пристройки';
+  }
+  rebuild();
+  const who = [['elder', 0, -10], ['smith', -10.5, -4], ['alch', 10.5, -4.5], ['beast', 11.5, 5.5], ['stranger', -11.5, 5.5], ['v0', 4, 4], ['v1', -4, 7], ['v2', 2, 10]];
+  for (const [id, x, z] of who) { const a = EVAssets.spawn(id); a.root.position.set(x, 0, z); a.root.rotation.y = Math.atan2(-x, 14 - z); world.add(a.root); actors.push(a); cycleAnims(a, id === 'smith' ? ['work', 'idle'] : ['idle', 'interact', 'idle', 'wave'], rand(2.5, 3.5)); }
+  const h = EVAssets.spawn('hero'); h.setGear({ helm: 'hm_guard', chest: 'ch_plate', gloves: 'gl_plate', boots: 'bt_plate', weapon: 'sw2', offhand: 'sh2' }); h.root.position.set(0, 0, 2); world.add(h.root); actors.push(h);
+  let t = 0; updaters.push((dt) => { t += dt * 0.35; h.root.position.set(Math.sin(t) * 6, 0, 3 + Math.cos(t * 1.3) * 3); h.root.rotation.y = Math.atan2(Math.cos(t) * 6, -Math.sin(t * 1.3) * 3.9); if (h.currentName !== 'run') h.play('run'); });
+  const g = document.createElement('div'); g.className = 'grp'; $('bot').appendChild(g); btns(g, [1, 2, 3, 4, 5].map((l) => [l, 'Ур. ' + l]), lv, (k) => { lv = +k; rebuild(); });
+  camT = { x: 0, y: 0, z: -4.5, dist: 41, pitch: 0.94, yaw: 0 }; orbit.auto = false;
+}
+
+function sceneFight() {
+  buildEnv(ZONE, 40, 6);
+  const Z = M.zones[ZONE].zone || 1;
+  const roster = { 1: ['goblin', 'goblinArcher', 'goblin', 'wolf'], 2: ['wolf', 'sapling', 'goblinArcher', 'wolf'], 3: ['bogling', 'sapling', 'bogling', 'wolf'], 4: ['skelShield', 'skelArcher', 'wraith', 'cultist'], 5: ['ashGolem', 'imp', 'cultist', 'skelArcher'], 6: ['imp', 'ashGolem', 'cultist', 'wraith'] }[Z];
+  const h = EVAssets.spawn('hero'); h.setGear({ helm: 'hm_horn', chest: 'ch_mail', gloves: 'gl_leather', boots: 'bt_leather', weapon: 'ax3', offhand: null }); world.add(h.root); actors.push(h);
+  const c = EVAssets.spawn('comp:mage'); c.root.position.set(-2.2, 0, 1.4); world.add(c.root); actors.push(c);
+  trail = EVFX.slashTrail({ color: '#ff9a4a', segments: 16 }); scene.add(trail.mesh);
+  const foes = [];
+  for (let i = 0; i < 15; i++) { const id = roster[i % roster.length]; const a = EVAssets.spawn(id); const ang = i / 15 * TAU, r = 3.2 + (i % 3) * 1.6; a.root.position.set(Math.cos(ang) * r, 0, Math.sin(ang) * r); a.root.rotation.y = Math.atan2(-a.root.position.x, -a.root.position.z); world.add(a.root); actors.push(a); foes.push(a); a._ph = rand(0, 3); }
+  // props
+  const pids = { 1: ['obj:crate', 'obj:barrel', 'hay', 'fence'], 2: ['log', 'obj:crate', 'stone2'], 3: ['stump', 'bogRock', 'obj:barrel'], 4: ['tomb', 'candles', 'coffin', 'obj:barrel'], 5: ['lavaRock', 'skulls', 'obj:crate'], 6: ['goldPile', 'obj:vault', 'skulls'] }[Z];
+  for (let i = 0; i < 10; i++) { const p = EVAssets.prop(pids[i % pids.length]); const a = rand(0, TAU), r = rand(7, 11); p.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); p.rotation.y = rand(0, TAU); world.add(p); }
+  let t = 0, combo = 0, next = 0.2; const ring = new THREE.Vector3();
+  updaters.push((dt) => {
+    t += dt; next -= dt; h.root.rotation.y += dt * 0.9;
+    if (next <= 0) { next = 0.75; h.play('attack', { once: true, combo: combo++, duration: 0.7 }); trail.emit = true; if (combo % 4 === 0) { h.play('skill', { once: true }); next = 1.6; setTimeout(() => EVFX.burst(scene, ring.set(0, 0.1, 0), { color: '#ff7a2a', radius: 4.2, duration: 0.7 }), 600); } }
+    if (h.current && /idle/.test(h.currentName)) trail.emit = false;
+    if (h.slots.r && trail.target !== h.slots.r) trail.follow(h.slots.r, new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0, 1.3, 0));
+    trail.update(dt);
+    for (const f of foes) { f._ph -= dt; if (f._ph <= 0) { f._ph = rand(1.2, 2.4); const r = Math.random(); f.play(r < 0.55 ? 'attack' : r < 0.8 ? 'hit' : 'heavy', { once: true }); if (r >= 0.55 && r < 0.8) f.flash(0.15); } }
+    if (Math.floor(t * 0.5) !== Math.floor((t - dt) * 0.5)) { c.play('cast', { once: true }); setTimeout(() => EVFX.burst(scene, new THREE.Vector3(rand(-4, 4), 0.1, rand(-4, 4)), { color: '#6fd8ff', radius: 2 }), 600); }
+  });
+  camT = { x: 0, y: 0, z: 0, dist: 30, pitch: 0.94, yaw: 0 }; orbit.auto = false; // in-game camera
+  $('info').innerHTML = '<b>Типичный бой</b> — герой + спутник + 15 врагов + 10 пропсов, игровая камера (dist 30, pitch .94).';
+}
+
+const SCENES = { hero: ['Герой', sceneHero], lineup: ['Враги/боссы', sceneLineup], npc: ['НПС/спутники', sceneNPC], village: ['Деревня', sceneVillage], fight: ['Бой', sceneFight] };
+function setScene(k) { SCENE = k; clearScene(); SCENES[k][1](); measure(); }
+function setZone(z) { ZONE = z; if (SCENE === 'village' || SCENE === 'npc') { EVPostFX.applyZone(M.zones[z], { scene, hemi, sun, rim: RIM, fx, renderer: R }); return; } buildEnv(z, SCENE === 'lineup' ? 44 : SCENE === 'fight' ? 40 : 34, SCENE === 'lineup' ? 10 : SCENE === 'fight' ? 6 : 7); }
+function setQ(q) { QL = q; EVAssets.setQuality(q); fx.setQuality(q); resize(); if (ambient) ambient.count = q === 'low' ? 80 : q === 'med' ? 180 : 320; }
+
+// ---------------------------------------------------------------- stats
+const ST = { fps: 0, frames: 0, acc: 0, calls: 0, tris: 0, scCalls: 0 };
+function measure() {
+  setTimeout(() => {
+    R.info.autoReset = false; R.info.reset(); R.setRenderTarget(null); R.render(scene, cam); ST.scCalls = R.info.render.calls; ST.tris = R.info.render.triangles; R.info.autoReset = true;
+  }, 300);
+}
+function statsText() {
+  const s = EVAssets.stats(); const mi = R.info.memory;
+  return 'FPS ' + ST.fps.toFixed(0) + '  ' + QL.toUpperCase() + (BEFORE ? ' (до)' : '') + '\nсцена: ' + ST.scCalls + ' DC · ' + (ST.tris / 1000).toFixed(1) + 'k △\nкадр: ' + R.info.render.calls + ' DC (с постом)\nтекстур ' + s.textures + ' · ' + s.textureMB + ' МБ\nгеом ' + mi.geometries + ' · акторов ' + s.actors;
+}
+window.__ev = { setScene, setZone, setQ, measure, stats: () => ({ scene: SCENE, zone: ZONE, q: QL, sceneCalls: ST.scCalls, tris: ST.tris, frameCalls: R.info.render.calls, geometries: R.info.memory.geometries, textures: R.info.memory.textures, ev: EVAssets.stats(), fps: ST.fps }) };
+
+// ---------------------------------------------------------------- camera / input
+let drag = null;
+$('cv').addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: camT.yaw, pitch: camT.pitch }; });
+addEventListener('pointermove', (e) => { if (!drag) return; camT.yaw = drag.yaw - (e.clientX - drag.x) * 0.006; camT.pitch = Math.max(0.1, Math.min(1.35, drag.pitch + (e.clientY - drag.y) * 0.004)); });
+addEventListener('pointerup', () => (drag = null));
+$('cv').addEventListener('wheel', (e) => { camT.dist *= e.deltaY > 0 ? 1.1 : 0.9; });
+function camUpdate() {
+  const d = camT.dist, p = camT.pitch, y = camT.yaw;
+  cam.position.set(camT.x + Math.sin(y) * Math.cos(p) * d, camT.y + Math.sin(p) * d, camT.z + Math.cos(y) * Math.cos(p) * d);
+  cam.lookAt(camT.x, camT.y, camT.z);
+  sun.position.set(camT.x - 12, 24, camT.z + 10); sun.target.position.set(camT.x, 0, camT.z);
+  if (ambient) ambient.center.set(camT.x, 0, camT.z);
+}
+const _v = new THREE.Vector3();
+function updLabels() {
+  const w = innerWidth, h = innerHeight;
+  for (const l of labels) { l.obj.getWorldPosition(_v); _v.y += l.y; _v.project(cam); if (_v.z > 1) { l.d.style.display = 'none'; continue; } l.d.style.display = ''; l.d.style.left = ((_v.x + 1) / 2 * w) + 'px'; l.d.style.top = ((1 - _v.y) / 2 * h) + 'px'; }
+}
+
+// ---------------------------------------------------------------- boot
+(async function boot() {
+  try {
+    await EVAssets.init({ renderer: R, manifest: 'manifest.json', base: '../assets/', quality: QL, gradientMap: GRAD, rim: RIM });
+    M = EVAssets.manifest;
+    fx = EVPostFX.create(R, scene, cam, { quality: QL });
+    resize();
+    const groups = ['all'];
+    const t0 = performance.now();
+    await EVAssets.load(groups, (d, n, f) => { $('pbi').style.width = (d / n * 100) + '%'; $('lmsg').textContent = 'Загрузка: ' + f + ' (' + d + '/' + n + ')'; });
+    window.__loadMs = performance.now() - t0;
+    btns($('scenes'), Object.entries(SCENES).map(([k, v]) => [k, v[0]]), SCENE, setScene);
+    btns($('zones'), [['meadow', 'Луга'], ['forest', 'Чаща'], ['swamp', 'Топи'], ['crypt', 'Склепы'], ['ashlands', 'Пустоши'], ['lair', 'Логово']], ZONE, setZone);
+    btns($('quals'), [['low', 'Low'], ['med', 'Med'], ['high', 'High']], QL, setQ);
+    $('cmp').onclick = () => { BEFORE = !BEFORE; $('cmp').classList.toggle('on', BEFORE); applyBefore(); };
+    setScene(SCENE); if (BEFORE) applyBefore();
+    $('load').style.opacity = 0; setTimeout(() => $('load').remove(), 450);
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      EVAssets.tick(dt); for (const u of updaters) u(dt); for (const a of actors) a.update(dt); EVFX.update(dt);
+      camUpdate(); updLabels(); fx.render(dt);
+      ST.frames++; ST.acc += dt; if (ST.acc > 0.5) { ST.fps = ST.frames / ST.acc; ST.frames = 0; ST.acc = 0; $('stats').textContent = statsText(); }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    setTimeout(() => (document.title = 'DONE ' + document.title), 1500);
+  } catch (e) { console.error(e); $('lmsg').textContent = 'Ошибка: ' + e.message; document.title = 'DONE ERR'; }
+})();
+// "before" approximation: no post, no outlines, flat — the old procedural look lives in ../index.html; this toggle only removes the new pipeline
+function applyBefore() { fx.setQuality(BEFORE ? 'low' : QL); EVAssets.setQuality(BEFORE ? 'low' : QL); }
+</script>
+</body>
+</html>

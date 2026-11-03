@@ -25,6 +25,7 @@ function enterVillage(after){
   if(stageDone('1-3')&&!S.seen.egg_gift) seq.push(cb=>playDialog('egg_gift',()=>{ S.pets.eggs.push({kind:'wolf',start:0}); toast('Получено яйцо: <b>Волчонок</b>',iconForGeo('eggwolf',eggGeo('wolf')),1); saveGame(); cb(); }));
   if(stageDone('1-5')&&!S.seen.stranger_hi) seq.push(cb=>playDialog('stranger_hi',cb));
   if(stageDone('1-5')&&!S.seen.abyss_open) seq.push(cb=>playDialog('abyss_open',cb));
+  raidVillageSeq(seq); compVillageSeq(seq);
   if(after) seq.unshift(after);
   const run=()=>{ const f=seq.shift(); if(f) f(run); else { questCheck(); hudRefresh(); } };
   run(); saveGame();
@@ -53,7 +54,7 @@ function updateVillage(dt){
   if(W.heartCore){ W.heartCore.rotation.y+=dt*.8; W.heartCore.position.y=2.4+Math.sin(G.time*1.6)*.12; if(Math.random()<dt*14) fx('ember',rand(-1,1),2.3,rand(-1,1)); }
   if(Math.random()<dt*3*Q.ambient) fx('pollen',P.x+rand(-14,14),rand(.5,3),P.z+rand(-20,8));
   for(const o of W.objs) if(o.swirl) o.swirl.material.uniforms.uT.value=G.time;
-  updateDrops(dt);
+  updateDrops(dt); raidVillageTick(dt);
 }
 
 // ---------- stage ----------
@@ -144,6 +145,7 @@ function onBossDeath(e){
 
 // ---------- run end ----------
 function runEnd(win,reason,keep){
+  if(G.mode==='raid'){ raidEnd(false,reason||'Герой пал'); return; }
   if(G.mode!=='stage'&&G.mode!=='abyss') return;
   if(G.mode==='abyss'){ abyssEnd(reason||'Вы пали'); return; }
   const r=G.run, I=r.info; G.mode='result';
@@ -245,7 +247,8 @@ function loop(now){
   if(dt>0) for(let i=G.timers.length-1;i>=0;i--){ const t=G.timers[i]; t.t-=dt; if(t.t<=0){ G.timers.splice(i,1); try{ t.fn(); }catch(e){ console.error(e); } } }
   try{
     if(G.mode==='village') updateVillage(dt);
-    else if(G.mode==='stage'||G.mode==='abyss'){ if(dt>0){ updateStage(dt); if(G.mode==='abyss') abyssTick(dt); } else { animHero(G.P,0); for(const e of G.enemies) animEnemy(e,0); for(const p of G.pets) animPet(p,0); } }
+    else if(G.mode==='raidprep') raidPrepTick(rdt);
+    else if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid'){ if(dt>0){ updateStage(dt); if(G.mode==='abyss') abyssTick(dt); if(G.mode==='raid') raidTick(dt); } else { animHero(G.P,0); for(const e of G.enemies) animEnemy(e,0); for(const p of G.pets) animPet(p,0); } }
     else if(G.mode==='title'){ G.time+=rdt*0; const P=G.P; P.move=0; animHero(P,rdt); for(const p of G.pets){ p.t+=rdt; animPet(p,rdt); } for(const n of W.npcs) animNPC(n,rdt,false); if(W.heartCore){ W.heartCore.rotation.y+=rdt*.8; if(Math.random()<rdt*14) fx('ember',rand(-1,1),2.3,rand(-1,1)); } if(CAMR.override) CAMR.override.x=Math.sin(now/7000)*4; G.time+=rdt; }
     else if(G.mode==='result'&&W){ for(const e of G.enemies) animEnemy(e,rdt); if(G.P) animHero(G.P,rdt); }
   }catch(e){ console.error(e); }
@@ -262,6 +265,7 @@ function loop(now){
 // ---------- bot (balance testing) ----------
 function botInput(){
   const P=G.P; let tx=null,tz=null,atk=false;
+  if(G.mode==='raid') return raidBotInput();
   if(!W||W.kind==='village'||!W.obj) return {mx:0,mz:0,atk:false};
   G._bs=G._bs||{x:0,z:0,t:0,esc:0,ex:0,ez:0}; const bs=G._bs; if(Math.hypot(P.x-bs.x,P.z-bs.z)>1.2){ bs.x=P.x; bs.z=P.z; bs.t=G.time; } else if(G.time-bs.t>4&&bs.esc<=0){ bs.esc=1.2; const a=rand(TAU); bs.ex=Math.sin(a); bs.ez=Math.cos(a); bs.t=G.time; }
   if(bs.esc>0){ bs.esc-=1/30; return {mx:bs.ex,mz:bs.ez,atk:true}; }

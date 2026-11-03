@@ -252,13 +252,14 @@ function makeVillage(){
   const b={minX:-46,maxX:46,minZ:-56,maxZ:40}; W.bounds=b;
   W.pools=[{x:30,z:4,r:5},{x:33,z:-6,r:3.5},{x:-31,z:-10,r:4}];
   W.paths=[{ax:0,az:0,bx:-6,bz:-31}]; for(const id of ['hall','forge','alch','pen','tavern','temple','store','saw','mine','well']){ const p=VPOS[id]; W.paths.push({ax:0,az:0,bx:p[0]*.8,bz:p[1]*.8}); }
+  raidCarveLanes();
   buildGround(Z,b,{plaza:5.5,pathW:1.3,noPath:false});
   buildLiquid(Z);
   // dirt paths to buildings painted via segs (side) are skipped; add palisade ring
-  for(let i=0;i<36;i++){ const a=i/36*TAU; const x=Math.cos(a)*25.5, z=Math.sin(a)*25.5; if(Math.abs(angWrap(a-Math.atan2(-31,-6)))<.22) continue; W.props.push({type:'palisade',x,z,s:1,ry:-a+PI/2}); }
+  for(let i=0;i<36;i++){ const a=i/36*TAU; const x=Math.cos(a)*25.5, z=Math.sin(a)*25.5; if(Math.abs(angWrap(a-Math.atan2(-31,-6)))<.22||nearLane(x,z,3.6)) continue; W.props.push({type:'palisade',x,z,s:1,ry:-a+PI/2}); }
   // forest around
   const wallZ=Object.assign({},ZONES[0],{wall:['treeRound','treeBirch','pine','treeRound','rock','bush']});
-  for(let i=0;i<Math.round(260*Q.props);i++){ const a=rand(TAU),r=rand(28,46); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(Math.abs(x+6)<5&&z<-26) continue; if(W.pools.some(p=>Math.hypot(x-p.x,z-p.z)<p.r+1)) continue; W.props.push({type:pick(wallZ.wall),x,z,s:rand(.9,1.4),ry:rand(TAU),y:groundY(x,z)-.1}); }
+  for(let i=0;i<Math.round(260*Q.props);i++){ const a=rand(TAU),r=rand(28,46); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(Math.abs(x+6)<5&&z<-26) continue; if(nearLane(x,z,4.2)) continue; if(W.pools.some(p=>Math.hypot(x-p.x,z-p.z)<p.r+1)) continue; W.props.push({type:pick(wallZ.wall),x,z,s:rand(.9,1.4),ry:rand(TAU),y:groundY(x,z)-.1}); }
   for(let i=0;i<Math.round(160*Q.grass);i++){ const a=rand(TAU),r=rand(6,23); const x=Math.cos(a)*r,z=Math.sin(a)*r; W.props.push({type:i%4?'grass':'flowers',x,z,s:rand(.8,1.2),ry:rand(TAU)}); }
   // decor
   const deco=[['lantern',-4,4],['lantern',4,-4.5],['lantern',-3.5,-5],['lantern',5,4],['cart',-6,12],['hay',8,12],['barrelP',-11,1],['barrelP',-11.6,1.8],['banner',-2.5,-9],['banner',2.5,-9],['sign',-4.5,-24],['fence',16,1],['fence',-16,-12]];
@@ -294,6 +295,7 @@ function buildVillageBuildings(){
     if(lv>0) W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1});
     if(id==='pen'&&lv>0){ W.obst.push({x:x+Math.sin(ry)*-1.6*0,z:z-1.6,r:1.6,bld:1}); }
   }
+  buildRaidStructs();
   W.abyssOpen=stageDone('1-5');
   if(W.abyssOpen&&!W.abyssPit){ W.abyssPit=mkObj('abyssPit',-15,-21,{ry:0}); }
 }

@@ -194,6 +194,22 @@
    ]
   }
  },
+ "fileRecolor": {
+  "kit_nature": [
+   {
+    "h": [
+     55,
+     150
+    ],
+    "s": [
+     0.2,
+     1
+    ],
+    "sMul": 0.78,
+    "lMul": 0.9
+   }
+  ]
+ },
  "clipsets": {
   "medium": {
    "idle": "Idle_A",
@@ -407,8 +423,8 @@
    "ground": "#8cc05a",
    "grade": {
     "lift": [
-     0.02,
-     0.02,
+     0.03,
+     0.025,
      0.0
     ],
     "gamma": [
@@ -417,14 +433,14 @@
      1.02
     ],
     "gain": [
-     1.04,
      1.02,
-     0.96
+     0.99,
+     0.92
     ],
-    "sat": 1.12,
-    "vignette": 0.25,
-    "bloom": 0.35,
-    "bloomTh": 0.82
+    "sat": 0.98,
+    "vignette": 0.3,
+    "bloom": 0.3,
+    "bloomTh": 0.93
    }
   },
   "forest": {
@@ -459,10 +475,10 @@
      1.04,
      0.94
     ],
-    "sat": 1.08,
+    "sat": 1.0,
     "vignette": 0.4,
-    "bloom": 0.45,
-    "bloomTh": 0.78
+    "bloom": 0.4,
+    "bloomTh": 0.85
    }
   },
   "swamp": {
@@ -635,8 +651,8 @@
    "ground": "#86b85a",
    "grade": {
     "lift": [
+     0.03,
      0.02,
-     0.015,
      0.0
     ],
     "gamma": [
@@ -645,14 +661,14 @@
      1.03
     ],
     "gain": [
-     1.05,
-     1.02,
-     0.95
+     1.03,
+     1.0,
+     0.92
     ],
-    "sat": 1.1,
-    "vignette": 0.22,
-    "bloom": 0.3,
-    "bloomTh": 0.85
+    "sat": 0.98,
+    "vignette": 0.26,
+    "bloom": 0.28,
+    "bloomTh": 0.93
    }
   }
  },
@@ -846,25 +862,23 @@
    },
    "looks": [
     {
-     "skin": null
-    },
-    {
      "recolor": [
       {
        "h": [
-        15,
-        40
+        36,
+        56
        ],
        "s": [
-        0.25,
-        0.75
+        0.3,
+        1
        ],
        "l": [
-        0.45,
+        0.4,
         0.92
        ],
-       "lMul": 0.72,
-       "sMul": 1.05
+       "hSet": 16,
+       "sMul": 1.05,
+       "lMul": 0.55
       }
      ]
     },
@@ -872,19 +886,56 @@
      "recolor": [
       {
        "h": [
-        15,
-        40
+        36,
+        56
        ],
        "s": [
-        0.25,
-        0.75
+        0.3,
+        1
        ],
        "l": [
-        0.45,
+        0.4,
         0.92
        ],
-       "lMul": 1.08,
-       "sMul": 0.8
+       "hSet": 20,
+       "sSet": 0.25,
+       "lMul": 0.2
+      },
+      {
+       "h": [
+        12,
+        35
+       ],
+       "s": [
+        0.2,
+        0.8
+       ],
+       "l": [
+        0.4,
+        0.95
+       ],
+       "lMul": 0.74,
+       "sMul": 1.1
+      }
+     ]
+    },
+    {
+     "recolor": [
+      {
+       "h": [
+        36,
+        56
+       ],
+       "s": [
+        0.3,
+        1
+       ],
+       "l": [
+        0.4,
+        0.92
+       ],
+       "sMul": 0.55,
+       "lMul": 1.12
       }
      ]
     }
@@ -1162,19 +1213,19 @@
    "recolor": [
     {
      "h": [
-      330,
-      30
+      335,
+      358
      ],
      "s": [
-      0.3,
+      0.35,
       1
      ],
      "l": [
-      0.35,
-      0.9
+      0.3,
+      0.92
      ],
-     "sMul": 0.05,
-     "lMul": 1.25
+     "sMul": 0.06,
+     "lMul": 1.15
     }
    ],
    "note": "Ведана: witch without hat, hair recoloured grey, glasses kept"
@@ -1251,9 +1302,10 @@
    "clips": "npc",
    "tint": [
     "#3a1010",
-    0.2
+    0.25
    ],
-   "glow": "#ff6a1a"
+   "glow": "#ff6a1a",
+   "glowA": 0.25
   },
   "v0": {
    "type": "char",
@@ -1386,7 +1438,9 @@
    "h": 1.0,
    "clips": "largeUnarmed",
    "mat": "stone",
-   "note": "tiny re-skinned golem"
+   "glow": "#5af0d0",
+   "glowA": 0.5,
+   "note": "tiny re-skinned golem (teal crystal glow like the egg colours)"
   },
   "pet:wolf": {
    "type": "procedural",
@@ -1416,19 +1470,19 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_round",
-   "s": 0.62
+   "s": 0.849
   },
   "treeBirch": {
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_tall",
-   "s": 0.62
+   "s": 0.775
   },
   "bush": {
    "type": "prop",
    "file": "kit_nature",
    "node": "bush",
-   "s": 1.6
+   "s": 3.52
   },
   "rock": {
    "type": "prop",
@@ -1452,7 +1506,7 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "grass",
-   "s": 1.6
+   "s": 0.8
   },
   "flowers": {
    "type": "procedural",
@@ -1462,13 +1516,13 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "pine",
-   "s": 0.62
+   "s": 0.775
   },
   "oakDark": {
    "type": "prop",
    "file": "kit_nature",
    "node": "oak_dark",
-   "s": 0.62
+   "s": 0.849
   },
   "log": {
    "type": "prop",
@@ -1483,7 +1537,7 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "grass_dark",
-   "s": 2.0
+   "s": 0.9
   },
   "stone2": {
    "type": "prop",
@@ -1495,19 +1549,19 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "dead_tree",
-   "s": 0.95
+   "s": 0.997
   },
   "reeds": {
    "type": "prop",
    "file": "kit_nature",
    "node": "grass_swamp",
-   "s": 2.2
+   "s": 1.98
   },
   "stump": {
    "type": "prop",
    "file": "kit_crypt",
    "node": "h_tree_dead_small",
-   "s": 0.45
+   "s": 0.36
   },
   "glowShroom": {
    "type": "procedural",
@@ -1523,13 +1577,13 @@
    "type": "prop",
    "file": "kit_dungeon",
    "node": "pillar",
-   "s": 0.7
+   "s": 0.805
   },
   "pillarBroken": {
    "type": "prop",
    "file": "kit_dungeon",
    "node": "pillar_decorated",
-   "s": 0.65
+   "s": 0.747
   },
   "tomb": {
    "type": "prop",
@@ -1541,7 +1595,7 @@
    "type": "prop",
    "file": "kit_dungeon",
    "node": "wall_broken",
-   "s": 0.425
+   "s": 0.595
   },
   "candles": {
    "type": "prop",
@@ -1606,7 +1660,7 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "rock_dark_round",
-   "s": 1.6
+   "s": 2.8
   },
   "lantern": {
    "type": "prop",
@@ -1645,7 +1699,7 @@
    "type": "prop",
    "file": "kit_village",
    "node": "p_crate_A_big",
-   "s": 3.0
+   "s": 3.81
   },
   "obj:pot": {
    "type": "prop",
@@ -1758,115 +1812,115 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_wide",
-   "s": 0.62
+   "s": 0.849
   },
   "n:tree_bloom": {
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_bloom",
-   "s": 0.62
+   "s": 0.744
   },
   "n:fir": {
    "type": "prop",
    "file": "kit_nature",
    "node": "fir",
-   "s": 0.62
+   "s": 0.868
   },
   "n:tree_block": {
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_block",
-   "s": 0.62
+   "s": 0.775
   },
   "n:pine_dark": {
    "type": "prop",
    "file": "kit_nature",
    "node": "pine_dark",
-   "s": 0.62
+   "s": 0.775
   },
   "n:fir_dark": {
    "type": "prop",
    "file": "kit_nature",
    "node": "fir_dark",
-   "s": 0.62
+   "s": 0.868
   },
   "n:tree_wide_dark": {
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_wide_dark",
-   "s": 0.62
+   "s": 0.849
   },
   "n:tree_swamp": {
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_swamp",
-   "s": 0.62
+   "s": 0.806
   },
   "n:dead_tree_thin": {
    "type": "prop",
    "file": "kit_nature",
    "node": "dead_tree_thin",
-   "s": 0.62
+   "s": 0.744
   },
   "n:dead_tree_red": {
    "type": "prop",
    "file": "kit_nature",
    "node": "dead_tree_red",
-   "s": 0.62
+   "s": 0.868
   },
   "n:tree_autumn": {
    "type": "prop",
    "file": "kit_nature",
    "node": "tree_autumn",
-   "s": 0.62
+   "s": 0.849
   },
   "n:bush_box": {
    "type": "prop",
    "file": "kit_nature",
    "node": "bush_box",
-   "s": 1.5
+   "s": 1.65
   },
   "n:bush_tall": {
    "type": "prop",
    "file": "kit_nature",
    "node": "bush_tall",
-   "s": 1.5
+   "s": 1.65
   },
   "n:bush_dark": {
    "type": "prop",
    "file": "kit_nature",
    "node": "bush_dark",
-   "s": 1.5
+   "s": 3.45
   },
   "n:bush_swamp": {
    "type": "prop",
    "file": "kit_nature",
    "node": "bush_swamp",
-   "s": 1.5
+   "s": 3.45
   },
   "n:bush_berry": {
    "type": "prop",
    "file": "kit_nature",
    "node": "bush_berry",
-   "s": 1.5
+   "s": 3.45
   },
   "n:rock_small": {
    "type": "prop",
    "file": "kit_nature",
    "node": "rock_small",
-   "s": 1.5
+   "s": 3.9
   },
   "n:rock_pebble": {
    "type": "prop",
    "file": "kit_nature",
    "node": "rock_pebble",
-   "s": 1.5
+   "s": 2.55
   },
   "n:rock_block": {
    "type": "prop",
    "file": "kit_nature",
    "node": "rock_block",
-   "s": 1.5
+   "s": 2.7
   },
   "n:rock_bog_round": {
    "type": "prop",
@@ -1884,7 +1938,7 @@
    "type": "prop",
    "file": "kit_nature",
    "node": "grass_blade",
-   "s": 1.5
+   "s": 0.675
   },
   "d:column": {
    "type": "prop",
@@ -2190,85 +2244,85 @@
    "type": "prop",
    "file": "kit_village",
    "node": "p_barrel",
-   "s": 3.2
+   "s": 4.2
   },
   "v:crate_B_small": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_crate_B_small",
-   "s": 3.2
+   "s": 4.2
   },
   "v:sack": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_sack",
-   "s": 3.2
+   "s": 4.2
   },
   "v:weaponrack": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_weaponrack",
-   "s": 3.2
+   "s": 4.2
   },
   "v:wheelbarrow": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_wheelbarrow",
-   "s": 3.2
+   "s": 4.2
   },
   "v:target": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_target",
-   "s": 3.2
+   "s": 4.2
   },
   "v:trough": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_trough",
-   "s": 3.2
+   "s": 4.2
   },
   "v:bucket_water": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_bucket_water",
-   "s": 3.2
+   "s": 4.2
   },
   "v:resource_lumber": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_resource_lumber",
-   "s": 3.2
+   "s": 4.2
   },
   "v:resource_stone": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_resource_stone",
-   "s": 3.2
+   "s": 4.2
   },
   "v:flag_red": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_flag_red",
-   "s": 3.2
+   "s": 4.2
   },
   "v:ladder": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_ladder",
-   "s": 3.2
+   "s": 4.2
   },
   "v:pallet": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_pallet",
-   "s": 3.2
+   "s": 4.2
   },
   "v:tent": {
    "type": "prop",
    "file": "kit_village",
    "node": "p_tent",
-   "s": 3.2
+   "s": 4.2
   },
   "r:Gold_Nuggets": {
    "type": "prop",
@@ -2408,64 +2462,64 @@
    "levels": [
     {
      "model": "b_home_B",
-     "s": 3.6,
+     "s": 4.68,
      "extras": []
     },
     {
      "model": "b_townhall",
-     "s": 3.4,
+     "s": 4.42,
      "extras": []
     },
     {
      "model": "b_townhall",
-     "s": 3.6,
+     "s": 4.68,
      "extras": [
       {
        "id": "v:flag_red",
-       "x": -2.6,
-       "z": 2.2,
+       "x": -3.38,
+       "z": 2.86,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     },
     {
      "model": "b_townhall",
-     "s": 3.7,
+     "s": 4.81,
      "extras": [
       {
        "id": "b_tower_A",
-       "x": -3.6,
-       "z": -1.2,
+       "x": -4.68,
+       "z": -1.56,
        "ry": 0,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "v:flag_red",
-       "x": -2.6,
-       "z": 2.2,
+       "x": -3.38,
+       "z": 2.86,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     },
     {
      "model": "b_castle",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "v:flag_red",
-       "x": -3,
-       "z": 3,
+       "x": -3.9,
+       "z": 3.9,
        "ry": 0,
-       "s": 3.4
+       "s": 4.42
       },
       {
        "id": "v:flag_red",
-       "x": 3,
-       "z": 3,
+       "x": 3.9,
+       "z": 3.9,
        "ry": 0,
-       "s": 3.4
+       "s": 4.42
       }
      ]
     }
@@ -2479,100 +2533,100 @@
    "levels": [
     {
      "model": "b_blacksmith",
-     "s": 3.0,
+     "s": 3.9,
      "extras": []
     },
     {
      "model": "b_blacksmith",
-     "s": 3.2,
+     "s": 4.16,
      "extras": [
       {
        "id": "t:anvil",
-       "x": 1.6,
-       "z": 1.8,
+       "x": 2.08,
+       "z": 2.34,
        "ry": 0.5,
-       "s": 0.9
+       "s": 1.17
       }
      ]
     },
     {
      "model": "b_blacksmith",
-     "s": 3.3,
+     "s": 4.29,
      "extras": [
       {
        "id": "t:anvil",
-       "x": 1.6,
-       "z": 1.8,
+       "x": 2.08,
+       "z": 2.34,
        "ry": 0.5,
-       "s": 0.9
+       "s": 1.17
       },
       {
        "id": "v:weaponrack",
-       "x": -1.8,
-       "z": 1.9,
+       "x": -2.34,
+       "z": 2.47,
        "ry": 0,
-       "s": 3.0
+       "s": 3.9
       }
      ]
     },
     {
      "model": "b_blacksmith",
-     "s": 3.4,
+     "s": 4.42,
      "extras": [
       {
        "id": "t:anvil",
-       "x": 1.6,
-       "z": 1.8,
+       "x": 2.08,
+       "z": 2.34,
        "ry": 0.5,
-       "s": 0.9
+       "s": 1.17
       },
       {
        "id": "v:weaponrack",
-       "x": -1.8,
-       "z": 1.9,
+       "x": -2.34,
+       "z": 2.47,
        "ry": 0,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "t:grindstone",
-       "x": 2.4,
-       "z": -0.6,
+       "x": 3.12,
+       "z": -0.78,
        "ry": 1.2,
-       "s": 0.8
+       "s": 1.04
       }
      ]
     },
     {
      "model": "b_blacksmith",
-     "s": 3.6,
+     "s": 4.68,
      "extras": [
       {
        "id": "t:anvil",
-       "x": 1.6,
-       "z": 1.8,
+       "x": 2.08,
+       "z": 2.34,
        "ry": 0.5,
-       "s": 1.0
+       "s": 1.3
       },
       {
        "id": "v:weaponrack",
-       "x": -1.8,
-       "z": 1.9,
+       "x": -2.34,
+       "z": 2.47,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       },
       {
        "id": "t:grindstone",
-       "x": 2.4,
-       "z": -0.6,
+       "x": 3.12,
+       "z": -0.78,
        "ry": 1.2,
-       "s": 0.9
+       "s": 1.17
       },
       {
        "id": "v:flag_red",
-       "x": -2.2,
-       "z": -1.5,
+       "x": -2.86,
+       "z": -1.95,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     }
@@ -2586,94 +2640,94 @@
    "levels": [
     {
      "model": "b_tower_A",
-     "s": 2.6,
+     "s": 3.38,
      "extras": [
       {
        "id": "i:cauldron",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.6
+       "s": 0.78
       }
      ]
     },
     {
      "model": "b_tower_A",
-     "s": 2.8,
+     "s": 3.64,
      "extras": [
       {
        "id": "i:cauldron",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.6
+       "s": 0.78
       },
       {
        "id": "r:Food_Barrel_Empty",
-       "x": -1.6,
-       "z": 1.4,
+       "x": -2.08,
+       "z": 1.82,
        "ry": 0,
-       "s": 0.7
+       "s": 0.91
       }
      ]
     },
     {
      "model": "b_workshop",
-     "s": 3.2,
+     "s": 4.16,
      "extras": [
       {
        "id": "i:cauldron",
-       "x": 2.2,
-       "z": 1.8,
+       "x": 2.86,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.6
+       "s": 0.78
       }
      ]
     },
     {
      "model": "b_workshop",
-     "s": 3.3,
+     "s": 4.29,
      "extras": [
       {
        "id": "i:cauldron",
-       "x": 2.2,
-       "z": 1.8,
+       "x": 2.86,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.6
+       "s": 0.78
       },
       {
        "id": "i:potionstation",
-       "x": -2.2,
-       "z": 1.6,
+       "x": -2.86,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 0.55
+       "s": 0.715
       }
      ]
     },
     {
      "model": "b_workshop",
-     "s": 3.5,
+     "s": 4.55,
      "extras": [
       {
        "id": "i:cauldron",
-       "x": 2.2,
-       "z": 1.8,
+       "x": 2.86,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.65
+       "s": 0.845
       },
       {
        "id": "i:potionstation",
-       "x": -2.2,
-       "z": 1.6,
+       "x": -2.86,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 0.6
+       "s": 0.78
       },
       {
        "id": "b_tower_A",
-       "x": -2.4,
-       "z": -1.6,
+       "x": -3.12,
+       "z": -2.08,
        "ry": 0,
-       "s": 1.8
+       "s": 2.34
       }
      ]
     }
@@ -2687,93 +2741,93 @@
    "levels": [
     {
      "model": "b_stables",
-     "s": 2.6,
+     "s": 3.38,
      "extras": []
     },
     {
      "model": "b_stables",
-     "s": 2.8,
+     "s": 3.64,
      "extras": [
       {
        "id": "v:trough",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 3.0
+       "s": 3.9
       }
      ]
     },
     {
      "model": "b_stables",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "v:trough",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "h:haybale",
-       "x": -1.8,
-       "z": 1.5,
+       "x": -2.34,
+       "z": 1.95,
        "ry": 0.6,
-       "s": 0.5
+       "s": 0.65
       }
      ]
     },
     {
      "model": "b_stables",
-     "s": 3.1,
+     "s": 4.03,
      "extras": [
       {
        "id": "v:trough",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "h:haybale",
-       "x": -1.8,
-       "z": 1.5,
+       "x": -2.34,
+       "z": 1.95,
        "ry": 0.6,
-       "s": 0.5
+       "s": 0.65
       },
       {
        "id": "v:flag_red",
-       "x": 0,
-       "z": -2,
+       "x": 0.0,
+       "z": -2.6,
        "ry": 0,
-       "s": 3
+       "s": 3.9
       }
      ]
     },
     {
      "model": "b_stables",
-     "s": 3.3,
+     "s": 4.29,
      "extras": [
       {
        "id": "v:trough",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 3.2
+       "s": 4.16
       },
       {
        "id": "h:haybale",
-       "x": -1.8,
-       "z": 1.5,
+       "x": -2.34,
+       "z": 1.95,
        "ry": 0.6,
-       "s": 0.55
+       "s": 0.715
       },
       {
        "id": "v:flag_red",
-       "x": 0,
-       "z": -2,
+       "x": 0.0,
+       "z": -2.6,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     }
@@ -2787,71 +2841,71 @@
    "levels": [
     {
      "model": "b_tent",
-     "s": 3.0,
+     "s": 3.9,
      "extras": []
     },
     {
      "model": "b_tavern",
-     "s": 2.8,
+     "s": 3.64,
      "extras": []
     },
     {
      "model": "b_tavern",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "d:keg",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 0.4
+       "s": 0.52
       }
      ]
     },
     {
      "model": "b_tavern",
-     "s": 3.2,
+     "s": 4.16,
      "extras": [
       {
        "id": "d:keg",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 0.4
+       "s": 0.52
       },
       {
        "id": "d:bench",
-       "x": -1.6,
-       "z": 1.8,
+       "x": -2.08,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.45
+       "s": 0.585
       }
      ]
     },
     {
      "model": "b_tavern",
-     "s": 3.4,
+     "s": 4.42,
      "extras": [
       {
        "id": "d:keg",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.3,
-       "s": 0.45
+       "s": 0.585
       },
       {
        "id": "d:bench",
-       "x": -1.6,
-       "z": 1.8,
+       "x": -2.08,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.5
+       "s": 0.65
       },
       {
        "id": "v:flag_red",
-       "x": 2.2,
-       "z": -1.6,
+       "x": 2.86,
+       "z": -2.08,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     }
@@ -2865,57 +2919,57 @@
    "levels": [
     {
      "model": "b_shrine",
-     "s": 3.0,
+     "s": 3.9,
      "extras": []
     },
     {
      "model": "b_shrine",
-     "s": 3.4,
+     "s": 4.42,
      "extras": [
       {
        "id": "h:shrine_candles",
-       "x": 1.6,
-       "z": 1.6,
+       "x": 2.08,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.6
+       "s": 0.78
       }
      ]
     },
     {
      "model": "b_church",
-     "s": 2.8,
+     "s": 3.64,
      "extras": []
     },
     {
      "model": "b_church",
-     "s": 3.1,
+     "s": 4.03,
      "extras": [
       {
        "id": "h:shrine_candles",
-       "x": 1.8,
-       "z": 1.8,
+       "x": 2.34,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.6
+       "s": 0.78
       }
      ]
     },
     {
      "model": "b_church",
-     "s": 3.4,
+     "s": 4.42,
      "extras": [
       {
        "id": "h:shrine_candles",
-       "x": 1.8,
-       "z": 1.8,
+       "x": 2.34,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.65
+       "s": 0.845
       },
       {
        "id": "h:shrine_candles",
-       "x": -1.8,
-       "z": 1.8,
+       "x": -2.34,
+       "z": 2.34,
        "ry": 0,
-       "s": 0.65
+       "s": 0.845
       }
      ]
     }
@@ -2929,72 +2983,72 @@
    "levels": [
     {
      "model": "b_market",
-     "s": 2.6,
+     "s": 3.38,
      "extras": []
     },
     {
      "model": "b_market",
-     "s": 2.8,
+     "s": 3.64,
      "extras": [
       {
        "id": "v:crate_B_small",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     },
     {
      "model": "b_market",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "v:crate_B_small",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.2
+       "s": 4.16
       },
       {
        "id": "v:sack",
-       "x": -1.8,
-       "z": 1.6,
+       "x": -2.34,
+       "z": 2.08,
        "ry": 0,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     },
     {
      "model": "b_barracks",
-     "s": 2.6,
+     "s": 3.38,
      "extras": [
       {
        "id": "v:crate_B_small",
-       "x": 1.8,
-       "z": 1.8,
+       "x": 2.34,
+       "z": 2.34,
        "ry": 0.4,
-       "s": 3.2
+       "s": 4.16
       }
      ]
     },
     {
      "model": "b_barracks",
-     "s": 2.9,
+     "s": 3.77,
      "extras": [
       {
        "id": "v:crate_B_small",
-       "x": 1.8,
-       "z": 1.8,
+       "x": 2.34,
+       "z": 2.34,
        "ry": 0.4,
-       "s": 3.4
+       "s": 4.42
       },
       {
        "id": "v:sack",
-       "x": -1.8,
-       "z": 1.8,
+       "x": -2.34,
+       "z": 2.34,
        "ry": 0,
-       "s": 3.4
+       "s": 4.42
       }
      ]
     }
@@ -3008,79 +3062,79 @@
    "levels": [
     {
      "model": "b_lumbermill",
-     "s": 2.6,
+     "s": 3.38,
      "extras": []
     },
     {
      "model": "b_lumbermill",
-     "s": 2.8,
+     "s": 3.64,
      "extras": [
       {
        "id": "v:resource_lumber",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.0
+       "s": 3.9
       }
      ]
     },
     {
      "model": "b_lumbermill",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "v:resource_lumber",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.0
+       "s": 3.9
       }
      ]
     },
     {
      "model": "b_lumbermill",
-     "s": 3.1,
+     "s": 4.03,
      "extras": [
       {
        "id": "v:resource_lumber",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "t:saw",
-       "x": -1.6,
-       "z": 1.6,
+       "x": -2.08,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.8
+       "s": 1.04
       }
      ]
     },
     {
      "model": "b_lumbermill",
-     "s": 3.3,
+     "s": 4.29,
      "extras": [
       {
        "id": "v:resource_lumber",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.2
+       "s": 4.16
       },
       {
        "id": "t:saw",
-       "x": -1.6,
-       "z": 1.6,
+       "x": -2.08,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.9
+       "s": 1.17
       },
       {
        "id": "v:flag_red",
-       "x": 0,
-       "z": -2,
+       "x": 0.0,
+       "z": -2.6,
        "ry": 0,
-       "s": 3
+       "s": 3.9
       }
      ]
     }
@@ -3094,93 +3148,93 @@
    "levels": [
     {
      "model": "b_mine",
-     "s": 2.6,
+     "s": 3.38,
      "extras": []
     },
     {
      "model": "b_mine",
-     "s": 2.8,
+     "s": 3.64,
      "extras": [
       {
        "id": "v:resource_stone",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.0
+       "s": 3.9
       }
      ]
     },
     {
      "model": "b_mine",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "v:resource_stone",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "d:bucket_pickaxes",
-       "x": -1.6,
-       "z": 1.6,
+       "x": -2.08,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.5
+       "s": 0.65
       }
      ]
     },
     {
      "model": "b_mine",
-     "s": 3.1,
+     "s": 4.03,
      "extras": [
       {
        "id": "v:resource_stone",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.0
+       "s": 3.9
       },
       {
        "id": "d:bucket_pickaxes",
-       "x": -1.6,
-       "z": 1.6,
+       "x": -2.08,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.5
+       "s": 0.65
       },
       {
        "id": "r:Iron_Bars_Stack_Small",
-       "x": 0,
-       "z": 2.2,
+       "x": 0.0,
+       "z": 2.86,
        "ry": 0,
-       "s": 0.8
+       "s": 1.04
       }
      ]
     },
     {
      "model": "b_mine",
-     "s": 3.3,
+     "s": 4.29,
      "extras": [
       {
        "id": "v:resource_stone",
-       "x": 1.8,
-       "z": 1.6,
+       "x": 2.34,
+       "z": 2.08,
        "ry": 0.4,
-       "s": 3.2
+       "s": 4.16
       },
       {
        "id": "d:bucket_pickaxes",
-       "x": -1.6,
-       "z": 1.6,
+       "x": -2.08,
+       "z": 2.08,
        "ry": 0,
-       "s": 0.55
+       "s": 0.715
       },
       {
        "id": "r:Gold_Bars_Stack_Small",
-       "x": 0,
-       "z": 2.2,
+       "x": 0.0,
+       "z": 2.86,
        "ry": 0,
-       "s": 0.8
+       "s": 1.04
       }
      ]
     }
@@ -3194,50 +3248,50 @@
    "levels": [
     {
      "model": "b_well",
-     "s": 2.6,
+     "s": 3.38,
      "extras": []
     },
     {
      "model": "b_well",
-     "s": 2.8,
+     "s": 3.64,
      "extras": []
     },
     {
      "model": "b_well",
-     "s": 3.0,
+     "s": 3.9,
      "extras": [
       {
        "id": "r:Gems_Chest",
-       "x": 1.4,
-       "z": 1.0,
+       "x": 1.82,
+       "z": 1.3,
        "ry": 0.3,
-       "s": 0.5
+       "s": 0.65
       }
      ]
     },
     {
      "model": "b_well",
-     "s": 3.1,
+     "s": 4.03,
      "extras": [
       {
        "id": "r:Gems_Chest",
-       "x": 1.4,
-       "z": 1.0,
+       "x": 1.82,
+       "z": 1.3,
        "ry": 0.3,
-       "s": 0.5
+       "s": 0.65
       }
      ]
     },
     {
      "model": "b_well",
-     "s": 3.3,
+     "s": 4.29,
      "extras": [
       {
        "id": "r:Gems_Chest",
-       "x": 1.4,
-       "z": 1.0,
+       "x": 1.82,
+       "z": 1.3,
        "ry": 0.3,
-       "s": 0.55
+       "s": 0.715
       }
      ]
     }
@@ -3251,34 +3305,34 @@
    "levels": [
     {
      "model": "b_watchtower",
-     "s": 2.6,
+     "s": 3.38,
      "extras": []
     },
     {
      "model": "b_watchtower",
-     "s": 2.8,
+     "s": 3.64,
      "extras": []
     },
     {
      "model": "b_tower_A",
-     "s": 2.8,
+     "s": 3.64,
      "extras": []
     },
     {
      "model": "b_tower_A",
-     "s": 3.0,
+     "s": 3.9,
      "extras": []
     },
     {
      "model": "b_tower_A",
-     "s": 3.2,
+     "s": 4.16,
      "extras": [
       {
        "id": "v:flag_red",
-       "x": 0,
-       "z": 0,
+       "x": 0.0,
+       "z": 0.0,
        "ry": 0,
-       "s": 3
+       "s": 3.9
       }
      ]
     }
@@ -3292,27 +3346,27 @@
    "levels": [
     {
      "model": "b_home_A",
-     "s": 3.0,
+     "s": 3.9,
      "extras": []
     },
     {
      "model": "b_home_B",
-     "s": 3.0,
+     "s": 3.9,
      "extras": []
     },
     {
      "model": "b_home_A",
-     "s": 3.2,
+     "s": 4.16,
      "extras": []
     },
     {
      "model": "b_home_B",
-     "s": 3.2,
+     "s": 4.16,
      "extras": []
     },
     {
      "model": "b_windmill",
-     "s": 2.8,
+     "s": 3.64,
      "extras": []
     }
    ],

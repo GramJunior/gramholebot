@@ -315,7 +315,7 @@ function camUpdate(dt,tx,tz){
   CAMR.shake=Math.max(0,CAMR.shake-dt*2.2);
   const sh=CAMR.shake*CAMR.shake*0.9;
   const sx=(Math.random()*2-1)*sh, sz=(Math.random()*2-1)*sh;
-  const p=CAMR.pitch;
+  const p=CAMR.override&&CAMR.override.pitch||CAMR.pitch;
   cam.position.set(CAMR.x+sx, Math.sin(p)*d+ly, CAMR.z+Math.cos(p)*d+sz);
   cam.lookAt(CAMR.x+sx*.5, ly, CAMR.z+sz*.5);
   sun.position.set(CAMR.x-12,24,CAMR.z+10); sun.target.position.set(CAMR.x,0,CAMR.z);
