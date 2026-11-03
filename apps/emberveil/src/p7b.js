@@ -214,6 +214,7 @@ function teleHit(shape,x,z,r,delay,dmg,o={}){
 function bossThink(e,dt){
   const P=G.P; const B=e.bossD;
   if(e.intro){ e.moving=0; return; }
+  if(bossMechPre(e,dt)) return;
   // phase change
   const ph=B.phases; if(e.phase+1<ph.length&&e.hp/e.maxHp<ph[e.phase+1]){ e.phase++; e.cur={n:'phase',t:0,f:{}}; e.invuln=true; }
   const tdx=P.x-e.x,tdz=P.z-e.z,td=Math.hypot(tdx,tdz);

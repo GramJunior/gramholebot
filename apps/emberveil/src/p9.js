@@ -275,6 +275,7 @@ function botInput(){
   // dodge telegraphs: if standing inside an active red decal near end -> roll away
   if(P.rollCd<=0&&P.state!=='roll'){ for(const w of G.waves){ if(w.team==='e'&&Math.abs(Math.hypot(P.x-w.x,P.z-w.z)-w.r)<2.2){ dodge(); break; } } }
   if(P.hp<P.maxHp*.38&&S.cons.potion>0) drinkPotion();
+  if(G.parryWin&&P.rollCd<=0&&G.parryWin.t<.4&&dist(G.parryWin.e,P)<9) dodge();
   if(G.botSkills!==false){ for(const k of ['s1','s2','s3']) if(e&&dist(e,P)<6&&P.cds[k]<=0&&skillRank(k)>0&&Math.random()<.05) useSkill(k); if(P.ember>=100&&e&&dist(e,P)<8) useSkill('ult'); }
   if(e){ const d=dist(e,P); const ranged=PS.cls==='bow'||PS.cls==='staff'; const want=ranged?7:1.6+e.r; if(d>want){ tx=e.x; tz=e.z; } else if(ranged&&d<3.5){ tx=P.x-(e.x-P.x); tz=P.z-(e.z-P.z); } atk=d<(ranged?13:3+e.r); }
   else if(tx===null){ // objective

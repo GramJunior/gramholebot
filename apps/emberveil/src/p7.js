@@ -183,6 +183,7 @@ function dmgEnemy(e,amt,o={}){
   if(!e.alive) return;
   if(e.invuln){ dmgNum(e.x,e.rig.h+.3,e.z,'неуязвим','txt'); return; }
   const P=G.P; const src=o.src||P;
+  if(e.boss&&!o.dot) bossParryCheck(e,src);
   if(e.D&&e.D.ai==='shield'&&!e.stat.stun&&src){ const ang=Math.abs(angWrap(Math.atan2(src.x-e.x,src.z-e.z)-e.face)); if(ang<.95&&!o.dot&&!o.pierceShield){ amt*=.22; if(Math.random()<.5){ AU.sfx('block',.7); fx('hit',e.x+Math.sin(e.face)*.6,1,e.z+Math.cos(e.face)*.6,{col:0xd8e0ff}); dmgNum(e.x,e.rig.h+.4,e.z,'блок','txt'); } } }
   if(!o.dot&&!o.syn&&src===P) synProcs(e,o);
   if(e.stat.freeze>0&&(o.crit||o.heavy)&&!o.dot&&!o.syn&&src&&src.type!=='enemy') amt=synShatter(e,amt,o);
@@ -225,7 +226,8 @@ function killEnemy(e,o={}){
   }
   if(G.abyss&&G.abyss.mods.includes('explo')&&!e.boss){ DECALS.spawn('circle',e.x,e.z,2.2,.8,{col:0xffa030}); const x=e.x,z=e.z; later(.8,()=>{ fx('boom',x,0,z,{r:2}); if(Math.hypot(P.x-x,P.z-z)<2.2+P.r) hurtPlayer(e.dmg*1.2,{src:null,lvl:e.lvl,kb:4,dir:Math.atan2(P.x-x,P.z-z)}); }); }
   if(e.D.ai==='exploder'&&!e.exploded){ e.exploded=true; enemyExplode(e,.6); }
-  if(e.champion){ banner('Чемпион повержен',''); }
+  if(e.champion&&!e.raider){ banner('Чемпион повержен',''); }
+  if(e.mirrorN) bossMirrorKilled(e);
   if(e.boss) onBossDeath(e);
   objText();
 }
@@ -256,6 +258,7 @@ function updateEnemy(e,dt){
   for(const k of ['slow','shock','mark','stun']) if(s[k]>0) s[k]-=dt;
   if(s.freeze>0){ s.freeze-=dt; if(s.freeze<=0) setMat(e,e.baseMat||MT); }
   if(!e.alive) return;
+  if(D.ai==='static'){ e.moving=0; e.kx=e.kz=0; return; }
   if(e.mods.includes('vamp')&&e.hp<e.maxHp) e.hp=Math.min(e.maxHp,e.hp+e.maxHp*.01*dt);
   if(e.mods.includes('fire')&&Math.random()<dt*3) fx('fire',e.x,.5,e.z,{k:1});
   // knockback
@@ -383,7 +386,7 @@ function spawnProj(kind,x,z,dir,o={}){
 }
 function updateProjs(dt){
   const P=G.P;
-  for(let i=G.projs.length-1;i>=0;i--){ const p=G.projs[i]; p.t+=dt; p.life-=dt;
+  for(let i=G.projs.length-1;i>=0;i--){ const p=G.projs[i]; p.t+=dt; p.life-=dt; if(p.glob&&globTick(p)) p.life=-1;
     p.x+=p.vx*dt; p.z+=p.vz*dt; if(p.arc){ p.y+=p.vy*dt; p.vy-=p.g*dt; }
     p.m.position.set(p.x,p.y,p.z); if(p.arc) p.m.rotation.x+=dt*8; else p.m.rotation.y=Math.atan2(p.vx,p.vz);
     if(p.kind==='fireball'||p.kind==='bolt'||p.kind==='eorb'||p.kind==='lob'||p.kind==='star'||p.kind==='arrowP') fx('trail',p.x,p.y,p.z,{col:p.kind==='fireball'?0xff8a2a:p.col||(p.el?ELC[p.el]:p.kind==='star'?0xfff0c0:0xc8a0ff),s:p.kind==='fireball'?.7:.4});
@@ -391,7 +394,7 @@ function updateProjs(dt){
     if(!p.arc&&!p.noClip&&W.walk&&sdfW(p.x,p.z)>1.5) dead=true;
     if(!dead&&!p.arc){
       if(p.team==='p'){
-        for(const e of G.enemies){ if(!e.alive||e.burrowed||p.hit.has(e)) continue; if(Math.hypot(e.x-p.x,e.z-p.z)<e.r+p.r){ p.hit.add(e);
+        for(const e of G.enemies){ if(p.reflected) break; if(!e.alive||e.burrowed||p.hit.has(e)) continue; if(Math.hypot(e.x-p.x,e.z-p.z)<e.r+p.r){ p.hit.add(e);
             if(p.boom){ dead=true; break; }
             const h=p.dmgRoll||heroDmg(1); const amt=p.dmg!==undefined?p.dmg:h.amt; dmgEnemy(e,amt*(p.dmgMul||1),{crit:p.crit,els:p.el?[p.el]:p.els,kb:p.kind==='star'?3:1.5,dir:Math.atan2(p.vx,p.vz),src:p.src||G.P,pierceShield:p.kind==='star',heavy:p.kind==='star'||p.kind==='arrowP'||p.heavy});
             if(p.splash){ fx('boom',p.x,1,p.z,{r:p.splash,col:p.col||ELC[p.el]||0xc8a0ff}); for(const o2 of G.enemies) if(o2!==e&&o2.alive&&!o2.burrowed&&Math.hypot(o2.x-p.x,o2.z-p.z)<p.splash+o2.r) dmgEnemy(o2,amt*.6,{els:p.el?[p.el]:[],kb:1,dir:Math.atan2(o2.x-p.x,o2.z-p.z),src:p.src||G.P}); }
