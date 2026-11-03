@@ -25,11 +25,12 @@ function enterVillage(after){
   if(stageDone('1-3')&&!S.seen.egg_gift) seq.push(cb=>playDialog('egg_gift',()=>{ S.pets.eggs.push({kind:'wolf',start:0}); toast('Получено яйцо: <b>Волчонок</b>',iconForGeo('eggwolf',eggGeo('wolf')),1); saveGame(); cb(); }));
   if(stageDone('1-5')&&!S.seen.stranger_hi) seq.push(cb=>playDialog('stranger_hi',cb));
   if(stageDone('1-5')&&!S.seen.abyss_open) seq.push(cb=>playDialog('abyss_open',cb));
-  raidVillageSeq(seq); compVillageSeq(seq);
+  raidVillageSeq(seq); compVillageSeq(seq); if(typeof storyVillageSeq==='function') storyVillageSeq(seq); if(typeof metaVillageSeq==='function') metaVillageSeq(seq); if(typeof ftueVillageSeq==='function') ftueVillageSeq(seq);
   if(after) seq.unshift(after);
   const run=()=>{ const f=seq.shift(); if(f) f(run); else { questCheck(); hudRefresh(); } };
   run(); saveGame();
   try{ netVillage(); }catch(e){}
+  try{ if(typeof cosVillageDeco==='function') cosVillageDeco(); if(typeof heartUpdate==='function') heartUpdate(true); }catch(e){ console.error(e); }
 }
 function villageTargets(){
   const P=G.P; const out=[];
@@ -69,7 +70,7 @@ function startStage2(z,s){
     makeStage(info); G.mode='stage'; G.run={info,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:S.hero.xp,startLvl:S.hero.lvl};
     refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI); G.P.ember=0;
     show('hud'); hudBuild(); AU.music(info.zone.mus); cullProps(W.start.x,W.start.z,true);
-    banner(info.name,`${info.zone.n} · ${STAGE_TYPES[info.type].n}`);
+    banner(info.name,`${info.zone.n} · ${STAGE_TYPES[info.type].n}`); track('stage_start',info.key);
     if(Object.keys(RUNBUF).length) toast('Эликсир выпит — сила разливается по жилам');
     if(!S.seen.tut1){ S.seen.tut1=1; later(2.5,()=>toast('<b>Атака</b> — большая кнопка справа: цель выбирается сама. Удерживайте для серии.')); later(7,()=>toast('<b>Красные зоны</b> на земле — сюда сейчас ударят. Уходите или делайте <b>кувырок</b>.')); later(12,()=>toast('Бочки, ящики и жилы руды тоже можно бить. Ищите <b>треснувшие стены</b> — за ними тайники.')); }
     if(info.z>=2&&!S.seen['zone'+info.z]){ S.seen['zone'+info.z]=1; later(3,()=>toast(`<b>${info.zone.n}</b>: враги сильнее. Улучшайте снаряжение в кузнице и не забывайте о питомцах.`)); }
@@ -126,6 +127,7 @@ function onBossDeath(e){
   for(let i=0;i<6;i++) later(i*.15,()=>fx('boom',e.x+rand(-2,2),rand(0,2),e.z+rand(-2,2),{r:2.5,col:pick([0xffa040,0xffd27a,0xff6a2a])}));
   if(G.abyss){ // mini boss
     later(.6,()=>{ for(let i=0;i<2;i++) spawnDrop('item',e.x,e.z,{item:genItem(e.lvl,{mf:PS.mf+150,rmin:2})}); for(let i=0;i<8;i++) spawnDrop('mat',e.x,e.z,{res:'shards',v:randi(2,4)}); for(let i=0;i<8;i++) spawnDrop('gold',e.x,e.z,{v:Math.round(rand(6,12)*F(e.lvl))}); });
+    if(e.echo&&typeof echoReward==='function') later(1.2,()=>echoReward());
     G.boss.showDead=false; objText(); return;
   }
   const id=e.kind, z=W.info.z, first=!stageDone(W.info.key);
@@ -159,8 +161,9 @@ function runEnd(win,reason,keep){
     const prev=S.prog.stages[I.key]; const first=!prev;
     S.prog.stages[I.key]={stars:Math.max(stars,prev?prev.stars:0),best:Math.min(r.t,prev?prev.best:1e9)};
     if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
-    ev('stage',{key:I.key,nopot:r.pots===0}); AU.sfx('win');
+    ev('stage',{key:I.key,nopot:r.pots===0,first,stars}); AU.sfx('win'); track('stage_finish',I.key);
   } else if(!keep){ const lost=Math.round(r.gold*.3); S.res.gold=Math.max(0,S.res.gold-lost); r.lost=lost; }
+  if(!win) track(keep?'stage_leave':'stage_fail',I.key);
   compRunEnd(win); questCheck(); saveGame(true);
   const xp=S.hero.lvl>r.startLvl?'+'+(S.hero.lvl-r.startLvl)+' ур.':'';
   const lines=[`${ico('clock')} Время: <b>${Math.floor(r.t/60)}:${String(Math.floor(r.t%60)).padStart(2,'0')}</b>`,`${ico('skull')} Врагов: <b>${r.kills}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>${r.lost?` <span class="r4">(-${r.lost})</span>`:''}`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
@@ -177,13 +180,14 @@ function runEnd(win,reason,keep){
 // ---------- abyss ----------
 function startAbyss(floor){
   if(!asGroupsLoaded(['abyss'])) return withAssets(['abyss'],()=>startAbyss(floor));
-  G.abyss={floor,start:floor,mods:[],boons:{},shards:0,gold:0,items:[],net:netAbyssStart(floor)}; S.endless.runs++; RUNBUF={boons:G.abyss.boons};
+  G.abyss={floor,start:floor,mods:[],boons:{},shards:0,gold:0,items:[],net:netAbyssStart(floor)}; S.endless.runs++; RUNBUF={boons:G.abyss.boons}; track('abyss_start','f'+floor);
   abyssFloor(floor,true);
 }
 function abyssFloor(floor,first){
   fadeTo(()=>{
     const A=G.abyss; A.floor=floor; clearEntities();
     const modKeys=Object.keys(ABYSS_MODS); A.mods=[]; const nm=floor<3?0:floor<8?1:floor<16?2:3; while(A.mods.length<nm){ const m=pick(modKeys); if(!A.mods.includes(m)) A.mods.push(m); }
+    if(evStr('abyssMod')==='ashnight'){ for(const m of ['dark','fury']) if(ABYSS_MODS[m]&&!A.mods.includes(m)) A.mods.push(m); A.ashNight=1; }
     makeAbyss(floor,A); G.mode='abyss';
     G.run=G.run&&!first?G.run:{t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startLvl:S.hero.lvl}; G.run.ending=false;
     const hpFrac=first?1:G.P.hp/G.P.maxHp; computeStats(); refreshPlayer(true); if(!first) G.P.hp=Math.max(G.P.maxHp*.35,G.P.maxHp*Math.min(1,hpFrac+.3));
@@ -196,23 +200,25 @@ function abyssFloor(floor,first){
 function abyssTick(dt){
   const A=G.abyss; if(!A) return;
   if(W.wavesLeft>0&&G.enemies.filter(e=>e.alive).length===0){ W.waveDelay-=dt; if(W.waveDelay<=0){ W.waveDelay=2.5; W.waveN++; W.wavesLeft--;
-      if(W.miniBoss){ const ids=['gobKing','rotroot','bogMother','morven','colossus','ashKing']; const id=ids[(Math.floor(A.floor/5)-1)%ids.length]; const e=spawnBoss(id,0,-4,W.lvl,{hpMul:1,dmgMul:.85}); e.intro=true; CAMR.override={x:0,z:-2,zoom:.6}; AU.sfx('roar'); later(.3,()=>banner('Страж Бездны',e.bossD.n)); later(1.8,()=>{ CAMR.override=null; e.intro=false; }); }
+      if(W.miniBoss){ const ids=['gobKing','rotroot','bogMother','morven','colossus','ashKing']; const sb=evStr('seasonBoss'); const echo=sb&&BOSSES[sb]&&A.floor<=10; const id=echo?sb:ids[(Math.floor(A.floor/5)-1)%ids.length]; const e=spawnBoss(id,0,-4,W.lvl,{hpMul:echo?1.5:1,dmgMul:.85}); e.echo=echo; if(echo){ e.bossD=Object.assign({},e.bossD,{n:'Эхо Колосса',t:'сезонный босс'}); } e.intro=true; CAMR.override={x:0,z:-2,zoom:.6}; AU.sfx('roar'); later(.3,()=>banner(echo?'Событие':'Страж Бездны',e.bossD.n)); later(1.8,()=>{ CAMR.override=null; e.intro=false; }); }
       else { const n=Math.min(16,4+Math.floor(A.floor*.7)); const elC=(.06+A.floor*.012)*(A.mods.includes('elite')?2:1);
         for(let i=0;i<n;i++){ const a=rand(TAU),r=rand(6,12); const x=Math.cos(a)*r,z=Math.sin(a)*r-2; const e=spawnEnemy(pick(W.enemyPool),x,z,W.lvl,{aggro:1,elite:chance(elC)?(A.floor>12&&chance(.3)?2:1):0}); fx('magic',x,.5,z,{col:0xb04aff,k:10}); } AU.sfx('tele',.6); }
       objText(); } }
   if(W._ot===undefined||(W._ot-=dt)<0){ W._ot=.4; objText(); }
 }
 function abyssFloorDone(){
-  const A=G.abyss; const f=A.floor; const sh=Math.round((2+f*1.2)*(A.boons.gold?1.5:1)); A.shards+=sh; S.res.shards+=sh; S.st.floors++;
+  const A=G.abyss; const f=A.floor; const sh=Math.round((2+f*1.2)*(A.boons.gold?1.5:1)*evMod('shardMul')); A.shards+=sh; S.res.shards+=sh; S.st.floors++;
   if(f>S.endless.best){ S.endless.best=f; } ev('abyss',{floor:f}); saveGame(true);
   AU.sfx('quest'); G.paused=true;
   showBoons(b=>{ G.paused=false; A.boons[b.id]=(A.boons[b.id]||0)+1; if(b.id==='hp') G.P.hp=G.P.maxHp; if(b.id==='pot') S.cons.potion+=2; abyssFloor(f+1,false); });
 }
 function abyssEnd(reason){
-  const A=G.abyss, r=G.run; G.mode='result'; netAbyssEnd(A,r);
+  const A=G.abyss, r=G.run; G.mode='result'; const counted=!!A.net; netAbyssEnd(A,r);
   const lines=[`${ico('abyss')} Этаж: <b>${A.floor}</b>`,`${ico('star')} Рекорд: <b>${S.endless.best}</b>`,`${ico('shard')} Осколки: <b>${A.shards}</b>`,`${ico('skull')} Врагов: <b>${r.kills}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
-  saveGame(true); AU.sfx('lose');
-  setTimeout(()=>showResults({title:'Бездна поглотила вас',sub:reason,lines,items:r.items,btns:[['В деревню',()=>{ show('res',false); fadeTo(()=>enterVillage()); },'woodb'],['Рейтинг',()=>{ show('res',false); fadeTo(()=>enterVillage(cb=>{ openNet('lb'); cb(); })); },'woodb'],['Снова',()=>{ show('res',false); startAbyss(1); }]]}),400);
+  saveGame(true); AU.sfx('lose'); track('abyss_end','f'+Math.min(50,A.floor));
+  const lbNote=A.start>1?`<div class="muted lbnote">${ico('crown')} Забег начат с ${A.start} этажа — в рейтинг идут только забеги с 1 этажа.</div>`:!counted?`<div class="muted lbnote">${ico('crown')} Забег начался без связи с сервером — в рейтинг он не попадёт: сервер сам отмечает начало забега. Рекорд на устройстве сохранён.</div>`:'';
+  const extra=lbNote+`<div class="row" style="justify-content:center;margin-top:6px"><button class="btn woodb small" ${act(()=>shareGame('abyss',A.floor))}>${ico('mug')} Поделиться</button></div>`;
+  setTimeout(()=>showResults({title:'Бездна поглотила вас',sub:reason,lines,items:r.items,extra,btns:[['В деревню',()=>{ show('res',false); fadeTo(()=>enterVillage()); },'woodb'],['Рейтинг',()=>{ show('res',false); fadeTo(()=>enterVillage(cb=>{ openNet('lb'); cb(); })); },'woodb'],['Снова',()=>{ show('res',false); startAbyss(1); }]]}),400);
 }
 
 // ---------- title ----------
@@ -338,7 +344,7 @@ function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
   const steps=[
     ['Растираем пергамент…',()=>genCssTextures()],
-    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } }],
+    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
     ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],

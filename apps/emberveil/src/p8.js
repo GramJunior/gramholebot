@@ -44,7 +44,7 @@ function hudBuild(){
     <div id="hPort" class="pe"><img id="hPimg" alt=""><span id="hLvl">1</span></div>
     <div id="hBars"><div class="bar hp"><i class="lag" id="hpLag"></i><i class="v" id="hpV"></i><b id="hpT"></b></div>
       <div class="bar em" id="emB"><i class="v" id="emV"></i></div><div class="bar xp"><i class="v" id="xpV"></i></div></div>
-    <div id="hRight"><button class="hbtn pe" id="bPause">${ico(v?'gear':'pause')}</button>${v?`<button class="hbtn pe${netOn()?'':' off'}" id="mNet" title="Вече: рейтинг, кланы, набеги">${ico('crown')}</button><div id="hRes"></div>`:''}</div>
+    <div id="hRight"><button class="hbtn pe" id="bPause">${ico(v?'gear':'pause')}</button>${v?`<button class="hbtn pe" id="mColl" title="Коллекция">${ico('gem')}</button><button class="hbtn pe" id="mPass" title="Путь Угля: пропуск, календарь, контракты">${ico('star')}</button><button class="hbtn pe${netOn()?'':' off'}" id="mNet" title="Вече: рейтинг, кланы, набеги">${ico('crown')}</button><div id="hRes"></div>`:''}</div>
   </div>
   <div id="hQuest" class="parch pe"></div>
   ${!v?'<div id="hObj"></div><div id="hBoss" class="hidden"><div class="bn" id="bossN"></div><div class="bar"><i class="lag" id="bossLag"></i><i class="v" id="bossV"></i></div><div class="ph" id="bossPh"></div></div>':''}
@@ -65,6 +65,7 @@ function hudBuild(){
   <div id="prompt" class="hidden"></div>${!S.seen.joyHint?`<div id="joyHint" style="${S.set.joy==='right'?'left:auto;right:calc(var(--sr) + 24px);bottom:calc(var(--sb) + 200px)':''}">${S.set.joy==='right'?'КАСАЙТЕСЬ СПРАВА — БЕГ':'← КАСАЙТЕСЬ СЛЕВА — БЕГ'}</div>`:''}`;
   hudEl={hpV:$('hpV'),hpLag:$('hpLag'),hpT:$('hpT'),emV:$('emV'),emB:$('emB'),xpV:$('xpV'),lvl:$('hLvl'),obj:$('hObj'),boss:$('hBoss'),bossV:$('bossV'),bossLag:$('bossLag'),bossN:$('bossN'),bossPh:$('bossPh'),prompt:$('prompt'),atk:$('bAtk'),ult:$('bUlt'),dodge:$('bDodge')};
   bindHud(); hudRefresh(); hudQuest(); hudPortrait();
+  if(typeof hudFrame==='function'){ hudFrame(); if(v){ hudEventChip(); hudPassDot(); } }
 }
 function hudPortrait(){ try{ const ap=asHeroPortrait(S.gear); if(ap){ const im=$('hPimg'); if(im) im.src=ap; return; } const rig=buildHeroProc(); dressHeroProc(rig,S.gear); const url=portraitOf(rig,null,{hy:1.62,dist:1.25,x:.25}); const im=$('hPimg'); if(im) im.src=url; }catch(e){} }
 function hudRefresh(){
@@ -115,7 +116,7 @@ function bindHud(){
     const up=ev=>{ G.input.atk=false; }; atk.addEventListener('pointerup',up); atk.addEventListener('pointercancel',up); atk.addEventListener('lostpointercapture',up); }
   tap('bS1',()=>useSkill('s1')); tap('bS2',()=>useSkill('s2')); tap('bS3',()=>useSkill('s3')); tap('bUlt',()=>useSkill('ult'));
   tap('bDodge',()=>dodge()); tap('bPot',()=>drinkPotion()); tap('bBomb',()=>throwBomb());
-  tap('mHero',()=>openPanel('hero')); tap('mSquad',()=>{ if(S.bld.tavern>0) openPanel('bld',{id:'tavern',tab:expReadyCount()?'exp':'roster'}); else openPanel('hero',{tab:'squad'}); }); tap('mRaid',()=>raidOpenPrep()); tap('mNet',()=>{ AU.sfx('ui'); openNet(); }); tap('mBuild',()=>openPanel('bld',{id:'hall'})); tap('mQuest',()=>openPanel('hero',{tab:'quests'})); tap('mMap',()=>openMap());
+  tap('mHero',()=>openPanel('hero')); tap('mSquad',()=>{ if(S.bld.tavern>0) openPanel('bld',{id:'tavern',tab:expReadyCount()?'exp':'roster'}); else openPanel('hero',{tab:'squad'}); }); tap('mRaid',()=>raidOpenPrep()); tap('mNet',()=>{ AU.sfx('ui'); openNet(); }); tap('mPass',()=>{ AU.sfx('ui'); track('pass_open','hud'); openPanel('pass'); }); tap('mColl',()=>{ AU.sfx('ui'); track('coll_open','hud'); openPanel('coll'); }); tap('mBuild',()=>openPanel('bld',{id:'hall'})); tap('mQuest',()=>openPanel('hero',{tab:'quests'})); tap('mMap',()=>openMap());
   tap('hQuest',()=>openPanel('hero',{tab:'quests'}));
   tap('hPort',()=>{ if(G.mode==='village') openPanel('hero'); });
 }
@@ -201,9 +202,9 @@ let PANEL={kind:null,opts:{},tab:null,sel:null};
 function openPanel(kind,opts={}){
   PANEL={kind,opts,tab:opts.tab||null,sel:opts.sel||null}; G.paused=G.mode!=='village'; show('panel'); AU.sfx('page'); renderPanel();
 }
-function closePanel(){ show('panel',false); PANEL.kind=null; G.paused=false; AU.sfx('ui'); if(G.mode==='village'){ hudRefresh(); hudQuest(); } }
+function closePanel(){ const oc=PANEL.opts&&PANEL.opts.onClose; show('panel',false); PANEL.kind=null; PANEL.opts={}; G.paused=false; AU.sfx('ui'); if(G.mode==='village'){ hudRefresh(); hudQuest(); } if(oc) setTimeout(oc,0); }
 function renderPanel(){
-  const k=PANEL.kind; let title='',sub='',tabs=[],body='';
+  let k=PANEL.kind; let title='',sub='',tabs=[],body='';
   const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
   if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','book']]; PANEL.tab=PANEL.tab||'gear'; if(PANEL.tab==='codex') PANEL.tab='know';
     body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:()=>{ if(S.syn&&S.syn.unread){ S.syn.unread=0; setTimeout(hudKnowDot,0); } return pKnow()+pCodex(); }})[PANEL.tab](); }
@@ -213,6 +214,7 @@ function renderPanel(){
   else if(k==='offline'){ title='Пока вас не было'; body=PANEL.opts.html; }
   else if(k==='net'){ title='Вече'; sub=netOn()?(NET.me&&NET.me.name?esc(NET.me.name):'Искроносец')+(NET.tg?'':' · гость'):'нет связи'; tabs=NET_TABS; PANEL.tab=PANEL.tab||NET.tab||'lb'; body=pNet(); }
   else if(k==='npc'){ const n=PANEL.opts.npc; title=NPC_INFO[n].n; sub=NPC_INFO[n].t; body=pNpc(n); }
+  else if(typeof PANEL_EXT!=='undefined'&&PANEL_EXT[k]){ const o=PANEL_EXT[k](); k=PANEL.kind; title=o.title; sub=o.sub||''; tabs=o.tabs||[]; body=o.body; }
   $('panel').innerHTML=`<div id="pFrame" class="${tabs.length?'':'notabs'}">${frame(`<div id="pHead"><h2>${title}${sub?`<small>${sub}</small>`:''}</h2><button class="hbtn" id="pClose">${ico('close')}</button></div>${tabs.length?`<div id="pTabs">${tabs.map(t=>`<button class="tab ${PANEL.tab===t[0]?'on':''}" data-tab="${t[0]}">${t[2]?ico(t[2]):''}${t[1]}</button>`).join('')}</div>`:''}<div id="pBody">${body}</div>`)}</div>`;
   $('pClose').onclick=closePanel;
   $('panel').onclick=ev=>{ if(ev.target.id==='panel') closePanel(); };
@@ -349,11 +351,17 @@ function pSettings(pause){
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="set"><label>Цифры урона</label>${seg('dmg',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="set"><label>Полный экран</label>${seg('fs',[[true,'Вкл'],[false,'Выкл']])}</div>
+  <div class="set"><label>Уголёк</label>${seg('spirit',[[true,'Говорит'],[false,'Молчит']])}</div>
+  ${!pause?`<div class="set"><label>Имя героя</label><div class="row" style="gap:6px;flex:1"><input id="sName" maxlength="20" placeholder="${esc(heroName()||'Искроносец')}" value="${esc(metaS().name||'')}" class="tinput"><button class="btn leather small" id="sNameOk">${ico('check')}</button></div></div>
+  <div class="muted" style="margin:-2px 0 6px">Так вас увидят в рейтинге, кланах и набегах${netOn()?'':' (отправится на сервер, когда появится связь)'}.</div>
+  <div class="set"><label>Напоминания бота</label><div class="seg"><button class="${metaS().notify?'on':''}" ${act(()=>notifySet(true))}>Вкл</button><button class="${metaS().notify?'':'on'}" ${act(()=>notifySet(false))}>Выкл</button></div></div>
+  <div class="muted" style="margin:-2px 0 6px">${netOn()&&NET.tg?'Бот напишет, когда вылупится яйцо, наполнится склад или ждёт дар дня (не чаще 3 раз в день).':'Работает в Telegram при подключении к сети.'}</div>
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn woodb small" ${act(()=>openPanel('chron'))}>${ico('book')} Летопись выборов</button><button class="btn woodb small" ${act(()=>openPanel('coll'))}>${ico('gem')} Коллекция</button><button class="btn woodb small" ${act(()=>shareGame('invite'))}>${ico('mug')} Пригласить друга</button>${S.seen.prologue?`<button class="btn woodb small" ${act(()=>{ closePanel(); if(G.mode==='title'||G.mode==='village') prologueStart(true); })}>${ico('flame')} Пролог заново</button>`:''}</div>`:''}
   <div class="muted" style="margin-top:10px">Телефон: держите горизонтально. Левый большой палец — бег (джойстик появляется там, где коснулись), правый — атака, умения, кувырок. В деревне снизу — меню: Герой, Стройка, Отряд, Набег, Задания, Поход.</div>
   <div class="muted" style="margin-top:6px">ПК: WASD — бег, J/Пробел — атака, 1-3 — умения, R — Вспышка, Shift — кувырок, Q — зелье, F — бомба, E — взаимодействие, I — герой, M — карта, Esc — пауза.</div>
   ${!Store.ok?'<div class="card" style="margin-top:8px">Хранилище браузера недоступно — прогресс не сохранится после закрытия.</div>':''}
   ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ Store.del(SKEY); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
-  setTimeout(()=>{ const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
+  setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
 function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }

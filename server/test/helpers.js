@@ -1,12 +1,15 @@
 // Test harness: a Cloudflare D1-compatible wrapper over Node's built-in SQLite
 // (node:sqlite), plus helpers to call the Worker in-process and mock Telegram.
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { handle } from '../src/index.js';
 import { hmac, toHex } from '../src/lib/crypto.js';
 
 const SCHEMA = readFileSync(fileURLToPath(new URL('../schema.sql', import.meta.url)), 'utf8');
+// schema.sql == migrations/0001_init.sql; later migrations are applied on top, like `wrangler d1 migrations apply`.
+const MIG_DIR = fileURLToPath(new URL('../migrations/', import.meta.url));
+const MIGRATIONS = readdirSync(MIG_DIR).filter((f) => /^\d{4}_.+\.sql$/.test(f) && !f.startsWith('0001_')).sort().map((f) => readFileSync(MIG_DIR + f, 'utf8'));
 
 class Stmt {
   constructor(db, sql, args = []) { this.db = db; this.sql = sql; this.args = args; }
@@ -30,7 +33,7 @@ class Stmt {
 }
 
 export class D1Shim {
-  constructor() { this.db = new DatabaseSync(':memory:'); this.db.exec(SCHEMA); }
+  constructor() { this.db = new DatabaseSync(':memory:'); this.db.exec(SCHEMA); for (const m of MIGRATIONS) this.db.exec(m); }
   prepare(sql) { return new Stmt(this.db, sql); }
   async batch(stmts) {
     this.db.exec('BEGIN');

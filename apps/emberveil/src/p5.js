@@ -178,6 +178,7 @@ function ev(type,d={}){
     if(q.p>=q.v){ q.p=q.v; toast(`Контракт выполнен: <b>${DAILY_POOL.find(x=>x.id===id).n}</b>`,null,null,'quest'); AU.sfx('quest'); }
   }
   questCheck();
+  if(typeof metaEv==='function') metaEv(type,d);
   saveGame();
 }
 function stageDone(k){ return !!S.prog.stages[k]; }

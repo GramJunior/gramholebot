@@ -9,20 +9,31 @@ export const DEFAULTS = {
   // Current season. null = no season (season leaderboard is empty).
   season: null, // { id:'s1', name:'Сезон 1', start: <ms>, end: <ms> }
 
+  // Season pass «Путь Угля»: 30 tiers. `cosmetic` ids are the game's cosmetics (apps/emberveil/src/p18.js COSM).
+  // The game counts pass XP from play itself; the server keeps its own XP from validated actions (abyss, raids, daily),
+  // and the game shows the larger of the two. Premium = entitlement `premiumProduct` (Telegram Stars).
   battlepass: {
     season: 's1',
+    name: 'Путь Угля',
     xpPerTier: 100,
     premiumProduct: 'bp_s1',
-    tiers: Array.from({ length: 10 }, (_, i) => ({
-      tier: i + 1,
-      free: i % 3 === 2 ? { shards: 10 + i * 2 } : { gold: 150 + i * 50 },
-      premium: { cosmetic: `bp_s1_t${i + 1}` },
-    })),
+    tiers: Array.from({ length: 30 }, (_, i) => {
+      const t = i + 1;
+      const FREE_COS = { 5: 'glow_ember', 10: 'skin_ash', 15: 'deco_banners', 20: 'frame_ember', 25: 'pet_ember', 30: 'glow_gold' };
+      const PREM_COS = ['frame_gold', 'glow_frost', 'pet_shadow', 'skin_frost', 'deco_statue', 'glow_void', 'skin_abyss', 'pet_gold', 'deco_bonfire', 'skin_royal'];
+      return {
+        tier: t,
+        free: FREE_COS[t] ? { cosmetic: FREE_COS[t] } : t % 3 === 0 ? { shards: 6 + t } : t % 2 ? { gold: 150 + t * 40 } : { ess: 8 + t },
+        premium: t % 3 === 0 ? { cosmetic: PREM_COS[t / 3 - 1] } : { sparks: 10 + Math.floor(t / 5) * 5 }, // sparks = cosmetic-only currency
+      };
+    }),
     // XP earned for server-validated actions:
     xp: { abyssFloor: 8, raidStar: 10, daily: 25, quest: 15 },
   },
 
   // [{ id, name, start, end, modifiers: { goldMul, dropMul, abyssMod, ... }, descr }]
+  // Empty here = the game uses its built-in rotation (weekend «Выходные удачи», «Ночь Пепла», seasonal boss «Эхо Колосса»).
+  // Put explicit windows here to override (see README «События»).
   events: [],
 
   // Village shop rotation (prices in game currency, applied on the client).
@@ -46,6 +57,7 @@ export const DEFAULTS = {
     { id: 'skin_cloak_ember', title: 'Плащ «Тлеющий»', description: 'Косметический облик героя', stars: 100, type: 'cosmetic', once: true },
     { id: 'pack_village_lanterns', title: 'Фонари Брода', description: 'Украшения для деревни', stars: 75, type: 'cosmetic', once: true },
     { id: 'pet_skin_frost', title: 'Иней для питомца', description: 'Скин питомца', stars: 90, type: 'cosmetic', once: true },
+    { id: 'pack_dawn', title: 'Набор «Рассвет Вейла»', description: 'Облик, свечение оружия и рамка портрета', stars: 150, type: 'cosmetic', once: true },
     { id: 'keeper_30d', title: 'Хранитель Брода (30 дней)', description: 'Больше склада и аура, без боевых бонусов', stars: 200, type: 'subscription', once: false, days: 30 },
   ],
 

@@ -489,9 +489,9 @@ function pickup(d){
   hudRefresh();
 }
 function dropLoot(e){
-  const L=e.lvl, mf=PS.mf; const gm=(1+PS.gold/100)*(G.abyss&&G.abyss.boons.gold?1.5:1);
+  const L=e.lvl, mf=PS.mf; const gm=(1+PS.gold/100)*(G.abyss&&G.abyss.boons.gold?1.5:1)*evMod('goldMul');
   const nG=e.elite?randi(4,7):randi(1,2); for(let i=0;i<nG;i++) spawnDrop('gold',e.x,e.z,{v:Math.max(1,Math.round(rand(1.5,3.5)*F(L)*gm))});
-  const pItem=e.champion?1:e.elite?.6:.075;
+  const pItem=Math.min(1,(e.champion?1:e.elite?.6:.075)*evMod('dropMul'));
   if(Math.random()<pItem) spawnDrop('item',e.x,e.z,{item:genItem(L,{mf:mf+(e.elite?60:0),rmin:e.champion?2:e.elite?1:0})});
   if(e.champion) spawnDrop('item',e.x,e.z,{item:genItem(L+1,{mf:mf+100,rmin:1})});
   if(Math.random()<.035) spawnDrop('potion',e.x,e.z);

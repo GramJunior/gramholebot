@@ -155,7 +155,7 @@ export async function adminBan(c) {
 export async function adminAudit(c) {
   requireAdmin(c);
   const limit = Math.min(500, Math.max(1, int(c.url.searchParams.get('limit'), 100)));
-  const top = (await c.env.DB.prepare('SELECT ref_code pid, first_name name, flags, banned FROM users WHERE flags>0 ORDER BY flags DESC LIMIT 50').all()).results;
+  const top = (await c.env.DB.prepare("SELECT ref_code pid, COALESCE(NULLIF(display_name,''), first_name) name, flags, banned FROM users WHERE flags>0 ORDER BY flags DESC LIMIT 50").all()).results;
   const recent = (await c.env.DB.prepare('SELECT a.kind, a.detail, a.ts, u.ref_code pid FROM audit a JOIN users u ON u.id=a.uid ORDER BY a.id DESC LIMIT ?').bind(limit).all()).results;
   return json({ ok: true, top, recent });
 }

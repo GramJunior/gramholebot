@@ -7,7 +7,7 @@ import { requireUser } from './auth.js';
 import { checkAbyssRun, maxStartFloor } from '../lib/anticheat.js';
 import { isoWeek, nextWeekStart } from '../lib/time.js';
 import { loadConfig, activeSeason } from '../lib/config.js';
-import { addContrib, addBpXp, audit, clanOf, clanFeed, newRunId } from '../lib/common.js';
+import { addContrib, addBpXp, audit, clanOf, clanFeed, newRunId, NAME_SQL } from '../lib/common.js';
 
 export async function abyssStart(c) {
   const user = await requireUser(c);
@@ -103,7 +103,7 @@ export async function lbAbyss(c) {
   } else if (filter !== 'global') fail(400, 'bad_filter', 'filter: global | friends | clan');
 
   const rows = (await c.env.DB.prepare(
-    `SELECT l.uid, l.floor, l.time_ms, u.ref_code, u.first_name, cl.tag FROM lb_abyss l
+    `SELECT l.uid, l.floor, l.time_ms, u.ref_code, ${NAME_SQL}, cl.tag FROM lb_abyss l
      JOIN users u ON u.id=l.uid LEFT JOIN clan_members m ON m.uid=l.uid LEFT JOIN clans cl ON cl.id=m.clan_id
      WHERE ${where} ORDER BY l.floor DESC, l.time_ms ASC, l.updated_at ASC LIMIT ?`
   ).bind(...args, limit).all()).results;

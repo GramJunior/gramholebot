@@ -19,7 +19,22 @@ export function newRefCode(len = 8) {
 }
 
 /** Public projection of a user (never exposes Telegram id or username). */
-export const pub = (u) => (u ? { pid: u.ref_code, name: (u.first_name || 'Искроносец').slice(0, 32) } : null);
+/** Name shown to other players: the one the player chose (POST /me/settings {name}) or the Telegram first name. */
+export const shownName = (u) => String((u && (u.display_name || u.first_name)) || 'Искроносец').slice(0, 32);
+/** SQL expression for the shown name of users alias `u` (keeps column name first_name for the callers). */
+export const NAME_SQL = "COALESCE(NULLIF(u.display_name,''), u.first_name) first_name";
+
+/** Public projection of a user (never exposes Telegram id or username). */
+export const pub = (u) => (u ? { pid: u.ref_code, name: shownName(u) } : null);
+
+/** Validate a display name: 2–20 letters/digits/spaces/_-. , collapsed spaces. Returns the clean name or throws 400. */
+export function cleanName(v) {
+  const s = String(v == null ? '' : v).normalize('NFC').replace(/\s+/g, ' ').trim();
+  if (s.length < 2 || s.length > 20) fail(400, 'bad_name', 'Имя: от 2 до 20 символов');
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} _.\-]*$/u.test(s)) fail(400, 'bad_name', 'В имени можно использовать буквы, цифры, пробел, _ . -');
+  if (/^(гость|guest|admin|админ|модератор|moderator)$/i.test(s)) fail(400, 'bad_name', 'Это имя занято');
+  return s;
+}
 
 export async function getUser(env, uid) {
   return env.DB.prepare('SELECT * FROM users WHERE id=?').bind(uid).first();

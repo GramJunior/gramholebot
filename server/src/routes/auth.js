@@ -1,7 +1,8 @@
 // Auth: Telegram initData -> session JWT; guest mode for local testing.
 import { validateInitData, signJwt, verifyJwt, sha256Hex } from '../lib/crypto.js';
 import { fail, json, readJson, str } from '../lib/http.js';
-import { upsertUser, getUser, envInt, pub, clanOf } from '../lib/common.js';
+import { upsertUser, getUser, envInt, pub, clanOf, cleanName } from '../lib/common.js';
+import { markActive } from './metrics.js';
 
 async function issue(env, user, now, kind) {
   if (!env.JWT_SECRET || String(env.JWT_SECRET).length < 16) fail(503, 'not_configured', 'Сервер не настроен (JWT_SECRET)');
@@ -17,6 +18,7 @@ function meView(user, clan) {
     guest: !user.tg_id,
     notify: !!user.notify,
     canPm: !!user.can_pm,
+    customName: !!user.display_name,
     createdAt: user.created_at,
     clan: clan ? { id: clan.clan_id, name: clan.name, tag: clan.tag, role: clan.role } : null,
   };
@@ -37,6 +39,7 @@ export async function authTelegram(c) {
   }, c.now);
   if (user.banned) fail(403, 'banned', 'Аккаунт заблокирован');
   const s = await issue(c.env, user, c.now, 'tg');
+  await markActive(c.env, user.id, c.now);
   return json({ ok: true, ...s, isNew, me: meView(user, await clanOf(c.env, user.id)), serverTime: c.now });
 }
 
@@ -50,6 +53,7 @@ export async function authGuest(c) {
   const { user, isNew } = await upsertUser(c.env, { uid, firstName: str(body.name, 32) || 'Гость', startParam: str(body.startParam, 64) }, c.now);
   if (user.banned) fail(403, 'banned', 'Аккаунт заблокирован');
   const s = await issue(c.env, user, c.now, 'guest');
+  await markActive(c.env, user.id, c.now);
   return json({ ok: true, ...s, isNew, me: meView(user, null), serverTime: c.now });
 }
 
@@ -76,16 +80,21 @@ export async function getMe(c) {
   return json({ ok: true, me: meView(user, await clanOf(c.env, user.id)), serverTime: c.now });
 }
 
-/** POST /me/settings { notify: boolean } — opt in/out of bot reminders. */
+/** POST /me/settings { notify?: boolean, name?: string|null } — bot reminders opt-in, display name (null = back to Telegram name). */
 export async function postSettings(c) {
   const user = await requireUser(c);
   const body = await readJson(c.req, 1024);
+  if (body.notify !== undefined && typeof body.notify !== 'boolean') fail(400, 'bad_notify', 'notify: true/false');
   if (typeof body.notify === 'boolean') {
     await c.env.DB.prepare('UPDATE users SET notify=? WHERE id=?').bind(body.notify ? 1 : 0, user.id).run();
     if (!body.notify) await c.env.DB.prepare("UPDATE notifications SET status='dropped' WHERE uid=? AND status='pending'").bind(user.id).run();
   }
+  if (body.name !== undefined) {
+    const name = body.name === null || body.name === '' ? null : cleanName(body.name);
+    await c.env.DB.prepare('UPDATE users SET display_name=? WHERE id=?').bind(name, user.id).run();
+  }
   const u = await getUser(c.env, user.id);
-  return json({ ok: true, notify: !!u.notify, canPm: !!u.can_pm });
+  return json({ ok: true, notify: !!u.notify, canPm: !!u.can_pm, me: pub(u), customName: !!u.display_name });
 }
 
 /** DELETE /me — erase all personal data (GDPR-style "forget me"). */
@@ -94,7 +103,7 @@ export async function deleteMe(c) {
   const uid = user.id;
   const clan = await clanOf(c.env, uid);
   if (clan && clan.role === 'leader') fail(409, 'leader', 'Сначала передайте лидерство или покиньте клан');
-  const tables = ['saves', 'runs', 'lb_abyss', 'villages', 'daily', 'quest_claims', 'bp_progress', 'inbox', 'notifications', 'weekly_contrib', 'audit'];
+  const tables = ['saves', 'runs', 'lb_abyss', 'villages', 'daily', 'quest_claims', 'bp_progress', 'inbox', 'notifications', 'weekly_contrib', 'audit', 'active_days', 'ev_seen'];
   const st = tables.map((t) => c.env.DB.prepare(`DELETE FROM ${t} WHERE uid=?`).bind(uid));
   st.push(c.env.DB.prepare('DELETE FROM friends WHERE uid=? OR friend_uid=?').bind(uid, uid));
   if (clan) {
@@ -102,7 +111,7 @@ export async function deleteMe(c) {
     st.push(c.env.DB.prepare('UPDATE clans SET members=members-1 WHERE id=?').bind(clan.clan_id));
   }
   // Payments/entitlements are kept for accounting, but detached from the profile name.
-  st.push(c.env.DB.prepare("UPDATE users SET first_name='', username=NULL, lang=NULL, notify=0, can_pm=0 WHERE id=?").bind(uid));
+  st.push(c.env.DB.prepare("UPDATE users SET first_name='', display_name=NULL, username=NULL, lang=NULL, notify=0, can_pm=0 WHERE id=?").bind(uid));
   await c.env.DB.batch(st);
   return json({ ok: true });
 }

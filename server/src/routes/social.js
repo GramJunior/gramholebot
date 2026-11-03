@@ -6,7 +6,7 @@
 //   POST /notify/schedule { kind, at } -> remind via the bot at server time `at` (opt-in only)
 import { fail, json, readJson, int, str } from '../lib/http.js';
 import { requireUser } from './auth.js';
-import { userByPid, queueNotification } from '../lib/common.js';
+import { userByPid, queueNotification, NAME_SQL } from '../lib/common.js';
 
 export function refLink(env, code) {
   const bot = env.BOT_USERNAME;
@@ -19,7 +19,7 @@ export function refLink(env, code) {
 export async function getReferrals(c) {
   const user = await requireUser(c);
   const invited = await c.env.DB.prepare('SELECT COUNT(*) n FROM users WHERE referred_by=?').bind(user.id).first();
-  const friends = (await c.env.DB.prepare('SELECT u.ref_code, u.first_name FROM friends f JOIN users u ON u.id=f.friend_uid WHERE f.uid=? ORDER BY f.created_at DESC LIMIT 200').bind(user.id).all()).results;
+  const friends = (await c.env.DB.prepare(`SELECT u.ref_code, ${NAME_SQL} FROM friends f JOIN users u ON u.id=f.friend_uid WHERE f.uid=? ORDER BY f.created_at DESC LIMIT 200`).bind(user.id).all()).results;
   return json({ ok: true, code: user.ref_code, link: refLink(c.env, user.ref_code), invited: invited ? invited.n : 0, friends: friends.map((f) => ({ pid: f.ref_code, name: (f.first_name || 'Искроносец').slice(0, 32) })) });
 }
 

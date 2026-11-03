@@ -57,7 +57,7 @@ function netVillage(){
   if(!netOn()||!S.started||!(S.bld.hall>0)) return;
   const snap=netSnapshot(), key=JSON.stringify(snap);
   if(key!==NET.pubKey||Date.now()-NET.pubAt>15*60000){ NET.pubKey=key; NET.pubAt=Date.now(); EVNet.raids.publish(snap).then(r=>{ if(!r.ok&&!r.offline) console.info('village publish:',r.error); }); }
-  if(!NET.dailyShown) EVNet.daily.status().then(d=>{ if(!d.ok||!d.canClaim||NET.dailyShown||G.mode!=='village'||PANEL.kind||G.dialog) return; NET.dailyShown=true;
+  if(!NET.dailyShown&&typeof calStatus!=='function') EVNet.daily.status().then(d=>{ if(!d.ok||!d.canClaim||NET.dailyShown||G.mode!=='village'||PANEL.kind||G.dialog) return; NET.dailyShown=true;
     const rw=netReward(d.nextReward);
     openPanel('offline',{html:`<div class="card"><p class="dcap">У очага вас ждёт дар старейшины — за то, что вернулись. День серии: <b>${d.nextStreak||1}</b>.</p><div class="row" style="flex-wrap:wrap;gap:6px;margin:8px 0">${Object.keys(rw).map(k=>resChip(k,rw[k])).join('')||'<span class="muted">тёплое слово</span>'}</div></div>
       <button class="btn leather" style="width:100%" ${act(()=>{ EVNet.daily.claim().then(c=>{ if(c.ok){ giveReward(netReward(c.reward),'Дар дня'); AU.sfx('quest'); saveGame(true); hudRefresh(); } else if(!c.offline) toast(c.message||'Дар уже получен'); }); closePanel(); })}>Принять дар</button>`});
@@ -65,7 +65,7 @@ function netVillage(){
   hudNetDot();
 }
 function netQuestClaim(d,rw){
-  const done=()=>{ if(d.c) return; d.c=true; giveReward(rw,'Контракт'); AU.sfx('quest'); saveGame(); rerender(); };
+  const done=()=>{ if(d.c) return; d.c=true; giveReward(rw,'Контракт'); AU.sfx('quest'); if(typeof metaEv==='function') metaEv('daily_done',{id:d.id}); track('daily_done',d.id); saveGame(); rerender(); };
   if(!netOn()) return done();
   EVNet.quests.claim(d.id).then(r=>{ if(r.ok||r.offline||(r.error!=='claimed'&&r.error!=='quest_limit')) done(); else { toast(r.message||'Контракт уже сдан'); d.c=true; saveGame(); rerender(); } });
 }

@@ -10,7 +10,7 @@ import { requireUser } from './auth.js';
 import { checkRaid, raidReward, POWER_BANDS } from '../lib/anticheat.js';
 import { getConfigKey, loadConfig } from '../lib/config.js';
 import { dayKey, nextDayStart } from '../lib/time.js';
-import { addContrib, addBpXp, audit, clanOf, clanFeed, envInt, userByPid, newRunId, pub, queueNotification } from '../lib/common.js';
+import { addContrib, addBpXp, audit, clanOf, clanFeed, envInt, userByPid, newRunId, pub, queueNotification, NAME_SQL } from '../lib/common.js';
 
 const BUILDINGS = ['hall', 'forge', 'alch', 'pen', 'tavern', 'temple', 'store', 'walls', 'saw', 'mine', 'well', 'houses'];
 const MAX_POWER = 10_000_000;
@@ -64,7 +64,7 @@ export async function findOpponents(env, uid, power, now, n = 3) {
   for (const [lo, hi] of POWER_BANDS) {
     if (found.size >= n) break;
     const rows = (await env.DB.prepare(
-      `SELECT v.uid, v.power, v.hall, u.ref_code, u.first_name FROM villages v JOIN users u ON u.id=v.uid
+      `SELECT v.uid, v.power, v.hall, u.ref_code, ${NAME_SQL} FROM villages v JOIN users u ON u.id=v.uid
        WHERE v.uid<>? AND u.banned=0 AND v.shield_until<=? AND v.updated_at>=? AND v.power BETWEEN ? AND ?
        AND v.uid NOT IN (SELECT uid FROM clan_members WHERE clan_id=?)
        AND v.uid NOT IN (SELECT defender FROM raids WHERE attacker=? AND started_at>=?)
@@ -157,7 +157,7 @@ export async function raidLog(c) {
   const user = await requireUser(c);
   const cfg = await getConfigKey(c.env, 'raid');
   const q = (col) => c.env.DB.prepare(
-    `SELECT r.*, u.ref_code, u.first_name FROM raids r JOIN users u ON u.id=r.${col === 'defender' ? 'attacker' : 'defender'}
+    `SELECT r.*, u.ref_code, ${NAME_SQL} FROM raids r JOIN users u ON u.id=r.${col === 'defender' ? 'attacker' : 'defender'}
      WHERE r.${col}=? AND r.status='done' ORDER BY r.finished_at DESC LIMIT 20`
   ).bind(user.id).all();
   const inc = (await q('defender')).results, out = (await q('attacker')).results;

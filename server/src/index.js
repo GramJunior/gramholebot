@@ -10,6 +10,7 @@ import * as daily from './routes/daily.js';
 import * as pay from './routes/payments.js';
 import * as social from './routes/social.js';
 import * as bot from './routes/bot.js';
+import * as metrics from './routes/metrics.js';
 
 const health = (c) => json({ ok: true, name: 'emberveil', serverTime: c.now, telegram: !!c.env.BOT_TOKEN, guest: c.env.ALLOW_GUEST === '1' });
 
@@ -63,6 +64,8 @@ export const ROUTES = [
   ['POST', '/inbox/claim', social.claimInbox],
   ['POST', '/notify/schedule', social.scheduleNotify],
 
+  ['POST', '/events', metrics.postEvents],
+
   ['POST', '/tg/webhook', bot.webhook],
 
   ['GET', '/admin/config', live.adminGetConfig],
@@ -74,6 +77,7 @@ export const ROUTES = [
   ['POST', '/admin/refund', pay.adminRefund],
   ['GET', '/admin/audit', live.adminAudit],
   ['GET', '/admin/stats', live.adminStats],
+  ['GET', '/admin/metrics', metrics.adminMetrics],
 ];
 
 function match(method, path) {

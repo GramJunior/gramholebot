@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=3;
+const SAVE_V=4;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -33,7 +33,7 @@ function newSave(){
     hero:{lvl:1,xp:0,tp:0,talents:{sword:{},axe:{},bow:{},staff:{}}},
     gear:{weapon:null,offhand:null,helm:null,chest:null,gloves:null,boots:null,amulet:null,ring1:null,ring2:null},
     inv:[], uid:1,
-    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0},
+    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0,sparks:0},
     gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0}, keys:0, potMax:3,
     pets:{owned:{},active:[null,null],eggs:[]},
     bld:{hall:1,forge:0,alch:0,pen:0,tavern:0,temple:0,store:0,walls:0,saw:0,mine:0,well:0,houses:0},
@@ -45,7 +45,11 @@ function newSave(){
     endless:{best:0,runs:0},
     raid:{sockets:{},militia:0,next:0,wins:0,losses:0,trophies:{},tiers:{},dmg:null},
     comp:{owned:{},active:null}, exp:{list:[]}, syn:{seen:{}}, puz:{},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null}
+    // v4: meta (calendar, weekly contracts, season pass, cosmetics, ads limits, analytics flags, display name)
+    meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
+    // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
+    story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true}
   };
 }
 let S=newSave();
@@ -70,10 +74,19 @@ function migrateSave(d){
     if(d.raid&&typeof d.raid!=='object') delete d.raid;
     if(d.exp&&!Array.isArray(d.exp.list)) d.exp.list=[];
     d.v=2; }
+  if(d.v<4){ // v3 → v4: пролог, обучение, выборы сюжета, календарь, пропуск, коллекция. Старым героям пролог и обучение не показываем
+    d.seen=d.seen||{}; d.q=d.q||{}; d.q.flags=d.q.flags||{};
+    if(d.started){ d.seen.prologue=1; d.seen.wake=1; d.seen.ftue_done=1; }
+    d.res=d.res||{}; if(d.res.sparks===undefined) d.res.sparks=0;
+    if(d.set&&d.set.spirit===undefined) d.set.spirit=true;
+    d.story=d.story||{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}};
+    // the old ending was the «rekindled» one: count it so the chronicle shows it
+    if(d.prog&&d.prog.stages&&d.prog.stages['6-5']){ d.story.end=d.story.end||'ember'; d.story.ends=d.story.ends||{}; d.story.ends.ember=1; }
+    d.v=4; }
   return d;
 }
 let _saveT=0;
-function saveGame(now){ if(window.__evReload) return; if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} try{ if(typeof netPush==='function') netPush(); }catch(e){} }
+function saveGame(now){ if(window.__evReload||(typeof G!=='undefined'&&G.prologue)) return; if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} try{ if(typeof netPush==='function') netPush(); }catch(e){} }
 setInterval(()=>{if(_saveT)saveGame(true);},1500);
 
 // ---------- haptics / telegram ----------

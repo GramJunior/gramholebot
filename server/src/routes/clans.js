@@ -10,7 +10,7 @@
 //   POST /clan/edit   { descr?, open? }        (leader)
 import { fail, json, readJson, int, str } from '../lib/http.js';
 import { requireUser } from './auth.js';
-import { clanOf, clanFeed, envInt, userByPid, newRefCode } from '../lib/common.js';
+import { clanOf, clanFeed, envInt, userByPid, newRefCode, NAME_SQL } from '../lib/common.js';
 import { isoWeek, nextWeekStart } from '../lib/time.js';
 
 const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} _-]{1,22}[\p{L}\p{N}]$/u;
@@ -27,7 +27,7 @@ async function clanView(c, clanId, viewerUid) {
   if (!clan) fail(404, 'no_clan', 'Клан не найден');
   const week = isoWeek(c.now, env);
   const members = (await env.DB.prepare(
-    `SELECT m.uid, m.role, m.joined_at, u.ref_code, u.first_name, u.power, COALESCE(w.points,0) pts FROM clan_members m
+    `SELECT m.uid, m.role, m.joined_at, u.ref_code, ${NAME_SQL}, u.power, COALESCE(w.points,0) pts FROM clan_members m
      JOIN users u ON u.id=m.uid LEFT JOIN weekly_contrib w ON w.uid=m.uid AND w.week=? WHERE m.clan_id=?
      ORDER BY CASE m.role WHEN 'leader' THEN 0 WHEN 'officer' THEN 1 ELSE 2 END, pts DESC`
   ).bind(week, clanId).all()).results;

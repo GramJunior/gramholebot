@@ -210,7 +210,9 @@ function abyssCard(){
     <div class="card"><p class="dcap">Бесконечные этажи под Бродом. Каждый этаж сильнее предыдущего и получает случайные особенности. Каждый 5-й — страж Бездны. После этажа выберите дар. Смерть заканчивает забег, но добыча и осколки сохраняются.</p></div>
     <div class="row" style="gap:12px"><span>Рекорд: <b>${S.endless.best}</b></span><span>Забегов: <b>${S.endless.runs}</b></span><span>${resChip('shards',S.res.shards)}</span></div>
     <div class="row" style="flex-wrap:wrap;margin-top:8px"><button class="btn leather grow" ${act(()=>{ show('stageCard',false); closeMap(); startAbyss(1); })}>${ico('abyss')} С 1 этажа</button>
-    ${S.endless.best>=10?`<button class="btn woodb grow" ${act(()=>{ show('stageCard',false); closeMap(); startAbyss(Math.floor(S.endless.best/2/5)*5+1); })}>С ${Math.floor(S.endless.best/2/5)*5+1} этажа</button>`:''}</div>`);
+    ${S.endless.best>=10?`<button class="btn woodb grow" ${act(()=>{ show('stageCard',false); closeMap(); startAbyss(Math.floor(S.endless.best/2/5)*5+1); })}>С ${Math.floor(S.endless.best/2/5)*5+1} этажа</button>`:''}</div>
+    <div class="muted lbnote">${ico('crown')} В рейтинг Бездны идут только забеги <b>с 1 этажа</b>${netOn()?'':' (и только при связи с сервером)'}. Старт с середины — для фарма осколков, рекорд он не меняет.</div>
+    ${typeof liveEvents==='function'&&liveEvents().active.filter(e=>e.modifiers&&(e.modifiers.abyssMod||e.modifiers.seasonBoss||e.modifiers.shardMul)).map(e=>`<div class="evMini" style="--c:${e.col}">${ico(e.icon||'star')} <b>${esc(e.name)}</b> — ${esc(e.descr||'')}</div>`).join('')||''}`);
   bindPanel();
 }
 
@@ -223,7 +225,7 @@ function showResults(o){
     ${o.starTxt?`<div class="muted" style="font-size:12px">${o.starTxt}</div>`:''}
     <div class="card" style="margin-top:8px;font-size:14px;text-align:left;columns:2">${o.lines.map(l=>`<div>${l}</div>`).join('')}</div>
     ${items.length?`<div class="lootrow">${items.map(it=>slotHtml(ITEM_BASES[it.base].slot,it)).join('')}</div>`:''}
-    <div class="row" style="justify-content:center;flex-wrap:wrap;margin-top:6px">${o.btns.map(b=>`<button class="btn ${b[2]||'leather'}" ${act(b[1])}>${b[0]}</button>`).join('')}</div>`);
+    ${o.extra||''}<div class="row" style="justify-content:center;flex-wrap:wrap;margin-top:6px">${o.btns.map(b=>`<button class="btn ${b[2]||'leather'}" ${act(b[1])}>${b[0]}</button>`).join('')}</div>`);
   bindPanel();
   [...el.querySelectorAll('.star')].forEach((s,i)=>setTimeout(()=>{ s.classList.add('show'); if(s.classList.contains('on')) AU.sfx('gold',1,1+i*.2); },300+i*280));
 }

@@ -107,3 +107,22 @@ test('client: Telegram login + conflict resolution keeps the more progressed cop
   // Payments outside Telegram's invoice API resolve cleanly.
   assert.equal((await a.EVNet.pay.buy('bp_s1')).error, 'tg_only');
 });
+
+test('client: profile.setName + events.send', async () => {
+  const env = makeEnv();
+  const { EVNet } = sandbox({ env });
+  const i = await EVNet.init({ baseUrl: 'https://api.test' });
+  assert.equal(i.ok, true);
+  const bad = await EVNet.profile.setName('<x>');
+  assert.equal(bad.ok, false);
+  assert.equal(bad.error, 'bad_name');
+  const ok = await EVNet.profile.setName('Сокол Брода');
+  assert.equal(ok.ok, true);
+  assert.equal(EVNet.me().name, 'Сокол Брода');
+  assert.equal(EVNet.me().customName, true);
+  const ev = await EVNet.events.send([{ e: 'ftue', k: 'wake' }, { e: 'stage_start', k: '1-1' }]);
+  assert.deepEqual([ev.ok, ev.accepted], [true, 2]);
+  const off = sandbox();
+  await off.EVNet.init({});
+  assert.equal((await off.EVNet.events.send([{ e: 'x' }])).offline, true);
+});

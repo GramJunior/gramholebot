@@ -32,6 +32,7 @@ export async function getDaily(c) {
   return json({
     ok: true, day: today, serverTime: c.now, resetsAt: nextDayStart(c.now, c.env),
     canClaim: ns.claimable, streak: ns.claimable ? (row ? row.streak : 0) : row.streak,
+    total: row ? row.total : 0, // login days claimed in total (the client's 28-day calendar position)
     nextReward: rewardFor(cfg, ns.streak), nextStreak: ns.streak,
     questsClaimed: quests, questSeed: today, // the client can seed its contract list with this
   });
@@ -52,7 +53,7 @@ export async function claimDaily(c) {
   }
   if (!r.meta.changes) fail(409, 'claimed', 'Награда за сегодня уже получена');
   await addBpXp(c.env, user.id, (cfg.battlepass.xp && cfg.battlepass.xp.daily) || 0, c.now, cfg);
-  return json({ ok: true, day: today, streak: ns.streak, reward: rewardFor(cfg, ns.streak), resetsAt: nextDayStart(c.now, c.env) });
+  return json({ ok: true, day: today, streak: ns.streak, total: (row ? row.total : 0) + 1, reward: rewardFor(cfg, ns.streak), resetsAt: nextDayStart(c.now, c.env) });
 }
 
 export async function claimQuest(c) {
