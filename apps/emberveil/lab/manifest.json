@@ -954,8 +954,9 @@
       60,
       160
      ],
-     "hShift": -8,
-     "sMul": 1.1
+     "hShift": 12,
+     "sMul": 0.9,
+     "lMul": 0.85
     }
    ],
    "note": "Orc Raider scaled down as a goblin"

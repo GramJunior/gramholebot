@@ -60,9 +60,19 @@
   function findNode(root, name) { let r = null; const n = T.PropertyBinding.sanitizeNodeName(name); root.traverse((o) => { if (!r && (o.name === name || o.name === n)) r = o; }); return r; }
 
   // ------------------------------------------------------------------ texture handling
+  // r128 GLTFLoader leaves texture.name empty, so identical atlases embedded in different .glb files are
+  // de-duplicated by a cheap 24x24 pixel fingerprint (KayKit atlases are swatch grids -> very distinctive).
+  const _fp = { cv: null, g: null };
+  function texFingerprint(t) {
+    const im = t.image; if (!im || !im.width) return t.uuid;
+    if (!_fp.cv) { _fp.cv = document.createElement('canvas'); _fp.cv.width = _fp.cv.height = 24; _fp.g = _fp.cv.getContext('2d', { willReadFrequently: true }); }
+    try { _fp.g.clearRect(0, 0, 24, 24); _fp.g.drawImage(im, 0, 0, 24, 24); const d = _fp.g.getImageData(0, 0, 24, 24).data; let h1 = 2166136261 >>> 0, h2 = 5381;
+      for (let i = 0; i < d.length; i++) { h1 = Math.imul(h1 ^ d[i], 16777619) >>> 0; h2 = ((h2 << 5) + h2 + d[i]) >>> 0; }
+      return im.width + 'x' + im.height + ':' + h1.toString(36) + h2.toString(36); } catch (e) { return t.uuid; }
+  }
   function canonTex(t) {
     if (!t) return null;
-    const key = t.name || (t.image && t.image.src) || t.uuid;
+    const key = t.name || (t.name = texFingerprint(t));
     if (S.tex[key]) { if (S.tex[key] !== t) t.dispose(); return S.tex[key]; }
     t.encoding = S.linear ? T.LinearEncoding : T.sRGBEncoding; // game renders linear-out; atlas colours are used as-is
     t.anisotropy = S.Q.maxAnisotropy; t.flipY = false;
