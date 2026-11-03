@@ -27,9 +27,9 @@ function synReady(e,id,cd){ e.synCd=e.synCd||{}; if((e.synCd[id]||0)>G.time) ret
 function synFire(id,e){
   S.syn=S.syn||{seen:{}}; const first=!S.syn.seen[id]; S.syn.seen[id]=(S.syn.seen[id]||0)+1; S.st.syn=(S.st.syn||0)+1;
   if(G.run) G.run.syn=(G.run.syn||0)+1;
-  dmgNum(e.x,(e.rig&&e.rig.h||1.5)+.9,e.z,SYN[id].n.toUpperCase()+'!','syn s_'+id);
+  synCallout(id,e);
   G.hitstop=Math.max(G.hitstop,.05); vib('medium');
-  if(first){ toast(`Новое знание: <b>${SYN[id].n}</b> — ${SYN[id].how}. Подробнее в «Знаниях».`,null,null,'quest'); AU.sfx('quest',.6); saveGame(); }
+  if(first){ knowBadge(id); AU.sfx('quest',.6); saveGame(); }
   if(PS.uniq&&PS.uniq.catalyst&&G.P) G.P.ember=Math.min(100,G.P.ember+6);
   if(G.synLog) G.synLog.push(id);
 }

@@ -10,7 +10,10 @@ python3 - "$D" $PARTS <<'PY'
 import sys,json
 d=sys.argv[1]; parts=sys.argv[2:]
 s=''.join(open(d+'/src/'+f,encoding='utf-8').read() for f in parts)
-man=json.dumps(json.load(open(d+'/lab/manifest.json',encoding='utf-8')),ensure_ascii=False,separators=(',',':'))
+import os
+M=json.load(open(d+'/lab/manifest.json',encoding='utf-8'))
+M['sizes']={k:os.path.getsize(d+'/assets/'+v) for k,v in M['files'].items() if os.path.exists(d+'/assets/'+v)}
+man=json.dumps(M,ensure_ascii=False,separators=(',',':'))
 mods=('<script>\n'+open(d+'/lab/assets.js',encoding='utf-8').read()+'\n</script>\n'
       '<script>\n'+open(d+'/lab/postfx.js',encoding='utf-8').read()+'\n</script>\n'
       '<script>window.EV_MANIFEST='+man.replace('</','<\\/')+';</script>\n'

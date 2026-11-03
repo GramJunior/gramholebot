@@ -1,7 +1,20 @@
 // ================= p2: render core =================
 const IS_MOBILE=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||('ontouchstart' in window&&Math.min(screen.width,screen.height)<820);
+// device tier: quick heuristic from GPU name, memory, cores and screen
+let DEVICE_TIER=null, DEVICE_GPU='';
+function deviceTier(){
+  if(DEVICE_TIER) return DEVICE_TIER;
+  let gpu='', got=false; try{ const gl=R&&R.getContext(); const ext=gl&&gl.getExtension('WEBGL_debug_renderer_info'); gpu=ext?String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)):''; got=!!gl; }catch(e){}
+  const mem=navigator.deviceMemory||4, cores=navigator.hardwareConcurrency||4, px=screen.width*screen.height*(window.devicePixelRatio||1)**2;
+  let t='high';
+  if(IS_MOBILE) t='med';
+  if(/SwiftShader|llvmpipe|Software|Mali-[4T][0-9]{1,2}\b|Mali-G(31|51|52|57)|Adreno \(TM\) ?[2-5][0-9]{2}|PowerVR|SGX|Intel\(R\) HD Graphics [2-5]/i.test(gpu)||mem<=2||cores<=2) t='low';
+  else if(IS_MOBILE&&(mem>=6&&cores>=8&&/Apple|Adreno \(TM\) ?(6[4-9]|7)\d\d|Mali-G(7[1-9]|71[0-9])|Xclipse/i.test(gpu))) t='high';
+  else if(!IS_MOBILE&&(/Intel/i.test(gpu)&&px>4e6)) t='med';
+  if(got) DEVICE_TIER=t; DEVICE_GPU=gpu; return t;
+}
 let QL='med';
-function resolveQuality(){ const q=S.set.q; if(q==='low'||q==='med'||q==='high') return q; return IS_MOBILE?'med':'high'; }
+function resolveQuality(){ let q=S.set.q; try{ const m=/[?&]q=(low|med|high)\b/.exec(location.search); if(m) q=m[1]; }catch(e){} if(q==='low'||q==='med'||q==='high') return q; if(S.set.qAuto==='low'||S.set.qAuto==='med') return S.set.qAuto; return deviceTier(); }
 QL=resolveQuality();
 const QP={
   low:{prMax:1.0,props:.55,parts:.5,shadows:false,ambient:.4,grass:.35,aa:false},
@@ -28,6 +41,7 @@ const C3=(h)=>new THREE.Color(h);
 // ---------- toon material ----------
 const GRAD=(()=>{const d=new Uint8Array([105,105,105,180,180,180,255,255,255]); const t=new THREE.DataTexture(d,3,1,THREE.RGBFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t;})();
 const RIM={value:new THREE.Color(0xfff0c8)};
+const TOON_OUT_RE=/#include <output_fragment>|gl_FragColor = vec4\( outgoingLight, diffuseColor\.a \);/;
 function toonMat(tint,tintA,flash){
   const m=new THREE.MeshToonMaterial({vertexColors:true,gradientMap:GRAD});
   const U={uFlash:{value:flash||0},uTint:{value:new THREE.Vector4(...(tint?[C3(tint).r,C3(tint).g,C3(tint).b]:[0,0,0]),tintA||0)}};
@@ -35,13 +49,14 @@ function toonMat(tint,tintA,flash){
   m.onBeforeCompile=(sh)=>{
     sh.uniforms.uFlash=U.uFlash; sh.uniforms.uTint=U.uTint; sh.uniforms.uRim=RIM;
     sh.vertexShader='attribute float aE;\nvarying float vE;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vE=aE;');
-    sh.fragmentShader='uniform float uFlash;\nuniform vec4 uTint;\nuniform vec3 uRim;\nvarying float vE;\n'+sh.fragmentShader.replace('#include <output_fragment>',
+    // r128: meshtoon_frag заканчивается строкой gl_FragColor = vec4( outgoingLight, diffuseColor.a ); (чанка <output_fragment> ещё нет)
+    sh.fragmentShader='uniform float uFlash;\nuniform vec4 uTint;\nuniform vec3 uRim;\nvarying float vE;\n'+sh.fragmentShader.replace(TOON_OUT_RE,m0=>
 `  float rimF=1.0-clamp(dot(normalize(normal),normalize(vViewPosition)),0.0,1.0);
   outgoingLight+=uRim*smoothstep(0.6,0.7,rimF)*(1.0-vE)*0.32*diffuseColor.rgb;
   outgoingLight=mix(outgoingLight,diffuseColor.rgb,vE);
   outgoingLight=mix(outgoingLight,uTint.rgb*(0.4+0.8*dot(outgoingLight,vec3(0.33))),uTint.a);
   outgoingLight=mix(outgoingLight,vec3(1.0,0.93,0.8),uFlash);
-#include <output_fragment>`);
+`+m0);
   };
   return m;
 }
@@ -306,6 +321,7 @@ function camResize(){
   cam.updateProjectionMatrix();
   R.setSize(w,h,false);
   PA.mat.uniforms.uScale.value=PN.mat.uniforms.uScale.value=h*PR*0.5/Math.tan(cam.fov*PI/360)/1;
+  asResize(w,h);
 }
 function camUpdate(dt,tx,tz){
   let d=CAMR.dist*CAMR.zoom, px, pz, ly=0.6;
@@ -353,7 +369,7 @@ const GAM=(()=>{const a=new Uint8Array(256);for(let i=0;i<256;i++){const v=i/255
 const PERF={acc:0,frames:0,fps:60,t:0};
 function perfTick(dt){
   PERF.acc+=dt; PERF.frames++;
-  if(PERF.acc>=2){ PERF.fps=PERF.frames/PERF.acc; PERF.acc=0; PERF.frames=0;
+  if(PERF.acc>=2){ PERF.fps=PERF.frames/PERF.acc; PERF.acc=0; PERF.frames=0; asAdapt(PERF.fps);
     const max=Math.min(window.devicePixelRatio||1,Q.prMax);
     let np=PR; if(PERF.fps<42) np=Math.max(0.75,PR-0.15); else if(PERF.fps>57&&PR<max) np=Math.min(max,PR+0.1);
     if(Math.abs(np-PR)>0.01){ PR=np; R.setPixelRatio(PR); camResize(); }

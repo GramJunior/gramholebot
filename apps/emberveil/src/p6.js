@@ -62,7 +62,7 @@ function addProp(type,x,z,s=1,ry){ W.props.push({type,x,z,s,ry:ry===undefined?ra
 function buildPropMeshes(){
   const byType={}; for(const p of W.props){ (byType[p.type]=byType[p.type]||[]).push(p); }
   W.propIM={};
-  for(const t in byType){ const list=byType[t]; const im=new THREE.InstancedMesh(propGeo(t),MT,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
+  for(const t in byType){ const list=byType[t]; const g=asPropIM(t,list); if(g){ worldRoot.add(g); W.propIM[t]={grp:g,list}; continue; } const im=new THREE.InstancedMesh(propGeo(t),MT,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
   W.propCullAt=null;
 }
 const _pm=new THREE.Matrix4(), _pq=new THREE.Quaternion(), _pv=new THREE.Vector3(), _ps=new THREE.Vector3(), _py=new THREE.Vector3(0,1,0);
@@ -71,9 +71,10 @@ function cullProps(cx,cz,force){
   if(!force&&W.propCullAt&&Math.abs(W.propCullAt[0]-cx)<1.5&&Math.abs(W.propCullAt[1]-cz)<1.5) return;
   W.propCullAt=[cx,cz];
   const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
-  for(const t in W.propIM){ const {im,list}=W.propIM[t]; let n=0;
-    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-xr||dx>xr||dz<z0||dz>z1) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s,p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); im.setMatrixAt(n++,_pm); }
-    im.count=n; im.instanceMatrix.needsUpdate=true; }
+  const far=CAMR.override&&CAMR.override.dist?1.9:1; const XR=xr*far, Z0=z0*far, Z1=z1*far;
+  for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0;
+    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-XR||dx>XR||dz<Z0||dz>Z1) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s,p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
+    if(grp){ asPropCount(grp,n); continue; } im.count=n; im.instanceMatrix.needsUpdate=true; }
 }
 function groundY(x,z){ const d=sdfW(x,z); if(d<=0) return 0; return smooth(clamp(d/7,0,1))*(2.2+fbm(x*.15,z*.15)*2.6); }
 function scatterWalls(Z,b,dens){
@@ -99,29 +100,30 @@ function scatterDeco(Z,n){
 }
 
 // ---------- interactive objects ----------
+function objMesh(id,geoFn,g){ const a=asObj(id); if(a){ g.add(a); return a; } return pmesh(geoFn(),g); }
 function mkObj(kind,x,z,o={}){
   const ob=Object.assign({kind,x,z,r:.6,hp:1,alive:true,y:0},o); let mesh;
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=o.ry!==undefined?o.ry:rand(TAU); worldRoot.add(g); ob.mesh=g;
   switch(kind){
-    case 'barrel': pmesh(OBJ_GEO.barrel(),g); ob.r=.45; ob.hp=1; ob.brk=1; break;
+    case 'barrel': objMesh('obj:barrel',OBJ_GEO.barrel,g); ob.r=.45; ob.hp=1; ob.brk=1; break;
     case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
-    case 'crate': pmesh(OBJ_GEO.crate(),g); ob.r=.55; ob.hp=1; ob.brk=1; break;
-    case 'pot': pmesh(W.zone&&W.zone.id>=4?OBJ_GEO.urn():OBJ_GEO.pot(),g); ob.r=.35; ob.hp=1; ob.brk=1; break;
-    case 'chest': case 'vault': { pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=o.ry||0; break; }
-    case 'ore': pmesh(OBJ_GEO.ore(),g); ob.r=.8; ob.hp=4; ob.res='ore'; break;
-    case 'wood': pmesh(OBJ_GEO.woodPile(),g); ob.r=.8; ob.hp=3; ob.res='wood'; break;
-    case 'ess': pmesh(OBJ_GEO.essNode(),g); ob.r=.7; ob.hp=4; ob.res='ess'; break;
+    case 'crate': objMesh('obj:crate',OBJ_GEO.crate,g); ob.r=.55; ob.hp=1; ob.brk=1; break;
+    case 'pot': { const u=W.zone&&W.zone.id>=4; objMesh(u?'obj:urn':'obj:pot',u?OBJ_GEO.urn:OBJ_GEO.pot,g); ob.r=.35; ob.hp=1; ob.brk=1; break; }
+    case 'chest': case 'vault': { const ap=asObj('obj:'+kind); if(ap){ const pop=new THREE.Group(); pop.add(ap); g.add(pop); ob.evPop=pop; ob.lid=new THREE.Object3D(); ob.r=.7; ob.opened=false; g.rotation.y=(o.ry||0)+PI; break; } pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=o.ry||0; break; }
+    case 'ore': objMesh('obj:ore',OBJ_GEO.ore,g); ob.r=.8; ob.hp=4; ob.res='ore'; break;
+    case 'wood': objMesh('obj:wood',OBJ_GEO.woodPile,g); ob.r=.8; ob.hp=3; ob.res='wood'; break;
+    case 'ess': objMesh('obj:essNode',OBJ_GEO.essNode,g); ob.r=.7; ob.hp=4; ob.res='ess'; break;
     case 'totem': pmesh(OBJ_GEO.totem(),g); ob.r=.6; ob.hp=o.hp||200; ob.maxHp=ob.hp; ob.spawnT=3; break;
     case 'cage': pmesh(OBJ_GEO.cage(),g); ob.r=1.0; ob.hp=o.hp||120; ob.maxHp=ob.hp; { const v=buildNPC(pick(['v0','v1','v2'])); v.root.scale.setScalar(.9); g.add(v.root); ob.prisoner=v; } break;
-    case 'portal': { pmesh(OBJ_GEO.portal(),g); const sw=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.2),new THREE.ShaderMaterial({uniforms:{uT:{value:0},uOn:{value:o.on?1:0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+    case 'portal': { objMesh('obj:portal',OBJ_GEO.portal,g); const sw=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.2),new THREE.ShaderMaterial({uniforms:{uT:{value:0},uOn:{value:o.on?1:0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
         vertexShader:DECAL_VS,fragmentShader:`varying vec2 vUv;uniform float uT;uniform float uOn;void main(){vec2 p=vUv*2.0-1.0;p.y*=0.8;float r=length(p);float a=atan(p.y,p.x);float s=sin(a*5.0+r*10.0-uT*4.0)*0.5+0.5;float m=smoothstep(1.0,0.6,r);vec3 c=mix(vec3(1.0,0.35,0.05),vec3(1.0,0.85,0.4),s);gl_FragColor=vec4(c*m*(0.35+0.65*s)*uOn,1.0);}`}));
       sw.position.set(0,1.75,0); g.add(sw); ob.swirl=sw; ob.r=0; ob.on=!!o.on; g.rotation.y=0; break; }
     case 'secret': pmesh(OBJ_GEO.secretWall(),g); ob.r=1.2; ob.hp=3; g.rotation.y=o.ry||0; break;
-    case 'scroll': pmesh(OBJ_GEO.scroll(),g); ob.r=0; ob.float=1; break;
+    case 'scroll': objMesh('obj:scroll',OBJ_GEO.scroll,g); ob.r=0; ob.float=1; break;
     case 'egg': pmesh(OBJ_GEO.nest(),g); { const e=pmesh(eggGeo(o.egg),g,0,.35,0); ob.eggMesh=e; } ob.r=0; break;
     case 'stone': { pmesh(cgeo('o_rune',b=>{ b.dod(1.2,0x8a8478,{p:[0,1.2,0],s:[1,1.7,1],j:.06}); for(let i=0;i<4;i++) b.box(.1,.5,.05,0xff9a3a,{p:[Math.cos(i*1.57)*.75,1.3,Math.sin(i*1.57)*.75],r:[0,-i*1.57+PI/2,0],e:1,ol:0}); },.06),g); ob.r=1.4; break; }
     case 'cartE': { const c=pmesh(propGeo('cart'),g); c.position.y=0; pmesh(cgeo('o_cartc',b=>{ b.box(1.0,.5,.7,0x5a3a20,{p:[0,1.0,0]}); b.oct(.3,0xff8a2a,{p:[0,1.4,0],e:1}); b.oct(.22,0xffc060,{p:[.3,1.35,.15],e:1}); },.04),g); ob.r=1.1; break; }
-    case 'gate': pmesh(OBJ_GEO.portal(),g); g.rotation.y=o.ry||0; ob.r=0; break;
+    case 'gate': objMesh('obj:portal',OBJ_GEO.portal,g); g.rotation.y=o.ry||0; ob.r=0; break;
     case 'abyssPit': { const m=new THREE.Mesh(new THREE.CircleGeometry(2.2,28),new THREE.ShaderMaterial({uniforms:{uT:{value:0},uOn:{value:1}},transparent:true,depthWrite:false,vertexShader:DECAL_VS,
         fragmentShader:`varying vec2 vUv;uniform float uT;void main(){vec2 p=vUv*2.0-1.0;float r=length(p);float a=atan(p.y,p.x);float s=sin(a*4.0-r*8.0+uT*2.0)*0.5+0.5;vec3 c=mix(vec3(0.05,0.0,0.1),vec3(0.55,0.2,0.9),s*(1.0-r));gl_FragColor=vec4(c,smoothstep(1.0,0.85,r));}`}));
       m.rotation.x=-PI/2; m.position.y=.06; g.add(m); ob.swirl=m; pmesh(cgeo('o_pitring',b=>{ for(let i=0;i<10;i++){const a=i/10*TAU; b.dod(.45,0x4a4250,{p:[Math.cos(a)*2.4,.2,Math.sin(a)*2.4],j:.1});} },.05),g); ob.r=2.5; break; }
@@ -132,7 +134,7 @@ function mkObj(kind,x,z,o={}){
 // ---------- unload ----------
 function unloadWorld(){
   if(!W) return;
-  for(const c of worldRoot.children.slice()){ worldRoot.remove(c); if(c.isMesh&&c===W.ground){ c.geometry.dispose(); } if(c===W.liquid){ c.geometry.dispose(); c.material.dispose(); } if(c.isInstancedMesh){ c.dispose&&c.dispose(); } }
+  for(const c of worldRoot.children.slice()){ worldRoot.remove(c); if(c.isMesh&&c===W.ground){ c.geometry.dispose(); } if(c===W.liquid){ c.geometry.dispose(); c.material.dispose(); } if(c.isInstancedMesh){ c.dispose&&c.dispose(); } if(c.userData&&c.userData.evInst){ for(const k of c.children) k.dispose&&k.dispose(); } }
   DECALS.clear(); PA.clear(); PN.clear();
   W=null;
 }
@@ -140,7 +142,7 @@ function setZoneLook(Z){
   scene.fog.color.set(Z.fog); scene.fog.near=Z.fogN; scene.fog.far=Z.fogF; scene.background=null; R.setClearColor(Z.fog,1);
   hemi.color.set(Z.hemi[0]); hemi.groundColor.set(Z.hemi[1]); hemi.intensity=Z.hemi[2]*.62; sun.color.set(Z.sun[0]); sun.intensity=Z.sun[1]*.7;
   RIM.value.set(Z.rim||0xfff0c8);
-  document.body.dataset.zone=Z.id;
+  document.body.dataset.zone=Z.id; asZone(Z);
 }
 
 // ---------- path layout ----------
@@ -280,17 +282,18 @@ function makeVillage(){
   buildPropMeshes();
   return W;
 }
+function bldMesh(id,lv,geoFn){ const g=asBuilding(id,lv); if(g){ g.userData.ev=1; return g; } return new THREE.Mesh(geoFn(),MT); }
 function buildVillageBuildings(){
   for(const k in W.bmesh){ worldRoot.remove(W.bmesh[k]); } W.bmesh={}; W.obst=W.obst.filter(o=>!o.bld);
   for(const id of BLD_ORDER){
     const lv=S.bld[id];
-    if(id==='houses'){ for(let i=0;i<lv*2&&i<HOUSE_POS.length;i++){ const [x,z,ry]=HOUSE_POS[i]; const m=new THREE.Mesh(BUILD_GEO.houses(i),MT); m.position.set(x,0,z); m.rotation.y=ry; worldRoot.add(m); W.bmesh['h'+i]=m; W.obst.push({x,z,r:1.9,bld:1}); } continue; }
-    if(id==='walls'){ if(lv>0) for(let i=0;i<Math.min(4,lv+1);i++){ const [x,z]=TOWER_POS[i]; const m=new THREE.Mesh(BUILD_GEO.walls(lv),MT); m.position.set(x,0,z); worldRoot.add(m); W.bmesh['t'+i]=m; W.obst.push({x,z,r:1.3,bld:1}); } continue; }
+    if(id==='houses'){ for(let i=0;i<lv*2&&i<HOUSE_POS.length;i++){ const [x,z,ry]=HOUSE_POS[i]; const m=bldMesh('houses',1+(i%4),()=>BUILD_GEO.houses(i)); m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh['h'+i]=m; W.obst.push({x,z,r:1.9,bld:1}); } continue; }
+    if(id==='walls'){ if(lv>0) for(let i=0;i<Math.min(4,lv+1);i++){ const [x,z]=TOWER_POS[i]; const m=bldMesh('walls',lv,()=>BUILD_GEO.walls(lv)); m.position.set(x,0,z); worldRoot.add(m); W.bmesh['t'+i]=m; W.obst.push({x,z,r:1.3,bld:1}); } continue; }
     const [x,z,ry]=VPOS[id];
     let m;
-    if(lv>0){ m=new THREE.Mesh(BUILD_GEO[id](lv),MT); }
-    else { if(bldUnlock(id)>S.bld.hall) continue; m=new THREE.Mesh(OBJ_GEO.plot(),MT); }
-    m.position.set(x,0,z); m.rotation.y=ry; worldRoot.add(m); W.bmesh[id]=m;
+    if(lv>0){ m=bldMesh(id,lv,()=>BUILD_GEO[id](lv)); }
+    else { if(bldUnlock(id)>S.bld.hall) continue; m=bldMesh(id,0,()=>OBJ_GEO.plot()); }
+    m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh[id]=m;
     const rad={hall:3.6,forge:2.6,alch:2.5,pen:1.5,tavern:2.9,temple:3,store:2.6,saw:2.4,mine:2.6,well:1.4}[id]||2;
     if(lv>0) W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1});
     if(id==='pen'&&lv>0){ W.obst.push({x:x+Math.sin(ry)*-1.6*0,z:z-1.6,r:1.6,bld:1}); }

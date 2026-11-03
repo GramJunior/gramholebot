@@ -51,16 +51,16 @@ function recruit(id){ const C=COMPANIONS[id]; if(compOwned(id)||!compUnlocked(id
 function compGearObj(id){ const C=COMPANIONS[id], o=compS().owned[id]||{g:{w:0,c:0}}; const gear={weapon:null,offhand:null,helm:null,chest:null,gloves:null,boots:null,amulet:null,ring1:null,ring2:null,_look:C.look};
   const r=Math.min(4,Math.max(C.rar,Math.floor(o.g.w/2))); for(const k in C.gear) gear[k]={base:C.gear[k],rar:k==='weapon'?r:Math.min(4,C.rar+Math.floor(o.g.c/3)),el:k==='weapon'?C.el:null,aff:[],sock:[]}; return gear; }
 const COMP_PORT={};
-function compPortrait(id){ const key=id+(compS().owned[id]?compS().owned[id].g.w:0); if(COMP_PORT[key]) return COMP_PORT[key]; try{ const r=buildHero(); dressHero(r,compGearObj(id)); return COMP_PORT[key]=portraitOf(r,'comp_'+key,{hy:1.62,dist:1.3,x:.25,bg:0x3a2416}); }catch(e){ return ''; } }
+function compPortrait(id){ const key=id+(compS().owned[id]?compS().owned[id].g.w:0); if(COMP_PORT[key]) return COMP_PORT[key]; try{ const ap=asPortrait(COMP_ASSET[id]); if(ap) return COMP_PORT[key]=ap; const r=buildHeroProc(); dressHeroProc(r,compGearObj(id)); return COMP_PORT[key]=portraitOf(r,'comp_'+key,{hy:1.62,dist:1.3,x:.25,bg:0x3a2416}); }catch(e){ return ''; } }
 
 // ---------- allies in the world ----------
 G.allies=[];
 function clearAllies(){ for(const a of G.allies) worldRoot.remove(a.rig.root); G.allies=[]; }
 function spawnCompanion(){ const id=compS().active; if(!id||compBusy(id)) return null; const C=COMPANIONS[id]; const st=compStats(id);
-  const rig=buildHero(); dressHero(rig,compGearObj(id)); rig.tip=new THREE.Object3D(); worldRoot.add(rig.root); const P=G.P;
+  const rig=buildCompanion(id,compGearObj(id)); worldRoot.add(rig.root); const P=G.P;
   const a={type:'ally',kind:'comp',id,C,rig,x:P.x+1.5,z:P.z+1.2,y:0,face:PI,r:.45,hp:st.hp,maxHp:st.hp,atk:st.atk,armor:st.armor,state:'idle',st:0,mv:null,move:0,phase:0,cd:1,skCd:6,dead:false,downT:0,revive:0,
     cls:C.cls,role:C.role,el:C.el,ranged:C.cls==='bow'||C.cls==='staff',alive:true,stat:{},hitT:0,meshes:[],flashT:0,buff:{}};
-  rig.root.traverse(m=>{ if(m.isMesh) a.meshes.push(m); }); G.allies.push(a); return a; }
+  if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) a.meshes.push(m); }); G.allies.push(a); return a; }
 function spawnMilitia(x,z,lvl,i){ const rig=buildNPC(['v0','v1','v2'][i%3]); worldRoot.add(rig.root); rig.root.scale.setScalar(.95);
   const f=F(lvl); const a={type:'ally',kind:'militia',id:'m'+i,rig,x,z,y:0,face:PI,r:.4,hp:Math.round(70*f),maxHp:Math.round(70*f),atk:5*f,armor:2*f,state:'idle',st:0,move:0,cd:rand(.5,1.5),skCd:99,dead:false,downT:0,revive:0,
     cls:'sword',role:'militia',el:null,ranged:false,alive:true,stat:{},hitT:0,home:{x,z},t:rand(5),meshes:[],buff:{}};
@@ -122,7 +122,7 @@ function updateAllies(dt){
 function animAlly(a,dt){
   if(a.kind==='militia'){ a.moving=a.move; const atk=a.state==='atk'; animNPC(a,dt,atk); if(a.dead){ const u=clamp(a.st*2,0,1); a.rig.root.rotation.x=-u*PI/2*0; a.rig.body&&(a.rig.body.rotation.x=-u*1.4); } return; }
   const sv=a.state; if(a.dead){ a.state='dead'; } animHero(a,dt); a.state=sv;
-  for(const m of a.meshes) m.material=a.flashT>0?MTF:a.buff.wall>0?MTgold:MT;
+  heroMat(a);
 }
 // enemies choose between hero and allies
 function enemyAllyTarget(e,def){

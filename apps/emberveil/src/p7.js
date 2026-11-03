@@ -19,10 +19,10 @@ function makePlayer(){
 }
 function refreshPlayer(full){
   const P=G.P; if(!P) return; computeStats(); dressHero(P.rig,S.gear); attachTip();
-  P.meshes=[]; P.rig.root.traverse(o=>{ if(o.isMesh) P.meshes.push(o); });
+  P.meshes=[]; if(!P.rig.actor) P.rig.root.traverse(o=>{ if(o.isMesh) P.meshes.push(o); });
   const frac=P.maxHp>1?P.hp/P.maxHp:1; P.maxHp=PS.maxHp; P.hp=full?P.maxHp:Math.max(1,Math.round(P.maxHp*frac));
 }
-function attachTip(){ const P=G.P, rig=P.rig; const w=rig.meshes.weapon; if(!w) return; if(rig.tip.parent) rig.tip.parent.remove(rig.tip); const cls=rig.cls; rig.tip.position.set(0,cls==='staff'?1.35:cls==='bow'?0:cls==='axe'?.85:.85,0); w.add(rig.tip); }
+function attachTip(){ const P=G.P, rig=P.rig; if(rig.actor){ asTipTo(rig); const w=rig.meshes.weapon; if(w&&rig.tip.parent!==w) w.add(rig.tip); return; } const w=rig.meshes.weapon; if(!w) return; if(rig.tip.parent) rig.tip.parent.remove(rig.tip); const cls=rig.cls; rig.tip.position.set(0,cls==='staff'?1.35:cls==='bow'?0:cls==='axe'?.85:.85,0); w.add(rig.tip); }
 function onGearChanged(){ refreshPlayer(false); if(typeof hudRefresh==='function') hudRefresh(); }
 function nearestEnemy(x,z,maxD,filter){ let best=null,bd=maxD; for(const e of G.enemies){ if(!e.alive||e.burrowed||e.untarget) continue; if(filter&&!filter(e)) continue; const d=Math.hypot(e.x-x,e.z-z)-e.r; if(d<bd){bd=d;best=e;} } return best; }
 function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
@@ -176,9 +176,10 @@ function spawnEnemy(kind,x,z,L,o={}){
   rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
   e.baseMat=MT; const mm=e.mods.find(m=>ELITE_MODS[m].mat); if(mm){ e.baseMat={fire:MTfire,ice:MTice}[ELITE_MODS[mm].mat]; setMat(e,e.baseMat); }
   if(D.ai==='burrow'){ e.burrowed=false; }
+  if(rig.actor){ e.meshes=[]; if(o.summon||G.mode==='raid'||W.kind==='abyss'){ const sk=/^skel/.test(kind)&&rig.actor.clipMap.rise; rig.actor.play(sk?'rise':'spawn',{once:true,duration:.9,fade:0}); e._spawnT=.75; } }
   G.enemies.push(e); return e;
 }
-function setMat(e,m){ for(const x of e.meshes) x.material=m; }
+function setMat(e,m){ if(e.rig&&e.rig.actor){ actorMat(e.rig.actor,m); return; } for(const x of e.meshes) x.material=m; }
 function dmgEnemy(e,amt,o={}){
   if(!e.alive) return;
   if(e.invuln){ dmgNum(e.x,e.rig.h+.3,e.z,'неуязвим','txt'); return; }
@@ -456,7 +457,8 @@ const DROP_GEO={gold:()=>OBJ_GEO.coin(),potion:()=>OBJ_GEO.potion(),gem:()=>OBJ_
 function spawnDrop(kind,x,z,o={}){
   let m;
   if(kind==='item'){ const io=itemIconObj(o.item); m=new THREE.Group(); io.m.scale.setScalar(.75); if(io.slot==='weapon'||io.slot==='offhand') io.m.rotation.z=-.7; m.add(io.m); const bm=new THREE.Mesh(beamGeo,BEAM_MATS[o.item.rar]); bm.scale.set(1,o.item.rar>=3?6:3.5,1); bm.position.y=-1.0; m.add(bm); o.beam=bm; if(o.item.rar>=3) AU.sfx('legend'); }
-  else if(kind==='mat'){ m=new THREE.Mesh(DROP_GEO.mat(o.res),MT); }
+  else if(kind==='mat'){ m=asObj({ore:'obj:matOre',wood:'obj:matWood',ess:'obj:matEss'}[o.res])||new THREE.Mesh(DROP_GEO.mat(o.res),MT); }
+  else if(kind!=='gem'&&(m=asObj({gold:'obj:coin',potion:'obj:potion',key:'obj:key'}[kind]))){ }
   else { m=new THREE.Mesh(DROP_GEO[kind](),kind==='gem'?new THREE.MeshBasicMaterial({color:GEMS[o.gem.slice(0,-1)].c}):MT); }
   worldRoot.add(m);
   const a=rand(TAU), s=rand(1.5,3.5);
@@ -480,8 +482,8 @@ function pickup(d){
   if(d.kind==='gold'){ S.res.gold+=d.v; S.st.gold+=d.v; if(r) r.gold+=d.v; AU.sfx('gold',.6); if(Math.random()<.4) dmgNum(G.P.x,2.2,G.P.z,'+'+d.v,'gold'); if(G.abyss&&G.abyss.boonGold) {} }
   else if(d.kind==='mat'){ S.res[d.res]+=d.v; if(r){ r.mats[d.res]=(r.mats[d.res]||0)+d.v; } AU.sfx('pick',.6); dmgNum(G.P.x,2.2,G.P.z,'+'+d.v+' '+RES_NAME[d.res].toLowerCase(),'txt'); }
   else if(d.kind==='potion'){ if(S.cons.potion<S.potMax+S.bld.alch){ S.cons.potion++; dmgNum(G.P.x,2.2,G.P.z,'+зелье','heal'); } else healPlayer(G.P.maxHp*.15); AU.sfx('pick'); }
-  else if(d.kind==='gem'){ S.gems[d.gem]=(S.gems[d.gem]||0)+1; AU.sfx('loot',.6); const G0=GEMS[d.gem.slice(0,-1)]; toast(`${GEM_TIER[+d.gem.slice(-1)]}: <b style="color:${G0.c}">${G0.n}</b>`); }
-  else if(d.kind==='key'){ S.keys++; AU.sfx('loot'); toast('<b>Ключ сокровищницы</b> — открывает золотые сундуки'); }
+  else if(d.kind==='gem'){ S.gems[d.gem]=(S.gems[d.gem]||0)+1; AU.sfx('loot',.6); const G0=GEMS[d.gem.slice(0,-1)]; toast(`${GEM_TIER[+d.gem.slice(-1)]}: <b style="color:${G0.c}">${G0.n}</b>`,null,0,'loot'); }
+  else if(d.kind==='key'){ S.keys++; AU.sfx('loot'); toast(S.seen.keyTip?'<b>Ключ сокровищницы</b>':'<b>Ключ сокровищницы</b> — открывает золотые сундуки',null,3,S.seen.keyTip?'loot':undefined); S.seen.keyTip=1; }
   else if(d.kind==='item'){ const ok=addItem(d.item); if(r) r.items.push(d.item); AU.sfx(d.item.rar>=3?'legend':'loot',.8); }
   hudRefresh();
 }

@@ -59,6 +59,9 @@ function updateVillage(dt){
 
 // ---------- stage ----------
 function startStage(z,s){
+  withAssets([asZoneGroup(z)],()=>startStage2(z,s));
+}
+function startStage2(z,s){
   fadeTo(()=>{
     clearEntities(); const info=stageInfo(z,s);
     RUNBUF={}; for(const k of ['elixir_str','elixir_def','elixir_spd']) if(CARD_ELIX[k]&&S.cons[k]>0){ S.cons[k]--; RUNBUF[k.split('_')[1]]=1; } CARD_ELIX={};
@@ -92,7 +95,7 @@ function updateStage(dt){
   if(T==='hunt'||T==='clear'||T==='rescue') { if(W._ot===undefined||(W._ot-=dt)<0){ W._ot=.5; objText(); } }
   if(T==='boss') bossStageTick(dt);
   // portal anim
-  for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid&&o.openT<1){ o.openT+=dt*3; o.lid.rotation.x=-Math.min(1,o.openT)*1.9; } if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
+  for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid&&o.openT<1){ o.openT+=dt*3; o.lid.rotation.x=-Math.min(1,o.openT)*1.9; if(o.evPop){ const u=Math.min(1,o.openT); o.evPop.scale.set(1+Math.sin(u*PI)*.28,1-Math.sin(u*PI)*.18+u*.0,1+Math.sin(u*PI)*.28); if(u>=1) asBurst(o.x,.2,o.z,0xffd27a,1.6,.5); } } if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
     if(o.kind==='portal'&&o.on&&Math.random()<dt*12) fx('ember',o.x+rand(-1.2,1.2),rand(.3,3),o.z); if(o.kind==='secret'&&o.alive&&Math.random()<dt*2) fx('ember',o.x+rand(-1,1),rand(.3,1.8),o.z,{col:0xffd080}); }
   ambient(dt);
 }
@@ -171,6 +174,7 @@ function runEnd(win,reason,keep){
 
 // ---------- abyss ----------
 function startAbyss(floor){
+  if(!asGroupsLoaded(['abyss'])) return withAssets(['abyss'],()=>startAbyss(floor));
   G.abyss={floor,start:floor,mods:[],boons:{},shards:0,gold:0,items:[]}; S.endless.runs++; RUNBUF={boons:G.abyss.boons};
   abyssFloor(floor,true);
 }
@@ -236,7 +240,7 @@ function startGame(fresh){
 // ---------- main loop ----------
 let _last=performance.now();
 function loop(now){
-  requestAnimationFrame(loop);
+  requestAnimationFrame(loop); R.info.reset();
   let rdt=Math.min(.05,Math.max(0,(now-_last)/1000)); _last=now; perfTick(rdt);
   let dt=rdt; if(G.hitstop>0){ G.hitstop-=rdt; dt*=.06; } if(G.slowmo>0){ G.slowmo-=rdt; dt*=.3; }
   const frozen=G.paused||G.dialog||G.mapOpen||G.rotPause;
@@ -259,7 +263,8 @@ function loop(now){
     else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?1.25:zid===3?.7:0)+(P.ember>=100?.4:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;
   wlBegin(); updateDmgNums(rdt); if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid') updateHpBars(); hudTick(rdt); if(typeof sysLabels==='function') sysLabels(rdt); wlEnd();
-  R.render(scene,cam);
+  asTick(dt,rdt);
+  asRender(rdt);
 }
 
 // ---------- bot (balance testing) ----------
@@ -333,12 +338,13 @@ function boot(){
     ['Растираем пергамент…',()=>genCssTextures()],
     ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); }],
     ['Куём героя…',()=>{ makePlayer(); }],
-    ['Разжигаем очаг…',()=>{ setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
+    ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
+    ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
     ['Готовим мир…',()=>{ for(const k of ['goblin','wolf','skelShield']) { const r=ENEMY_MODELS[k](); } }],
     ['',()=>{ showTitle(); requestAnimationFrame(loop); }]
   ];
-  let i=0; const next=()=>{ if(i>=steps.length){ window.__booted=true; const L=$('load'); L.style.opacity=0; setTimeout(()=>L.remove(),700); return; } const [m,f]=steps[i]; if(m) msg.textContent=m; bar.style.width=((i+1)/steps.length*100)+'%';
-    setTimeout(()=>{ try{ f(); }catch(e){ console.error(e); window.__loadErr('Ошибка запуска: '+esc(e.message)); return; } i++; next(); },40); };
+  let i=0; const next=()=>{ if(i>=steps.length){ window.__booted=true; const L=$('load'); L.style.opacity=0; setTimeout(()=>L.remove(),700); return; } const [m,f,pct]=steps[i]; if(m) msg.textContent=m; if(!pct) bar.style.width=Math.max(parseFloat(bar.style.width)||0,(i+1)/steps.length*100)+'%';
+    setTimeout(()=>{ let r; try{ r=f(); }catch(e){ console.error(e); window.__loadErr('Ошибка запуска: '+esc(e.message)); return; } i++; if(r&&r.then) r.then(()=>{ bar.style.width=pct+'%'; next(); },()=>next()); else next(); },40); };
   next();
   const unlock=()=>{ AU.init(); }; window.addEventListener('pointerdown',unlock,{once:false,passive:true}); window.addEventListener('keydown',unlock,{once:true});
   document.addEventListener('visibilitychange',()=>{ if(document.hidden){ saveGame(true); const c=AU.ctx(); if(c&&c.state==='running') c.suspend().catch(()=>{}); } else { const c=AU.ctx(); if(c) c.resume().catch(()=>{}); } });

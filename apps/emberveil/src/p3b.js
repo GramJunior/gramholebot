@@ -238,7 +238,7 @@ const BOSS_MODELS={
     for(const k of ['fl','fr','bl','br']) pmesh(lg,rig[k]);
     return rig;
   },
-  ashKing(){ const r=buildNPC('king'); r.type='biped'; r.h=3.4; r.r=1.0; r.root.children[0].scale.setScalar(1); const g=new THREE.Group(); g.add(r.root); r.root.scale.setScalar(1.6); const rr={...r,root:g,body:r.body}; return rr; }
+  ashKing(){ const r=buildNPCProc('king'); r.type='biped'; r.h=3.4; r.r=1.0; r.root.children[0].scale.setScalar(1); const g=new THREE.Group(); g.add(r.root); r.root.scale.setScalar(1.6); const rr={...r,root:g,body:r.body}; return rr; }
 };
 
 // ---------- item meshes for icons & world drops ----------
@@ -250,7 +250,7 @@ function itemIconObj(it){
   return {m,slot:B.slot,cls:B.cls,vis:B.vis};
 }
 const ICON_CACHE={};
-function iconFor(it){
+function iconForProc(it){
   if(!it) return '';
   const key=it.base+'_'+it.rar+'_'+(it.el||'');
   if(ICON_CACHE[key]) return ICON_CACHE[key];

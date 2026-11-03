@@ -2,11 +2,11 @@
 const frame=(inner,cls='')=>`<div class="woodframe ${cls}"><i class="stud tl"></i><i class="stud tr"></i><i class="stud bl"></i><i class="stud br"></i><div class="inner parch">${inner}</div></div>`;
 function show(id,on=true){ const el=$(id); if(el) el.classList.toggle('hidden',!on); }
 // ---------- toasts / banner ----------
-function toast(html,icon,rar,kind){
+// toast(): see p17 notification queue (max 2 visible, de-duplicated; loot goes to the side feed)
+function toastEl(html,icon,rar,kind){
   const t=document.createElement('div'); t.className='toast parch bg-r'+(rar||0);
   t.innerHTML=(icon?`<span class="ti" style="background-image:url(${icon})"></span>`:kind==='quest'?`<span style="color:#7c2418;font-size:20px">${ico('scroll')}</span>`:'')+`<span>${html}</span>`;
-  const box=$('toasts'); box.appendChild(t); while(box.children.length>4) box.removeChild(box.firstChild);
-  setTimeout(()=>t.remove(),3200);
+  $('toasts').appendChild(t); return t;
 }
 let _banT=0;
 function banner(h,p){ const b=$('banner'); if(!b) return; b.innerHTML=`<h2>${h}</h2>${p?`<p>${p}</p>`:''}`; b.classList.add('on'); clearTimeout(_banT); _banT=setTimeout(()=>b.classList.remove('on'),2000); }
@@ -66,7 +66,7 @@ function hudBuild(){
   hudEl={hpV:$('hpV'),hpLag:$('hpLag'),hpT:$('hpT'),emV:$('emV'),emB:$('emB'),xpV:$('xpV'),lvl:$('hLvl'),obj:$('hObj'),boss:$('hBoss'),bossV:$('bossV'),bossLag:$('bossLag'),bossN:$('bossN'),bossPh:$('bossPh'),prompt:$('prompt'),atk:$('bAtk'),ult:$('bUlt'),dodge:$('bDodge')};
   bindHud(); hudRefresh(); hudQuest(); hudPortrait();
 }
-function hudPortrait(){ try{ const rig=buildHero(); dressHero(rig,S.gear); const url=portraitOf(rig,null,{hy:1.62,dist:1.25,x:.25}); const im=$('hPimg'); if(im) im.src=url; }catch(e){} }
+function hudPortrait(){ try{ const ap=asHeroPortrait(S.gear); if(ap){ const im=$('hPimg'); if(im) im.src=ap; return; } const rig=buildHeroProc(); dressHeroProc(rig,S.gear); const url=portraitOf(rig,null,{hy:1.62,dist:1.25,x:.25}); const im=$('hPimg'); if(im) im.src=url; }catch(e){} }
 function hudRefresh(){
   if(!$('hud')||!G.P) return;
   const r=$('hRes'); if(r) r.innerHTML=['gold','wood','ore','ess','shards'].filter(k=>k!=='shards'||S.res.shards>0).map(k=>resChip(k,S.res[k])).join('');
@@ -74,6 +74,7 @@ function hudRefresh(){
   const cls=PS.cls; const ai=$('atkIc'); if(ai) ai.innerHTML=ico(cls);
   if(G.mode!=='village'){ for(const k of ['s1','s2','s3']){ const b=$('b'+k.toUpperCase()); if(!b) continue; const sk=SKILLS[cls].find(s=>s.id===k); const rk=skillRank(k); b.querySelector('.ic').innerHTML=ico(sk.ic); b.classList.toggle('lock',rk<1); b.querySelector('.rk').textContent=rk?rk:''; }
     const u=$('bUlt'); if(u){ u.querySelector('.ic').innerHTML=ico(SKILLS[cls][3].ic); u.style.display=skillRank('ult')>0?'':'none'; } }
+  setTimeout(hudKnowDot,0);
   const dot=$('mHero'); if(dot){ const n=(S.hero.tp>0?1:0)+(S.inv.some(i=>i.nw)?1:0); dot.querySelector('.dot')?.remove(); if(n) dot.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
   const mq=$('mQuest'); if(mq){ mq.querySelector('.dot')?.remove(); const ready=SIDE.some(q=>S.q.side[q.id]&&S.q.side[q.id].ready)||S.q.daily.list.some(q=>q.p>=q.v&&!q.c); if(ready) mq.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
   const ms=$('mSquad'); if(ms){ ms.querySelector('.dot')?.remove(); if(expReadyCount()||COMP_ORDER.some(id=>!compOwned(id)&&compUnlocked(id)&&!Object.keys(COMPANIONS[id].cost).length)) ms.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
@@ -154,11 +155,12 @@ function setupInput(){
 const DLGS={q:[],cb:null,i:0,typing:false,full:'',pos:0};
 function portraitFor(sp){
   try{
-    if(sp==='hero'){ const r=buildHero(); dressHero(r,S.gear); return portraitOf(r,'hero_'+JSON.stringify(heroVis(S.gear)),{hy:1.62,dist:1.25,x:.3,bg:0x3a2416}); }
-    if(['elder','smith','alch','beast','stranger','king'].includes(sp)){ const r=buildNPC(sp); return portraitOf(r,sp,{hy:r.h*.82+(sp==='king'?.1:0),dist:sp==='smith'?1.6:1.5,x:.3,bg:sp==='king'?0x2a0a0a:0x3a2416}); }
-    if(sp==='dragon'){ const r=BOSS_MODELS.dragon(); r.root.rotation.y=-.5; return portraitOf(r,'dragon',{hy:5.4,dist:5.5,x:2,bg:0x2a0a0a}); }
-    if(sp==='bogMother'){ const r=BOSS_MODELS.bogMother(); return portraitOf(r,'bogm',{hy:2.6,dist:4.2,x:1,bg:0x1a2a1a}); }
-    if(sp==='morven'){ const r=BOSS_MODELS.morven(); return portraitOf(r,'morv',{hy:3.4,dist:2.2,x:.4,bg:0x1a1a2a}); }
+    if(sp!=='narrator'&&sp!=='dragon'){ const ap=sp==='hero'?asHeroPortrait(S.gear):asPortrait(sp); if(ap) return ap; }
+    if(sp==='hero'){ const r=buildHeroProc(); dressHeroProc(r,S.gear); return portraitOf(r,'hero_'+JSON.stringify(heroVis(S.gear)),{hy:1.62,dist:1.25,x:.3,bg:0x3a2416}); }
+    if(['elder','smith','alch','beast','stranger','king'].includes(sp)){ const r=buildNPCProc(sp); return portraitOf(r,sp,{hy:r.h*.82+(sp==='king'?.1:0),dist:sp==='smith'?1.6:1.5,x:.3,bg:sp==='king'?0x2a0a0a:0x3a2416}); }
+    if(sp==='dragon'){ const r=BOSS_PROC.dragon(); r.root.rotation.y=-.5; return portraitOf(r,'dragon',{hy:5.4,dist:5.5,x:2,bg:0x2a0a0a}); }
+    if(sp==='bogMother'){ const r=BOSS_PROC.bogMother(); return portraitOf(r,'bogm',{hy:2.6,dist:4.2,x:1,bg:0x1a2a1a}); }
+    if(sp==='morven'){ const r=BOSS_PROC.morven(); return portraitOf(r,'morv',{hy:3.4,dist:2.2,x:.4,bg:0x1a1a2a}); }
   }catch(e){}
   return '';
 }
@@ -204,7 +206,7 @@ function renderPanel(){
   const k=PANEL.kind; let title='',sub='',tabs=[],body='';
   const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
   if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','book']]; PANEL.tab=PANEL.tab||'gear'; if(PANEL.tab==='codex') PANEL.tab='know';
-    body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:()=>pKnow()+pCodex()})[PANEL.tab](); }
+    body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:()=>{ if(S.syn&&S.syn.unread){ S.syn.unread=0; setTimeout(hudKnowDot,0); } return pKnow()+pCodex(); }})[PANEL.tab](); }
   else if(k==='bld'){ const id=PANEL.opts.id; const B=BUILDINGS[id]; title=B.n; sub=S.bld[id]?`Уровень ${S.bld[id]}`:'Не построено';
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }
   else if(k==='settings'||k==='pause'){ title=k==='pause'?'Привал':'Настройки'; body=pSettings(k==='pause'); }
@@ -223,7 +225,7 @@ function bindPanel(){ for(const el of document.querySelectorAll('#panel [data-ac
 
 // ---------- hero: gear ----------
 let _dollUrl='', _dollKey='';
-function dollImg(){ const key=JSON.stringify(heroVis(S.gear)); if(key===_dollKey) return _dollUrl; const r=buildHero(); dressHero(r,S.gear); r.root.rotation.y=.35; r.armL.rotation.z=.15; r.armR.rotation.z=-.15; if(r.cls==='sword') r.armR.rotation.x=-.3;
+function dollImg(){ const key=JSON.stringify(heroVis(S.gear)); if(key===_dollKey) return _dollUrl; const ad=asDoll(S.gear); if(ad){ _dollKey=key; return _dollUrl=ad; } const r=buildHeroProc(); dressHeroProc(r,S.gear); r.root.rotation.y=.35; r.armL.rotation.z=.15; r.armR.rotation.z=-.15; if(r.cls==='sword') r.armR.rotation.x=-.3;
   const g=new THREE.Group(); g.add(r.root); _dollUrl=RTT.shot(g,320,[.6,1.3,5.0],[0,1.0,0]); _dollKey=key; return _dollUrl; }
 function slotHtml(slot,it,extra=''){
   if(!it) return `<div class="slot" ${extra}><span class="ph">${ico(SLOT_IC[slot]||'bag')}</span></div>`;
@@ -291,7 +293,7 @@ function pSkills(){
 }
 // ---------- pets ----------
 const PET_PORT={};
-function petPortrait(k){ if(PET_PORT[k]) return PET_PORT[k]; const r=buildPet(k); r.root.rotation.y=.6; const g=new THREE.Group(); g.add(r.root); const by={wolf:.5,sala:.3,owl:1.9,golem:.7,fairy:1.7,drake:.65,mush:.35,otter:.4}[k]||.5; const d={wolf:2.2,sala:1.7,owl:1.5,golem:2.2,fairy:1.1,drake:2.2,mush:1.4,otter:1.7}[k]||2;
+function petPortrait(k){ if(PET_PORT[k]) return PET_PORT[k]; const ap=asPortrait('pet:'+k); if(ap) return PET_PORT[k]=ap; const r=buildPetProc(k); r.root.rotation.y=.6; const g=new THREE.Group(); g.add(r.root); const by={wolf:.5,sala:.3,owl:1.9,golem:.7,fairy:1.7,drake:.65,mush:.35,otter:.4}[k]||.5; const d={wolf:2.2,sala:1.7,owl:1.5,golem:2.2,fairy:1.1,drake:2.2,mush:1.4,otter:1.7}[k]||2;
   return PET_PORT[k]=RTT.shot(g,160,[.3,by+.4,d],[0,by,0]); }
 function pPets(compact){
   let h='';
@@ -350,4 +352,4 @@ function pSettings(pause){
   setTimeout(()=>{ const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }

@@ -7,7 +7,7 @@ function updatePlayer(dt){
   if(P.slowT>0) P.slowT-=dt; if(P.poisonT>0){ P.poisonT-=dt; }
   if(P.burnT>0){ P.burnT-=dt; P._bt=(P._bt||0)+dt; if(P._bt>.5){ P._bt=0; hurtPlayer(P.burnD,{dot:1,true:1}); fx('fire',P.x,.8,P.z,{k:2}); } }
   if(!P.dead){ if(P.potHot>0){ P.potHot-=dt; healPlayer(P.maxHp*.05*dt); } if(s.regenT>0&&P.poisonT<=0) P.hp=Math.min(P.maxHp,P.hp+s.regenT*dt*(G.mode==='village'?5:1)); if(G.mode==='village') P.hp=Math.min(P.maxHp,P.hp+P.maxHp*.2*dt); }
-  for(const m of P.meshes) m.material=P.flashT>0?MTF:(P.buff.guard>0?MTgold:MT);
+  heroMat(P);
   if(P.dead){ P.st+=dt; animHero(P,dt); return; }
   // input
   let mx=G.input.mx, mz=G.input.mz;
@@ -49,7 +49,9 @@ function heroRelease(P,mv){
 
 // ---------- animation ----------
 function b3(w,s,u,h){ const k1=clamp(u/h,0,1), k2=clamp((u-h)/.18,0,1), k3=clamp((u-h-.18)/Math.max(.01,1-h-.18),0,1); return k3>0?lerp(s,0,smooth(k3)):k2>0?lerp(w,s,easeOut(k2)):lerp(0,w,smooth(k1)); }
+function heroMat(P){ const m=P.flashT>0?MTF:((P.buff.guard>0||P.buff.wall>0)?MTgold:MT); if(P.rig.actor){ actorMat(P.rig.actor,m); return; } for(const x of P.meshes) x.material=m; }
 function animHero(P,dt){
+  if(P.rig.actor){ animHeroActor(P,dt); return; }
   const R=P.rig, t=G.time;
   R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,P.face,0);
   R.body.position.set(0,.86,0); R.body.rotation.set(0,0,0); R.torso.rotation.set(0,0,0); R.head.rotation.set(0,0,0);
@@ -99,6 +101,7 @@ function animHero(P,dt){
   SHADOW.add(P.x,P.z,.75);
 }
 function animEnemy(e,dt){
+  if(e.rig.actor){ animEnemyActor(e,dt); return; }
   const R=e.rig, t=e.t; const mv=e.moving||0; e.ph=(e.ph||0)+dt*mv*e.spd*2.4; const ph=e.ph;
   const sc=R.root.scale.x;
   R.root.position.set(e.x,e.y,e.z); R.root.rotation.y=e.face;
@@ -158,6 +161,7 @@ function animDragon(e,R,dt){
   if(p==='slam'){ R.neck.rotation.x=.5; R.head.rotation.x=.4; R.jaw.rotation.x=.5; }
 }
 function animNPC(n,dt,talk){
+  if(n.rig.actor){ animNPCActor(n,dt,talk); return; }
   const R=n.rig; n.t+=dt; const t=n.t, mv=n.moving||0; n.ph=(n.ph||0)+dt*mv*9;
   R.root.position.set(n.x,0,n.z); R.root.rotation.y=n.face;
   R.legL.rotation.x=Math.sin(n.ph)*.7*mv; R.legR.rotation.x=-Math.sin(n.ph)*.7*mv;
@@ -168,6 +172,7 @@ function animNPC(n,dt,talk){
   SHADOW.add(n.x,n.z,.6);
 }
 function animPet(p,dt){
+  if(p.rig.actor){ animPetActor(p,dt); return; }
   const R=p.rig, t=p.t, mv=p.moving||0; p.ph=(p.ph||0)+dt*(2+mv*12);
   R.root.position.set(p.x,0,p.z); R.root.rotation.y=p.face;
   const base={wolf:.42,sala:.2,owl:1.9,golem:.55,fairy:1.6,drake:.5,mush:.3,otter:.3}[p.kind]||.4;
@@ -198,7 +203,7 @@ function spawnBoss(id,x,z,L,o={}){
   const B=BOSSES[id]; const rig=BOSS_MODELS[B.model](); worldRoot.add(rig.root);
   const e={id:EID++,type:'enemy',kind:id,D:{n:B.n,ai:'boss',el:B.el,col:0x2a2018,rng:3},bossD:B,boss:true,lvl:L,x,z,y:0,face:PI*0,vx:0,vz:0,kx:0,kz:0,r:B.r,rig,state:'chase',st:0,cd:0,alive:true,mods:[],flashT:0,stat:{},t:0,meshes:[],phase:0,patT:2,cur:null,baseMat:MT};
   e.maxHp=B.hp*F(L)*(o.hpMul||1); e.hp=e.maxHp; e.dmg=B.dmg*F(L)*(o.dmgMul||1); e.spd=B.spd;
-  rig.root.position.set(x,0,z); rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
+  rig.root.position.set(x,0,z); if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
   G.enemies.push(e); G.boss=e; e.lastPat=''; return e;
 }
 const once=(p,k,tt)=>{ if(p.t>=tt&&!p.f[k]){ p.f[k]=1; return true; } return false; };

@@ -84,7 +84,7 @@ function chestParts(b,vis,rar,icon){
 }
 
 // ---------- hero rig ----------
-function buildHero(){
+function buildHeroProc(){
   const root=new THREE.Group();
   const body=piv(root,0,.86,0);
   const legL=piv(body,-.14,0,0), legR=piv(body,.14,0,0);
@@ -104,7 +104,7 @@ function heroVis(gear){
     wp:v('weapon')||'sw0',wpr:r('weapon'),wpe:e('weapon'),cls:gear.weapon?ITEM_BASES[gear.weapon.base].cls:'sword',
     oh:v('offhand'),ohr:r('offhand'),ohe:e('offhand'),am:!!gear.amulet,amr:r('amulet'),look:gear._look!==undefined?gear._look:(S.look||0)};
 }
-function dressHero(rig,gear){
+function dressHeroProc(rig,gear){
   const V=heroVis(gear), L=HERO_LOOKS[V.look];
   const set=(slot,parent,geo,x=0,y=0,z=0)=>{ const old=rig.meshes[slot]; if(old){old.parent.remove(old);} if(!geo){delete rig.meshes[slot];return;} const m=pmesh(geo,parent,x,y,z); rig.meshes[slot]=m; return m; };
   // torso
@@ -184,7 +184,7 @@ function dressHero(rig,gear){
 }
 
 // ---------- NPC builder (humanoid variants) ----------
-function buildNPC(kind){
+function buildNPCProc(kind){
   const D={
     elder:{skin:0xe8b892,body:0x3e5a3a,body2:0x6a4a2e,hair:0xd8d4cc,h:.92,w:1,acc:'elder'},
     smith:{skin:0xd99a6e,body:0x5a3a22,body2:0x3a2a20,hair:0xb8401a,h:1.05,w:1.3,acc:'smith'},
@@ -246,7 +246,7 @@ function buildNPC(kind){
 }
 
 // ---------- pets ----------
-function buildPet(kind){
+function buildPetProc(kind){
   const root=new THREE.Group(); const body=piv(root,0,0,0); const rig={root,body,kind,parts:{}};
   const add=(k,geo,parent,x,y,z)=>{ const p=piv(parent||body,x,y,z); pmesh(geo,p); rig.parts[k]=p; return p; };
   switch(kind){

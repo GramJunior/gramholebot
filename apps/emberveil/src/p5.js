@@ -105,8 +105,8 @@ function skillRank(id){ return talentRank(curCls(),id); }
 // ---------- inventory ----------
 function invCap(){ return 40+S.bld.store*8; }
 function addItem(it,quiet){
-  if(S.inv.length>=invCap()){ const v=salvageValue(it); for(const k in v) S.res[k]=(S.res[k]||0)+v[k]; if(!quiet) toast(`Сумка полна — <b>${esc(it.name)}</b> разобран`,iconFor(it),it.rar); return false; }
-  S.inv.push(it); if(!quiet) toast(`<b class="r${it.rar}">${esc(it.name)}</b>`,iconFor(it),it.rar); return true;
+  if(S.inv.length>=invCap()){ const v=salvageValue(it); for(const k in v) S.res[k]=(S.res[k]||0)+v[k]; if(!quiet) toast(`Сумка полна — <b>${esc(it.name)}</b> разобран`,iconFor(it),it.rar,'loot'); return false; }
+  S.inv.push(it); if(!quiet) toast(`<b class="r${it.rar}">${esc(it.name)}</b>`,iconFor(it),it.rar,'loot'); return true;
 }
 function canEquip(it,slot){ const s=ITEM_BASES[it.base].slot; return s===slot||(s==='ring'&&(slot==='ring1'||slot==='ring2')); }
 function equipSlotFor(it){ const s=ITEM_BASES[it.base].slot; if(s==='ring') return !S.gear.ring1?'ring1':!S.gear.ring2?'ring2':(itemPower(S.gear.ring1)<=itemPower(S.gear.ring2)?'ring1':'ring2'); return s; }
