@@ -201,7 +201,7 @@ ZONES = {
  'forest':{'zone':2,'fog':'#6a8a5a','fogN':34,'fogF':90,'hemi':['#ffe0a0','#2a4a2a',0.75],'sun':['#ffd890',0.95],'rim':'#ffe0a0','ground':'#4a7a32',
    'grade':{'lift':[0.0,0.02,0.01],'gamma':[1.02,0.98,1.02],'gain':[1.02,1.04,0.94],'sat':1.0,'vignette':0.4,'bloom':0.4,'bloomTh':0.85}},
  'swamp':{'zone':3,'fog':'#4a5a48','fogN':26,'fogF':72,'hemi':['#c8d8b0','#2a3a2a',0.7],'sun':['#d8e0b0',0.7],'rim':'#b8e8a0','ground':'#4a5a32',
-   'grade':{'lift':[0.02,0.04,0.02],'gamma':[1.05,0.98,1.05],'gain':[0.95,1.02,0.9],'sat':0.85,'vignette':0.5,'bloom':0.55,'bloomTh':0.72}},
+   'grade':{'lift':[0.03,0.05,0.03],'gamma':[1.08,1.0,1.06],'gain':[1.08,1.14,1.0],'sat':0.9,'vignette':0.45,'bloom':0.5,'bloomTh':0.72}},
  'crypt':{'zone':4,'fog':'#2a2a3e','fogN':24,'fogF':66,'hemi':['#9ab0e8','#2a2030',0.8],'sun':['#a0b8ff',0.7],'rim':'#9ab8ff','ground':'#4a4856',
    'grade':{'lift':[0.01,0.01,0.04],'gamma':[1.04,1.02,0.96],'gain':[0.92,0.98,1.1],'sat':0.9,'vignette':0.55,'bloom':0.7,'bloomTh':0.7}},
  'ashlands':{'zone':5,'fog':'#4a2a22','fogN':26,'fogF':70,'hemi':['#ffa070','#2a1010',0.75],'sun':['#ff9a5a',0.9],'rim':'#ffa070','ground':'#3a3230',

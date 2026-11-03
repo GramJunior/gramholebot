@@ -147,7 +147,7 @@ function villagePaint(x, z, n, base) {
   _pc.copy(base).lerp(MOSS, Math.min(1, t * 2) * 0.6).lerp(d < -0.7 ? PATH : PATHD, Math.max(0, t * 1.6 - 0.6));
   return _pc;
 }
-const PATHZ = { meadow: 0xcca868, forest: 0x8a6a42, swamp: 0x5a5038, crypt: 0x6a6676, ashlands: 0x5a4a42, lair: 0x5a3a30 };
+const PATHZ = { meadow: 0xbfa070, forest: 0x8a6a42, swamp: 0x5a5038, crypt: 0x6a6676, ashlands: 0x5a4a42, lair: 0x5a3a30 };
 function trailPaint(zone) { const pc = new THREE.Color(PATHZ[zone] || 0xcca868), edge = new THREE.Color(PATHZ[zone] || 0xcca868).lerp(new THREE.Color(M.zones[zone].ground), 0.5);
   return (x, z, n, base) => { const d = Math.abs(x - Math.sin(z * 0.11) * 5 - Math.sin(z * 0.37) * 1.2) - 2.6 - n * 0.8; if (d > 1.4) return null;
     const t = 1 - Math.min(1, Math.max(0, (d + 0.5) / 1.9)); return _pc.copy(base).lerp(edge, Math.min(1, t * 1.8)).lerp(pc, Math.max(0, t * 1.7 - 0.7)); }; }

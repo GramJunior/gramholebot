@@ -210,7 +210,7 @@ void main(){
   /** Ambient particles (GPU-animated instanced billboards: zero CPU per frame).
    *  kind: 'ember' | 'ash' | 'pollen' | 'firefly' | 'wisp' | 'bubble'.  const p = EVFX.ambient({kind:'ember', count:300, area:[40,8,40]}); scene.add(p.mesh); p.center.copy(player) */
   const AMB = {
-    ember:   { color: '#ff8a3a', size: 0.09, rise: 1.2, sway: 0.6, glow: 1.0, blend: 'add' },
+    ember:   { color: '#ff8a3a', size: 0.06, rise: 1.2, sway: 0.6, glow: 1.0, blend: 'add' },
     ash:     { color: '#bdb3aa', size: 0.07, rise: -0.5, sway: 0.9, glow: 0.0, blend: 'normal' },
     pollen:  { color: '#fff4b0', size: 0.06, rise: 0.15, sway: 0.7, glow: 0.4, blend: 'add' },
     firefly: { color: '#d8ff7a', size: 0.08, rise: 0.1, sway: 1.2, glow: 1.0, blend: 'add', blink: 1 },
