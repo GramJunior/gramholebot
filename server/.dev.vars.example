@@ -1,0 +1,7 @@
+# Скопируйте в .dev.vars для `npx wrangler dev` (локально). Не коммитьте .dev.vars.
+JWT_SECRET=local-dev-jwt-secret-change-me-0123
+ADMIN_SECRET=local-dev-admin-secret-change-me-0123
+WEBHOOK_SECRET=local-hook
+ALLOW_GUEST=1
+ALLOWED_ORIGINS=*
+# BOT_TOKEN=123456:ABC...   (нужен только для входа через Telegram и платежей)
