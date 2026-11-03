@@ -4922,7 +4922,7 @@ function buildRaidStructs(){
   if(!W||W.kind!=='village') return; for(const k in (W.rsMesh||{})) worldRoot.remove(W.rsMesh[k]); W.rsMesh={}; W.obst=W.obst.filter(o=>!o.rs); if(W.oils) { for(const o of W.oils) worldRoot.remove(o.m); W.oils=[]; }
   const r=raidS();
   for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; if(!st) continue; const m=new THREE.Mesh(raidStructGeo(st.t,st.lv),MT); m.position.set(s.x,0,s.z); m.rotation.y=s.slot==='wall'?s.ry:Math.atan2(-s.x,-s.z); worldRoot.add(m); W.rsMesh[s.id]=m;
-    if(s.slot==='wall') W.obst.push({x:s.x,z:s.z,r:3.0,rs:s.id,noLos:1}); else if(s.slot==='tower') W.obst.push({x:s.x,z:s.z,r:1.3,rs:s.id});
+    if(s.slot==='wall'){ const a=Math.atan2(s.z,s.x), vx=-Math.sin(a), vz=Math.cos(a), k=s.lane==='n'?3.1:2.3, rr=s.lane==='n'?2.0:1.75; W.obst.push({x:s.x,z:s.z,r:2.5,rs:s.id,noLos:1}); for(const sg of [-1,1]) W.obst.push({x:s.x+vx*k*sg,z:s.z+vz*k*sg,r:rr,rs:s.id,noLos:1,side:1}); } else if(s.slot==='tower') W.obst.push({x:s.x,z:s.z,r:1.3,rs:s.id});
     if(st.t==='tar'){ const o=spawnOil(s.x,s.z,2.3,9999); o.raid=1; } }
 }
 // village lanes: called from makeVillage before the ground is built
@@ -4988,7 +4988,7 @@ function raidStart(){
   const L=plan.L; const hh=Math.round(2600*Math.pow(F(L),.95)*(1+.15*(S.bld.hall||1)));
   RAID.heart={type:'struct',kind:'heart',x:0,z:0,r:2.3,hp:hh,maxHp:hh,raidHurt(d){ if(RAID.done) return; RAID.heart.hp-=d; RAID.heart.flash=.12; if(Math.random()<.4) fx('hit',rand(-1,1),2,rand(-1,1),{col:0xffb060}); if(RAID.heart.hp<=0){ RAID.heart.hp=0; raidEnd(false,'Сердце Брода погасло'); } }};
   for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; if(!st) continue; const D=RAID_STRUCT[st.t]; const m=RAID_LV_MUL[st.lv];
-    if(s.slot==='wall'){ const hp=Math.round(D.hp*m*Math.pow(F(L),.95)); const ob=W.obst.find(o=>o.rs===s.id); const w={type:'struct',kind:'wall',sid:s.id,lane:s.lane,x:s.x,z:s.z,r:2.9,hp,maxHp:hp,ob,thorns:D.thorns||0,
+    if(s.slot==='wall'){ const hp=Math.round(D.hp*m*Math.pow(F(L),.95)); const obs=W.obst.filter(o=>o.rs===s.id); const ob={set dead(v){ for(const o of obs) o.dead=v; }}; const w={type:'struct',kind:'wall',sid:s.id,lane:s.lane,x:s.x,z:s.z,r:2.9,hp,maxHp:hp,ob,thorns:D.thorns||0,
         raidHurt(d,src){ if(w.hp<=0) return; w.hp-=d; w.flash=.1; if(w.thorns&&src&&src.alive) dmgEnemy(src,src.maxHp*w.thorns*.08+d*w.thorns,{kb:1.5,dir:Math.atan2(src.x-w.x,src.z-w.z),src:w,noLs:1}); if(Math.random()<.5) fx('dust',w.x+rand(-1.5,1.5),1,w.z+rand(-1.5,1.5),{k:2,col:0x8a6a42});
           if(w.hp<=0){ w.hp=0; if(w.ob) w.ob.dead=true; const mm=W.rsMesh[w.sid]; if(mm) mm.visible=false; fx('boom',w.x,1,w.z,{r:3,col:0xc89a6a,smoke:0x6a5a40}); AU.sfx('boom'); shake(.4); banner(RAID_STRUCT[st.t].n+' пал!','Враги прорываются: '+RAID_LANES.find(l=>l.id===w.lane).n); } }};
       RAID.walls[s.lane]=w; }
@@ -5011,6 +5011,7 @@ function raidSpawnWave(){ const w=RAID.plan.waves[RAID.wi]; RAID.wi++; let i=0;
 function raidLanePoint(id,r){ if(id==='n'){ const t=clamp((r-31)/13,0,1); return [lerp(-6,-7.6,t),lerp(-31,-44,t)]; } const L=RAID_LANES.find(l=>l.id===id); return [Math.cos(L.a)*r,Math.sin(L.a)*r]; }
 function raidTick(dt){
   if(!RAID||RAID.done) return; const P=G.P; RAID.t+=dt;
+  for(const a of [P].concat(G.allies)){ const d=Math.hypot(a.x,a.z); if(d>23.4){ a.x*=23.4/d; a.z*=23.4/d; } }
   // waves
   const alive=G.enemies.filter(e=>e.alive&&e.raider).length;
   if(RAID.wi<RAID.plan.waves.length){ RAID.waveT-=dt; if(RAID.waveT<=0||(alive===0&&RAID.spawnQ.length===0&&RAID.waveT<7)){ raidSpawnWave(); RAID.waveT=24+RAID.wi*2; } }
@@ -5095,7 +5096,7 @@ function raidRepairCost(){ const d=raidS().dmg; if(!d) return null; const L=S.he
 function raidVillageTick(dt){ const d=raidS().dmg; if(!d||d.until<Date.now()) return; for(const id of d.ids){ const p=id==='houses'?HOUSE_POS[0]:VPOS[id]; if(!p) continue; if(Math.random()<dt*3) fx('smoke',p[0]+rand(-1.5,1.5),2+rand(0,2),p[1]+rand(-1.5,1.5),{k:1,col:0x2a2420}); if(Math.random()<dt*1.5) fx('fire',p[0]+rand(-1.5,1.5),1.5,p[1]+rand(-1.5,1.5),{k:1}); } }
 // bot: defend the heart
 function raidBotInput(){ const P=G.P; if(!RAID||RAID.done) return {mx:0,mz:0,atk:false};
-  let e=null,bd=1e9; for(const q of G.enemies){ if(!q.alive||!q.raider||q.burrowed) continue; const d=Math.hypot(q.x-P.x,q.z-P.z)*.6+Math.hypot(q.x,q.z)*.4; if(d<bd){ bd=d; e=q; } }
+  let e=null,bd=1e9; for(const q of G.enemies){ if(!q.alive||!q.raider||q.burrowed) continue; const dc=Math.hypot(q.x,q.z); const d=Math.hypot(q.x-P.x,q.z-P.z)*.6+dc*.4+(dc>24?30:0); if(d<bd){ bd=d; e=q; } }
   if(P.hp<P.maxHp*.38&&S.cons.potion>0) drinkPotion();
   if(P.rollCd<=0&&P.state!=='roll'){ for(const w of G.waves){ if(w.team==='e'&&Math.abs(Math.hypot(P.x-w.x,P.z-w.z)-w.r)<2.2){ dodge(); break; } } }
   let tx=0,tz=4,atk=false; if(e){ const d=dist(e,P); const ranged=PS.cls==='bow'||PS.cls==='staff'; const want=ranged?7:1.6+e.r; if(d>want){ tx=e.x; tz=e.z; } else { tx=P.x; tz=P.z; } atk=d<(ranged?13:3+e.r);
