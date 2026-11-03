@@ -1250,19 +1250,19 @@
    "recolor": [
     {
      "h": [
-      335,
-      358
+      354,
+      13
      ],
      "s": [
-      0.35,
-      1
+      0.42,
+      0.88
      ],
      "l": [
-      0.3,
-      0.92
+      0.42,
+      0.76
      ],
-     "sMul": 0.06,
-     "lMul": 1.15
+     "sMul": 0.07,
+     "lMul": 1.22
     }
    ],
    "note": "Ведана: witch without hat, hair recoloured grey, glasses kept"
@@ -1286,20 +1286,20 @@
    "recolor": [
     {
      "h": [
-      0,
-      360
+      180,
+      260
      ],
      "s": [
       0,
-      0.15
+      0.5
      ],
      "l": [
-      0,
-      0.25
+      0.03,
+      0.3
      ],
-     "hSet": 275,
-     "sSet": 0.55,
-     "lMul": 2.2
+     "hSet": 280,
+     "sSet": 0.6,
+     "lMul": 2.4
     }
    ],
    "note": "Мира: mage, dark hair recoloured purple"

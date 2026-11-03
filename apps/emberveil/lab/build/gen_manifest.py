@@ -91,9 +91,9 @@ E['colossus']  = ch('frost_golem',4.6, clips='largeUnarmed', mat='lava', boss=Tr
 E['dragon']    = {'type':'procedural','note':'no dragon in CC0 KayKit packs — keep BOSS_MODELS.dragon (+ new toon shading)'}
 E['ashKing']   = ch('necromancer',3.0, r='e_lore_staff', clips='caster', boss=True, tint=['#ff6a1a',0.18], glow='#ff6a1a')
 # ----- NPCs (buildNPC kinds) -----
-E['elder']    = ch('witch',1.9, clips='npc', hide=['Witch_Hat'], recolor=[{'h':[335,358],'s':[0.35,1],'l':[0.3,0.92],'sMul':0.06,'lMul':1.15}], note='Ведана: witch without hat, hair recoloured grey, glasses kept')
+E['elder']    = ch('witch',1.9, clips='npc', hide=['Witch_Hat'], recolor=[{'h':[354,13],'s':[0.42,0.88],'l':[0.42,0.76],'sMul':0.07,'lMul':1.22}], note='Ведана: witch without hat, hair recoloured grey, glasses kept')
 E['smith']    = ch('engineer',2.1, r='t_hammer', clips='smith', note='Горан: red beard + goggles')
-E['alch']     = ch('mage',2.0, clips='npc', r='w_wand_orb', recolor=[{'h':[0,360],'s':[0,0.15],'l':[0,0.25],'hSet':275,'sSet':0.55,'lMul':2.2}], note='Мира: mage, dark hair recoloured purple')
+E['alch']     = ch('mage',2.0, clips='npc', r='w_wand_orb', recolor=[{'h':[180,260],'s':[0,0.5],'l':[0.03,0.3],'hSet':280,'sSet':0.6,'lMul':2.4}], note='Мира: mage, dark hair recoloured purple')
 E['beast']    = ch('druid',1.8, clips='npc', note='Ойка: druid (antler hood)')
 E['stranger'] = ch('rogue_hooded',2.15, clips='npc', recolor=[{'h':[100,200],'sMul':0.08,'lMul':0.7}], note='Серый: grey hooded rogue')
 E['king']     = ch('necromancer',2.3, r='e_lore_staff', clips='npc', tint=['#3a1010',0.25], glow='#ff6a1a', glowA=0.25)
