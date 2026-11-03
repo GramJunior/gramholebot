@@ -122,7 +122,7 @@ DS=0.5    # dungeon / halloween (4m tiles) -> game units
 
 P.update({'treeRound':pr('nature','tree_round',NS),'treeBirch':pr('nature','tree_tall',NS),'bush':pr('nature','bush',1.6),'rock':pr('nature','rock',1.4),'fence':pr('village','fence_wood_straight',1.6),
  'hay':pr('village','p_haybale',2.6),'grass':pr('nature','grass',1.6),'flowers':{'type':'procedural','note':'keep (cheap instanced quads)'},
- 'pine':pr('nature','pine',NS),'oakDark':pr('nature','oak_dark',NS),'log':pr('village','p_resource_lumber',2.6),'shrooms':{'type':'procedural'},'fern':pr('nature','grass_dark',2.0),'stone2':pr('nature','rock_round',1.2),
+ 'pine':pr('nature','pine',NS),'oakDark':pr('nature','oak_dark',NS),'log':pr('village','p_resource_lumber',1.7),'shrooms':{'type':'procedural'},'fern':pr('nature','grass_dark',2.0),'stone2':pr('nature','rock_round',1.2),
  'deadTree':pr('nature','dead_tree',0.95),'reeds':pr('nature','grass_swamp',2.2),'stump':pr('crypt','h_tree_dead_small',0.45),'glowShroom':{'type':'procedural','note':'emissive, keep'},'bogRock':pr('nature','rock_bog',1.4),
  'pillar':pr('dungeon','pillar',DS*1.4),'pillarBroken':pr('dungeon','pillar_decorated',DS*1.3),'tomb':pr('crypt','h_grave_A',0.55),'wallSeg':pr('dungeon','wall_broken',DS*0.85),'candles':pr('dungeon','candle_triple',0.8),
  'bones':pr('crypt','h_ribcage',0.7),'coffin':pr('crypt','h_coffin',0.55),'charTree':pr('nature','char_tree',0.95),'obsidian':{'type':'procedural','note':'keep (emissive accents)'},'lavaRock':pr('nature','rock_dark',1.4),

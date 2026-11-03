@@ -308,7 +308,7 @@ function sceneFight() {
     if (Math.floor(t * 0.5) !== Math.floor((t - dt) * 0.5)) { c.play('cast', { once: true }); setTimeout(() => EVFX.burst(scene, new THREE.Vector3(rand(-4, 4), 0.1, rand(-4, 4)), { color: '#6fd8ff', radius: 2 }), 600); }
   });
   camT = { x: 0, y: 0, z: 0, dist: 21, pitch: 0.94, yaw: 0 }; orbit.auto = false; // in-game camera (landscape framing)
-  $('info').innerHTML = '<b>Типичный бой</b> — герой + спутник + 15 врагов + 10 пропсов, игровая камера (dist 30, pitch .94).';
+  $('info').innerHTML = '<b>Типичный бой</b> — герой + спутник + 15 врагов + 10 пропсов, игровая камера (pitch .94, кадр как в ландшафтном режиме).';
 }
 
 const SCENES = { hero: ['Герой', sceneHero], lineup: ['Враги/боссы', sceneLineup], npc: ['НПС/спутники', sceneNPC], village: ['Деревня', sceneVillage], fight: ['Бой', sceneFight] };

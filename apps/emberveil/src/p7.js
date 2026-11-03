@@ -274,7 +274,7 @@ function updateEnemy(e,dt){
     if(P.dead){ e.state='idle'; }
     const ai=D.ai; e.cd-=dt;
     const want=ai==='archer'||ai==='caster'||ai==='summoner'?D.rng*.75:ai==='charger'?6:ai==='flyer'?3.5:D.rng*.85;
-    if(ai==='burrow'){ if(!e.burrowed&&d>5&&e.cd<0&&Math.random()<dt*2){ e.burrowed=true; e.rig.root.visible=false; fx('dust',e.x,0,e.z,{k:8,col:0x4a5a3a}); } if(e.burrowed){ if(Math.random()<dt*10) fx('dust',e.x,0,e.z,{k:1,col:0x4a5a3a}); if(d<2.2){ e.burrowed=false; e.rig.root.visible=true; startWind(e,'emerge',.55); } } }
+    if(ai==='burrow'){ if(!e.burrowed&&d>5&&e.cd<0&&Math.random()<dt*2){ e.burrowed=true; e.rig.root.visible=false; fx('dust',e.x,0,e.z,{k:8,col:0x4a5a3a}); } if(e.burrowed){ if(Math.random()<dt*10) fx('dust',e.x,0,e.z,{k:1,col:0x4a5a3a}); if(d<2.2+(tg.type==='struct'?tg.r+.6:0)){ e.burrowed=false; e.rig.root.visible=true; startWind(e,'emerge',.55); } } }
     if(d>want||(ai==='archer'&&!hasLOS(e,tg))){ mvx=dx/d*spd; mvz=dz/d*spd; }
     else if((ai==='archer'||ai==='caster'||ai==='summoner')&&d<want*.55){ mvx=-dx/d*spd*.7; mvz=-dz/d*spd*.7; }
     else if(ai==='flyer'){ const a=Math.atan2(dx,dz)+PI/2; mvx=Math.sin(a)*spd*.5; mvz=Math.cos(a)*spd*.5; }

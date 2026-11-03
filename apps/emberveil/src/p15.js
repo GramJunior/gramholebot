@@ -123,7 +123,7 @@ function raidStart(){
   if(!canPay(tot)){ toast('Не хватает золота на ополчение'); AU.sfx('deny'); return; } pay(tot);
   raidClosePrep(); CAMR.override=null; computeStats(); refreshPlayer(true);
   RAID={plan,wi:0,waveT:4,t:0,kills:0,heartMax:0,heart:null,walls:{},towers:[],traps:[],spawnQ:[],done:false,champ:false};
-  const L=plan.L; const hh=Math.round(1500*Math.pow(F(L),.95)*(1+.12*(S.bld.hall||1)));
+  const L=plan.L; const hh=Math.round(1100*Math.pow(F(L),.95)*(1+.12*(S.bld.hall||1)));
   RAID.heart={type:'struct',kind:'heart',x:0,z:0,r:2.3,hp:hh,maxHp:hh,raidHurt(d){ if(RAID.done) return; RAID.heart.hp-=d; RAID.heart.flash=.12; if(Math.random()<.4) fx('hit',rand(-1,1),2,rand(-1,1),{col:0xffb060}); if(RAID.heart.hp<=0){ RAID.heart.hp=0; raidEnd(false,'Сердце Брода погасло'); } }};
   for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; if(!st) continue; const D=RAID_STRUCT[st.t]; const m=RAID_LV_MUL[st.lv];
     if(s.slot==='wall'){ const hp=Math.round(D.hp*m*Math.pow(F(L),.95)); const obs=W.obst.filter(o=>o.rs===s.id); const ob={set dead(v){ for(const o of obs) o.dead=v; }}; const w={type:'struct',kind:'wall',sid:s.id,lane:s.lane,x:s.x,z:s.z,r:2.9,hp,maxHp:hp,ob,thorns:D.thorns||0,
@@ -158,11 +158,11 @@ function raidTick(dt){
     fx('magic',e.x,.5,e.z,{col:0x5a2a2a,k:8}); }
   // towers
   for(const t of RAID.towers){ t.cd-=dt; if(t.cd>0) continue; let best=null,bd=t.D.rng; for(const e of G.enemies){ if(!e.alive||e.burrowed||!e.raider) continue; const d=Math.hypot(e.x-t.x,e.z-t.z); if(d<bd){ bd=d; best=e; } } if(!best){ t.cd=.3; continue; }
-    const dmg=RAID_STRUCT[t.t].dmg*ENEMIES.goblin.hp*Math.pow(F(RAID.plan.L),.93)*t.m*(1+.12*(S.bld.walls||0))*.55; const f=Math.atan2(best.x-t.x,best.z-t.z);
+    const dmg=RAID_STRUCT[t.t].dmg*ENEMIES.goblin.hp*Math.pow(F(RAID.plan.L),.97)*t.m*(1+.12*(S.bld.walls||0))*1.7; const f=Math.atan2(best.x-t.x,best.z-t.z);
     if(t.t==='archer'){ t.cd=t.D.cd*rand(.9,1.1); spawnProj('arrow',t.x+Math.sin(f)*.8,t.z+Math.cos(f)*.8,f,{team:'p',dmg,src:t,y:2.6,spd:28,life:t.D.rng/28+.2}); sfxAt('arrow',t.x,t.z,.35); }
     else { t.cd=t.D.cd*rand(.9,1.1); const el=t.el; spawnProj('bolt',t.x+Math.sin(f)*.8,t.z+Math.cos(f)*.8,f,{team:'p',dmg,el,col:ELC[el],src:t,y:2.4,spd:16,life:t.D.rng/16+.3,splash:t.D.splash}); fx('magic',t.x,4.6+t.lv*.5,t.z,{col:ELC[el],k:6}); sfxAt('bolt',t.x,t.z,.4); } }
   // traps
-  for(const t of RAID.traps){ if(t.t!=='spikes') continue; t.cd-=dt; if(t.cd>0) continue; let hit=false; for(const e of G.enemies){ if(!e.alive||e.burrowed||!e.raider||Math.hypot(e.x-t.x,e.z-t.z)>1.5+e.r) continue; hit=true; dmgEnemy(e,t.D.dmg*ENEMIES.goblin.hp*Math.pow(F(RAID.plan.L),.93)*t.m*.55,{kb:1,dir:Math.atan2(e.x-t.x,e.z-t.z),src:t,heavy:1}); e.stat.slow=Math.max(e.stat.slow||0,1.6); }
+  for(const t of RAID.traps){ if(t.t!=='spikes') continue; t.cd-=dt; if(t.cd>0) continue; let hit=false; for(const e of G.enemies){ if(!e.alive||e.burrowed||!e.raider||Math.hypot(e.x-t.x,e.z-t.z)>1.5+e.r) continue; hit=true; dmgEnemy(e,t.D.dmg*ENEMIES.goblin.hp*Math.pow(F(RAID.plan.L),.97)*t.m*1.7,{kb:1,dir:Math.atan2(e.x-t.x,e.z-t.z),src:t,heavy:1}); e.stat.slow=Math.max(e.stat.slow||0,1.6); }
     if(hit){ t.cd=t.D.cd; fx('hit',t.x,.4,t.z,{col:0xd8d8e0}); sfxAt('hit',t.x,t.z,.5); const m=W.rsMesh[t.sid]; if(m){ m.position.y=.25; later(.25,()=>m.position.y=0); } } }
   for(const e of G.enemies){ if(!e.alive||!e.raider) continue; const dc=Math.hypot(e.x,e.z); if(!e._rp){ e._rp={d:dc,t:RAID.t}; continue; }
     if(dc<e._rp.d-1.2||e.state==='wind'||e.state==='act'){ e._rp.d=Math.min(e._rp.d,dc); e._rp.t=RAID.t; }
