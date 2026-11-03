@@ -15,7 +15,7 @@ const DN=[]; const _pv3=new THREE.Vector3();
 function dmgNum(x,y,z,txt,cls){
   if(!S.set.dmg&&cls!=='heal'&&cls!=='pl'&&cls!=='gold'&&cls!=='txt') return;
   let d=DN.find(q=>!q.on); if(!d){ if(DN.length>=40) d=DN[0]; else { const el=document.createElement('div'); el.className='dn'; $('dmg').appendChild(el); d={el}; DN.push(d); } }
-  d.on=true; d.t=0; d.x=x+rand(-.4,.4); d.y=y; d.z=z+rand(-.2,.2); d.el.textContent=txt; d.el.className='dn '+(cls||''); d.el.style.display='block'; d.vx=rand(-20,20); d.life=cls==='crit'?1.1:.85;
+  d.on=true; d.t=0; d.x=x+rand(-.4,.4); d.y=y; d.z=z+rand(-.2,.2); d.el.textContent=txt; d.el.className='dn '+(cls||''); d.el.style.display='block'; d.vx=rand(-20,20); d.life=cls==='crit'?1.1:cls&&cls.startsWith('syn')?1.5:.85;
 }
 function updateDmgNums(dt){
   const w=window.innerWidth,h=window.innerHeight;
@@ -200,14 +200,14 @@ function closePanel(){ show('panel',false); PANEL.kind=null; G.paused=false; AU.
 function renderPanel(){
   const k=PANEL.kind; let title='',sub='',tabs=[],body='';
   const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
-  if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['quests','Задания','scroll'],['codex','Летопись','book']]; PANEL.tab=PANEL.tab||'gear';
-    body=({gear:pGear,skills:pSkills,pets:pPets,quests:pQuests,codex:pCodex})[PANEL.tab](); }
+  if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','eye'],['codex','Летопись','book']]; PANEL.tab=PANEL.tab||'gear';
+    body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:pKnow,codex:pCodex})[PANEL.tab](); }
   else if(k==='bld'){ const id=PANEL.opts.id; const B=BUILDINGS[id]; title=B.n; sub=S.bld[id]?`Уровень ${S.bld[id]}`:'Не построено';
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }
   else if(k==='settings'||k==='pause'){ title=k==='pause'?'Привал':'Настройки'; body=pSettings(k==='pause'); }
   else if(k==='offline'){ title='Пока вас не было'; body=PANEL.opts.html; }
   else if(k==='npc'){ const n=PANEL.opts.npc; title=NPC_INFO[n].n; sub=NPC_INFO[n].t; body=pNpc(n); }
-  $('panel').innerHTML=`<div id="pFrame">${frame(`<div id="pHead"><h2>${title}${sub?`<small>${sub}</small>`:''}</h2><button class="hbtn" id="pClose">${ico('close')}</button></div>${tabs.length?`<div id="pTabs">${tabs.map(t=>`<button class="tab ${PANEL.tab===t[0]?'on':''}" data-tab="${t[0]}">${t[2]?ico(t[2]):''}${t[1]}</button>`).join('')}</div>`:''}<div id="pBody">${body}</div>`)}</div>`;
+  $('panel').innerHTML=`<div id="pFrame" class="${tabs.length?'':'notabs'}">${frame(`<div id="pHead"><h2>${title}${sub?`<small>${sub}</small>`:''}</h2><button class="hbtn" id="pClose">${ico('close')}</button></div>${tabs.length?`<div id="pTabs">${tabs.map(t=>`<button class="tab ${PANEL.tab===t[0]?'on':''}" data-tab="${t[0]}">${t[2]?ico(t[2]):''}${t[1]}</button>`).join('')}</div>`:''}<div id="pBody">${body}</div>`)}</div>`;
   $('pClose').onclick=closePanel;
   $('panel').onclick=ev=>{ if(ev.target.id==='panel') closePanel(); };
   for(const b of document.querySelectorAll('#pTabs .tab')) b.onclick=()=>{ PANEL.tab=b.dataset.tab; PANEL.sel=null; AU.sfx('ui'); renderPanel(); };
@@ -259,18 +259,19 @@ function pGear(){
   for(const [s,c,r] of order){ h+=`<div style="grid-column:${c};grid-row:${r}">${slotHtml(s,g[s],act(()=>{ PANEL.sel=g[s]||null; rerender(); }))}</div>`; }
   h+=`<div id="dollCenter"><img src="${dollImg()}" alt=""><div id="dollPow">${ico('star')} ${gearPower()}</div><div style="position:absolute;left:6px;bottom:6px;width:64px">${slotHtml('weapon',g.weapon,act(()=>{ PANEL.sel=g.weapon||null; rerender(); }))}</div></div></div>`;
   if(PANEL.sel&&Object.values(g).includes(PANEL.sel)) h+=`<div id="itemTip">${itemTip(PANEL.sel,'eq')}</div>`;
-  h+=`<div class="sect">Характеристики</div><div class="card" style="font-size:13px;columns:2;column-gap:14px">
+  let h1=h; h='';
+  h1+=`<div class="sect">Характеристики</div><div class="card" style="font-size:13px;columns:2;column-gap:14px">
     <div>Здоровье: <b>${S0.maxHp}</b></div><div>Атака: <b>${Math.round(S0.atk)}</b></div><div>Броня: <b>${Math.round(S0.armorT)}</b></div><div>Крит: <b>${S0.crit.toFixed(0)}% / +${S0.critD.toFixed(0)}%</b></div>
     <div>Скор. атаки: <b>+${S0.aspd.toFixed(0)}%</b></div><div>Сопротивл.: <b>${S0.res.toFixed(0)}%</b></div><div>Вампиризм: <b>${S0.ls.toFixed(1)}%</b></div><div>Перезарядка: <b>-${S0.cdr.toFixed(0)}%</b></div>
     ${['fire','ice','poison','light'].filter(k=>S0[k]>0).map(k=>`<div>${EL_NAME[k]}: <b>+${Math.round(S0[k])}</b></div>`).join('')}
-    <div>Удача: <b>+${S0.mf.toFixed(0)}%</b></div><div>Золото: <b>+${S0.gold.toFixed(0)}%</b></div></div>`;
-  h+=`<div class="sect">Сумка ${S.inv.length}/${invCap()}</div><div class="row" style="margin-bottom:8px;flex-wrap:wrap">
+    <div>Удача: <b>+${S0.mf.toFixed(0)}%</b></div><div>Золото: <b>+${S0.gold.toFixed(0)}%</b></div>${S0.synP?`<div>Синергии: <b>+${Math.round(S0.synP)}%</b></div>`:''}</div>`;
+  h+=`<div class="sect" style="margin-top:0">Сумка ${S.inv.length}/${invCap()}</div><div class="row" style="margin-bottom:8px;flex-wrap:wrap">
     <button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button>
     <button class="btn woodb small" ${act(()=>{ let n=0; for(const it of S.inv.slice()){ if(!it.lock&&it.rar<=1&&compareTo(it)<0){ salvage(it); n++; } } toast(n?`Разобрано предметов: <b>${n}</b>`:'Нечего разбирать'); AU.sfx('hit'); rerender(); })}>${ico('salvage')} Разобрать хлам</button></div>`;
   h+=`<div id="invGrid">${S.inv.map(it=>`<div>${slotHtml(ITEM_BASES[it.base].slot,it,act(()=>{ it.nw=false; PANEL.sel=PANEL.sel===it?null:it; rerender(); }))}${compareTo(it)>0?'<span style="display:block;text-align:center;font-size:10px;color:#3f7a2a;font-family:var(--sc);font-weight:800;margin-top:-2px">▲ лучше</span>':''}</div>`).join('')}</div>`;
   if(PANEL.sel&&S.inv.includes(PANEL.sel)) h+=`<div id="itemTip">${itemTip(PANEL.sel,'inv')}</div>`;
   h+=`<div class="sect">Расходники</div><div class="card" style="font-size:13px">${Object.keys(CONS).map(k=>`<div class="row"><span style="color:#7c2418">${ico(CONS[k].ic)}</span><b class="grow">${CONS[k].n}</b><span>${S.cons[k]||0}</span></div>`).join('')}<div class="row"><span style="color:#b07a00">${ico('key')}</span><b class="grow">Ключи сокровищницы</b><span>${S.keys}</span></div></div>`;
-  return h;
+  return cols2(h1,h);
 }
 // ---------- skills ----------
 function pSkills(){
@@ -287,7 +288,7 @@ function pSkills(){
 }
 // ---------- pets ----------
 const PET_PORT={};
-function petPortrait(k){ if(PET_PORT[k]) return PET_PORT[k]; const r=buildPet(k); r.root.rotation.y=.6; const g=new THREE.Group(); g.add(r.root); const by={wolf:.5,sala:.3,owl:1.9,golem:.7,fairy:1.7,drake:.65,mush:.35}[k]; const d={wolf:2.2,sala:1.7,owl:1.5,golem:2.2,fairy:1.1,drake:2.2,mush:1.4}[k];
+function petPortrait(k){ if(PET_PORT[k]) return PET_PORT[k]; const r=buildPet(k); r.root.rotation.y=.6; const g=new THREE.Group(); g.add(r.root); const by={wolf:.5,sala:.3,owl:1.9,golem:.7,fairy:1.7,drake:.65,mush:.35,otter:.4}[k]||.5; const d={wolf:2.2,sala:1.7,owl:1.5,golem:2.2,fairy:1.1,drake:2.2,mush:1.4,otter:1.7}[k]||2;
   return PET_PORT[k]=RTT.shot(g,160,[.3,by+.4,d],[0,by,0]); }
 function pPets(compact){
   let h='';

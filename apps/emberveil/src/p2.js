@@ -302,17 +302,14 @@ function liquidMat(c1,c2,lava){
 const CAMR={x:0,z:0,tx:0,tz:0,dist:30,pitch:0.94,shake:0,shx:0,shz:0,override:null,fovW:10.8,fovH:15,zoom:1,look:{x:0,y:0,z:0}};
 function camResize(){
   const w=window.innerWidth,h=window.innerHeight; cam.aspect=w/h;
-  const tf=Math.tan(cam.fov*PI/360);
-  const zoomK=[0.85,1,1.18][S.set.cam===0?0:S.set.cam===2?2:1];
-  const dW=CAMR.fovW*zoomK/(2*tf*cam.aspect), dH=CAMR.fovH*zoomK/(2*tf);
-  CAMR.dist=Math.max(dW,dH,16);
+  CAMR.dist=camFrame();
   cam.updateProjectionMatrix();
   R.setSize(w,h,false);
   PA.mat.uniforms.uScale.value=PN.mat.uniforms.uScale.value=h*PR*0.5/Math.tan(cam.fov*PI/360)/1;
 }
 function camUpdate(dt,tx,tz){
   let d=CAMR.dist*CAMR.zoom, px, pz, ly=0.6;
-  if(CAMR.override){ const o=CAMR.override; tx=o.x; tz=o.z; d=CAMR.dist*(o.zoom||0.6); }
+  if(CAMR.override){ const o=CAMR.override; tx=o.x; tz=o.z; d=o.dist||CAMR.dist*(o.zoom||0.6); }
   const k=1-Math.exp(-dt*(CAMR.override?2.5:6));
   CAMR.x+=(tx-CAMR.x)*k; CAMR.z+=(tz-CAMR.z)*k;
   CAMR.shake=Math.max(0,CAMR.shake-dt*2.2);

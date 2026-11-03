@@ -6,7 +6,8 @@ function piv(parent,x=0,y=0,z=0){ const g=new THREE.Group(); g.position.set(x,y,
 const COL={skin:0xf2c39a,skin2:0xd9a27a,hair:0x8a3a18,leather:0x6a4426,leatherD:0x4a2e18,cloth:0x7a5a3a,banner:0x9e2b1c,bannerD:0x5e140c,steel:0xb4bec4,steelD:0x6c767e,brass:0xd2a04a,gold:0xf0c050,wood:0x7a4e2a,woodD:0x4e3018,bone:0xeae2c8,boneD:0xb8ab88};
 const RCOL=[0xb8a888,0x4a8ad0,0x9a5ae0,0xe8a030,0xff4a30];
 const ELCOL={fire:0xff6a1a,ice:0x6fd8ff,poison:0x8ae03a,light:0xf6e85a};
-const HERO_LOOKS=[{skin:0xf2c39a,hair:0x8a3a18,eyes:0x2a6a5a},{skin:0xc98e62,hair:0x1e1612,eyes:0x3a2a1a},{skin:0xf6d6b8,hair:0xe8d8a8,eyes:0x3a5a8a}];
+const HERO_LOOKS=[{skin:0xf2c39a,hair:0x8a3a18,eyes:0x2a6a5a},{skin:0xc98e62,hair:0x1e1612,eyes:0x3a2a1a},{skin:0xf6d6b8,hair:0xe8d8a8,eyes:0x3a5a8a},
+  {skin:0xe8b48a,hair:0x5a3a22,eyes:0x3a2a1a},{skin:0xf2c39a,hair:0xd8602a,eyes:0x2a6a3a},{skin:0xd9a27a,hair:0xd0d0c8,eyes:0x3a3a3a},{skin:0xf6d6b8,hair:0xf0c860,eyes:0x2a5a8a},{skin:0xe8c0a0,hair:0xe8e8f0,eyes:0x4a6aa0}];
 
 // ---------- weapon & offhand meshes (shared by hero + icons) ----------
 function wpnGeo(vis,rar,el){
@@ -101,7 +102,7 @@ function heroVis(gear){
   const v=k=>gear[k]?ITEM_BASES[gear[k].base].vis:null, r=k=>gear[k]?gear[k].rar:0, e=k=>gear[k]?gear[k].el||'':'';
   return {ch:v('chest')||'ch_cloth0',chr:r('chest'),hm:v('helm'),hmr:r('helm'),gl:v('gloves'),glr:r('gloves'),bt:v('boots'),btr:r('boots'),
     wp:v('weapon')||'sw0',wpr:r('weapon'),wpe:e('weapon'),cls:gear.weapon?ITEM_BASES[gear.weapon.base].cls:'sword',
-    oh:v('offhand'),ohr:r('offhand'),ohe:e('offhand'),am:!!gear.amulet,amr:r('amulet'),look:S.look||0};
+    oh:v('offhand'),ohr:r('offhand'),ohe:e('offhand'),am:!!gear.amulet,amr:r('amulet'),look:gear._look!==undefined?gear._look:(S.look||0)};
 }
 function dressHero(rig,gear){
   const V=heroVis(gear), L=HERO_LOOKS[V.look];
@@ -313,6 +314,18 @@ function buildPet(kind){
         b.sph(.035,0x1a1410,{p:[-.06,.04,.14],ol:0}); b.sph(.035,0x1a1410,{p:[.06,.04,.14],ol:0}); b.sph(.012,0xffffff,{p:[-.05,.055,.17],e:1,ol:0}); b.sph(.012,0xffffff,{p:[.07,.055,.17],e:1,ol:0}); b.sph(.03,0xe08aa0,{p:[-.1,-.02,.13],ol:0}); b.sph(.03,0xe08aa0,{p:[.1,-.02,.13],ol:0}); },0.022),body);
       const lg=cgeo('pm_l',b=>{b.sph(.07,0xe8dcc0,{p:[0,-.04,.02],s:[1,.7,1.3]});},.02);
       add('ll',lg,body,-.08,-.16,0); add('lr',lg,body,.08,-.16,0); rig.h=.6; break; }
+    case 'otter': {
+      body.position.y=.3;
+      pmesh(cgeo('pot_b',b=>{ b.sph(.22,0x7a5232,{s:[.85,.75,1.4]}); b.sph(.2,0xe0c8a0,{p:[0,-.05,.12],s:[.7,.55,1.1],ol:0});
+        b.sph(.17,0x7a5232,{p:[0,.14,.36],s:[1.05,.9,1]}); b.sph(.1,0xe0c8a0,{p:[0,.09,.48],s:[1.1,.7,.8],ol:0}); b.sph(.035,0x1a1410,{p:[0,.13,.55],ol:0});
+        b.sph(.035,0x1a1410,{p:[-.07,.2,.48],ol:0}); b.sph(.035,0x1a1410,{p:[.07,.2,.48],ol:0}); b.sph(.012,0xffffff,{p:[-.06,.215,.51],e:1,ol:0}); b.sph(.012,0xffffff,{p:[.08,.215,.51],e:1,ol:0});
+        b.sph(.045,0x6a4428,{p:[-.12,.27,.34]}); b.sph(.045,0x6a4428,{p:[.12,.27,.34]});
+        for(const sx of [-1,1]) for(let i=0;i<3;i++) b.box(.09,.006,.006,0xf0e8d8,{p:[sx*(.08+i*.012),.1+i*.015,.53],r:[0,sx*.3,sx*(i-1)*.25],ol:0});
+        b.cone(.1,.42,0x6a4428,{p:[0,.0,-.42],r:[-PI/2-.15,0,0],s:[1.3,1,.5]});
+        b.sph(.09,0x4aa8ff,{p:[0,.36,.1],e:.5,ol:0}); b.sph(.05,0x9ad8ff,{p:[.05,.42,.12],e:.8,ol:0}); },0.022),body);
+      const lg=cgeo('pot_l',b=>{b.cyl(.05,.045,.16,0x6a4428,{p:[0,-.08,0]}); b.sph(.06,0x5a3a20,{p:[0,-.16,.03],s:[1.2,.5,1.4]});},.02);
+      add('fl',lg,body,-.13,-.05,.18); add('fr',lg,body,.13,-.05,.18); add('bl',lg,body,-.13,-.05,-.18); add('br',lg,body,.13,-.05,-.18);
+      rig.quad=true; rig.h=.6; break; }
   }
   return rig;
 }

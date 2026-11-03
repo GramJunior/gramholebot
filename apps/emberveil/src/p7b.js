@@ -170,7 +170,7 @@ function animNPC(n,dt,talk){
 function animPet(p,dt){
   const R=p.rig, t=p.t, mv=p.moving||0; p.ph=(p.ph||0)+dt*(2+mv*12);
   R.root.position.set(p.x,0,p.z); R.root.rotation.y=p.face;
-  const base={wolf:.42,sala:.2,owl:1.9,golem:.55,fairy:1.6,drake:.5,mush:.3}[p.kind];
+  const base={wolf:.42,sala:.2,owl:1.9,golem:.55,fairy:1.6,drake:.5,mush:.3,otter:.3}[p.kind]||.4;
   let ly=0; if(p.lunge>0){ p.lunge-=dt; ly=Math.sin((p.lunge)*12)*.1; }
   if(R.fly){ R.body.position.y=base+Math.sin(t*3)*.15; if(R.parts.wl){ const f=p.kind==='fairy'?Math.sin(t*30)*.6:Math.sin(t*10)*.7; R.parts.wl.rotation.z=f; R.parts.wr.rotation.z=-f; } }
   else R.body.position.y=base+Math.abs(Math.sin(p.ph))*.06*mv+ly;

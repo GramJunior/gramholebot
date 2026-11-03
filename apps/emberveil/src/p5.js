@@ -22,7 +22,7 @@ function genItem(ilvl,o={}){
   if(it.el){ it.aff.push({k:it.el,v:AFFIX[it.el].r(ilvl)*1.3}); }
   while(it.aff.length<nAff&&pool2.length){ const k=pool2.splice(randi(0,pool2.length-1),1)[0]; if(it.aff.some(a=>a.k===k)) continue; if(AFFIX[k].el&&it.el&&k!==it.el) continue; it.aff.push({k,v:AFFIX[k].r(ilvl)*(1+rar*.08)}); }
   if(rar===3&&(o.set||chance(.35))){ const sid=o.set||Object.keys(SETS).find(s=>Object.values(SETS[s].pieces).includes(base)&&(s!=='king'||ilvl>=20)); if(sid&&Object.values(SETS[sid].pieces).includes(base)) it.set=sid; }
-  if(rar===4){ it.uniq=B.slot==='weapon'?UNIQUES[B.cls].id:(B.slot==='amulet'||sk==='ring')?'phoenix':'ashskin'; S.st.myth=(S.st.myth||0)+1; }
+  if(rar===4){ it.uniq=B.slot==='weapon'?UNIQUES[B.cls].id:(B.slot==='amulet'||sk==='ring')?(chance(.5)?'phoenix':'catalyst'):B.slot==='gloves'&&chance(.6)?'glacier':'ashskin'; S.st.myth=(S.st.myth||0)+1; }
   const ns=rar===4?2:rar===3?1:rar===2?(chance(.5)?1:0):0; for(let i=0;i<ns;i++) it.sock.push(null);
   it.name=itemName(it);
   return it;
@@ -84,7 +84,7 @@ function computeStats(){
   s.atk=s.wdmg*(1+s.dmgP/100)*(1+.025*(L-1));
   s.armorT=s.armor*(1+s.armorP/100);
   s.res=Math.min(s.res,75); s.crit=Math.min(s.crit,75); s.cdr=Math.min(s.cdr,50); s.ls=Math.min(s.ls,20); s.dr=Math.min(s.dr,40);
-  if(s.uniq.ashskin) s.dr+=15;
+  if(s.uniq.ashskin) s.dr+=15; if(s.uniq.catalyst) s.synP=(s.synP||0)+60;
   s.regenT=s.regen+s.maxHp*s.regenP/100;
   s.moveT=5.4*(1+s.move/100);
   s.aspdT=1+s.aspd/100;
@@ -136,7 +136,7 @@ function hatch(e){
   else { S.pets.owned[k]={lv:1}; if(!S.pets.active[0]) S.pets.active[0]=k; else if(S.bld.pen>=3&&!S.pets.active[1]) S.pets.active[1]=k; }
   S.st.hatched++; ev('hatch'); saveGame();
 }
-function randomEggKind(zone){ const pool=zone>=6?['drake','golem','fairy','owl']:zone>=4?['golem','fairy','owl','mush','sala']:zone>=3?['mush','owl','fairy','sala','wolf']:['wolf','sala','owl','mush']; return pick(pool); }
+function randomEggKind(zone){ const pool=zone>=6?['drake','golem','fairy','owl','otter']:zone>=4?['golem','fairy','owl','mush','sala','otter']:zone>=3?['mush','owl','fairy','sala','wolf','otter']:zone>=2?['wolf','sala','owl','mush','otter']:['wolf','sala','owl','mush']; return pick(pool); }
 
 // ---------- economy / production ----------
 function prodRates(){ return {wood:S.bld.saw*30,ore:S.bld.mine*18,ess:S.bld.well*4,gold:S.bld.hall*30+S.bld.houses*25}; }

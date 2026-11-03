@@ -104,6 +104,7 @@ function mkObj(kind,x,z,o={}){
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=o.ry!==undefined?o.ry:rand(TAU); worldRoot.add(g); ob.mesh=g;
   switch(kind){
     case 'barrel': pmesh(OBJ_GEO.barrel(),g); ob.r=.45; ob.hp=1; ob.brk=1; break;
+    case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
     case 'crate': pmesh(OBJ_GEO.crate(),g); ob.r=.55; ob.hp=1; ob.brk=1; break;
     case 'pot': pmesh(W.zone&&W.zone.id>=4?OBJ_GEO.urn():OBJ_GEO.pot(),g); ob.r=.35; ob.hp=1; ob.brk=1; break;
     case 'chest': case 'vault': { pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=o.ry||0; break; }
@@ -177,6 +178,8 @@ function makeStage(info){
   // liquids
   if(Z.id!==4){ const np=Z.id===3?7:Z.id>=5?5:3; for(let i=0;i<np;i++){ const n=pick(main.slice(1)); const a=rand(TAU),d=n.r+rand(2,7); W.pools.push({x:n.x+Math.cos(a)*d,z:n.z+Math.sin(a)*d,r:rand(2.5,4.5)}); } }
   if(Z.id===3||Z.id>=5){ for(let i=1;i<main.length-1;i++){ if(chance(.55)){ const n=main[i]; const a=rand(TAU),d=rand(2,n.r*.55); const p={x:n.x+Math.cos(a)*d,z:n.z+Math.sin(a)*d,r:rand(1.4,2.2),haz:Z.id===3?'slow':'burn'}; W.pools.push(p); W.hazards.push({x:p.x,z:p.z,r:p.r*.85,t:p.haz,perm:true}); } } }
+  synDressStage(info,main);
+  if(T!=='boss') puzzlePlan(info,walk);
   const b=boundsOf(walk,22); W.bounds=b;
   buildGround(Z,b); buildLiquid(Z);
   scatterWalls(Z,b,Q.props*(Z.id===4?.8:1));
@@ -186,6 +189,8 @@ function makeStage(info){
   for(let i=1;i<main.length;i++){ const n=main[i]; const nb=randi(1,3); for(let k=0;k<nb;k++){ const [x,z]=nodeIn(n); mkObj(pick(['barrel','crate','pot','barrel']),x,z); } }
   for(let i=0;i<2;i++){ const n=main[randi(1,main.length-1)]; const [x,z]=nodeIn(n,2); mkObj(pick(Z.id<=2?['wood','ore','wood','ess']:Z.id<=4?['ore','ess','ore']:['ore','ess','ess']),x,z); }
   if(T!=='boss'){ const n=main[randi(1,main.length-2)]; const [x,z]=nodeIn(n,2); mkObj('chest',x,z,{ry:rand(-.5,.5)}); }
+  for(let i=0;i<(W.oilBarrels||0);i++){ const n=main[randi(1,main.length-1)]; const [x,z]=nodeIn(n,2); mkObj('oilBarrel',x,z); }
+  if(W.puzzle) puzzleBuild();
   if(W.secretRoom){ const r=W.secretRoom; const sg=W.walk.segs.find(q=>q.bx===r.x&&q.bz===r.z); const mn=W.walk.nodes.find(q=>q.x===sg.ax&&q.z===sg.az); const Ls=Math.hypot(sg.bx-sg.ax,sg.bz-sg.az); const t0=Math.min(.6,(mn.r+.9)/Ls);
     sg.closed=true; const sw=mkObj('secret',sg.ax+(sg.bx-sg.ax)*t0,sg.az+(sg.bz-sg.az)*t0,{ry:Math.atan2(sg.bx-sg.ax,sg.bz-sg.az)}); sw.seg=sg; sw.r=1.0;
     const loreLeft=LORE.map((l,i)=>i).filter(i=>!S.lore.includes(i)); const roll=Math.random();
@@ -209,7 +214,7 @@ function makeStage(info){
   if(T==='escort'){ W.cart=mkObj('cartE',main[0].x+2,main[0].z-4,{ry:PI}); W.cart.hp=W.cart.maxHp=Math.round(280*F(L)); W.cart.wp=1; W.cart.path=main.map(n=>({x:n.x,z:n.z})); W.cart.path[W.cart.path.length-1]={x:W.exit.x,z:W.exit.z+3.5};
     W.ambush=main.slice(1,-1).map(n=>({x:n.x,z:n.z,done:false})); W.obst.push(W.cart.col={x:W.cart.x,z:W.cart.z,r:1.1});
     midNodes.forEach((n,i)=>{ if(i%2===0) spawnCamp(n.x+rand(-3,3),n.z,randi(2,3),L,{}); }); }
-  if(T==='boss'){ const n=main[main.length-1]; W.arenaNode=n; W.bossId=Z.id===6?'dragon':Z.boss; spawnCamp(main[1].x,main[1].z,4,L,{elite:1}); }
+  if(T==='boss'){ const n=main[main.length-1]; W.arenaNode=n; W.bossId=Z.id===6?'dragon':Z.boss; spawnCamp(main[1].x,main[1].z,4,L,{elite:1}); bossArenaDress(W.bossId,n); }
   objText(); buildPropMeshes();
   return W;
 }

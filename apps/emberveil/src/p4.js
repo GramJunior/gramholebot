@@ -39,17 +39,19 @@ const AFFIX={
   light:{t:'+{v} урона молнией',sx:'грозы',r:L=>2.8*F(L)*rand(.7,1.25),int:1,el:1},
   skill:{t:'+{v}% урона умений',sx:'чар',r:()=>rand(5,15)},
   pet:{t:'+{v}% урона питомца',sx:'зверолова',r:()=>rand(10,25)},
-  xp:{t:'+{v}% опыта',sx:'опыта',r:()=>rand(5,12)}
+  xp:{t:'+{v}% опыта',sx:'опыта',r:()=>rand(5,12)},
+  synP:{t:'+{v}% урона синергий',sx:'резонанса',r:()=>rand(8,20)},
+  soak:{t:'{v}% шанс промочить врага',sx:'брызг',r:()=>rand(8,18)}
 };
 const AFFIX_SLOTS={
-  weapon:['dmgP','crit','critD','aspd','ls','fire','ice','poison','light','skill','pet','cdr'],
-  offhand:['hp','armor','res','crit','cdr','skill','thorns','regen','pet'],
+  weapon:['dmgP','crit','critD','aspd','ls','fire','ice','poison','light','skill','pet','cdr','synP','soak'],
+  offhand:['hp','armor','res','crit','cdr','skill','thorns','regen','pet','soak'],
   helm:['hp','armor','res','crit','cdr','regen','mf','xp'],
   chest:['hp','armor','res','regen','thorns','dmgP','ls'],
-  gloves:['aspd','crit','critD','dmgP','armor','fire','ice','poison','light','ls'],
+  gloves:['aspd','crit','critD','dmgP','armor','fire','ice','poison','light','ls','soak','synP'],
   boots:['move','hp','armor','res','gold','mf','regen'],
-  amulet:['hp','dmgP','crit','critD','skill','res','xp','gold','mf','fire','ice','poison','light','pet'],
-  ring:['dmgP','crit','critD','aspd','ls','cdr','gold','mf','fire','ice','poison','light','hp']
+  amulet:['hp','dmgP','crit','critD','skill','res','xp','gold','mf','fire','ice','poison','light','pet','synP'],
+  ring:['dmgP','crit','critD','aspd','ls','cdr','gold','mf','fire','ice','poison','light','hp','synP']
 };
 const SETS={
   warden:{n:'Страж Брода',pieces:{helm:'helm_guard',chest:'chest_plate',gloves:'gloves_plate',boots:'boots_plate'},b2:{armorP:25,t:'+25% брони'},b4:{dr:12,thornsP:100,t:'-12% получаемого урона, шипы ×2'}},
@@ -65,7 +67,9 @@ const UNIQUES={
   bow:{id:'ricochet',n:'Звездопад',t:'Стрелы отскакивают ещё к двум врагам'},
   staff:{id:'burst',n:'Сердцевина',t:'Снаряды взрываются при попадании'},
   armor:{id:'ashskin',n:'Пепельная Кожа',t:'-15% получаемого урона, иммунитет к горению'},
-  jewel:{id:'phoenix',n:'Перо Феникса',t:'Раз за вылазку спасает от смерти'}
+  jewel:{id:'phoenix',n:'Перо Феникса',t:'Раз за вылазку спасает от смерти'},
+  cata:{id:'catalyst',n:'Катализатор',t:'+60% урона синергий; каждая синергия заряжает Вспышку Искры'},
+  glac:{id:'glacier',n:'Ледокол',t:'Любой удар раскалывает замороженных врагов (Раскол)'}
 };
 const LEG_NAMES=['Рассвет','Гром Брода','Тихая Песнь','Сломанный Обет','Вдовий Плач','Зов Предков','Седая Гроза','Медвежья Лапа','Острие Зари','Гнев Пастуха','Шёпот Тлена','Кровь Вейла'];
 const GEMS={ruby:{n:'Рубин',c:'#e0303a',st:'hp',v:[40,100,230],t:'+{v} к здоровью'},sapph:{n:'Сапфир',c:'#3a7ae0',st:'res',v:[5,9,14],t:'+{v}% к сопротивлениям'},
@@ -110,10 +114,10 @@ const SKILLS={
   ]
 };
 const PASSIVES={
-  sword:[{id:'p1',n:'Закалка',ic:'shield',d:r=>`+${10*r}% брони`,st:r=>({armorP:10*r})},{id:'p2',n:'Мастер клинка',ic:'sword',d:r=>`+${4*r}% шанс крита`,st:r=>({crit:4*r})},{id:'p3',n:'Второе дыхание',ic:'heart',d:r=>`+${r*.6}% здоровья в секунду`,st:r=>({regenP:.6*r})}],
-  axe:[{id:'p1',n:'Тяжёлая рука',ic:'hammer',d:r=>`+${8*r}% к урону`,st:r=>({dmgP:8*r})},{id:'p2',n:'Кровожадность',ic:'drop',d:r=>`+${2*r}% вампиризма`,st:r=>({ls:2*r})},{id:'p3',n:'Несокрушимость',ic:'heart',d:r=>`+${8*r}% здоровья`,st:r=>({hpP:8*r})}],
-  bow:[{id:'p1',n:'Орлиный глаз',ic:'eye',d:r=>`+${15*r}% крит. урона`,st:r=>({critD:15*r})},{id:'p2',n:'Лёгкий шаг',ic:'feather',d:r=>`+${5*r}% скорости`,st:r=>({move:5*r})},{id:'p3',n:'Пронзание',ic:'target',d:r=>`Стрелы пробивают ещё ${r} врага`,st:r=>({pierce:r})}],
-  staff:[{id:'p1',n:'Поток',ic:'clock',d:r=>`-${6*r}% к перезарядке`,st:r=>({cdr:6*r})},{id:'p2',n:'Стихийник',ic:'spark',d:r=>`+${12*r}% стихийного урона`,st:r=>({elP:12*r})},{id:'p3',n:'Чародейский щит',ic:'shield',d:r=>`Умения дают щит в ${6*r}% здоровья`,st:r=>({spellShield:6*r})}]
+  sword:[{id:'p1',n:'Закалка',ic:'shield',d:r=>`+${10*r}% брони`,st:r=>({armorP:10*r})},{id:'p2',n:'Мастер клинка',ic:'sword',d:r=>`+${4*r}% шанс крита`,st:r=>({crit:4*r})},{id:'p3',n:'Второе дыхание',ic:'heart',d:r=>`+${r*.6}% здоровья в секунду`,st:r=>({regenP:.6*r})},{id:'p4',n:'Ледолом',ic:'snow',d:r=>`Раскол наносит +${35*r}% урона, удары с шансом ${6*r}% промачивают`,st:r=>({shatterP:35*r,soak:6*r})}],
+  axe:[{id:'p1',n:'Тяжёлая рука',ic:'hammer',d:r=>`+${8*r}% к урону`,st:r=>({dmgP:8*r})},{id:'p2',n:'Кровожадность',ic:'drop',d:r=>`+${2*r}% вампиризма`,st:r=>({ls:2*r})},{id:'p3',n:'Несокрушимость',ic:'heart',d:r=>`+${8*r}% здоровья`,st:r=>({hpP:8*r})},{id:'p4',n:'Буревестник',ic:'bolt',d:r=>`Тяжёлые удары с шансом ${12*r}% бьют молнией (Цепной разряд по мокрым)`,st:r=>({axeShock:12*r})}],
+  bow:[{id:'p1',n:'Орлиный глаз',ic:'eye',d:r=>`+${15*r}% крит. урона`,st:r=>({critD:15*r})},{id:'p2',n:'Лёгкий шаг',ic:'feather',d:r=>`+${5*r}% скорости`,st:r=>({move:5*r})},{id:'p3',n:'Пронзание',ic:'target',d:r=>`Стрелы пробивают ещё ${r} врага`,st:r=>({pierce:r})},{id:'p4',n:'Смоляные стрелы',ic:'flame',d:r=>`${8*r}% шанс облить врага смолой, +${10*r}% урона синергий`,st:r=>({oilHit:8*r,synP:10*r})}],
+  staff:[{id:'p1',n:'Поток',ic:'clock',d:r=>`-${6*r}% к перезарядке`,st:r=>({cdr:6*r})},{id:'p2',n:'Стихийник',ic:'spark',d:r=>`+${12*r}% стихийного урона`,st:r=>({elP:12*r})},{id:'p3',n:'Чародейский щит',ic:'shield',d:r=>`Умения дают щит в ${6*r}% здоровья`,st:r=>({spellShield:6*r})},{id:'p4',n:'Резонанс',ic:'spark',d:r=>`+${15*r}% урона синергий`,st:r=>({synP:15*r})}]
 };
 const MAX_SKILL_RANK=5, MAX_PASSIVE_RANK=3;
 
@@ -125,7 +129,8 @@ const PET_DEFS={
   golem:{n:'Каменыш',t:'Каменный голем',d:'Притягивает внимание врагов и бьёт по земле.',egg:[0x8a8478,0x5af0d0],role:'Страж',rar:2},
   fairy:{n:'Светлинка',t:'Фея',d:'Лечит хозяина и ускоряет восстановление.',egg:[0xc8fff0,0xfff0a0],role:'Целитель',rar:2},
   mush:{n:'Пыхтун',t:'Грибыш',d:'Выпускает облака ядовитых спор.',egg:[0x9a5ad0,0xf8f0ff],role:'Отравитель',rar:1},
-  drake:{n:'Искра',t:'Дракончик',d:'Детёныш последнего дракона. Дышит пламенем по конусу.',egg:[0xd8402a,0xffc070],role:'Разрушитель',rar:3}
+  drake:{n:'Искра',t:'Дракончик',d:'Детёныш последнего дракона. Дышит пламенем по конусу.',egg:[0xd8402a,0xffc070],role:'Разрушитель',rar:3},
+  otter:{n:'Плюх',t:'Выдра',d:'Обдаёт врагов водой: мокрые враги ловят Цепной разряд и мгновенно замерзают.',egg:[0x6a4a32,0x7ac8ff],role:'Заклинатель воды',rar:2}
 };
 const PET_MAX=20;
 const petFeedCost=lv=>({ess:Math.round(4+lv*lv*1.2),gold:Math.round(60*Math.pow(1.25,lv))});

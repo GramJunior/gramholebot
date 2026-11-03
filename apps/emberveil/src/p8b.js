@@ -3,7 +3,7 @@ function canBuildNow(id){ const lv=S.bld[id]; if(lv>=5) return false; if(bldUnlo
 function bldTabs(id){
   const lv=S.bld[id]; if(!lv) return [['bld','Строительство','hall']];
   const T={hall:[['list','Постройки','hall'],['prod','Доход','gold']],forge:[['up','Улучшение','hammer'],['craft','Ковка','anvil'],['reforge','Перековка','spark'],['gems','Камни','gem'],['bld','Здание','hall']],
-    alch:[['shop','Лавка','flask'],['bld','Здание','hall']],pen:[['eggs','Яйца','egg'],['pets','Питомцы','paw'],['bld','Здание','hall']],tavern:[['board','Доска','scroll'],['daily','Контракты','clock'],['bld','Здание','hall']],
+    alch:[['shop','Лавка','flask'],['bld','Здание','hall']],pen:[['eggs','Яйца','egg'],['pets','Питомцы','paw'],['bld','Здание','hall']],tavern:[['roster','Наёмники','helm'],['exp','Походы','map'],['board','Доска','scroll'],['daily','Контракты','clock'],['bld','Здание','hall']],
     temple:[['bless','Благословения','sun'],['respec','Сброс','book'],['bld','Здание','hall']]}[id];
   return T||[['bld','Здание','hall']];
 }
@@ -36,6 +36,8 @@ function bldBody(id,tab){
   if(id==='forge') return forgeBody(tab);
   if(id==='alch') return alchBody();
   if(id==='pen') return tab==='pets'?pPets('feed'):penBody();
+  if(id==='tavern'&&tab==='roster') return rosterBody();
+  if(id==='tavern'&&tab==='exp') return expBody();
   if(id==='tavern') return tab==='daily'?pQuests().split('<div class="sect">Контракты дня</div>')[1].split('<div class="sect">Достижения')[0].replace(/^/,'<div class="sect">Контракты дня</div>'):boardBody();
   if(id==='temple') return templeBody(tab);
   return '';
@@ -228,6 +230,6 @@ function showResults(o){
 function showBoons(cb){
   const pool=BOONS.slice(); const pick3=[]; while(pick3.length<3) pick3.push(pool.splice(randi(0,pool.length-1),1)[0]);
   const el=$('boons'); show('boons');
-  el.innerHTML=`<h2>Дар Бездны</h2><div class="muted" style="color:#d8b77a">Выберите один</div>`+pick3.map(b=>`<button class="boon parch" ${act(()=>{ show('boons',false); cb(b); })}><span class="bi">${ico(b.ic)}</span><span><h4>${b.n}</h4><p>${b.d}</p></span></button>`).join('');
+  el.innerHTML=`<h2>Дар Бездны</h2><div class="muted" style="color:#d8b77a">Выберите один</div><div class="boonRow">`+pick3.map(b=>`<button class="boon parch" ${act(()=>{ show('boons',false); cb(b); })}><span class="bi">${ico(b.ic)}</span><span><h4>${b.n}</h4><p>${b.d}</p></span></button>`).join('')+'</div>';
   bindPanel();
 }
