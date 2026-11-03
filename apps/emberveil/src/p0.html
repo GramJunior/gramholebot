@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Kurale&family=Ruslan+Display&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js" async></script>
+<script>window.EVNET_BASE_URL = window.EVNET_BASE_URL_OVERRIDE || 'https://emberveil-api.emberveil.workers.dev';</script>
 <style>
 :root{
   --ink:#2b1a0e; --ink2:#5a3b22; --ink3:#8a6844;
@@ -545,8 +546,12 @@ html.land.roomy #pBody{font-size:15px}
   window.addEventListener('error',function(ev){ if(!window.__booted){ window.__loadErr('Не удалось разжечь очаг: '+(ev.message||'ошибка')+'<br><small>Попробуйте обновить страницу.</small>'); } });
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- движок: сначала локальная копия (vendor/, работает офлайн и в обёртке-приложении), при сбое — cdnjs -->
+<script src="vendor/three.min.js"></script>
+<script>if(!window.THREE) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
+<script>if(window.THREE){ document.write(['GLTFLoader.js','SkeletonUtils.js','BufferGeometryUtils.js','libs/meshopt_decoder.js','shaders/CopyShader.js','shaders/LuminosityHighPassShader.js','shaders/FXAAShader.js','postprocessing/EffectComposer.js','postprocessing/UnrealBloomPass.js'].map(function(f){ return '<script src="vendor/'+f+'"><\/script>'; }).join('')); }</script>
+<!--@@MODULES@@-->
 <script>
-"use strict";
+"use strict"; /*@@MAIN@@*/
 (function(){
 if(!window.THREE){ window.__loadErr('Не удалось загрузить движок (Three.js).<br><small>Проверьте подключение к интернету и обновите страницу.</small>'); return; }
