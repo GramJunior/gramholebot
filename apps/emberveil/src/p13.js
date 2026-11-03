@@ -44,7 +44,7 @@ function bossMechTick(dt){
   if(e.kind==='rotroot'){ const hearts=G.enemies.filter(x=>x.alive&&x.kind==='rotHeart');
     if(e.phase>=1&&!M['h'+e.phase]&&!e.invuln){ M['h'+e.phase]=1; const n=e.phase>=2?4:3; for(let i=0;i<n;i++){ const a=i/n*TAU+rand(-.3,.3); const x=A.x+Math.cos(a)*A.r*.62, z=A.z+Math.sin(a)*A.r*.62; const h=spawnEnemy('rotHeart',x,z,e.lvl,{aggro:1}); h.maxHp=e.maxHp*.045; h.hp=h.maxHp; h.static=true; h.summon=1; h.untargetPet=false; fx('poison',x,1,z,{k:20}); }
       e.bossShield=true; e.bossShieldK=.12; banner('Щит коры!','Разбейте сердца гнили'); bossTip('hearts','Пока бьются сердца гнили, Гнилокорень почти неуязвим. Разбейте их!'); AU.sfx('roar'); }
-    if(e.bossShield&&M['h'+e.phase]&&hearts.length===0){ e.bossShield=false; bossStun(e,3,1.7,'Щит коры сломан!'); }
+    else if(e.bossShield&&M['h'+e.phase]&&hearts.length===0){ e.bossShield=false; bossStun(e,3,1.7,'Щит коры сломан!'); }
     if(e.bossShield&&Math.random()<dt*8){ const a=rand(TAU); fx('poison',e.x+Math.cos(a)*e.r*1.2,rand(.5,3),e.z+Math.sin(a)*e.r*1.2,{k:1}); }
     for(const h of hearts){ if(Math.random()<dt*2){ for(let k=0;k<5;k++){ const t=k/5; fx('poison',lerp(h.x,e.x,t),1.2,lerp(h.z,e.z,t),{k:1}); } } } }
   // Морвен: «Взор Склепа»
@@ -82,7 +82,7 @@ function bossMirrorKilled(m){ const M=W.bossMech, e=G.boss; if(!M||!e) return;
 }
 function bossLabels(){ if(!G.boss||!G.boss.alive||G.mode!=='stage'&&G.mode!=='abyss') return; const e=G.boss;
   for(const m of G.enemies){ if(m.alive&&m.mirrorN) wlAdd(m.x,(m.rig.h||2)+.7,m.z,['I','II','III'][m.mirrorN-1],'rn'); }
-  if(G.parryWin&&G.parryWin.e===e) wlAdd(e.x,(e.rig.h||4)+.6,e.z,'<span style="font-size:44px;color:#ffd040;text-shadow:0 0 14px #ff8a2b,0 2px 0 #000">!</span>','rn');
+  if(G.parryWin&&G.parryWin.e===e){ wlAdd(e.x,(e.rig.h||4)+.6,e.z,'<span style="font-size:44px;color:#ffd040;text-shadow:0 0 14px #ff8a2b,0 2px 0 #000">!</span>','rn'); wlAddScreen(window.innerWidth*.5,window.innerHeight*.36,'<span style="display:inline-block;font-family:var(--disp);font-size:30px;color:#2b1606;background:radial-gradient(circle,#fff3c0,#ffc040 60%,#c97a10);border-radius:50%;width:64px;height:64px;line-height:64px;text-align:center;box-shadow:0 0 0 3px #3b2408,0 0 26px #ff8a2b">!</span><div style="font-size:12px;margin-top:4px">УДАР или КУВЫРОК</div>'); }
   if(e.bossShield) wlAdd(e.x,(e.rig.h||3)*.6+1.2,e.z,`<span style="font-size:12px">${ico('shield')} щит</span>`,'');
 }
 // new boss patterns

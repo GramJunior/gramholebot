@@ -20,3 +20,7 @@ Object.assign(window.__game,{
   raidDue:()=>{ raidS().next=Date.now()-1000; }, raidTier:()=>raidTier(), sockets:()=>RAID_SOCKETS.map(s=>s.id),
   camTop:(d)=>{ const tf=Math.tan(cam.fov*PI/360); CAMR.override={x:0,z:-1.5,dist:(d||58)/(2*tf)}; },
 });
+Object.assign(window.__game,{
+  bossForce:(n)=>{ const e=G.boss; if(!e) return 'noboss'; const A=W.arenaNode; if(n==='collapse') bossCollapse(e,A,3); else if(n==='mirrors') bossMirrors(e,A); else if(n==='hearts'){ e.phase=1; } else { e.cur={n,t:0,f:{}}; } return 'ok'; },
+  bossTp:()=>{ const A=W.arenaNode; G.P.x=A.x; G.P.z=A.z+A.r*.3; }, boss:()=>G.boss?{k:G.boss.kind,hp:Math.round(G.boss.hp),ph:G.boss.phase,shield:!!G.boss.bossShield,stun:G.boss.bstun>0}:null,
+});
