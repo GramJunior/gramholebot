@@ -584,9 +584,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const d = entity('bld:' + id); const g = new T.Group(); g.name = 'bld_' + id + '_' + lv;
     if (!lv) { const p = makeProp({ file: d.file, node: d.plot, s: 3.2 }); g.add(p); return g; }
     const L = d.levels[Math.min(d.levels.length, lv) - 1];
-    const main = makeProp({ file: d.file, node: L.model, s: L.s }); g.add(main);
+    const main = makeProp({ file: L.file || S.nodeIndex[L.model] || d.file, node: L.model, s: L.s }); g.add(main);
     for (const e of L.extras || []) {
-      const ed = S.manifest.entities[e.id] || { type: 'prop', file: d.file, node: e.id, s: 1 };
+      const ed = S.manifest.entities[e.id] || { type: 'prop', file: S.nodeIndex[e.id] || d.file, node: e.id, s: 1 };
       const p = makeProp(Object.assign({}, ed, { s: e.s !== undefined ? e.s : ed.s })); p.position.set(e.x || 0, 0, e.z || 0); p.rotation.y = e.ry || 0; g.add(p);
     }
     const b = main.userData.evBox; g.userData.radius = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * 0.45;
@@ -612,7 +612,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const holder = new T.Group(); holder.add(obj); ICON.scene.add(holder);
     holder.rotation.set(o.pitch || 0, o.yaw === undefined ? -0.6 : o.yaw, o.roll === undefined ? (actor ? 0 : -0.5) : o.roll);
     holder.updateMatrixWorld(true);
-    const box = actor ? new T.Box3().setFromCenterAndSize(new T.Vector3(0, actor.height * 0.55, 0), new T.Vector3(actor.height * 0.6, actor.height * 1.05, actor.height * 0.6)) : new T.Box3().setFromObject(holder);
+    const ah = actor ? actor.height : 0;
+    const box = actor ? (o.portrait ? new T.Box3().setFromCenterAndSize(new T.Vector3(0, ah * 0.7, 0), new T.Vector3(ah * 0.5, ah * 0.56, ah * 0.5))
+                                    : new T.Box3().setFromCenterAndSize(new T.Vector3(0, ah * 0.55, 0), new T.Vector3(ah * 0.6, ah * 1.05, ah * 0.6))) : new T.Box3().setFromObject(holder);
     const c = box.getCenter(new T.Vector3()), sz = box.getSize(new T.Vector3()); const r = Math.max(sz.x, sz.y, sz.z) * (o.pad || 0.62);
     const d = r / Math.tan(14 * deg);
     ICON.cam.position.set(c.x, c.y + d * 0.12, c.z + d); ICON.cam.lookAt(c); ICON.cam.updateProjectionMatrix();
@@ -627,6 +629,11 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     g.putImageData(im, 0, 0);
     if (key) ICON.cache[key] = cv; return cv;
   }
+  /** same as icon() but returns a cached data URL (what the game's RTT.shot() / iconFor() return today) */
+  const ICON_URL = {};
+  function iconURL(what, size, o = {}) { const k = what + '|' + size + '|' + JSON.stringify(o); return ICON_URL[k] || (ICON_URL[k] = icon(what, size, o).toDataURL()); }
+  /** dialogue/HUD portrait of a character entity (head & shoulders): portrait('elder', 128, {bg:0x3a2416, gear:{...}}) */
+  function portrait(id, size, o = {}) { return iconURL(id, size || 128, Object.assign({ portrait: true, yaw: -0.35, roll: 0 }, o)); }
 
   // ------------------------------------------------------------------ public
   function spawn(id, opts) {
@@ -664,7 +671,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
 
   const EVAssets = {
     version: '1.0.0', QUALITY, time: { value: 0 },
-    init, load, spawn, prop, instanced, building, icon, setQuality, setViewport, stats, tick,
+    init, load, spawn, prop, instanced, building, icon, iconURL, portrait, setQuality, setViewport, stats, tick,
     addOutline, toonMat, recolorTex, makeOrb, glowify,
     get manifest() { return S.manifest; }, get quality() { return S.q; },
     has: (id) => !!(S.manifest && S.manifest.entities[id] && S.manifest.entities[id].type !== 'procedural'),

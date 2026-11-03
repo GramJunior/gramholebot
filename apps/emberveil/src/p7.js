@@ -187,7 +187,7 @@ function dmgEnemy(e,amt,o={}){
   if(!o.dot&&!o.syn&&src===P) synProcs(e,o);
   if(e.stat.freeze>0&&(o.crit||o.heavy)&&!o.dot&&!o.syn&&src&&src.type!=='enemy') amt=synShatter(e,amt,o);
   if(e.stat.shock>0) amt*=1.2; if(e.stat.mark>0) amt*=1.15; if(e.bossShield) amt*=(e.bossShieldK||.2); if(e.vulnT>0) amt*=(e.vulnK||2);
-  e.hp-=amt; e.lastHit=G.time;
+  e.hp-=amt; e.lastHit=G.time; if(src&&src.dmgLog!==undefined) src.dmgLog+=Math.min(amt,e.hp+amt);
   if(!o.silent) dmgNum(e.x,(e.rig.h||1.5)*(e.boss?.75:1)+.2,e.z,Math.round(amt),o.crit?'crit':o.els&&o.els[0]?o.els[0]:o.dot?(o.dotEl||''):'');
   if(!o.dot){ e.flashT=.09; if(o.crit){ fx('crit',e.x,1,e.z); AU.sfx('crit',.7); } else fx('hit',e.x,1+(e.boss?1:0),e.z);
     if(src===P&&PS.ls>0&&!o.noLs) healPlayer(Math.min(amt*PS.ls/100,P.maxHp*.04)+0);

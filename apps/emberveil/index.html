@@ -3174,7 +3174,7 @@ function dmgEnemy(e,amt,o={}){
   if(!o.dot&&!o.syn&&src===P) synProcs(e,o);
   if(e.stat.freeze>0&&(o.crit||o.heavy)&&!o.dot&&!o.syn&&src&&src.type!=='enemy') amt=synShatter(e,amt,o);
   if(e.stat.shock>0) amt*=1.2; if(e.stat.mark>0) amt*=1.15; if(e.bossShield) amt*=(e.bossShieldK||.2); if(e.vulnT>0) amt*=(e.vulnK||2);
-  e.hp-=amt; e.lastHit=G.time;
+  e.hp-=amt; e.lastHit=G.time; if(src&&src.dmgLog!==undefined) src.dmgLog+=Math.min(amt,e.hp+amt);
   if(!o.silent) dmgNum(e.x,(e.rig.h||1.5)*(e.boss?.75:1)+.2,e.z,Math.round(amt),o.crit?'crit':o.els&&o.els[0]?o.els[0]:o.dot?(o.dotEl||''):'');
   if(!o.dot){ e.flashT=.09; if(o.crit){ fx('crit',e.x,1,e.z); AU.sfx('crit',.7); } else fx('hit',e.x,1+(e.boss?1:0),e.z);
     if(src===P&&PS.ls>0&&!o.noLs) healPlayer(Math.min(amt*PS.ls/100,P.maxHp*.04)+0);
@@ -4897,8 +4897,8 @@ function raidDamaged(id){ const d=raidS().dmg; return !!(d&&d.until>Date.now()&&
 function raidLanesFor(t){ return RAID_LANES.filter(l=>!l.tier||t>=l.tier); }
 function raidPlan(t,periodic){
   const L=raidLvl(t); const pool=ZONES[t-1].enemies; const lanes=raidLanesFor(t); const nW=3+Math.floor(t/3)+(periodic?1:0); const waves=[];
-  for(let w=0;w<nW;w++){ const n=5+w*2+Math.ceil(t*.8)+(periodic?2:0); const ls=w===nW-1?lanes.slice():[pick(lanes)].concat(chance(.5+w*.1)?[pick(lanes)]:[]); const uniq=[...new Set(ls)];
-    const list=[]; for(let i=0;i<n;i++) list.push({k:pick(pool),lane:pick(uniq).id,el:chance(.08+.025*t+w*.02)?1:0});
+  for(let w=0;w<nW;w++){ const n=7+w*3+t+(periodic?3:0); const sh=lanes.slice().sort(()=>Math.random()-.5); const nl=w===0?1:w===nW-1?lanes.length:Math.min(lanes.length,2+(w>=2&&chance(.4)?1:0)); const uniq=sh.slice(0,nl);
+    const list=[]; for(let i=0;i<n;i++) list.push({k:pick(pool),lane:uniq[i%uniq.length].id,el:chance(.1+.03*t+w*.03)?1:0});
     if(w===nW-1) list.push({k:pick(pool.filter(k=>!['mushroom','imp'].includes(k))),lane:pick(uniq).id,champ:1});
     waves.push({list,lanes:uniq.map(l=>l.id)}); }
   return {t,L,waves,periodic:!!periodic};
@@ -4985,23 +4985,23 @@ function raidStart(){
   if(!canPay(tot)){ toast('Не хватает золота на ополчение'); AU.sfx('deny'); return; } pay(tot);
   raidClosePrep(); CAMR.override=null; computeStats(); refreshPlayer(true);
   RAID={plan,wi:0,waveT:4,t:0,kills:0,heartMax:0,heart:null,walls:{},towers:[],traps:[],spawnQ:[],done:false,champ:false};
-  const L=plan.L; const hh=Math.round(2600*Math.pow(F(L),.95)*(1+.15*(S.bld.hall||1)));
+  const L=plan.L; const hh=Math.round(1500*Math.pow(F(L),.95)*(1+.12*(S.bld.hall||1)));
   RAID.heart={type:'struct',kind:'heart',x:0,z:0,r:2.3,hp:hh,maxHp:hh,raidHurt(d){ if(RAID.done) return; RAID.heart.hp-=d; RAID.heart.flash=.12; if(Math.random()<.4) fx('hit',rand(-1,1),2,rand(-1,1),{col:0xffb060}); if(RAID.heart.hp<=0){ RAID.heart.hp=0; raidEnd(false,'Сердце Брода погасло'); } }};
   for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; if(!st) continue; const D=RAID_STRUCT[st.t]; const m=RAID_LV_MUL[st.lv];
     if(s.slot==='wall'){ const hp=Math.round(D.hp*m*Math.pow(F(L),.95)); const obs=W.obst.filter(o=>o.rs===s.id); const ob={set dead(v){ for(const o of obs) o.dead=v; }}; const w={type:'struct',kind:'wall',sid:s.id,lane:s.lane,x:s.x,z:s.z,r:2.9,hp,maxHp:hp,ob,thorns:D.thorns||0,
         raidHurt(d,src){ if(w.hp<=0) return; w.hp-=d; w.flash=.1; if(w.thorns&&src&&src.alive) dmgEnemy(src,src.maxHp*w.thorns*.08+d*w.thorns,{kb:1.5,dir:Math.atan2(src.x-w.x,src.z-w.z),src:w,noLs:1}); if(Math.random()<.5) fx('dust',w.x+rand(-1.5,1.5),1,w.z+rand(-1.5,1.5),{k:2,col:0x8a6a42});
           if(w.hp<=0){ w.hp=0; if(w.ob) w.ob.dead=true; const mm=W.rsMesh[w.sid]; if(mm) mm.visible=false; fx('boom',w.x,1,w.z,{r:3,col:0xc89a6a,smoke:0x6a5a40}); AU.sfx('boom'); shake(.4); banner(RAID_STRUCT[st.t].n+' пал!','Враги прорываются: '+RAID_LANES.find(l=>l.id===w.lane).n); } }};
       RAID.walls[s.lane]=w; }
-    else if(s.slot==='tower'){ RAID.towers.push({type:'tower',sid:s.id,t:st.t,lv:st.lv,el:st.el||'fire',x:s.x,z:s.z,cd:rand(.3,1),D,m}); }
-    else RAID.traps.push({type:'trap',sid:s.id,t:st.t,lv:st.lv,x:s.x,z:s.z,cd:0,D,m}); }
+    else if(s.slot==='tower'){ RAID.towers.push({type:'tower',sid:s.id,t:st.t,lv:st.lv,el:st.el||'fire',x:s.x,z:s.z,cd:rand(.3,1),D,m,dmgLog:0}); }
+    else RAID.traps.push({type:'trap',sid:s.id,t:st.t,lv:st.lv,x:s.x,z:s.z,cd:0,D,m,dmgLog:0}); }
   // the "Частокол и башни" building: corner towers fire too
-  for(let i=0;i<Math.min(4,(S.bld.walls||0)+1)&&(S.bld.walls||0)>0;i++){ const [x,z]=TOWER_POS[i]; RAID.towers.push({type:'tower',sid:'c'+i,t:'archer',lv:Math.min(3,1+Math.floor(S.bld.walls/2)),x,z,cd:rand(.3,1),D:Object.assign({},RAID_STRUCT.archer,{rng:15}),m:.6+.25*S.bld.walls,corner:1}); }
+  for(let i=0;i<Math.min(4,(S.bld.walls||0)+1)&&(S.bld.walls||0)>0;i++){ const [x,z]=TOWER_POS[i]; RAID.towers.push({type:'tower',sid:'c'+i,t:'archer',lv:Math.min(3,1+Math.floor(S.bld.walls/2)),x,z,cd:rand(.3,1),D:Object.assign({},RAID_STRUCT.archer,{rng:15}),m:.6+.25*S.bld.walls,corner:1,dmgLog:0}); }
   G.mode='raid'; W.lvl=L; W.obj={type:'raid',done:false,txt:''}; W.raid=RAID;
   G.run={info:null,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:S.hero.xp,startLvl:S.hero.lvl,raid:1};
   for(const v of W.villagers) worldRoot.remove(v.rig.root); W.villagers=[];
   for(let i=0;i<r.militia;i++){ const a=i/Math.max(1,r.militia)*TAU; spawnMilitia(Math.cos(a)*5.2,Math.sin(a)*5.2+.5,L,i); }
   if(!G.allies.some(a=>a.kind==='comp')) spawnCompanion();
-  show('hud'); hudBuild(); raidHud(); placePlayer(0,5.5,PI); G.P.ember=40;
+  show('hud'); hudBuild(); raidHud(); placePlayer(0,5.5,PI); G.P.ember=40; G.P.dmgLog=0;
   banner(plan.periodic?'Набег Хмари!':'Набег!',`${plan.waves.length} волн · тропы: ${raidLanesFor(plan.t).map(l=>l.n).join(', ')}`); AU.sfx('roar'); AU.sfx('sting'); shake(.3);
   S.st.raids=(S.st.raids||0)+1; raidObjText();
 }
@@ -5041,7 +5041,7 @@ function raidObjText(){ if(!RAID) return; const alive=G.enemies.filter(e=>e.aliv
 function raidTarget(e,def){
   if(!RAID||!e.raider) return def; const P=G.P; const dc=Math.hypot(e.x,e.z);
   const w=RAID.walls[e.lane]; if(w&&w.hp>0&&dc>Math.hypot(w.x,w.z)-1.2) return w;
-  if(!P.dead&&Math.hypot(P.x-e.x,P.z-e.z)<(e.champion?9:6.5)) return P;
+  if(!P.dead&&Math.hypot(P.x-e.x,P.z-e.z)<(e.champion?8:e.D.ai==='archer'||e.D.ai==='caster'?3.5:4.5)) return P;
   return RAID.heart;
 }
 function raidSplash(x,z,R,dmg,src){ if(!RAID) return; if(Math.hypot(x,z)<R+RAID.heart.r) RAID.heart.raidHurt(dmg*.8,src); for(const k in RAID.walls){ const w=RAID.walls[k]; if(w.hp>0&&Math.hypot(w.x-x,w.z-z)<R+w.r) w.raidHurt(dmg,src); } }
@@ -5075,7 +5075,7 @@ function raidEnd(win,reason){
   compRunEnd(win); saveGame(true);
   for(const k in rw) lines.push(`${ico(RES_IC[k])} ${RES_NAME[k]}: <b>+${fmt(rw[k])}</b>`);
   if(G.run.compXp) lines.push(`${ico('helm')} ${COMPANIONS[G.run.compXp.id].n}: <b>+${G.run.compXp.xp} оп.</b>`);
-  RAID.result={win,rw,heart:RAID.heart.hp/RAID.heart.maxHp,t:RAID.t,kills:G.run.kills};
+  RAID.result={win,rw,heart:RAID.heart.hp/RAID.heart.maxHp,t:RAID.t,kills:G.run.kills,towerDmg:Math.round(RAID.towers.concat(RAID.traps).reduce((a,t)=>a+t.dmgLog,0)),heroDmg:Math.round(G.P.dmgLog||0)};
   G.lastRaid=RAID.result;
   setTimeout(()=>showResults({title:win?'Брод выстоял!':'Брод в огне',sub:win?(plan.periodic?'Набег Хмари отражён':'Набег отражён'):(reason||'Оборона прорвана'),lines,items:G.run.items,btns:[['В деревню',()=>{ show('res',false); fadeTo(()=>enterVillage()); },'woodb'],['Ещё набег',()=>{ show('res',false); fadeTo(()=>enterVillage(cb=>{ raidOpenPrep(); cb(); })); }]]}),win?1000:600);
 }

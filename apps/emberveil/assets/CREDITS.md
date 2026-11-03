@@ -103,12 +103,10 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 | node id | source file | pack | URL |
 |---|---|---|---|
 | b_townhall | building_townhall_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_townhall_red.gltf |
-| b_castle | building_castle_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_castle_red.gltf |
 | b_blacksmith | building_blacksmith_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_blacksmith_red.gltf |
 | b_workshop | building_workshop_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_workshop_red.gltf |
 | b_stables | building_stables_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_stables_red.gltf |
 | b_tavern | building_tavern_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_tavern_red.gltf |
-| b_church | building_church_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_church_red.gltf |
 | b_shrine | building_shrine_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_shrine_red.gltf |
 | b_market | building_market_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_market_red.gltf |
 | b_lumbermill | building_lumbermill_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_lumbermill_red.gltf |
@@ -118,20 +116,9 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 | b_tower_A | building_tower_A_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_tower_A_red.gltf |
 | b_home_A | building_home_A_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_home_A_red.gltf |
 | b_home_B | building_home_B_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_home_B_red.gltf |
-| b_windmill | building_windmill_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_windmill_red.gltf |
-| b_barracks | building_barracks_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_barracks_red.gltf |
-| b_archeryrange | building_archeryrange_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_archeryrange_red.gltf |
-| b_tent | building_tent_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_tent_red.gltf |
 | building_stage_A | building_stage_A.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/building_stage_A.gltf |
-| building_stage_B | building_stage_B.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/building_stage_B.gltf |
-| building_stage_C | building_stage_C.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/building_stage_C.gltf |
-| building_scaffolding | building_scaffolding.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/building_scaffolding.gltf |
-| building_destroyed | building_destroyed.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/building_destroyed.gltf |
 | fence_wood_straight | fence_wood_straight.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/fence_wood_straight.gltf |
-| fence_stone_straight | fence_stone_straight.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/fence_stone_straight.gltf |
 | wall_straight | wall_straight.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/wall_straight.gltf |
-| wall_straight_gate | wall_straight_gate.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/wall_straight_gate.gltf |
-| wall_corner_A_outside | wall_corner_A_outside.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/wall_corner_A_outside.gltf |
 | p_barrel | barrel.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/decoration/props/barrel.gltf |
 | p_crate_A_big | crate_A_big.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/decoration/props/crate_A_big.gltf |
 | p_crate_B_small | crate_B_small.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/decoration/props/crate_B_small.gltf |
@@ -148,6 +135,16 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 | p_ladder | ladder.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/decoration/props/ladder.gltf |
 | p_pallet | pallet.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/decoration/props/pallet.gltf |
 | p_tent | tent.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/decoration/props/tent.gltf |
+
+## kit_village2.glb (`assets/kits/`)
+
+| node id | source file | pack | URL |
+|---|---|---|---|
+| b_castle | building_castle_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_castle_red.gltf |
+| b_church | building_church_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_church_red.gltf |
+| b_barracks | building_barracks_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_barracks_red.gltf |
+| b_windmill | building_windmill_red.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/red/building_windmill_red.gltf |
+| building_scaffolding | building_scaffolding.gltf | KayKit Medieval Hexagon Pack 1.0.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-environments/main/assets/kaykit/medieval-hexagon-pack-1.0.1/Assets/gltf/buildings/neutral/building_scaffolding.gltf |
 
 ## kit_dungeon.glb (`assets/kits/`)
 
@@ -231,29 +228,17 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 
 | node id | source file | pack | URL |
 |---|---|---|---|
-| r_Gold_Nuggets | Gold_Nuggets.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Gold_Nuggets.gltf |
 | r_Money_Pile_Small | Money_Pile_Small.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Money_Pile_Small.gltf |
 | r_Gem_Large | Gem_Large.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Gem_Large.gltf |
-| r_Gems_Chest | Gems_Chest.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Gems_Chest.gltf |
-| r_Wood_Log_Stack | Wood_Log_Stack.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Wood_Log_Stack.gltf |
-| r_Stone_Chunks_Large | Stone_Chunks_Large.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Stone_Chunks_Large.gltf |
 | r_Iron_Nuggets | Iron_Nuggets.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Iron_Nuggets.gltf |
-| r_Containers_Crate_Medium_Wood | Containers_Crate_Medium_Wood.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Containers_Crate_Medium_Wood.gltf |
-| r_Wood_Planks_Stack_Medium | Wood_Planks_Stack_Medium.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Wood_Planks_Stack_Medium.gltf |
 | r_Gold_Bars_Stack_Small | Gold_Bars_Stack_Small.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Gold_Bars_Stack_Small.gltf |
 | r_Food_Barrel_Empty | Food_Barrel_Empty.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Food_Barrel_Empty.gltf |
 | r_Iron_Bars_Stack_Small | Iron_Bars_Stack_Small.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Iron_Bars_Stack_Small.gltf |
 | t_anvil | anvil.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/anvil.gltf |
-| t_grindstone | grindstone.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/grindstone.gltf |
 | t_hammer | hammer.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/hammer.gltf |
-| t_torch | torch.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/torch.gltf |
-| t_lantern | lantern.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/lantern.gltf |
 | t_key_A | key_A.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/key_A.gltf |
 | t_map_rolled | map_rolled.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/map_rolled.gltf |
-| t_journal_open | journal_open.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/journal_open.gltf |
-| t_pickaxe | pickaxe.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/pickaxe.gltf |
 | t_saw | saw.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/saw.gltf |
-| t_bucket_metal | bucket_metal.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/bucket_metal.gltf |
 | i_potion_small_red | potion_small_red.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/potion_small_red.gltf |
 | i_potion_medium_red | potion_medium_red.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/potion_medium_red.gltf |
 | i_potion_large_blue | potion_large_blue.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/potion_large_blue.gltf |
@@ -262,6 +247,22 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 | i_smokebomb | smokebomb.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/smokebomb.gltf |
 | i_mug_full | mug_full.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/mug_full.gltf |
 | i_cauldron | Cauldron.gltf | KayKit Mystery Monthly Series 5 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-5/5%20-%20November%202024%20-%20Witch/assets/gltf/Cauldron.gltf |
+
+## kit_items2.glb (`assets/kits/`)
+
+| node id | source file | pack | URL |
+|---|---|---|---|
+| r_Gold_Nuggets | Gold_Nuggets.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Gold_Nuggets.gltf |
+| r_Gems_Chest | Gems_Chest.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Gems_Chest.gltf |
+| r_Stone_Chunks_Large | Stone_Chunks_Large.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Stone_Chunks_Large.gltf |
+| r_Containers_Crate_Medium_Wood | Containers_Crate_Medium_Wood.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Containers_Crate_Medium_Wood.gltf |
+| r_Wood_Planks_Stack_Medium | Wood_Planks_Stack_Medium.gltf | KayKit Resource Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/resource-bits-1.0/Assets/gltf/Wood_Planks_Stack_Medium.gltf |
+| t_grindstone | grindstone.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/grindstone.gltf |
+| t_torch | torch.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/torch.gltf |
+| t_lantern | lantern.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/lantern.gltf |
+| t_journal_open | journal_open.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/journal_open.gltf |
+| t_pickaxe | pickaxe.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/pickaxe.gltf |
+| t_bucket_metal | bucket_metal.gltf | KayKit RPG Tools Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/rpg-tools-bits-1.0/Assets/gltf/bucket_metal.gltf |
 | i_potionstation | Potionstation_decorated.gltf | KayKit Mystery Monthly Series 5 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-5/5%20-%20November%202024%20-%20Witch/assets/gltf/Potionstation_decorated.gltf |
 | i_throne | Vampire_Throne.gltf | KayKit Mystery Monthly Series 5 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-5/4%20-%20October%202024%20-%20Vampire/assets/gltf/Vampire_Throne.gltf |
 | i_wardrum | Orc_Wardrum.gltf.glb | KayKit Mystery Monthly Series 4 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-4/1%20-%20July%202023%20-%20Orc%20Raider/assets/gltf/Orc_Wardrum.gltf.glb |
@@ -274,33 +275,41 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 | w_sword_1h | sword_1handed.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/sword_1handed.gltf |
 | w_sword_wood | sword_A.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_A.gltf |
 | w_sword_broad | sword_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_B.gltf |
-| w_sword_flame | sword_F.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_F.gltf |
-| w_sword_ice | sword_G.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_G.gltf |
-| w_sword_long | sword_E.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_E.gltf |
 | w_axe_2h | axe_2handed.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/axe_2handed.gltf |
 | w_hammer | hammer_A.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/hammer_A.gltf |
-| w_axe_spiked | axe_D.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/axe_D.gltf |
-| w_axe_double | axe_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/axe_B.gltf |
-| w_mace_spiked | hammer_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/hammer_B.gltf |
 | w_bow_short | bow_A_withString.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/bow_A_withString.gltf |
-| w_bow_long | bow_B_withString.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/bow_B_withString.gltf |
-| w_bow_horn | bow_C_withString.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/bow_C_withString.gltf |
 | w_arrow | arrow_A.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/arrow_A.gltf |
 | w_staff_branch | druid_staff.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/druid_staff.gltf |
 | w_staff_crystal | staff_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/staff_B.gltf |
-| w_staff_skull | Skeleton_Staff.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Staff.gltf |
-| w_staff_sun | staff_D.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/staff_D.gltf |
-| w_staff_serpent | staff_C.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/staff_C.gltf |
 | w_wand_orb | wand_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/wand_B.gltf |
 | w_shield_round | shield_round.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/shield_round.gltf |
 | w_shield_kite | shield_badge.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/shield_badge.gltf |
 | w_shield_tower | shield_square.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/shield_square.gltf |
-| w_shield_heater | shield_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/shield_B.gltf |
-| w_shield_spikes | shield_spikes.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/shield_spikes.gltf |
 | w_quiver | quiver.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/quiver.gltf |
 | w_tome | spellbook_closed.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/spellbook_closed.gltf |
-| w_tome_open | spellbook_open.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/spellbook_open.gltf |
 | w_dagger | dagger.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/dagger.gltf |
+| e_orc_axe | Orc_Axe.gltf.glb | KayKit Mystery Monthly Series 4 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-4/1%20-%20July%202023%20-%20Orc%20Raider/assets/gltf/Orc_Axe.gltf.glb |
+| e_orc_axe_large | Orc_Axe_Large.gltf | KayKit Mystery Monthly Series 6 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-6/2%20-%20August%202025%20-%20Orc%20Brute/assets/gltf/Orc_Axe_Large.gltf |
+| e_plant_spear | PlantWarrior_Spear.gltf | KayKit Mystery Monthly Series 6 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-6/5%20-%20November%202025%20-%20Plant%20Warrior/assets/gltf/PlantWarrior_Spear.gltf |
+
+## kit_weapons2.glb (`assets/kits/`)
+
+| node id | source file | pack | URL |
+|---|---|---|---|
+| w_sword_flame | sword_F.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_F.gltf |
+| w_sword_ice | sword_G.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_G.gltf |
+| w_sword_long | sword_E.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/sword_E.gltf |
+| w_axe_spiked | axe_D.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/axe_D.gltf |
+| w_axe_double | axe_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/axe_B.gltf |
+| w_mace_spiked | hammer_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/hammer_B.gltf |
+| w_bow_long | bow_B_withString.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/bow_B_withString.gltf |
+| w_bow_horn | bow_C_withString.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/bow_C_withString.gltf |
+| w_staff_skull | Skeleton_Staff.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Staff.gltf |
+| w_staff_sun | staff_D.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/staff_D.gltf |
+| w_staff_serpent | staff_C.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/staff_C.gltf |
+| w_shield_heater | shield_B.gltf | KayKit Fantasy Weapons Bits 1.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-props/main/assets/kaykit/fantasy-weapons-bits-1.0/Assets/gltf/shield_B.gltf |
+| w_shield_spikes | shield_spikes.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/shield_spikes.gltf |
+| w_tome_open | spellbook_open.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/spellbook_open.gltf |
 | w_crossbow | crossbow_2handed.gltf | KayKit Character Pack: Adventurers 2.0 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/adventurers-2.0/Assets/gltf/crossbow_2handed.gltf |
 | e_skel_blade | Skeleton_Blade.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Blade.gltf |
 | e_skel_axe | Skeleton_Axe.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Axe.gltf |
@@ -311,12 +320,9 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 | e_skel_scythe | Skeleton_Scythe.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Scythe.gltf |
 | e_skel_mace | Skeleton_Mace.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Mace.gltf |
 | e_golem_axe | Skeleton_Golem_Axe_Large.gltf | KayKit Character Pack: Skeletons 1.1 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/skeletons-1.1/assets/gltf/Skeleton_Golem_Axe_Large.gltf |
-| e_orc_axe | Orc_Axe.gltf.glb | KayKit Mystery Monthly Series 4 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-4/1%20-%20July%202023%20-%20Orc%20Raider/assets/gltf/Orc_Axe.gltf.glb |
 | e_orc_club | Orc_Club.gltf.glb | KayKit Mystery Monthly Series 4 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-4/1%20-%20July%202023%20-%20Orc%20Raider/assets/gltf/Orc_Club.gltf.glb |
-| e_orc_axe_large | Orc_Axe_Large.gltf | KayKit Mystery Monthly Series 6 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-6/2%20-%20August%202025%20-%20Orc%20Brute/assets/gltf/Orc_Axe_Large.gltf |
 | e_bk_sword | BlackKnight_Sword_Large.gltf | KayKit Mystery Monthly Series 5 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-5/3%20-%20September%202024%20-%20Black%20Knight/assets/gltf/BlackKnight_Sword_Large.gltf |
 | e_bk_shield | BlackKnight_Shield_Large.gltf | KayKit Mystery Monthly Series 5 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-5/3%20-%20September%202024%20-%20Black%20Knight/assets/gltf/BlackKnight_Shield_Large.gltf |
-| e_plant_spear | PlantWarrior_Spear.gltf | KayKit Mystery Monthly Series 6 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-6/5%20-%20November%202025%20-%20Plant%20Warrior/assets/gltf/PlantWarrior_Spear.gltf |
 | e_plant_shield | PlantWarrior_Shield.gltf | KayKit Mystery Monthly Series 6 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-6/5%20-%20November%202025%20-%20Plant%20Warrior/assets/gltf/PlantWarrior_Shield.gltf |
 | e_broom | Broom.gltf | KayKit Mystery Monthly Series 5 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-5/5%20-%20November%202024%20-%20Witch/assets/gltf/Broom.gltf |
 | e_lore_staff | Lorekeeper_Staff.gltf | KayKit Mystery Monthly Series 6 | https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/main/assets/kaykit/mystery-monthly-series-6/1%20-%20July%202025%20-%20Lorekeeper/assets/gltf/Lorekeeper_Staff.gltf |

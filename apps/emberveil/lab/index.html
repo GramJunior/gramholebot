@@ -35,6 +35,10 @@
   #info b{color:var(--ink)}
   @media (max-height:430px){ button{padding:5px 7px;font-size:11px;min-height:26px} #stats{top:40px;font-size:9.5px} #info{top:40px;font-size:10px} }
   @media (orientation:portrait){ #rot{display:flex} }
+  #icons{position:fixed;right:max(8px,env(safe-area-inset-right));top:132px;display:grid;grid-template-columns:repeat(3,44px);gap:4px;z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px}
+  #icons img{width:44px;height:44px;border-radius:7px;background:radial-gradient(circle at 50% 40%,#5a3a22,#2a160a);border:1px solid rgba(255,200,140,.25)}
+  #icons img.p{background:radial-gradient(circle at 50% 35%,#6a4a2e,#24140a)}
+  @media (max-height:430px){ #icons{top:118px;grid-template-columns:repeat(3,36px)} #icons img{width:36px;height:36px} }
   #rot{display:none;position:fixed;inset:auto 8px 50px 8px;justify-content:center;z-index:6;font:600 12px Rubik;color:var(--acc)}
 </style>
 </head>
@@ -110,7 +114,7 @@ function label(obj, text, sub, cls, y) { const d = document.createElement('div')
 function clearScene() {
   for (const a of actors) a.dispose && a.dispose(); actors = []; updaters = [];
   while (world.children.length) world.remove(world.children[0]);
-  $('labels').innerHTML = ''; labels = []; $('bot').innerHTML = ''; if (trail) { trail.dispose(); trail = null; }
+  $('labels').innerHTML = ''; labels = []; $('bot').innerHTML = ''; if (window.__icons) { window.__icons.remove(); window.__icons = null; } if (trail) { trail.dispose(); trail = null; }
 }
 
 // ---------------------------------------------------------------- ground + zone environments
@@ -119,7 +123,7 @@ function groundMesh(col, size, paint) {
   const g = new THREE.PlaneGeometry(size, size, paint ? 160 : 48, paint ? 160 : 48); g.rotateX(-PI / 2);
   const c = new THREE.Color(col), cols = new Float32Array(g.attributes.position.count * 3), p = g.attributes.position;
   for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); const n = Math.sin(x * 0.31) * Math.cos(z * 0.27) * 0.5 + Math.sin(x * 0.9 + z * 0.7) * 0.25 + (srand() - 0.5) * 0.25;
-    const k = 1 + n * 0.1; let cc = c; if (paint) { const pc = paint(x, z, n); if (pc) cc = pc; } cols[i * 3] = cc.r * k; cols[i * 3 + 1] = cc.g * k; cols[i * 3 + 2] = cc.b * k; }
+    const k = 1 + n * 0.1; let cc = c; if (paint) { const pc = paint(x, z, n, c); if (pc) cc = pc; } cols[i * 3] = cc.r * k; cols[i * 3 + 1] = cc.g * k; cols[i * 3 + 2] = cc.b * k; }
   g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.computeVertexNormals();
   const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: GRAD });
   return new THREE.Mesh(g, m);
@@ -135,9 +139,13 @@ const ZONE_PROPS = {
 };
 const PATH = new THREE.Color(0xcca868), PATHD = new THREE.Color(0xb08c52), MOSS = new THREE.Color(0x6a9a3a);
 function segD(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz))); return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
-function villagePaint(x, z, n) {
+const _pc = new THREE.Color();
+function villagePaint(x, z, n, base) {
   let d = Math.hypot(x, z + 4) - 6.5; for (const k in VPOS) { const [bx, bz] = VPOS[k]; d = Math.min(d, segD(x, z, 0, -4, bx * 0.82, bz * 0.82) - 0.95 - n * 0.35); }
-  if (d < 0) return d < -0.6 ? PATH : PATHD; if (d < 0.5) return MOSS; return null;
+  if (d > 1.2) return null;
+  const t = 1 - Math.min(1, Math.max(0, (d + 0.4) / 1.6));            // 0 grass .. 1 path
+  _pc.copy(base).lerp(MOSS, Math.min(1, t * 2) * 0.6).lerp(d < -0.7 ? PATH : PATHD, Math.max(0, t * 1.6 - 0.6));
+  return _pc;
 }
 function buildEnv(zone, radius, clearR, paint) {
   while (env.children.length) { const c = env.children[0]; env.remove(c); if (c.isMesh && !c.isInstancedMesh) c.geometry.dispose(); }
@@ -150,7 +158,7 @@ function buildEnv(zone, radius, clearR, paint) {
     for (const i in mats) env.add(EVAssets.instanced(i, mats[i]));
   }
   const P = ZONE_PROPS[zone]; const place = (ids, count, rMin, rMax, sMin, sMax) => {
-    const by = {}; for (let i = 0; i < count; i++) { const a = srand() * TAU, r = rMin + Math.pow(srand(), 0.7) * (rMax - rMin); const x = Math.cos(a) * r, z = Math.sin(a) * r * 0.8 - 4; if (SCENE === 'hero' && z > -3 && Math.abs(x) < 9) continue;
+    const by = {}; for (let i = 0; i < count; i++) { const a = srand() * TAU, r = rMin + Math.pow(srand(), 0.7) * (rMax - rMin); const x = Math.cos(a) * r, z = Math.sin(a) * r * 0.8 - 4; const ko = { hero: [-3, 9], lineup: [-7, 20], npc: [-5, 16] }[SCENE]; if (ko && z > ko[0] && Math.abs(x) < ko[1]) continue;
       const id = ids[(srand() * ids.length) | 0]; if (!EVAssets.has(id)) continue; const s = sMin + srand() * (sMax - sMin);
       (by[id] = by[id] || []).push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, srand() * TAU, 0)), new THREE.Vector3(s, s, s))); }
     for (const id in by) env.add(EVAssets.instanced(id, by[id]));
@@ -193,6 +201,9 @@ function sceneHero() {
   trail = EVFX.slashTrail({ color: '#ffd27a', segments: 16 }); scene.add(trail.mesh);
   const comp = EVAssets.spawn('comp:ranger'); comp.root.position.set(-2.6, 0, -1.2); comp.root.rotation.y = 0.5; world.add(comp.root); actors.push(comp); cycleAnims(comp, ['idle', 'attack', 'idle', 'cheer'], 2.2);
   const pet = EVAssets.spawn('pet:golem'); pet.root.position.set(2.3, 0, -0.8); pet.root.rotation.y = -0.4; world.add(pet.root); actors.push(pet); cycleAnims(pet, ['idle', 'attack', 'idle', 'taunt'], 2.0);
+  const ic = document.createElement('div'); ic.id = 'icons'; document.body.appendChild(ic); window.__icons = ic;
+  for (const id of ['w_sword_1h', 'w_sword_flame', 'w_axe_2h', 'w_hammer', 'w_bow_long', 'w_staff_crystal', 'w_shield_kite', 'w_tome', 'i_potion_medium_red']) { const im = new Image(); im.src = EVAssets.iconURL(id, 88); im.title = id; ic.appendChild(im); }
+  for (const id of ['elder', 'smith', 'alch']) { const im = new Image(); im.className = 'p'; im.src = EVAssets.portrait(id, 88); im.title = id; ic.appendChild(im); }
   label(comp.root, 'Следопыт', 'спутник', '', 2.4); label(pet.root, 'Каменыш', 'питомец-голем', '', 1.3);
   const bar = $('bot');
   const g1 = document.createElement('div'); g1.className = 'grp'; bar.appendChild(g1); btns(g1, WEAPONS.map((w, i) => [i, w[1]]), wi, (k) => { wi = +k; apply(); play(cur); });
@@ -225,7 +236,7 @@ function sceneLineup() {
   const bosses = ['gobKing', 'rotroot', 'bogMother', 'morven', 'colossus', 'ashKing'];
   enemies.forEach((id, i) => { const a = EVAssets.spawn(id); const row = i % 2, col = (i - row) / 2; const x = (col - 2.5) * 2.7 + row * 1.35 - 0.6; a.root.position.set(x, 0, 3.6 - row * 2.3); world.add(a.root); actors.push(a); cycleAnims(a, ['idle', 'attack', 'idle', 'run', 'hit'], rand(1.6, 2.2)); label(a.root, NAMES[id][0], NAMES[id][1], '', a.height + 0.25); });
   bosses.forEach((id, i) => { const a = EVAssets.spawn(id); const x = (i - (bosses.length - 1) / 2) * 3.9; a.root.position.set(x, 0, -3.6); world.add(a.root); actors.push(a); cycleAnims(a, ['idle', 'attack', 'idle', 'heavy', 'taunt'], rand(2.0, 2.6)); label(a.root, NAMES[id][0], NAMES[id][1], 'boss', a.height + 0.3); });
-  camT = { x: 0, y: 1.7, z: 0.2, dist: 19, pitch: 0.3, yaw: 0 }; orbit.auto = false;
+  camT = { x: 0, y: 1.9, z: -0.2, dist: 17.5, pitch: 0.25, yaw: 0 }; orbit.auto = false;
   $('info').innerHTML = '<b>Враги и боссы</b> — 11 из 15 врагов и 6 из 7 боссов на реальных моделях (кабан, пыхгриб, жабошаман, виверна и дракон остаются процедурными).';
 }
 
