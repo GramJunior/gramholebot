@@ -884,7 +884,7 @@ function roadMat(def) {
 #include <fog_pars_fragment>
 ${GLSL_NOISE}
 void main(){ float u=vUv.x, v=vUv.y, au=abs(u);
- vec3 col=uBase*(0.8+0.4*h21(floor(vec2(u*30.,v*1.5))));
+ vec3 col=uBase*(0.88+0.24*h21(floor(vec2(u*90.,v*6.))))*(0.9+0.2*vnoise(vec2(u*4.,v*.15)));
  vec3 V=normalize(cameraPosition-vW); float fr=pow(1.-max(dot(V,vN),0.),3.);
  float pud=smoothstep(.45,.75,vnoise(vW.xz*.045));
  col=mix(col,uSky*1.2,clamp(fr*(.35+.5*pud)*uWet,0.,1.));
@@ -927,8 +927,8 @@ function tunnelMat(def) {
 ${GLSL_NOISE}
 void main(){ float t=vUv.x, v=vUv.y;
  vec3 col=vec3(.05,.045,.06)*(.7+.5*h21(floor(vec2(t*24.,v*.5))));
- float ring=smoothstep(.06,0.,abs(fract(v/18.)-.5)-.44);
- col+=uA*ring*.9;
+ float ring=smoothstep(.45,.5,abs(fract(v/18.)-.5));
+ col+=uA*ring*1.2;
  float strip=smoothstep(.012,0.,abs(t-.5))*.9+ (smoothstep(.01,0.,abs(t-.22))+smoothstep(.01,0.,abs(t-.78)))*.6*step(.5,fract(v/6.));
  col+=uB*strip;
  col+=uA*.10*(1.-abs(t-.5)*2.);
@@ -1111,7 +1111,7 @@ function ribbon(td, from, to, fn, cols, skip) {
     const i = ii % td.N, s = ii * td.ds;
     for (let k = 0; k < cols; k++) { fn(i, k, tmp); pos.push(tmp.pos.x, tmp.pos.y, tmp.pos.z); nor.push(tmp.nrm.x, tmp.nrm.y, tmp.nrm.z); uvs.push(tmp.u, s); }
     const ok = !(skip && skip(s));
-    if (ring > 0 && ok && prevOk) { const a = (ring - 1) * cols, b = ring * cols; for (let k = 0; k < cols - 1; k++) idx.push(a + k, b + k, a + k + 1, a + k + 1, b + k, b + k + 1); }
+    if (ring > 0 && ok && prevOk) { const a = (ring - 1) * cols, b = ring * cols; for (let k = 0; k < cols - 1; k++) idx.push(a + k, a + k + 1, b + k, a + k + 1, b + k + 1, b + k); }
     prevOk = ok; ring++;
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(idx);
@@ -1131,7 +1131,7 @@ function buildWorld(trackId) {
   const road = ribbon(td, 0, N, (i, k, o) => { const sd = k ? 1 : -1; o.pos.copy(vP(i)).addScaledVector(vR(i), sd * hw); o.nrm.copy(vU(i)); o.u = sd; }, 2, gapSkip);
   G.add(new THREE.Mesh(road, roadMat(def)));
   // underside skirt (structure)
-  const structMat = new THREE.MeshLambertMaterial({ color: 0x15131f, emissive: 0x07060c });
+  const structMat = new THREE.MeshLambertMaterial({ color: 0x15131f, emissive: 0x07060c, side: THREE.DoubleSide });
   const skirt = ribbon(td, 0, N, (i, k, o) => { const sd = k < 2 ? -1 : 1; const dn = (k === 0 || k === 3) ? 0 : -1.4; o.pos.copy(vP(i)).addScaledVector(vR(i), sd * (hw + 0.5)).addScaledVector(vU(i), dn); o.nrm.copy(vR(i)).multiplyScalar(sd); o.u = 0; }, 4, gapSkip);
   G.add(new THREE.Mesh(skirt, structMat));
   // walls
@@ -1611,8 +1611,8 @@ function stepRacer(r, c, dt) {
   r.h -= f.w * dS;
   r.x += dX; r.s += dS; r.dist += dS;
   r.v -= r.v * Math.abs(r.yaw) * 0.03 * dt;
-  r.slip = damp(r.slip, r.drifting ? r.ddir * 0.52 : clamp(r.yaw * 0.07, -0.15, 0.15), 6, dt);
-  r.lean = damp(r.lean, clamp(r.yaw * 0.26, -0.55, 0.55) + (r.drifting ? r.ddir * 0.22 : 0), 8, dt);
+  r.slip = damp(r.slip, r.drifting ? r.ddir * 0.42 : clamp(r.yaw * 0.07, -0.15, 0.15), 6, dt);
+  r.lean = damp(r.lean, clamp(r.yaw * 0.2, -0.4, 0.4) + (r.drifting ? r.ddir * 0.14 : 0), 8, dt);
   r.pitch = damp(r.pitch, r.air ? -0.12 + r.vy * -0.01 : (boosting ? -0.06 : 0), 5, dt);
   // walls
   const lim = td.halfW - 0.85; r.wallCd -= dt; r.hitCd -= dt;
@@ -2192,7 +2192,7 @@ function frame(now) {
 }
 /* ================= DEBUG HOOK ================= */
 window.__game = {
-  get mode() { return MODE; }, get save() { return SAVE; }, get race() { return RACE; }, get fps() { return PERF.fps; }, get pr() { return Q.pr; },
+  get mode() { return MODE; }, get save() { return SAVE; }, get race() { return RACE; }, get fps() { return PERF.fps; }, get pr() { return Q.pr; }, get calls() { return renderer.info.render.calls; }, get tris() { return renderer.info.render.triangles; },
   start(id) { const e = EVENTS.find(x => x.id === id); showOverlay('results', false); showOverlay('brief', false); beginEvent(e, true); },
   startWithDialog(id) { const e = EVENTS.find(x => x.id === id); beginEvent(e, false); },
   skipDialog() { if (DLG) { clearInterval(DLG.tm); const d = DLG.done; DLG = null; d(); } },
