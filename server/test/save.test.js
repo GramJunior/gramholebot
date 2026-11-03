@@ -54,10 +54,12 @@ test('save: size limit and format checks', async () => {
   const s = await loginTg(call, 12);
   const big = gameSave({ inv: Array.from({ length: 200 }, (_, i) => ({ id: i, base: 'sword1' })) });
   assert.equal((await call('PUT', '/save', { token: s.token, body: { baseVersion: 0, data: big } })).status, 413);
-  const bad = await call('PUT', '/save', { token: s.token, body: { baseVersion: 0, data: gameSave({ v: 2, hero: { lvl: 99 }, res: { gold: -5 } }) } });
+  const bad = await call('PUT', '/save', { token: s.token, body: { baseVersion: 0, data: gameSave({ v: 0, hero: { lvl: 99 }, res: { gold: -5 } }) } });
   assert.equal(bad.status, 422);
   assert.deepEqual(bad.body.reasons.sort(), ['bad_gold', 'bad_level', 'bad_version']);
   assert.equal((await call('PUT', '/save', { token: s.token, body: { baseVersion: 0 } })).status, 400);
+  // newer game save formats (v2, v3, ...) are accepted
+  assert.equal((await call('PUT', '/save', { token: s.token, body: { baseVersion: 0, data: gameSave({ v: 3 }) } })).status, 200);
 });
 
 test('savecheck: soft flags for implausible gains (accepted, audited)', async () => {

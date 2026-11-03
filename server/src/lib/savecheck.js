@@ -51,7 +51,7 @@ export function summarize(d) {
 export function checkSave(prev, next, o = {}) {
   const hard = [];
   const soft = [];
-  if (next.v !== 1) hard.push('bad_version');
+  if (!(Number.isInteger(next.v) && next.v >= 1 && next.v <= 99)) hard.push('bad_version');
   if (!(next.created > 0)) hard.push('bad_created');
   if (!(Number.isInteger(next.lvl) && next.lvl >= 1 && next.lvl <= MAX_LEVEL)) hard.push('bad_level');
   for (const k of ['gold', 'wood', 'ore', 'ess', 'shards', 'kills', 'floors', 'boss', 'chests', 'runs', 'best']) {

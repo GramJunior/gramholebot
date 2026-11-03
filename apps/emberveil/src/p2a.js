@@ -29,7 +29,7 @@ function asLoad(groups,onProg){
   if(!files.length){ onProg&&onProg(1,0,0); return Promise.resolve(true); }
   const total=files.reduce((a,f)=>a+asFileSize(f),0); let done=0;
   const t0=performance.now();
-  return Promise.all(files.map(f=>(AS.pending[f]||(AS.pending[f]=EVAssets.load(f).then(()=>true,e=>{ AS.failedFiles=AS.failedFiles||{}; AS.failedFiles[f]=1; AS.errors++; if(AS.errors===1) console.info('EVAssets: часть моделей не загрузилась ('+f+'…) — используем процедурные'); return false; })))
+  return Promise.all(files.map(f=>(AS.pending[f]||(AS.pending[f]=EVAssets.load(f).then(()=>true,e=>{ AS.failedFiles=AS.failedFiles||{}; AS.failedFiles[f]=1; AS.errors++; AS.lastErr='load '+f; if(AS.errors===1) console.info('EVAssets: часть моделей не загрузилась ('+f+'…) — используем процедурные'); return false; })))
     .then(ok=>{ done+=asFileSize(f); if(ok) AS.bytes+=asFileSize(f); onProg&&onProg(done/total,done,total); return ok; })))
     .then(r=>{ AS.loadMs+=performance.now()-t0; return r.every(Boolean); });
 }
@@ -64,7 +64,7 @@ function asRig(id,meta,opts){
   try{ const a=EVAssets.spawn(id,opts||{}); if(!a||!a.root) return null;
     a.root.userData.evActor=a; AS.live.add(a); a._seen=AS.frame;
     return {root:a.root,actor:a,type:'actor',h:(meta&&meta.h)||a.height,r:(meta&&meta.r)||Math.max(.4,a.radius*.8),hip:0,meshes:{},kind:id}; }
-  catch(e){ AS.errors++; console.warn('EVAssets.spawn '+id+': '+e.message); return null; }
+  catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); console.warn('EVAssets.spawn '+id+': '+e.message); return null; }
 }
 function actorMat(a,m){
   if(a._m===m) return; a._m=m;
@@ -78,6 +78,10 @@ function asHeroGear(V){
   if(oh){ const sh=oh.startsWith('sh'); if(!(sh&&cls!=='sword')&&!(cls==='bow'&&oh!=='qv1')) g.offhand=oh; }
   else if(cls==='bow') g.offhand='qv1';
   if(V.wpe) g.wpGlow=V.wpe; else if(V.wpr>=4) g.wpGlow='fire';
+  // weapon/offhand model in a pack that is still streaming: show a same-class stand-in and re-dress once it arrives
+  const H=asInfo('hero'); const node=k=>{ const w=H&&(H.weapons[k]||H.offhand[k]); return w&&(w.r||w.l); };
+  if(H&&!asNodeOk(node(g.weapon))){ g.weapon={sword:'sw1',axe:'ax1',bow:'bw1',staff:'st1'}[cls]||'sw1'; if(!asNodeOk(node(g.weapon))) g.weapon='sw0'; asLoad('kit_weapons2').then(()=>{ if(G.P) refreshPlayer(false); }); }
+  if(H&&g.offhand&&!asNodeOk(node(g.offhand))) g.offhand=null;
   return g;
 }
 function asTipTo(rig){
@@ -166,15 +170,15 @@ function asCheer(){ if(!W) return; for(const n of (W.villagers||[]).concat(W.npc
 // ---------- world: props, objects, buildings ----------
 function asPropIM(type,list){
   if(!asCan(type)) return null;
-  try{ const g=EVAssets.instanced(type,list.length); g.userData.evInst=true; for(const c of g.children){ c.count=0; } g.userData.tmp=new THREE.Matrix4(); return g; }catch(e){ AS.errors++; return null; }
+  try{ const g=EVAssets.instanced(type,list.length); g.userData.evInst=true; for(const c of g.children){ c.count=0; } g.userData.tmp=new THREE.Matrix4(); return g; }catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); return null; }
 }
 function asPropSet(g,n,m){ const L=g.userData.local, S4=g.userData.scale, tmp=g.userData.tmp; for(let k=0;k<g.children.length;k++){ const im=g.children[k]; if(!im.isInstancedMesh) continue; tmp.multiplyMatrices(m,S4).multiply(L[k]); im.setMatrixAt(n,tmp); } }
 function asPropCount(g,n){ for(const im of g.children){ if(!im.isInstancedMesh) continue; im.count=n; im.instanceMatrix.needsUpdate=true; if(im.userData.evOutline){ im.userData.evOutline.count=n; } } }
-function asObj(id,o){ if(!asCan(id)) return null; try{ return EVAssets.prop(id,o||{}); }catch(e){ AS.errors++; return null; } }
+function asObj(id,o){ if(!asCan(id)) return null; try{ return EVAssets.prop(id,o||{}); }catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); return null; } }
 function asBuilding(id,lv){ if(!asOn()) return null; const d=asInfo('bld:'+id); if(!d) return null;
   if(lv>0){ const L=d.levels[Math.min(d.levels.length,lv)-1]; const f=L.file||d.file; if(!EVAssets.isLoaded(f)||!EVAssets.isLoaded(d.file)) return null; for(const e of L.extras||[]){ const ed=asInfo(e.id); if(ed&&!EVAssets.isLoaded(ed.file)) return null; if(!ed&&!asNodeOk(e.id)) return null; } }
   else if(!EVAssets.isLoaded(d.file)) return null;
-  try{ const g=EVAssets.building(id,lv); g.traverse(o=>{ if(o.isMesh) o.matrixAutoUpdate=false; }); return g; }catch(e){ AS.errors++; return null; } }
+  try{ const g=EVAssets.building(id,lv); g.traverse(o=>{ if(o.isMesh) o.matrixAutoUpdate=false; }); return g; }catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); return null; } }
 
 // ---------- icons & portraits ----------
 function asItemIcon(it){
@@ -189,7 +193,7 @@ function asItemIcon(it){
 const AS_PORT_BG={king:0x2a0a0a,dragon:0x2a0a0a,bogMother:0x1a2a1a,morven:0x1a1a2a};
 function asPortrait(id,gear){
   if(!asCan(id)) return null;
-  try{ return EVAssets.portrait(id,128,Object.assign({bg:AS_PORT_BG[id]||0x3a2416},gear?{gear}:{})); }catch(e){ AS.errors++; return null; }
+  try{ return EVAssets.portrait(id,128,Object.assign({bg:AS_PORT_BG[id]||0x3a2416},gear?{gear}:{})); }catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); return null; }
 }
 function asHeroPortrait(gear){ return asCan('hero')?asPortrait('hero',asHeroGear(heroVis(gear))):null; }
 function asDoll(gear){ if(!asCan('hero')) return null; try{ return EVAssets.iconURL('hero',300,{gear:asHeroGear(heroVis(gear)),yaw:.35,roll:0,pad:.62}); }catch(e){ return null; } }
@@ -213,6 +217,7 @@ function asZone(Z){
   const key=Z.id===0?'village':ZONE_KEY[Z.id]||'meadow'; AS.zoneKey=key;
   const M=window.EV_MANIFEST; let g=M&&M.zones[key]&&M.zones[key].grade;
   if(g&&W&&W.kind==='abyss') g=Object.assign({},g,{lift:[.03,0,.05],gain:[1.0,.94,1.08],sat:.92,vignette:.6,bloom:(g.bloom||.4)+.15});
+  if(g&&key==='village'&&G.mode!=='title') g=Object.assign({},g,{bloom:.16,bloomTh:.97});
   if(g&&G.mode==='title') g=Object.assign({},g,{gain:[1.06,.96,.92],vignette:.55,bloom:.55,bloomTh:.75});
   if(AS.FX&&g) AS.FX.setZone(g);
   // ambient particles
@@ -239,7 +244,7 @@ function asTick(dt,rdt){
   let vis=0;
   for(const a of AS.live){
     const root=a.root;
-    if(!root.parent||!inScene(root)){ if(AS.frame-a._seen>180){ AS.live.delete(a); try{ a.dispose(); }catch(e){} } continue; }
+    if(!root.parent||!inScene(root)){ if(AS.frame-a._seen>60){ AS.live.delete(a); try{ a.dispose(); }catch(e){} } continue; }
     a._seen=AS.frame;
     if(root.parent===scene||root.parent===worldRoot) _awp.copy(root.position); else root.getWorldPosition(_awp);
     _sph.center.set(_awp.x,_awp.y+a.height*.5,_awp.z); _sph.radius=a.height*.75+a.radius;
@@ -262,7 +267,7 @@ function asAdapt(fps){
   if(AQ.low>=2){ AQ.low=0; const order=['high','med','low']; const i=order.indexOf(QL);
     if(i>=0&&i<2&&performance.now()-AQ.t>8000){ AQ.t=performance.now(); QL=order[i+1]; Q=QP[QL]; S.set.qAuto=QL; const max=Math.min(window.devicePixelRatio||1,Q.prMax); if(PR>max){ PR=max; R.setPixelRatio(PR); } asSetQuality(); camResize(); console.log('[Эмбервейл] качество снижено до',QL,'(fps',fps.toFixed(0)+')'); } }
 }
-function asStats(){ const s=window.EVAssets&&EVAssets.manifest?EVAssets.stats():{}; return Object.assign({ok:AS.ok,errors:AS.errors,live:AS.live.size,visible:AS.visible,mb:+(AS.bytes/1048576).toFixed(2),loadMs:Math.round(AS.loadMs),q:QL,post:AS.post,passes:AS.FX?AS.FX.passes:1},s); }
+function asStats(){ const s=window.EVAssets&&EVAssets.manifest?EVAssets.stats():{}; return Object.assign({ok:AS.ok,errors:AS.errors,lastErr:AS.lastErr||'',live:AS.live.size,visible:AS.visible,mb:+(AS.bytes/1048576).toFixed(2),loadMs:Math.round(AS.loadMs),q:QL,post:AS.post,passes:AS.FX?AS.FX.passes:1},s); }
 
 // ---------- factory wrappers: real model if possible, procedural otherwise ----------
 function buildHero(){
@@ -272,7 +277,7 @@ function buildHero(){
 function dressHero(rig,gear){
   if(!rig.actor) return dressHeroProc(rig,gear);
   const V=heroVis(gear); rig.cls=V.cls;
-  try{ rig.actor.setGear(asHeroGear(V)); rig.actor.setLook((V.look||0)%3); }catch(e){ AS.errors++; console.warn('setGear',e.message); }
+  try{ rig.actor.setGear(asHeroGear(V)); rig.actor.setLook((V.look||0)%3); }catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); console.warn('setGear',e.message); }
   rig.actor._m=null; asTipTo(rig);
   if(G.P&&rig===G.P.rig) asHeroTrailBind();
 }
@@ -290,7 +295,7 @@ function buildCompanion(id,gear){
 }
 function iconFor(it){
   if(!it) return '';
-  if(asOn()){ const k='ev_'+it.base; if(ICON_CACHE[k]) return ICON_CACHE[k]; try{ const u=asItemIcon(it); if(u) return ICON_CACHE[k]=u; }catch(e){ AS.errors++; } }
+  if(asOn()){ const k='ev_'+it.base; if(ICON_CACHE[k]) return ICON_CACHE[k]; try{ const u=asItemIcon(it); if(u) return ICON_CACHE[k]=u; }catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); } }
   return iconForProc(it);
 }
 const ENEMY_PROC={}, BOSS_PROC={};
