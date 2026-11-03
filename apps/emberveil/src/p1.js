@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=2;
+const SAVE_V=3;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -45,7 +45,7 @@ function newSave(){
     endless:{best:0,runs:0},
     raid:{sockets:{},militia:0,next:0,wins:0,losses:0,trophies:{},tiers:{},dmg:null},
     comp:{owned:{},active:null}, exp:{list:[]}, syn:{seen:{}}, puz:{},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true}
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null}
   };
 }
 let S=newSave();
@@ -61,6 +61,10 @@ function loadGame(){
 }
 // миграции старых сохранений: каждая ступень поднимает версию на 1, новые поля заполняются значениями из newSave()
 function migrateSave(d){
+  if(d.v<3){ // v2 → v3: реальные модели, постэффекты, онлайн. Новые поля необязательные; адаптивное качество сбрасываем
+    d.set=d.set||{}; if(d.set.post===undefined) d.set.post='auto'; if(d.set.models===undefined) d.set.models='real'; d.set.qAuto=null;
+    if(d.syn&&typeof d.syn==='object'&&d.syn.unread===undefined) d.syn.unread=0;
+  }
   if(d.v<2){ // v1 → v2: набеги, спутники, походы, синергии, загадки, знаки доблести
     d.res=d.res||{}; if(d.res.marks===undefined) d.res.marks=0;
     if(d.raid&&typeof d.raid!=='object') delete d.raid;
@@ -69,7 +73,7 @@ function migrateSave(d){
   return d;
 }
 let _saveT=0;
-function saveGame(now){ if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} }
+function saveGame(now){ if(window.__evReload) return; if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} try{ if(typeof netPush==='function') netPush(); }catch(e){} }
 setInterval(()=>{if(_saveT)saveGame(true);},1500);
 
 // ---------- haptics / telegram ----------

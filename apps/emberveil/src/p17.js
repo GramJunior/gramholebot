@@ -71,3 +71,6 @@ function hintTick(dt){
   if(HINT.moves>=3||HINT.t>4){ S.seen.joyHint=1; const jh=$('joyHint'); if(jh){ jh.style.transition='opacity .6s'; jh.style.opacity=0; setTimeout(()=>jh.remove(),700); } }
 }
 Object.assign(window.__game,{ camZoom:(z,dx,dz)=>{ if(z===undefined){ CAMR.override=null; return; } const P=G.P; CAMR.override={x:P.x+(dx||0),z:P.z+(dz||0),zoom:z}; }, toastQ:()=>({vis:NQ.vis.length,q:NQ.q.length,feed:NQ.feed.length}) });
+Object.assign(window.__game,{ net:()=>({ok:NET.ok,me:NET.me,err:NET.err,tg:NET.tg}), openNet:(t)=>openNet(t), pvp:()=>PVP?{t:Math.round(PVP.t),left:PVP.structs.filter(s=>s.alive).length,n:PVP.structs.length,heart:PVP.heart.hp}:null });
+window.__game.pvpDbg=()=>{ const P=G.P; return {P:[+P.x.toFixed(1),+P.z.toFixed(1),P.state],in:[+G.input.mx.toFixed(2),+G.input.mz.toFixed(2),G.input.atk],s:PVP&&PVP.structs.map(s=>[s.kind,s.sid,+s.x.toFixed(1),+s.z.toFixed(1),Math.round(s.hp),+(Math.hypot(s.x-P.x,s.z-P.z)).toFixed(1)]),bot:G.bot,mode:G.mode}; };
+window.__game.abyssEnd=(r)=>abyssEnd(r||'тест');

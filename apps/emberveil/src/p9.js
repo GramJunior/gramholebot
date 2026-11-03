@@ -29,6 +29,7 @@ function enterVillage(after){
   if(after) seq.unshift(after);
   const run=()=>{ const f=seq.shift(); if(f) f(run); else { questCheck(); hudRefresh(); } };
   run(); saveGame();
+  try{ netVillage(); }catch(e){}
 }
 function villageTargets(){
   const P=G.P; const out=[];
@@ -148,6 +149,7 @@ function onBossDeath(e){
 
 // ---------- run end ----------
 function runEnd(win,reason,keep){
+  if(G.mode==='raid'&&PVP){ pvpEnd(reason==='Вы отступили'?'retreat':'dead'); return; }
   if(G.mode==='raid'){ raidEnd(false,reason||'Герой пал'); return; }
   if(G.mode!=='stage'&&G.mode!=='abyss') return;
   if(G.mode==='abyss'){ abyssEnd(reason||'Вы пали'); return; }
@@ -175,7 +177,7 @@ function runEnd(win,reason,keep){
 // ---------- abyss ----------
 function startAbyss(floor){
   if(!asGroupsLoaded(['abyss'])) return withAssets(['abyss'],()=>startAbyss(floor));
-  G.abyss={floor,start:floor,mods:[],boons:{},shards:0,gold:0,items:[]}; S.endless.runs++; RUNBUF={boons:G.abyss.boons};
+  G.abyss={floor,start:floor,mods:[],boons:{},shards:0,gold:0,items:[],net:netAbyssStart(floor)}; S.endless.runs++; RUNBUF={boons:G.abyss.boons};
   abyssFloor(floor,true);
 }
 function abyssFloor(floor,first){
@@ -207,10 +209,10 @@ function abyssFloorDone(){
   showBoons(b=>{ G.paused=false; A.boons[b.id]=(A.boons[b.id]||0)+1; if(b.id==='hp') G.P.hp=G.P.maxHp; if(b.id==='pot') S.cons.potion+=2; abyssFloor(f+1,false); });
 }
 function abyssEnd(reason){
-  const A=G.abyss, r=G.run; G.mode='result';
+  const A=G.abyss, r=G.run; G.mode='result'; netAbyssEnd(A,r);
   const lines=[`${ico('abyss')} Этаж: <b>${A.floor}</b>`,`${ico('star')} Рекорд: <b>${S.endless.best}</b>`,`${ico('shard')} Осколки: <b>${A.shards}</b>`,`${ico('skull')} Врагов: <b>${r.kills}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
   saveGame(true); AU.sfx('lose');
-  setTimeout(()=>showResults({title:'Бездна поглотила вас',sub:reason,lines,items:r.items,btns:[['В деревню',()=>{ show('res',false); fadeTo(()=>enterVillage()); },'woodb'],['Снова',()=>{ show('res',false); startAbyss(1); }]]}),400);
+  setTimeout(()=>showResults({title:'Бездна поглотила вас',sub:reason,lines,items:r.items,btns:[['В деревню',()=>{ show('res',false); fadeTo(()=>enterVillage()); },'woodb'],['Рейтинг',()=>{ show('res',false); fadeTo(()=>enterVillage(cb=>{ openNet('lb'); cb(); })); },'woodb'],['Снова',()=>{ show('res',false); startAbyss(1); }]]}),400);
 }
 
 // ---------- title ----------
@@ -270,7 +272,7 @@ function loop(now){
 // ---------- bot (balance testing) ----------
 function botInput(){
   const P=G.P; let tx=null,tz=null,atk=false;
-  if(G.mode==='raid') return raidBotInput();
+  if(G.mode==='raid') return PVP?pvpBotInput():raidBotInput();
   if(!W||W.kind==='village'||!W.obj) return {mx:0,mz:0,atk:false};
   G._bs=G._bs||{x:0,z:0,t:0,esc:0,ex:0,ez:0}; const bs=G._bs; if(Math.hypot(P.x-bs.x,P.z-bs.z)>1.2){ bs.x=P.x; bs.z=P.z; bs.t=G.time; } else if(G.time-bs.t>4&&bs.esc<=0){ bs.esc=1.2; const a=rand(TAU); bs.ex=Math.sin(a); bs.ez=Math.cos(a); bs.t=G.time; }
   if(bs.esc>0){ bs.esc-=1/30; return {mx:bs.ex,mz:bs.ez,atk:true}; }
@@ -336,7 +338,7 @@ function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
   const steps=[
     ['Растираем пергамент…',()=>genCssTextures()],
-    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); }],
+    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
     ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],

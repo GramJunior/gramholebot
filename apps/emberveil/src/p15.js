@@ -56,10 +56,18 @@ function raidStructGeo(t,lv){ return cgeo('rs_'+t+lv,b=>{
   if(t==='spikes'){ b.cyl(1.25,1.3,.12,0x5a5048,{seg:10}); for(let i=0;i<11;i++){ const a=i/11*TAU, r=i%2?.85:.45; b.cone(.09,.55+lv*.08,lv>=2?0xd8d8e0:0xa8a8a8,{p:[Math.cos(a)*r,.3,Math.sin(a)*r]}); } b.cone(.11,.7,0xd8d8e0,{p:[0,.38,0]}); }
   if(t==='tar'){ b.cyl(1.6,1.7,.1,0x3a2a1a,{seg:12}); for(let i=0;i<7;i++){ const a=i/7*TAU; b.dod(.28,0x4a4038,{p:[Math.cos(a)*1.65,.12,Math.sin(a)*1.65],j:.1}); } b.cyl(.35,.35,.6,0x2a2420,{p:[1.2,.3,-1.2],seg:8}); b.cyl(.37,.37,.06,0x6a5a4a,{p:[1.2,.45,-1.2],seg:8}); }
 },.05); }
+// real models for towers (KayKit watchtower / stone tower + glowing orb); walls and traps stay procedural
+function raidStructMesh(st){
+  if((st.t==='archer'||st.t==='mage')&&typeof asBuilding==='function'){ const g=asBuilding('walls',st.t==='archer'?Math.min(2,st.lv):2+st.lv);
+    if(g){ const w=new THREE.Group(); g.scale.multiplyScalar(st.t==='archer'?.62:.5); g.rotation.y=PI; w.add(g);
+      if(st.t==='mage'&&window.EVAssets){ const orb=EVAssets.makeOrb('#'+new THREE.Color(ELC[st.el||'fire']||0xb07cff).getHexString()); orb.scale.setScalar(2.2); const b=new THREE.Box3().setFromObject(g); orb.position.y=b.max.y+.2; w.add(orb); w.userData.orb=orb; }
+      return w; } }
+  return new THREE.Mesh(raidStructGeo(st.t,st.lv),MT);
+}
 function buildRaidStructs(){
   if(!W||W.kind!=='village') return; for(const k in (W.rsMesh||{})) worldRoot.remove(W.rsMesh[k]); W.rsMesh={}; W.obst=W.obst.filter(o=>!o.rs); if(W.oils) { for(const o of W.oils) worldRoot.remove(o.m); W.oils=[]; }
   const r=raidS();
-  for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; if(!st) continue; const m=new THREE.Mesh(raidStructGeo(st.t,st.lv),MT); m.position.set(s.x,0,s.z); m.rotation.y=s.slot==='wall'?s.ry:Math.atan2(-s.x,-s.z); worldRoot.add(m); W.rsMesh[s.id]=m;
+  for(const s of RAID_SOCKETS){ const st=r.sockets[s.id]; if(!st) continue; const m=raidStructMesh(st); m.position.set(s.x,0,s.z); m.rotation.y=s.slot==='wall'?s.ry:Math.atan2(-s.x,-s.z); worldRoot.add(m); W.rsMesh[s.id]=m;
     if(s.slot==='wall'){ const a=Math.atan2(s.z,s.x), vx=-Math.sin(a), vz=Math.cos(a), k=s.lane==='n'?3.1:2.3, rr=s.lane==='n'?2.0:1.75; W.obst.push({x:s.x,z:s.z,r:2.5,rs:s.id,noLos:1}); for(const sg of [-1,1]) W.obst.push({x:s.x+vx*k*sg,z:s.z+vz*k*sg,r:rr,rs:s.id,noLos:1,side:1}); } else if(s.slot==='tower') W.obst.push({x:s.x,z:s.z,r:1.3,rs:s.id});
     if(st.t==='tar'){ const o=spawnOil(s.x,s.z,2.3,9999); o.raid=1; } }
 }
@@ -150,6 +158,7 @@ function raidSpawnWave(){ const w=RAID.plan.waves[RAID.wi]; RAID.wi++; let i=0;
   const names=w.lanes.map(id=>RAID_LANES.find(l=>l.id===id).n); banner(`Волна ${RAID.wi}/${RAID.plan.waves.length}`,'с направления: '+names.join(' и ')); AU.sfx('sting',.6); AU.sfx('roar',.4); }
 function raidLanePoint(id,r){ if(id==='n'){ const t=clamp((r-31)/13,0,1); return [lerp(-6,-7.6,t),lerp(-31,-44,t)]; } const L=RAID_LANES.find(l=>l.id===id); return [Math.cos(L.a)*r,Math.sin(L.a)*r]; }
 function raidTick(dt){
+  if(PVP) return pvpTick(dt);
   if(!RAID||RAID.done) return; const P=G.P; RAID.t+=dt;
   for(const a of [P].concat(G.allies)){ const d=Math.hypot(a.x,a.z); if(d>23.4){ a.x*=23.4/d; a.z*=23.4/d; } }
   // waves

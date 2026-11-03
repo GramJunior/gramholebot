@@ -44,7 +44,7 @@ function hudBuild(){
     <div id="hPort" class="pe"><img id="hPimg" alt=""><span id="hLvl">1</span></div>
     <div id="hBars"><div class="bar hp"><i class="lag" id="hpLag"></i><i class="v" id="hpV"></i><b id="hpT"></b></div>
       <div class="bar em" id="emB"><i class="v" id="emV"></i></div><div class="bar xp"><i class="v" id="xpV"></i></div></div>
-    <div id="hRight"><button class="hbtn pe" id="bPause">${ico(v?'gear':'pause')}</button>${v?'<div id="hRes"></div>':''}</div>
+    <div id="hRight"><button class="hbtn pe" id="bPause">${ico(v?'gear':'pause')}</button>${v?`<button class="hbtn pe${netOn()?'':' off'}" id="mNet" title="Вече: рейтинг, кланы, набеги">${ico('crown')}</button><div id="hRes"></div>`:''}</div>
   </div>
   <div id="hQuest" class="parch pe"></div>
   ${!v?'<div id="hObj"></div><div id="hBoss" class="hidden"><div class="bn" id="bossN"></div><div class="bar"><i class="lag" id="bossLag"></i><i class="v" id="bossV"></i></div><div class="ph" id="bossPh"></div></div>':''}
@@ -115,7 +115,7 @@ function bindHud(){
     const up=ev=>{ G.input.atk=false; }; atk.addEventListener('pointerup',up); atk.addEventListener('pointercancel',up); atk.addEventListener('lostpointercapture',up); }
   tap('bS1',()=>useSkill('s1')); tap('bS2',()=>useSkill('s2')); tap('bS3',()=>useSkill('s3')); tap('bUlt',()=>useSkill('ult'));
   tap('bDodge',()=>dodge()); tap('bPot',()=>drinkPotion()); tap('bBomb',()=>throwBomb());
-  tap('mHero',()=>openPanel('hero')); tap('mSquad',()=>{ if(S.bld.tavern>0) openPanel('bld',{id:'tavern',tab:expReadyCount()?'exp':'roster'}); else openPanel('hero',{tab:'squad'}); }); tap('mRaid',()=>raidOpenPrep()); tap('mBuild',()=>openPanel('bld',{id:'hall'})); tap('mQuest',()=>openPanel('hero',{tab:'quests'})); tap('mMap',()=>openMap());
+  tap('mHero',()=>openPanel('hero')); tap('mSquad',()=>{ if(S.bld.tavern>0) openPanel('bld',{id:'tavern',tab:expReadyCount()?'exp':'roster'}); else openPanel('hero',{tab:'squad'}); }); tap('mRaid',()=>raidOpenPrep()); tap('mNet',()=>{ AU.sfx('ui'); openNet(); }); tap('mBuild',()=>openPanel('bld',{id:'hall'})); tap('mQuest',()=>openPanel('hero',{tab:'quests'})); tap('mMap',()=>openMap());
   tap('hQuest',()=>openPanel('hero',{tab:'quests'}));
   tap('hPort',()=>{ if(G.mode==='village') openPanel('hero'); });
 }
@@ -211,6 +211,7 @@ function renderPanel(){
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }
   else if(k==='settings'||k==='pause'){ title=k==='pause'?'Привал':'Настройки'; body=pSettings(k==='pause'); }
   else if(k==='offline'){ title='Пока вас не было'; body=PANEL.opts.html; }
+  else if(k==='net'){ title='Вече'; sub=netOn()?(NET.me&&NET.me.name?esc(NET.me.name):'Искроносец')+(NET.tg?'':' · гость'):'нет связи'; tabs=NET_TABS; PANEL.tab=PANEL.tab||NET.tab||'lb'; body=pNet(); }
   else if(k==='npc'){ const n=PANEL.opts.npc; title=NPC_INFO[n].n; sub=NPC_INFO[n].t; body=pNpc(n); }
   $('panel').innerHTML=`<div id="pFrame" class="${tabs.length?'':'notabs'}">${frame(`<div id="pHead"><h2>${title}${sub?`<small>${sub}</small>`:''}</h2><button class="hbtn" id="pClose">${ico('close')}</button></div>${tabs.length?`<div id="pTabs">${tabs.map(t=>`<button class="tab ${PANEL.tab===t[0]?'on':''}" data-tab="${t[0]}">${t[2]?ico(t[2]):''}${t[1]}</button>`).join('')}</div>`:''}<div id="pBody">${body}</div>`)}</div>`;
   $('pClose').onclick=closePanel;
@@ -319,7 +320,7 @@ function pQuests(){
   if(!act0.length) h+=`<div class="muted">Поручения выдают жители деревни (подойдите к ним) и доска в таверне.</div>`;
   for(const s of act0){ const [p,t]=goalProgress(s.goal,S.q.side[s.id].b); h+=`<div class="card row"><div class="grow"><h4>${esc(s.n)}</h4><div class="muted">${esc(s.d)} — ${p}/${t}</div></div>${p>=t?`<button class="btn leather small" ${act(()=>{ turnInSide(s); rerender(); })}>Сдать</button>`:''}</div>`; }
   h+=`<div class="sect">Контракты дня</div>`;
-  for(const d of S.q.daily.list){ const D=DAILY_POOL.find(x=>x.id===d.id); const rw=dailyRw(d); h+=`<div class="card row"><div class="grow"><h4>${D.n}</h4><div class="muted">${D.d.replace('{v}',d.v)} — ${Math.min(d.p,d.v)}/${d.v}</div><div>${costHtml(rw).replace(/cost no/g,'cost')}</div></div>${d.c?'<span class="pill">Получено</span>':d.p>=d.v?`<button class="btn leather small" ${act(()=>{ d.c=true; giveReward(rw,'Контракт'); AU.sfx('quest'); saveGame(); rerender(); })}>Забрать</button>`:''}</div>`; }
+  for(const d of S.q.daily.list){ const D=DAILY_POOL.find(x=>x.id===d.id); const rw=dailyRw(d); h+=`<div class="card row"><div class="grow"><h4>${D.n}</h4><div class="muted">${D.d.replace('{v}',d.v)} — ${Math.min(d.p,d.v)}/${d.v}</div><div>${costHtml(rw).replace(/cost no/g,'cost')}</div></div>${d.c?'<span class="pill">Получено</span>':d.p>=d.v?`<button class="btn leather small" ${act(()=>netQuestClaim(d,rw))}>Забрать</button>`:''}</div>`; }
   h+=`<div class="sect">Достижения ${Object.keys(S.q.ach).length}/${ACH.length}</div>`;
   for(const a of ACH){ const ok=S.q.ach[a.id]; h+=`<div class="row" style="padding:3px 0;${ok?'':'opacity:.6'}"><span style="color:${ok?'#b07a00':'#8a7a60'}">${ico(ok?'star':'lock')}</span><b class="grow" style="font-family:var(--sc)">${a.n}</b><span class="muted">${a.d}</span></div>`; }
   return h;
@@ -340,6 +341,9 @@ function pSettings(pause){
   h+=`<div class="set"><label>Звуки</label><input type="range" min="0" max="1" step="0.05" value="${S.set.sfx}" id="sSfx"></div>
   <div class="set"><label>Музыка</label><input type="range" min="0" max="1" step="0.05" value="${S.set.mus}" id="sMus"></div>
   <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
+  <div class="set"><label>Постэффекты</label>${seg('post',[['auto','Авто'],['off','Выкл']])}</div>
+  <div class="set"><label>Модели</label>${seg('models',[['real','Детальные'],['simple','Простые']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
   <div class="set"><label>Камера</label>${seg('cam',[[0,'Ближе'],[1,'Обычно'],[2,'Дальше']])}</div>
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
@@ -352,4 +356,4 @@ function pSettings(pause){
   setTimeout(()=>{ const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }

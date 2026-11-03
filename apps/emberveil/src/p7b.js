@@ -200,7 +200,7 @@ const BOSS_PAT={
 };
 const BOSS_SUMMON={gobKing:'goblin',rotroot:'sapling',bogMother:'bogling',morven:'skelShield',colossus:'imp',dragon:'whelp',ashKing:'wraith'};
 function spawnBoss(id,x,z,L,o={}){
-  const B=BOSSES[id]; const rig=BOSS_MODELS[B.model](); worldRoot.add(rig.root);
+  const B=BOSSES[id]; const rig=BOSS_MODELS[B.model](); worldRoot.add(rig.root); if(rig.actor) rig.actor._boss=1;
   const e={id:EID++,type:'enemy',kind:id,D:{n:B.n,ai:'boss',el:B.el,col:0x2a2018,rng:3},bossD:B,boss:true,lvl:L,x,z,y:0,face:PI*0,vx:0,vz:0,kx:0,kz:0,r:B.r,rig,state:'chase',st:0,cd:0,alive:true,mods:[],flashT:0,stat:{},t:0,meshes:[],phase:0,patT:2,cur:null,baseMat:MT};
   e.maxHp=B.hp*F(L)*(o.hpMul||1); e.hp=e.maxHp; e.dmg=B.dmg*F(L)*(o.dmgMul||1); e.spd=B.spd;
   rig.root.position.set(x,0,z); if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });

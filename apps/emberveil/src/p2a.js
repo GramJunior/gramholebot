@@ -68,7 +68,7 @@ function asRig(id,meta,opts){
 }
 function actorMat(a,m){
   if(a._m===m) return; a._m=m;
-  if(m===MTF){ a.setFlash(.85); return; }
+  if(m===MTF){ a.setFlash(a._boss?.32:.55); return; }
   a.setFlash(0); const t=AS_TINT.get(m); if(t) a.setTint(t[0],t[1]); else a.setTint(null);
 }
 // game gear (heroVis) -> EVAssets gear
@@ -142,7 +142,7 @@ function animEnemyActor(e,dt){
   else if(key&&key!==e._ak){ e._ak=key; if(play) play(); }
   else if(key==='run'||key==='idle'){ if(!a.current||!a.current.isRunning()) { e._ak=null; } }
   if(e.ring){ e.ring.position.set(e.x,.08,e.z); e.ring.rotation.y=t; }
-  SHADOW.add(e.x,e.z,e.r*1.4);
+  SHADOW.add(e.x,e.z,Math.min(e.r*1.4,a.radius*1.5+.35));
 }
 function animNPCActor(n,dt,talk){
   const R=n.rig, a=R.actor; n.t+=dt; R.root.position.set(n.x,0,n.z); R.root.rotation.y=n.face;
@@ -232,6 +232,7 @@ function asTick(dt,rdt){
   if(window.EVAssets&&EVAssets.manifest) EVAssets.tick(rdt);
   if(window.EVFX){ if(AS.amb&&G.P) AS.amb.center.set(G.P.x,0,G.P.z-4); if(AS.trail) AS.trail.update(dt>0?dt:rdt); EVFX.update(dt>0?dt:rdt*.25); }
   if(!asOn()) return;
+  try{ asFadeOcc(); }catch(e){}
   cam.updateMatrixWorld(); _fm.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _frus.setFromProjectionMatrix(_fm);
   const adt=dt>0?dt:(G.mode==='village'||G.mode==='title'||G.mode==='raidprep'||G.mode==='result'?rdt:0);
   const cx=CAMR.x, cz=CAMR.z;
@@ -305,4 +306,15 @@ function withAssets(groups,fn){
   const f=$('fade'); f.classList.add('on'); let m=$('fadeMsg'); if(!m){ m=document.createElement('div'); m.id='fadeMsg'; f.appendChild(m); }
   m.innerHTML='<b>Тропа впереди…</b><i><u></u></i>'; const u=m.querySelector('u');
   asNeed(groups,9000,(fr)=>{ if(u) u.style.width=Math.round(fr*100)+'%'; }).then(()=>{ m.innerHTML=''; try{ fn(); }catch(e){ console.error(e); } setTimeout(()=>{ if(!G.dialog) f.classList.remove('on'); },700); });
+}
+// buildings between the camera and the hero fade out (village, raids, neighbour raids)
+const GHOST=new Map();
+function ghostOf(m){ let g=GHOST.get(m); if(!g){ g=m.clone(); g.onBeforeCompile=m.onBeforeCompile; g.customProgramCacheKey=()=>(m.customProgramCacheKey?m.customProgramCacheKey():'')+'gh'; g.userData=m.userData; g.transparent=true; g.opacity=.28; g.depthWrite=false; GHOST.set(m,g); } return g; }
+function asFadeOcc(){
+  if(!asOn()||!W||W.kind!=='village'||!G.P||G.mode==='title') return; const P=G.P;
+  const list=[]; for(const k in W.bmesh) list.push(W.bmesh[k]); for(const k in (W.rsMesh||{})) list.push(W.rsMesh[k]);
+  for(const g of list){ if(!g||!g.visible||!g.isGroup) continue;
+    const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
+    if(!!g.userData.faded===occ) continue; g.userData.faded=occ;
+    g.traverse(o=>{ if(!o.isMesh) return; if(o.userData.isOutline){ o.visible=!occ; return; } if(occ){ o.userData.solid=o.material; o.material=ghostOf(o.material); } else if(o.userData.solid){ o.material=o.userData.solid; } }); }
 }
