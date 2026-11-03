@@ -25,7 +25,7 @@ function refreshPlayer(full){
 function attachTip(){ const P=G.P, rig=P.rig; const w=rig.meshes.weapon; if(!w) return; if(rig.tip.parent) rig.tip.parent.remove(rig.tip); const cls=rig.cls; rig.tip.position.set(0,cls==='staff'?1.35:cls==='bow'?0:cls==='axe'?.85:.85,0); w.add(rig.tip); }
 function onGearChanged(){ refreshPlayer(false); if(typeof hudRefresh==='function') hudRefresh(); }
 function nearestEnemy(x,z,maxD,filter){ let best=null,bd=maxD; for(const e of G.enemies){ if(!e.alive||e.burrowed||e.untarget) continue; if(filter&&!filter(e)) continue; const d=Math.hypot(e.x-x,e.z-z)-e.r; if(d<bd){bd=d;best=e;} } return best; }
-function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret')) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
+function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
 
 function playerAttack(){
   const P=G.P; if(P.dead||P.state==='roll'||P.state==='skill'||G.mode==='village') return;
@@ -45,7 +45,7 @@ function doMeleeHit(P,mv){
   for(const e of G.enemies){ if(!e.alive||e.burrowed) continue; const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz); if(d>mv.rng+e.r) continue;
     const ang=Math.abs(angWrap(Math.atan2(dx,dz)-P.face)); if(ang>mv.arc/2&&d>e.r+.6) continue;
     const h=heroDmg(mv.m); dmgEnemy(e,h.amt,{crit:h.crit,els:h.els,kb:mv.kb||1.5,dir:Math.atan2(dx,dz),stun:mv.stun,src:P,heavy:mv.m>=1.7}); hits++; }
-  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret')) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
+  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
   if(mv.aoe){ const cx=P.x+fx0*1.8, cz=P.z+fz0*1.8; fx('dust',cx,0,cz,{k:8}); fx('ring',cx,0,cz,{r:mv.aoe,col:0xffd27a}); for(const e of G.enemies){ if(e.alive&&!e.burrowed&&Math.hypot(e.x-cx,e.z-cz)<mv.aoe+e.r&&!e._hitThis){ } } }
   if(PS.uniq.quake&&mv.aoe){ later(.12,()=>{ const cx=P.x+fx0*2.2, cz=P.z+fz0*2.2; fx('boom',cx,0,cz,{r:2.4,col:0xd8a050,smoke:0x6a5a40}); aoeDamage(cx,cz,2.6,.6,{}); }); }
   if(PS.uniq.blaze&&P.combo%3===0){ spawnProj('wave',P.x+fx0,P.z+fz0,P.face,{dmg:heroDmg(.9).amt,team:'p',pierce:99,life:.6,spd:16,el:'fire'}); }
@@ -60,7 +60,7 @@ function heroDmg(mult,o={}){
   return {amt,crit,els};
 }
 function aoeDamage(x,z,r,mult,o={}){ let n=0; for(const e of G.enemies){ if(!e.alive||e.burrowed) continue; if(Math.hypot(e.x-x,e.z-z)<r+e.r){ const h=heroDmg(mult,o); dmgEnemy(e,h.amt,{crit:h.crit,els:o.el?[o.el]:h.els,kb:o.kb||2,dir:Math.atan2(e.x-x,e.z-z),stun:o.stun,freeze:o.freeze,src:o.src||G.P,launch:o.launch,heavy:o.heavy||o.skill}); n++; } }
-  for(const ob of W.objs){ if(ob.alive&&(ob.brk||ob.res||ob.kind==='totem'||ob.kind==='cage')&&Math.hypot(ob.x-x,ob.z-z)<r+ob.r) hitObj(ob,heroDmg(mult).amt); }
+  for(const ob of W.objs){ if(ob.alive&&(ob.brk||ob.res||ob.kind==='totem'||ob.kind==='cage'||ob.hitme)&&Math.hypot(ob.x-x,ob.z-z)<r+ob.r) hitObj(ob,heroDmg(mult).amt); }
   return n; }
 
 // ---------- skills ----------
@@ -103,7 +103,7 @@ function skillTick(P,dt){
   }
 }
 function aoeLine(x,z,dir,len,w,mult,o={}){ const fx0=Math.sin(dir),fz0=Math.cos(dir); for(const e of G.enemies){ if(!e.alive||e.burrowed) continue; const dx=e.x-x,dz=e.z-z; const along=dx*fx0+dz*fz0, side=Math.abs(dx*fz0-dz*fx0); if(along>-.5&&along<len&&side<w/2+e.r){ const h=heroDmg(mult,o); dmgEnemy(e,h.amt,{crit:h.crit,els:o.el?[o.el]:h.els,kb:o.kb||2,dir,stun:o.stun,src:G.P,launch:o.launch,heavy:o.heavy||o.skill}); } }
-  for(const ob of W.objs){ if(!ob.alive||!(ob.brk||ob.res||ob.kind==='totem'||ob.kind==='cage')) continue; const dx=ob.x-x,dz=ob.z-z; const along=dx*fx0+dz*fz0, side=Math.abs(dx*fz0-dz*fx0); if(along>0&&along<len&&side<w/2+ob.r) hitObj(ob,heroDmg(mult).amt); } }
+  for(const ob of W.objs){ if(!ob.alive||!(ob.brk||ob.res||ob.kind==='totem'||ob.kind==='cage'||ob.hitme)) continue; const dx=ob.x-x,dz=ob.z-z; const along=dx*fx0+dz*fz0, side=Math.abs(dx*fz0-dz*fx0); if(along>0&&along<len&&side<w/2+ob.r) hitObj(ob,heroDmg(mult).amt); } }
 function chainLightning(src,n,mult){ let cur=src, hit=new Set(); for(let i=0;i<n;i++){ const t=nearestEnemy(cur.x,cur.z,8,e=>!hit.has(e)); if(!t) break; hit.add(t); const a={x:cur.x,z:cur.z}; for(let k=0;k<6;k++){ const tt=k/6; fx('light',lerp(a.x,t.x,tt)+rand(-.3,.3),1.2+rand(-.3,.3),lerp(a.z,t.z,tt)+rand(-.3,.3),{k:1}); } const h=heroDmg(mult,{skill:1}); dmgEnemy(t,h.amt,{crit:h.crit,els:['light'],kb:1,dir:0,src:G.P}); cur=t; } }
 const TRAPS=[];
 function placeTrap(x,z,mult){ const m=new THREE.Mesh(cgeo('trapG',b=>{ b.cyl(.5,.5,.06,0x5a5a5a,{seg:10}); for(let i=0;i<8;i++){const a=i/8*TAU; b.cone(.06,.25,0xb8b8b8,{p:[Math.cos(a)*.4,.12,Math.sin(a)*.4]});} b.sph(.1,0xff8a2a,{p:[0,.06,0],e:1}); },.02),MT); m.position.set(x,0,z); worldRoot.add(m); TRAPS.push({x,z,m,t:8,mult,armed:.3}); }
@@ -398,7 +398,7 @@ function updateProjs(dt){
             if(PS.uniq.ricochet&&p.kind.startsWith('arrow')&&!p.ric){ const n=nearestEnemy(e.x,e.z,8,x=>x!==e&&!p.hit.has(x)); if(n){ const q=spawnProj('arrow',e.x,e.z,Math.atan2(n.x-e.x,n.z-e.z),{dmg:amt*.6,team:'p',ric:1}); q.hit.add(e); } }
             if(PS.uniq.burst&&p.kind==='bolt'){ fx('boom',p.x,1,p.z,{r:1.6,col:p.col||0xc8a0ff}); aoeDamage(p.x,p.z,1.8,.5,{}); }
             if(p.pierce-->0) continue; dead=true; break; } }
-        if(!dead) for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret')) continue; if(Math.hypot(o.x-p.x,o.z-p.z)<o.r+p.r){ hitObj(o,p.dmg!==undefined?p.dmg:heroDmg(1).amt); dead=true; break; } }
+        if(!dead) for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(Math.hypot(o.x-p.x,o.z-p.z)<o.r+p.r){ hitObj(o,p.dmg!==undefined?p.dmg:heroDmg(1).amt); dead=true; break; } }
       } else {
         if(!P.dead&&Math.hypot(P.x-p.x,P.z-p.z)<P.r+p.r){ hurtPlayer(p.dmg,{src:p.src,lvl:p.lvl,el:p.el,kb:2,dir:Math.atan2(p.vx,p.vz)}); dead=true; }
         if(W.cart&&Math.hypot(W.cart.x-p.x,W.cart.z-p.z)<1.2){ cartHurt(p.dmg*.6); dead=true; }
@@ -419,6 +419,7 @@ function updateProjs(dt){
 // ---------- objects interaction ----------
 function hitObj(o,amt){
   if(!o.alive) return;
+  if(o.hitme){ puzzleHit(o); return; }
   if(o.kind==='secret'){ o.hp--; fx('dust',o.x,1,o.z,{k:6,col:0x8a8478}); AU.sfx('hit'); shake(.15); if(o.hp<=0){ o.alive=false; worldRoot.remove(o.mesh); if(o.seg) o.seg.closed=false; fx('boom',o.x,1,o.z,{r:2,col:0xd8c8a0,smoke:0x8a8478}); AU.sfx('boom'); banner('Тайник!','Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; } return; }
   if(o.brk){ o.alive=false; worldRoot.remove(o.mesh); if(o.oil){ spawnOil(o.x,o.z,2.2,18); fx('dust',o.x,.4,o.z,{k:8,col:0x2a1a10}); AU.sfx('hit',.8,.5); return; } fx('dust',o.x,.5,o.z,{k:8,col:0xa07040}); for(let i=0;i<5;i++) fx('hit',o.x,.5,o.z,{col:0xc89a6a}); AU.sfx('hit',.8,.7);
     if(chance(.55)) spawnDrop('gold',o.x,o.z,{v:Math.round(rand(2,6)*F(W.lvl||1)*(1+PS.gold/100))}); if(chance(.12)) spawnDrop('potion',o.x,o.z); if(chance(.06)) spawnDrop('item',o.x,o.z,{item:genItem(W.lvl,{mf:PS.mf})}); if(chance(.1)) spawnDrop('mat',o.x,o.z,{res:pick(['wood','ore']),v:randi(2,5)}); return; }
@@ -433,6 +434,8 @@ function interactObjs(){
   const P=G.P;
   for(const o of W.objs){ if(!o.alive) continue; const d=Math.hypot(o.x-P.x,o.z-P.z);
     if((o.kind==='chest'||o.kind==='vault')&&!o.opened&&d<1.9){
+      if(o.sealed){ if(!o.warned){ o.warned=1; toast(o.sealTxt||'Сундук запечатан — решите загадку комнаты'); } continue; }
+      if(o.puz){ o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++; puzzleLoot(o); continue; }
       if(o.kind==='vault'&&S.keys<=0){ if(!o.warned){ o.warned=1; toast('Сундук заперт — нужен ключ сокровищницы',null,null); } continue; }
       if(o.kind==='vault') S.keys--; o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++;
       const L=W.lvl, mf=PS.mf; const n=o.kind==='vault'?3:randi(1,2);

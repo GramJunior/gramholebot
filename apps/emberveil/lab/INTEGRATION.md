@@ -120,25 +120,36 @@ Clip names per semantic key: `manifest.clipsets` (`EVAssets.clips('medium')` lis
 Nothing in the save changes. The mapping is keyed by ids that already exist in saves (`ITEM_BASES[*].vis`, `ENEMIES`/`BOSSES` keys, `BUILDINGS` keys + `S.bld[id]` level, `S.look`, `PET_DEFS` keys).
 New optional fields (e.g. a companion roster `S.party=['comp:ranger']`) must default when missing. Do not store asset paths in saves.
 
-## 6. Performance & memory (measured in the lab, 844×390 landscape, swiftshader)
+## 6. Performance & memory (measured in the lab, 844×390 landscape, Chromium + swiftshader)
 
-| scene | quality | draw calls | triangles | textures in frame | post passes |
+**Typical fight** = hero + companion + 15 enemies + 10 interactive props, gameplay camera (pitch .94). Counted separately from the lab's environment scatter (the game keeps its own scatter density/`cullProps()` window; only the geometry source changes).
+
+| fight scene | quality | characters + props: draw calls / triangles | lab env scatter (instanced): DC / tris | textures in frame | post passes |
 |---|---|---|---|---|---|
-| typical fight (hero+companion+15 enemies+10 props, meadow, game camera) | low | 61 | 157 k | 12 / 0.75 MB | 0 |
-| | med | 99 | 254 k | 12 / 4.0 MB | 6 (¼-res bloom + grade) |
-| | high | 120 | 309 k | 12 / 4.0 MB | 13 (Unreal bloom + grade + FXAA) |
-| typical fight, crypt (floor tiles + graves) | low / med / high | 67 / 105 / 132 | 205 k / 302 k / 406 k | 12 | 0 / 6 / 13 |
-| village lvl 3 (12 buildings, 8 NPCs, fence ring) | low / med / high | 76 / 102 / 150 | 211 k / 274 k / 371 k | 19 | |
-| hero close-up | low / med / high | 29 / 45 / 56 | 77 k / 104 k / 150 k | 9 | |
+| meadow (goblins, wolves) | low | 48 / 64 k | 15 / 153 k | 13 atlases, 0.8 MB (128 px) | 0 (direct) |
+| | med | 86 / 127 k (char outlines) | 15 / 153 k | 13, 4.3 MB (256 px) | 6 (¼-res bloom ×4 + grade) |
+| | high | 96 / 129 k | 15 / 153 k | 13, 4.3 MB | 13 (Unreal bloom mip-chain + grade + FXAA) |
+| crypt (skeletons, wraiths, cultists) | low / med / high | 48 / 64 k · 86 / 127 k · 96 / 129 k | 18 / 195 k | 13 | 0 / 6 / 13 |
+| lair (imps, lava golems) | low / med / high | 85 / 90 k · 150 / 177 k · 162 / 179 k | 14 / 356 k (gold/rock piles are dense) | 12 | 0 / 6 / 13 |
 
-(Numbers after the character decimation pass are lower — enemies/companions are ~45 % fewer triangles than in this table's run for the "fight" rows marked; re-run `lab/` stats overlay for exact values.)
+Whole showcase scenes (everything incl. env, from the on-screen stats overlay):
+
+| scene | low DC / tris | med DC / tris | high DC / tris | textures (MB @256) |
+|---|---|---|---|---|
+| hero close-up (+ companion, pet, icons) | 29 / 170 k | 45 / 192 k | 56 / 289 k* | 8 / 2.7 |
+| enemy + boss lineup (17 actors, crypt) | 62 / 196 k | 103 / 292 k | 120 / 387 k* | 17 / 5.7 |
+| NPC + companions (21 actors) | 56 / 174 k | 101 / 298 k | 110 / 344 k* | 22 / 7.3 |
+| village lvl 3 (12 buildings + houses, 9 actors, fence ring) | 75 / 222 k | 100 / 283 k | 148 / 394 k* | 18 / 6.0 |
+
+\* measured with prop hulls on; the shipped `high` preset now has `hullProps:false` (instanced scatter is not outlined), which brings high to ≈ med + bloom/FXAA.
+Load (all 45 files, local server): 0.5–0.9 s; parse + first frame on a mid phone should be ~1–2 s for `core+village`.
 
 * **Characters**: one `SkinnedMesh` per material after `Actor._merge()` (usually 1–2 draw calls + 1–2 outline draws). All parts share **one Skeleton per actor** (SkeletonUtils.clone creates one per part — we rebind; otherwise 10+ bone textures/updates per actor). Merged geometry is cached per (file, hidden parts, material), so 15 goblins share one geometry.
 * `update(dt, {far:true})` steps the mixer every 2nd (med) / 3rd (low) frame for far actors.
 * **Skinned meshes have `frustumCulled = false`** (quantized positions live in bone space, the geometry bounding sphere is wrong). Cull by distance in game code (`actor.radius`, `actor.height` are provided).
 * InstancedMesh props also have `frustumCulled=false`; keep the existing `cullProps()` window logic.
 * Textures: every KayKit atlas is 256 px (128 px on low) → 0.33 MB GPU each with mips (0.08 MB on low). A zone uses ~10–20 atlases. Identical atlases embedded in several .glb are de-duplicated at load by pixel fingerprint.
-* Outline: inverted hull with **smoothed normals** (`onormal`, computed once per geometry) and constant pixel width; `low` = off, `med` = characters only, `high` = characters + props (+1 draw call each).
+* Outline: inverted hull with **smoothed normals** (`onormal`, computed once per geometry) and constant pixel width; `low` = off, `med` = characters only, `high` = characters + weapons + single props (+1 draw call each); set `EVAssets.QUALITY.high.hullProps = true` to also outline InstancedMesh scatter (≈2× env triangles).
 * Post: `low` renders straight to screen (zero cost). `med` = one full-res scene RT + 4 quarter-res blur passes + 1 grade pass. `high` = Unreal mip-chain bloom + grade + FXAA (+ Bokeh DOF only while `setDOF(true)`).
 * **Download**: total 10.5 MB (glb are meshopt-compressed; gzip on the server saves ~10 % more). First zone + village = 4.6 MB.
 * Memory: ~30 MB JS heap for all groups loaded; dispose actors with `actor.dispose()` (also disposes skeletons). Unused groups can stay cached — geometry is shared.
@@ -196,7 +207,7 @@ Offline pipeline in `lab/build/` (Node 18+, Python 3; `npm i` there). Directory 
 
 ## 11. Known issues / follow-ups
 
-* Mystery-Monthly characters (Orc Raider/Brute, Witch, Black Knight, Frost Golem, Plant Warrior, Monstrosity, Tiefling, Werewolf, Necromancer is Skeletons 1.1, Paladin, Cleric, Ninja, Avian, Vampire, Lorekeeper, Farmers) come from the Complete KayKit Collection v6 mirror, licence CC0 per its LICENSE file; re-verify before a commercial launch. Fallbacks with official-repo packs only: goblin → Skeleton Minion recoloured green, bosses → Barbarian_Large/Skeleton_Golem.
+* Mystery-Monthly characters (Orc Raider/Brute, Witch, Black Knight, Frost Golem, Plant Warrior, Monstrosity, Tiefling, Werewolf, Paladin, Cleric, Ninja, Avian, Vampire, Lorekeeper, Farmers) come from the Complete KayKit Collection v6 mirror, licence CC0 per its LICENSE file; re-verify before a commercial launch. Fallbacks with official-repo packs only: goblin → Skeleton Minion recoloured green, bosses → Barbarian_Large/Skeleton_Golem.
 * KayKit chests are single meshes (no lid pivot); vault/chest open animation stays procedural or uses a scale "pop".
 * Skeleton enemies’ `Skeletons_*` clips live in `anim_medium_extra.glb` (group z4 loads it).
 * Bow draw: KayKit bows have a static string; there is no string-pull morph.
