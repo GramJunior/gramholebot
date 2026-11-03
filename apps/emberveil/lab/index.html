@@ -286,7 +286,7 @@ function sceneVillage() {
 }
 
 function sceneFight() {
-  buildEnv(ZONE, 40, 6);
+  buildEnv(ZONE, 28, 5);
   const Z = M.zones[ZONE].zone || 1;
   const roster = { 1: ['goblin', 'goblinArcher', 'goblin', 'wolf'], 2: ['wolf', 'sapling', 'goblinArcher', 'wolf'], 3: ['bogling', 'sapling', 'bogling', 'wolf'], 4: ['skelShield', 'skelArcher', 'wraith', 'cultist'], 5: ['ashGolem', 'imp', 'cultist', 'skelArcher'], 6: ['imp', 'ashGolem', 'cultist', 'wraith'] }[Z];
   const h = EVAssets.spawn('hero'); h.setGear({ helm: 'hm_horn', chest: 'ch_mail', gloves: 'gl_leather', boots: 'bt_leather', weapon: 'ax3', offhand: null }); world.add(h.root); actors.push(h);
@@ -313,7 +313,7 @@ function sceneFight() {
 
 const SCENES = { hero: ['Герой', sceneHero], lineup: ['Враги/боссы', sceneLineup], npc: ['НПС/спутники', sceneNPC], village: ['Деревня', sceneVillage], fight: ['Бой', sceneFight] };
 function setScene(k) { SCENE = k; clearScene(); SCENES[k][1](); measure(); }
-function setZone(z) { ZONE = z; if (SCENE === 'village' || SCENE === 'npc') { EVPostFX.applyZone(M.zones[z], { scene, hemi, sun, rim: RIM, fx, renderer: R }); return; } buildEnv(z, SCENE === 'lineup' ? 44 : SCENE === 'fight' ? 40 : 34, SCENE === 'lineup' ? 10 : SCENE === 'fight' ? 6 : 7); }
+function setZone(z) { ZONE = z; if (SCENE === 'village' || SCENE === 'npc') { EVPostFX.applyZone(M.zones[z], { scene, hemi, sun, rim: RIM, fx, renderer: R }); return; } buildEnv(z, SCENE === 'lineup' ? 44 : SCENE === 'fight' ? 28 : 34, SCENE === 'lineup' ? 10 : SCENE === 'fight' ? 5 : 7); }
 function setQ(q) { QL = q; EVAssets.setQuality(q); fx.setQuality(q); resize(); if (ambient) ambient.count = q === 'low' ? 80 : q === 'med' ? 180 : 320; }
 
 // ---------------------------------------------------------------- stats

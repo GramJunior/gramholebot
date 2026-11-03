@@ -58,9 +58,10 @@ HERO = {
    'bw1':{'cls':'bow','l':'w_bow_short'},'bw2':{'cls':'bow','l':'w_bow_long'},'bw3':{'cls':'bow','l':'w_bow_horn'},
    'st1':{'cls':'staff','r':'w_staff_branch'},'st2':{'cls':'staff','r':'w_staff_crystal','glow':'ice'},'st3':{'cls':'staff','r':'w_staff_skull','glow':'poison'}},
  'offhand':{'sh1':{'l':'w_shield_round'},'sh2':{'l':'w_shield_kite'},'sh3':{'l':'w_shield_tower'},'qv1':{'back':'back_quiver'},'tm1':{'l':'w_tome'},'or1':{'l':'@orb'}},
- 'looks':[{'recolor':[{'h':[36,56],'s':[0.3,1],'l':[0.4,0.92],'hSet':16,'sMul':1.05,'lMul':0.55}]},
-          {'recolor':[{'h':[36,56],'s':[0.3,1],'l':[0.4,0.92],'hSet':20,'sSet':0.25,'lMul':0.2},{'h':[12,35],'s':[0.2,0.8],'l':[0.4,0.95],'lMul':0.74,'sMul':1.1}]},
-          {'recolor':[{'h':[36,56],'s':[0.3,1],'l':[0.4,0.92],'sMul':0.55,'lMul':1.12}]}],
+ 'lookParts':['head_knight','head_hood','head_rogue','head_ranger'],
+ 'looks':[{'recolor':[{'h':[27,38],'s':[0.4,0.72],'l':[0.45,0.85],'hSet':14,'sSet':0.62,'lMul':0.62}]},
+          {'recolor':[{'h':[27,38],'s':[0.4,0.72],'l':[0.45,0.85],'hSet':22,'sSet':0.3,'lMul':0.25},{'h':[17,28],'s':[0.74,0.96],'l':[0.6,0.9],'lMul':0.72,'sMul':0.8}]},
+          {'recolor':[{'h':[27,38],'s':[0.4,0.72],'l':[0.45,0.85],'hSet':45,'sSet':0.45,'lMul':1.2}]}],
 }
 
 GLOW = {'fire':'#ff6a1a','ice':'#6fd8ff','poison':'#8ae03a','light':'#f6e85a'}

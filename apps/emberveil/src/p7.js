@@ -388,7 +388,7 @@ function updateProjs(dt){
     p.m.position.set(p.x,p.y,p.z); if(p.arc) p.m.rotation.x+=dt*8; else p.m.rotation.y=Math.atan2(p.vx,p.vz);
     if(p.kind==='fireball'||p.kind==='bolt'||p.kind==='eorb'||p.kind==='lob'||p.kind==='star'||p.kind==='arrowP') fx('trail',p.x,p.y,p.z,{col:p.kind==='fireball'?0xff8a2a:p.col||(p.el?ELC[p.el]:p.kind==='star'?0xfff0c0:0xc8a0ff),s:p.kind==='fireball'?.7:.4});
     let dead=p.life<=0;
-    if(!p.arc&&W.walk&&sdfW(p.x,p.z)>1.5) dead=true;
+    if(!p.arc&&!p.noClip&&W.walk&&sdfW(p.x,p.z)>1.5) dead=true;
     if(!dead&&!p.arc){
       if(p.team==='p'){
         for(const e of G.enemies){ if(!e.alive||e.burrowed||p.hit.has(e)) continue; if(Math.hypot(e.x-p.x,e.z-p.z)<e.r+p.r){ p.hit.add(e);

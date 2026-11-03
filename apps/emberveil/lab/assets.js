@@ -507,8 +507,11 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     }
     /** skin look index (S.look in the game: 0..2) */
     setLook(i) {
-      const L = this.def.looks[i | 0]; if (!L) return;
+      const L = this.def.looks[i | 0]; if (!L) return; this.look = i | 0;
+      const only = new Set(); for (const n of this.def.lookParts || []) { const p = this.findPart(n); if (p) p.traverse((o) => o.isMesh && only.add(o)); }
       for (const m of this.meshes) {
+        if (only.size && !only.has(m)) continue;
+        if (!m.userData.evOwnMat) { const om = m.material; const nm2 = toonMat(om.map, { skinning: m.isSkinnedMesh }); nm2.userData.U = om.userData.U; const U = om.userData.U; const obc = nm2.onBeforeCompile; nm2.onBeforeCompile = (sh) => { obc(sh); Object.assign(sh.uniforms, U); }; m.material = nm2; this.matList.push(nm2); m.userData.evOwnMat = true; }
         const base = m.userData.evBaseMap || (m.userData.evBaseMap = m.material.map);
         if (m.material.map === undefined) continue;
         const nm = L.recolor ? recolorTex(base, L.recolor) : base; if (m.material.map !== nm) { m.material.map = nm; m.material.needsUpdate = true; }

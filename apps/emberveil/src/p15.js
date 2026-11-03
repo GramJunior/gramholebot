@@ -153,14 +153,14 @@ function raidTick(dt){
   // waves
   const alive=G.enemies.filter(e=>e.alive&&e.raider).length;
   if(RAID.wi<RAID.plan.waves.length){ RAID.waveT-=dt; if(RAID.waveT<=0||(alive===0&&RAID.spawnQ.length===0&&RAID.waveT<7)){ raidSpawnWave(); RAID.waveT=24+RAID.wi*2; } }
-  for(let i=RAID.spawnQ.length-1;i>=0;i--){ const q=RAID.spawnQ[i]; q.t-=dt; if(q.t>0) continue; RAID.spawnQ.splice(i,1); if(G.enemies.filter(e=>e.alive).length>=16){ RAID.spawnQ.push(Object.assign(q,{t:.8})); continue; }
+  for(let i=RAID.spawnQ.length-1;i>=0;i--){ const q=RAID.spawnQ[i]; q.t-=dt; if(q.t>0) continue; RAID.spawnQ.splice(i,1); if(G.enemies.filter(e=>e.alive).length>=13){ RAID.spawnQ.push(Object.assign(q,{t:.8})); continue; }
     const [x,z]=raidLanePoint(q.lane,rand(36,41)); const sp=q.lane==='n'?1:1.6; const e=spawnEnemy(q.k,x+rand(-sp,sp),z+rand(-sp,sp),RAID.plan.L+(q.champ?1:0),{aggro:1,elite:q.champ?2:q.el,champion:!!q.champ}); e.raider=true; e.lane=q.lane; e.camp=null; if(q.champ){ RAID.champE=e; banner('Вожак набега!',RAID_TROPHY[RAID.plan.t-1]); }
     fx('magic',e.x,.5,e.z,{col:0x5a2a2a,k:8}); }
   // towers
   for(const t of RAID.towers){ t.cd-=dt; if(t.cd>0) continue; let best=null,bd=t.D.rng; for(const e of G.enemies){ if(!e.alive||e.burrowed||!e.raider) continue; const d=Math.hypot(e.x-t.x,e.z-t.z); if(d<bd){ bd=d; best=e; } } if(!best){ t.cd=.3; continue; }
     const dmg=RAID_STRUCT[t.t].dmg*ENEMIES.goblin.hp*Math.pow(F(RAID.plan.L),.97)*t.m*(1+.12*(S.bld.walls||0))*1.7; const f=Math.atan2(best.x-t.x,best.z-t.z);
-    if(t.t==='archer'){ t.cd=t.D.cd*rand(.9,1.1); spawnProj('arrow',t.x+Math.sin(f)*.8,t.z+Math.cos(f)*.8,f,{team:'p',dmg,src:t,y:2.6,spd:28,life:t.D.rng/28+.2}); sfxAt('arrow',t.x,t.z,.35); }
-    else { t.cd=t.D.cd*rand(.9,1.1); const el=t.el; spawnProj('bolt',t.x+Math.sin(f)*.8,t.z+Math.cos(f)*.8,f,{team:'p',dmg,el,col:ELC[el],src:t,y:2.4,spd:16,life:t.D.rng/16+.3,splash:t.D.splash}); fx('magic',t.x,4.6+t.lv*.5,t.z,{col:ELC[el],k:6}); sfxAt('bolt',t.x,t.z,.4); } }
+    if(t.t==='archer'){ t.cd=t.D.cd*rand(.9,1.1); spawnProj('arrow',t.x+Math.sin(f)*.8,t.z+Math.cos(f)*.8,f,{team:'p',dmg,src:t,y:2.6,spd:28,life:t.D.rng/28+.2,noClip:1}); sfxAt('arrow',t.x,t.z,.35); }
+    else { t.cd=t.D.cd*rand(.9,1.1); const el=t.el; spawnProj('bolt',t.x+Math.sin(f)*.8,t.z+Math.cos(f)*.8,f,{team:'p',dmg,el,col:ELC[el],src:t,y:2.4,spd:16,life:t.D.rng/16+.3,splash:t.D.splash,noClip:1}); fx('magic',t.x,4.6+t.lv*.5,t.z,{col:ELC[el],k:6}); sfxAt('bolt',t.x,t.z,.4); } }
   // traps
   for(const t of RAID.traps){ if(t.t!=='spikes') continue; t.cd-=dt; if(t.cd>0) continue; let hit=false; for(const e of G.enemies){ if(!e.alive||e.burrowed||!e.raider||Math.hypot(e.x-t.x,e.z-t.z)>1.5+e.r) continue; hit=true; dmgEnemy(e,t.D.dmg*ENEMIES.goblin.hp*Math.pow(F(RAID.plan.L),.97)*t.m*1.7,{kb:1,dir:Math.atan2(e.x-t.x,e.z-t.z),src:t,heavy:1}); e.stat.slow=Math.max(e.stat.slow||0,1.6); }
     if(hit){ t.cd=t.D.cd; fx('hit',t.x,.4,t.z,{col:0xd8d8e0}); sfxAt('hit',t.x,t.z,.5); const m=W.rsMesh[t.sid]; if(m){ m.position.y=.25; later(.25,()=>m.position.y=0); } } }
