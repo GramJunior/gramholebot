@@ -21,6 +21,7 @@ function walkable(x,z,m=0){ return sdfW(x,z)<-m && !W.obst.some(o=>!o.dead&&Math
 
 // ---------- ground ----------
 function buildGround(Z,b,opts={}){
+  if(terOn()){ try{ return terBuildGround(Z,b,opts); }catch(e){ console.warn('terrain → vertex colours',e); TER.err=String(e&&e.message||e); } } // земля v9 (p6t.js); без неё — старая раскраска вершин
   const w=b.maxX-b.minX, h=b.maxZ-b.minZ; const seg=Q.props<.6?1.4:1.0;
   const nx=Math.max(8,Math.round(w/seg)), nz=Math.max(8,Math.round(h/seg));
   const g=new THREE.PlaneGeometry(w,h,nx,nz); g.rotateX(-PI/2); g.translate((b.minX+b.maxX)/2,0,(b.minZ+b.maxZ)/2);

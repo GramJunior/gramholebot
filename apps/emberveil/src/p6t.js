@@ -330,3 +330,126 @@ function clMat(){ if(CL_MAT) return CL_MAT; const m=toonMat(); m.side=THREE.Doub
  float wph=uTime*1.7+ip.x*0.31+ip.y*0.23; float wk=aWind*(0.7+0.3*sin(uTime*0.43+ip.x*0.05));
  transformed.x+=(sin(wph)*0.09+sin(wph*2.7)*0.025)*wk; transformed.z+=cos(wph*0.83)*0.06*wk;`); };
   m.customProgramCacheKey=()=>'evcl'; return CL_MAT=m; }
+
+// ---------- расстановка мелочи по правилам ----------
+// плотность по пресету (шаг сетки травы, м) и набор типов по зонам; цвета травы — по зоне (instanceColor)
+const CLQ={perf:{gs:1.5,k:.35},low:{gs:1.1,k:.55},med:{gs:.78,k:1},high:{gs:.66,k:1.25}};
+const ZCL={
+  0:{grass:[0x7cb84a,0x9acd58,0x6aa840],tall:[0x8ac04e,0xa8c862],flow:['flowY','flowP'],peb:[0x9a9488,0x8a8070],leaves:.8,twigs:.15,shroom:.1,roots:1,path:1},
+  1:{grass:[0x78b446,0x96cc56,0x66a43c],tall:[0x86bc4c,0xa6c45e],flow:['flowY','flowP'],peb:[0x9a9488,0x8e8676],leaves:.7,twigs:.2,shroom:.15,roots:1,path:1},
+  2:{grass:[0x4e8034,0x5e9040,0x40702a],tall:[0x5a8a3a,0x6a9442],fern:1,flow:['flowB'],flowK:.45,peb:[0x7a7a6a,0x6a6e5a],leaves:2.2,twigs:.7,shroom:.55,roots:1,path:1},
+  3:{grass:[0x6a7234,0x7a803c,0x5a642c],tall:[0x6e7a3a,0x828a42],reeds:1,lily:1,peb:[0x5e6a50,0x4e5a40],leaves:.4,twigs:.5,shroomG:.45,roots:1,path:1},
+  4:{dead:[0x8a8a8e,0x7a7a84],peb:[0x6a6876,0x5a5866],bones:.55,candles:.35,leaves:.15},
+  5:{dead:[0x7a6a5a,0x6a5a4e],peb:[0x4a4240,0x3e3634],cinders:1,bones:.2,path:1},
+  6:{peb:[0x4e2e2a,0x3e2422],cinders:1.3,shards:1,bones:.45}
+};
+const TREEISH=/tree|pine|oak|fir|birch|stump|Tree/; const ROCKY=/rock|stone|Rock|obsidian|basalt|rubble|boulder/;
+function terFinish(){
+  if(!W||!W.ter||W.ter.done||!W.ground) return; W.ter.done=true; const t0=performance.now();
+  const T=W.ter, ctl=T.ctl, Z=W.zone, zid=Z.id, cfg=ZCL[W.kind==='village'?0:zid]||ZCL[1], q=CLQ[QL]||CLQ.med, K=W.kind, stageLike=K!=='village', b=W.bounds;
+  const rnd=rng32(strH('cl:'+(W.info?W.info.key:K)+':'+(W.floor||0))); const rr=(a,c)=>a+(c-a)*rnd(), ch=p=>rnd()<p;
+  const cAt=(x,z)=>{ const i=Math.floor((x-ctl.x0)/ctl.cs), j=Math.floor((z-ctl.z0)/ctl.cs); if(i<0||j<0||i>=ctl.nx||j>=ctl.nz) return null; return (j*ctl.nx+i)*4; };
+  // --- props → contact shadow on the ground (vertex AO) + soil/moss stamps on the splat map ---
+  const col=W.ground.geometry.attributes.color, CA=col.array, vx=T.vx, vz=T.vz, sx=T.w/(vx-1), sz=T.h/(vz-1);
+  const blockers=[]; for(const p of W.props){ const f=pfoot(p.type,p.s); if(f.k==='b'&&f.c>0) blockers.push({x:p.x,z:p.z,r:f.c,p}); }
+  for(const o of W.obst){ if(o.water||o.dead) continue; blockers.push({x:o.x,z:o.z,r:o.r}); }
+  for(const o of W.objs){ if(o.alive!==false&&o.r>0) blockers.push({x:o.x,z:o.z,r:Math.max(.4,o.r)}); }
+  const bBin=terBins(blockers,e=>e.r+.4,4);
+  const stampV=(x,z,r,k)=>{ const i0=Math.max(0,Math.floor((x-r-T.x0)/sx)), i1=Math.min(vx-1,Math.ceil((x+r-T.x0)/sx)), j0=Math.max(0,Math.floor((z-r-T.z0)/sz)), j1=Math.min(vz-1,Math.ceil((z+r-T.z0)/sz));
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ const d=Math.hypot(T.x0+i*sx-x,T.z0+j*sz-z)/r; if(d>=1) continue; const m=1-(1-k)*(1-d*d); const kk=(j*vx+i)*3; CA[kk]*=m; CA[kk+1]*=m; CA[kk+2]*=m; } };
+  const stampC=(A,ch0,x,z,r,v)=>{ const i0=Math.max(0,Math.floor((x-r-ctl.x0)/ctl.cs)), i1=Math.min(ctl.nx-1,Math.ceil((x+r-ctl.x0)/ctl.cs)), j0=Math.max(0,Math.floor((z-r-ctl.z0)/ctl.cs)), j1=Math.min(ctl.nz-1,Math.ceil((z+r-ctl.z0)/ctl.cs));
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ const px=ctl.x0+(i+.5)*ctl.cs, pz=ctl.z0+(j+.5)*ctl.cs; const e=Math.hypot(px-x,pz-z)/r+(vnoise(px*1.3,pz*1.3)-.5)*.5; if(e>=1) continue; const o=(j*ctl.nx+i)*4+ch0; const nv=v*sm01((1-e)*2.2)*255; if(nv>A[o]) A[o]=nv; } };
+  const trees=[], rocks=[], crypt=[], hot=[];
+  for(const p of W.props){ const f=pfoot(p.type,p.s); if(f.k!=='b'||f.c<=0) continue; const out=sdfW(p.x,p.z)>2.5;
+    if(TREEISH.test(p.type)){ trees.push(p); stampV(p.x,p.z,f.c*2.4+.5,.62); if(zid<=3&&!out){ stampC(ctl.C1,1,p.x,p.z,f.c*2.6+.8,.8); stampC(ctl.C2,2,p.x+.3,p.z-.5,f.c*2+.6,.5); } }
+    else if(ROCKY.test(p.type)){ rocks.push(p); stampV(p.x,p.z,f.c*2+.4,.66); if(!out){ stampC(ctl.C2,2,p.x,p.z-.2,f.c*1.8+.5,zid<=3?.75:.3); stampC(ctl.C1,1,p.x,p.z,f.c*1.5+.5,.55); } }
+    else { stampV(p.x,p.z,f.c*1.9+.3,.7); if(/tomb|grave|coffin|pillar|column|wall|crypt|shrine/.test(p.type)) crypt.push(p); if(/vent|lava|obsidian|basalt/.test(p.type)) hot.push(p); } }
+  for(const o of W.objs){ if(o.alive!==false&&o.r>0) stampV(o.x,o.z,o.r*1.7+.3,.72); }
+  col.needsUpdate=true; ctl.t1.needsUpdate=true; ctl.t2.needsUpdate=true;
+  // --- clutter rules ---
+  const pw=T.pathW, pathC=(x,z)=>W.paths&&W.paths.length?pathCenterDist(x,z):99;
+  const pools=(W.pools||[]).filter(p=>!p.bridged), wetOK={lily:1,reeds:1};
+  const inPool=(x,z,r)=>{ for(const p of pools) if(Math.hypot(x-p.x,z-p.z)<p.r+r) return p; return null; };
+  const br=W.bridge, onBridge=(x,z)=>br&&Math.hypot(x-br.x,z-br.z)<Math.max(4.2,br.w*.5+1.2);
+  const blocked=(x,z,r)=>{ const L=bBin(Math.floor(x/4)+','+Math.floor(z/4)); if(L) for(const e of L) if(Math.hypot(x-e.x,z-e.z)<e.r+r) return true; return false; };
+  const OUT={}; const put=(t,x,z,o={})=>{ const flush=t==='flag', water=t==='lily';
+    if(!water&&inPool(x,z,o.r||.15)) return false; if(water&&!o.pool) return false; if(onBridge(x,z)) return false;
+    if(!flush&&pathC(x,z)<pw*.5+.15) return false; if(!flush&&!water&&!o.force&&blocked(x,z,o.r||.12)) return false; if(flush&&blocked(x,z,.35)) return false;
+    const y=water?-.1:groundH(x,z)+(o.dy||0); (OUT[t]=OUT[t]||[]).push(x,y,z,o.ry===undefined?rnd()*TAU:o.ry,o.s||1,o.sy||o.s||1,o.c===undefined?0xffffff:o.c,o.tilt||0); return true; };
+  const pickC=a=>{ const c=new THREE.Color(a[(rnd()*a.length)|0]); const v=.88+rnd()*.24; return c.multiplyScalar(v).getHex(); };
+  const gs=q.gs; const dens=q.k;
+  // grass / flowers / ferns: jittered grid × patch mask; denser in the treeline ring (layered forest edge), sparse on soil, none on path/paving
+  const grassCol=cfg.grass||cfg.dead, tallCol=cfg.tall||cfg.dead;
+  if(grassCol) for(let z=b.minZ;z<b.maxZ;z+=gs) for(let x=b.minX;x<b.maxX;x+=gs){
+    const px=x+rr(0,gs), pz=z+rr(0,gs), d=sdfW(px,pz); if(d>(stageLike?5.5:22)) continue; const o=cAt(px,pz); if(o===null) continue;
+    const cp=ctl.C1[o]/255, cso=ctl.C1[o+1]/255, cpv=ctl.C1[o+2]/255, cac=ctl.C1[o+3]/255, cwet=ctl.C2[o+1]/255, rk=stageLike?sm01((d-.5)/1.7):0;
+    const gw=1-Math.max(cp,cso*.7,cpv,cac,rk); const mask=fbm(px*.11+3,pz*.11), patch=sm01((mask-.28)*2.2);
+    if(cp>.3||cwet>.45) continue;
+    const edge=cso>.35&&cso<.85&&cp<.15; const ring=d>-.5&&d<4.5;
+    let p=gw*patch*(ring?1.25:1); if(cpv>.4) p=.05; if(cac>.5) p*=.25;
+    if(!ch(Math.min(1,p*(cfg.dead?.55:1)))) { if(edge&&tallCol&&ch(.35*patch)) put('tall',px,pz,{s:rr(.8,1.2),c:pickC(tallCol)}); continue; }
+    const fm=fbm(px*.19+30,pz*.19); if(cfg.flow&&gw>.6&&fm>.63&&ch(cfg.flowK||.75)){ put(cfg.flow[(fbm(px*.07,pz*.07+9)*cfg.flow.length*1.6|0)%cfg.flow.length],px,pz,{s:rr(.85,1.2)}); continue; }
+    if(cfg.fern&&(ring||d>-3)&&ch(.35)){ put('fern',px,pz,{s:rr(.8,1.3),r:.2}); continue; }
+    if(ring&&tallCol&&ch(.4)){ put('tall',px,pz,{s:rr(.9,1.35),c:pickC(tallCol)}); continue; }
+    put(cfg.dead?'dead':'tuft',px,pz,{s:rr(.75,1.25),c:pickC(grassCol)}); }
+  // pebble clusters where they make sense: around boulders, along path edges, at cliff bases, at ruin edges (earth → gravel → stone)
+  const pebC=cfg.peb;
+  for(const p of rocks){ const f=pfoot(p.type,p.s); if(sdfW(p.x,p.z)>5) continue; const n=Math.round(rr(2,4.5)*Math.min(1.2,dens)); for(let i=0;i<n;i++){ const a=rr(0,TAU), r=f.c+rr(.2,1.4); put('pebbles',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.5),c:pickC(pebC),r:.3}); }
+    if(ch(.6)){ const a=rr(0,TAU), r=f.c+rr(.3,.9); put('stone',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.4),c:pickC(pebC),r:.3}); } }
+  for(const s of (W.paths||[])){ const L=Math.hypot(s.bx-s.ax,s.bz-s.az); if(L<1) continue; const ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L;
+    for(let t=rr(0,2);t<L;t+=rr(1.6,2.8)) for(const sd of [-1,1]){ const o=pw+rr(.15,.9), x=s.ax+ux*t-uz*o*sd, z=s.az+uz*t+ux*o*sd; if(sdfW(x,z)>-.3) continue; const r=rnd();
+      if(r<.16*dens+.06) put('stone',x,z,{s:rr(.8,1.5),c:pickC(pebC),r:.3}); else if(r<.4*dens+.1) put('pebbles',x,z,{s:rr(.7,1.2),c:pickC(pebC),r:.25}); } }
+  if(stageLike&&W.walk){ for(const n of W.walk.nodes){ if(n.joint) continue; const m=Math.ceil(TAU*n.r/2.4); for(let i=0;i<m;i++){ if(!ch(.4*Math.min(1.3,dens)+.1)) continue; const a=i/m*TAU+rr(-.2,.2), r=n.r+rr(-.5,.5); put('pebbles',n.x+Math.cos(a)*r,n.z+Math.sin(a)*r,{s:rr(.9,1.6),c:pickC(pebC),r:.3}); } }
+    for(const s of W.walk.segs){ if(s.closed) continue; const L=Math.hypot(s.bx-s.ax,s.bz-s.az), ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L; for(let t=0;t<L;t+=2.6) for(const sd of [-1,1]){ if(!ch(.35*Math.min(1.3,dens)+.1)) continue; const o=s.w/2+rr(-.5,.4), x=s.ax+ux*t-uz*o*sd, z=s.az+uz*t+ux*o*sd; if(sdfW(x,z)<-.7) continue; put('pebbles',x,z,{s:rr(.9,1.6),c:pickC(pebC),r:.3}); } } }
+  for(const p of (W.paint||[])){ if(!p.tiles) continue; const n=Math.round(p.r*.9*Math.min(1.2,dens)+2); for(let i=0;i<n;i++){ const a=rr(0,TAU), r=p.r*rr(.8,1.15); put(ch(.35)?'stone':'pebbles',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.4),c:pickC(pebC),r:.3}); } }
+  // under trees: roots at the trunk, leaf litter, twigs, mushrooms (only where the camera sees them)
+  for(const p of trees){ const f=pfoot(p.type,p.s), dd=sdfW(p.x,p.z); if(dd>4.5) continue;
+    if(cfg.roots&&!/stump/.test(p.type)) put('roots',p.x,p.z,{s:p.s*rr(.85,1.15),r:.01,dy:-.02,force:1});
+    if(cfg.leaves){ const n=Math.round(cfg.leaves*rr(.5,1.5)); for(let i=0;i<n;i++){ const a=rr(0,TAU), r=f.c+rr(.3,2.4); put('leaves',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.4),r:.1}); } }
+    if(cfg.twigs&&ch(cfg.twigs)){ const a=rr(0,TAU), r=f.c+rr(.4,1.8); put('twigs',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.2),r:.2}); }
+    const sh=cfg.shroom||cfg.shroomG; if(sh&&ch(sh)){ const a=rr(0,TAU), r=f.c+rr(.15,.8); put(cfg.shroomG?'shroomG':'shroom',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.3),r:.15}); } }
+  // crypt: bones / candles at tombs, pillars, walls; ash & lair: cinders by lava and vents, crystal shards by crystals
+  if(cfg.bones||cfg.candles) for(const p of crypt.concat(rocks.filter(()=>zid>=5))){ const f=pfoot(p.type,p.s); if(sdfW(p.x,p.z)>3) continue;
+    if(cfg.bones&&ch(cfg.bones)){ const a=rr(0,TAU), r=f.c+rr(.25,1.2); put('bones',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.2),r:.25}); }
+    if(cfg.candles&&ch(cfg.candles)&&/tomb|grave|coffin|shrine|pillar|column/.test(p.type)){ const a=rr(0,TAU), r=f.c+rr(.2,.6); put('candles',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.9,1.2),r:.2}); } }
+  if(cfg.cinders){ for(const p of (W.pools||[])){ if(!p.lava&&p.haz!=='burn') continue; const n=Math.round(p.r*1.6*cfg.cinders*Math.min(1.2,dens)); for(let i=0;i<n;i++){ const a=rr(0,TAU), r=p.r+rr(.3,1.8); put('cinders',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.4),r:.25}); } }
+    for(const p of hot.concat(rocks)){ if(!ch(.45*cfg.cinders)) continue; const f=pfoot(p.type,p.s), a=rr(0,TAU), r=f.c+rr(.3,1.2); put('cinders',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.3),r:.25}); } }
+  if(cfg.shards) for(const p of W.props){ if(p.type!=='crystal') continue; for(let i=0;i<3;i++){ const a=rr(0,TAU), r=pfoot('crystal',p.s).c+rr(.3,1.2); put('shards',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.7,1.3),r:.2}); } }
+  // water: reeds at shores, lily pads on still water
+  for(const p of (W.pools||[])){ if(p.lava||p.kind==='stream'||p.kind==='wet'||p.haz==='burn') continue;
+    if(cfg.reeds||W.kind==='village'||zid===1||zid===2){ const n=Math.round(p.r*(cfg.reeds?2.2:1)*Math.min(1.2,dens)); for(let i=0;i<n;i++){ const a=rr(0,TAU), r=p.r+rr(.05,.6); put('reeds',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.25),r:.15}); } }
+    if((cfg.lily||zid===2||W.kind==='village')&&p.kind==='lake'){ const n=Math.round(p.r*(cfg.lily?1.6:.7)); for(let i=0;i<n;i++){ const a=rr(0,TAU), r=Math.sqrt(rnd())*(p.r-.8); put('lily',p.x+Math.cos(a)*r,p.z+Math.sin(a)*r,{s:rr(.8,1.3),pool:p}); } } }
+  // stepping stones flush with the trodden path: in stretches (noise along the path), always where the path enters ruins
+  if(cfg.path&&W.paths) for(const s of W.paths){ const L=Math.hypot(s.bx-s.ax,s.bz-s.az); if(L<2) continue; const ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L; let side=1;
+    for(let t=rr(0,1);t<L;t+=rr(.75,1.05)){ const x=s.ax+ux*t, z=s.az+uz*t, o=cAt(x,z); const nearPave=o!==null&&ctl.C1[o+2]>40; if(!nearPave&&vnoise(x*.09+5,z*.09+1)<.6) continue; side=-side; const lo=side*rr(.12,.5);
+      put('flag',x-uz*lo,z+ux*lo,{s:rr(.36,.52),sy:1,c:pickC(pebC),dy:-.025}); } }
+  W.clutter={}; for(const t in OUT) W.clutter[t]=clBuild(t,OUT[t]);
+  W.ter.clMs=Math.round(performance.now()-t0); W.ter.cl=Object.fromEntries(Object.entries(OUT).map(([k,v])=>[k,v.length/8]));
+}
+// instances sorted into 8 m cells (row-major): culling copies whole rows of cells into the InstancedMesh buffer (no per-instance work)
+const CL_CELL=8;
+function clBuild(t,A){
+  const n=A.length/8, b=W.bounds, ncx=Math.ceil((b.maxX-b.minX)/CL_CELL)+1, ncz=Math.ceil((b.maxZ-b.minZ)/CL_CELL)+1;
+  const cellOf=k=>{ const i=Math.min(ncx-1,Math.max(0,Math.floor((A[k*8]-b.minX)/CL_CELL))), j=Math.min(ncz-1,Math.max(0,Math.floor((A[k*8+2]-b.minZ)/CL_CELL))); return j*ncx+i; };
+  const idx=Array.from({length:n},(_,k)=>k), cell=new Int32Array(n); for(let k=0;k<n;k++) cell[k]=cellOf(k); idx.sort((a,c)=>cell[a]-cell[c]);
+  const start=new Int32Array(ncx*ncz+1); for(let k=0;k<n;k++) start[cell[k]+1]++; for(let c=0;c<ncx*ncz;c++) start[c+1]+=start[c];
+  const M=new Float32Array(n*16), Cc=new Float32Array(n*3), m4=new THREE.Matrix4(), qq=new THREE.Quaternion(), e=new THREE.Euler(), v=new THREE.Vector3(), s=new THREE.Vector3(), c=new THREE.Color();
+  idx.forEach((k,o)=>{ const tl=A[k*8+7]; e.set(tl?(Math.random()-.5)*tl:0,A[k*8+3],tl?(Math.random()-.5)*tl:0); qq.setFromEuler(e); v.set(A[k*8],A[k*8+1],A[k*8+2]); s.set(A[k*8+4],A[k*8+5],A[k*8+4]); m4.compose(v,qq,s); m4.toArray(M,o*16); c.setHex(A[k*8+6]); Cc[o*3]=c.r; Cc[o*3+1]=c.g; Cc[o*3+2]=c.b; });
+  const im=new THREE.InstancedMesh(clGeo(t),clMat(),n); im.frustumCulled=false; im.count=0; im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(n*3),3); im.userData.evClutter=1; worldRoot.add(im);
+  return {im,M,C:Cc,start,ncx,ncz,n};
+}
+function clCull(cx,cz,XR,Z0,Z1,all){
+  if(!W||!W.clutter) return; const b=W.bounds; let tot=0;
+  for(const t in W.clutter){ const L=W.clutter[t], im=L.im, IM=im.instanceMatrix.array, IC=im.instanceColor.array; let n=0;
+    if(all){ IM.set(L.M); IC.set(L.C); n=L.n; }
+    else { const i0=Math.max(0,Math.floor((cx-XR-b.minX)/CL_CELL)), i1=Math.min(L.ncx-1,Math.floor((cx+XR-b.minX)/CL_CELL)), j0=Math.max(0,Math.floor((cz+Z0-b.minZ)/CL_CELL)), j1=Math.min(L.ncz-1,Math.floor((cz+Z1-b.minZ)/CL_CELL));
+      if(i0<=i1) for(let j=j0;j<=j1;j++){ const s0=L.start[j*L.ncx+i0], s1=L.start[j*L.ncx+i1+1]; if(s1<=s0) continue; IM.set(L.M.subarray(s0*16,s1*16),n*16); IC.set(L.C.subarray(s0*3,s1*3),n*3); n+=s1-s0; } }
+    im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; im.instanceColor.needsUpdate=true; tot+=n; }
+  W.clVis=tot;
+}
+
+// ---------- подключение к миру: после расстановки пропсов (buildPropMeshes) — штампы, мелочь; отсечение — вместе с пропсами ----------
+const _bpmT=buildPropMeshes; buildPropMeshes=function(){ if(terOn()) try{ terFinish(); }catch(e){ console.error('terFinish',e); } _bpmT(); };
+const _cpT=cullProps; cullProps=function(cx,cz,force){ TER_U.uTime.value=performance.now()/1000%1000; const was=W&&W.propCullAt; _cpT(cx,cz,force);
+  if(W&&W.clutter&&W.propCullAt!==was){ const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12; const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; clCull(cx,cz,xr*far,z0*far,z1*far,!!W.cullAll); } };
+const _uwT=unloadWorld; unloadWorld=function(){ if(W&&W.ter&&W.ground){ try{ W.ground.material.dispose(); W.ter.ctl.t1.dispose(); W.ter.ctl.t2.dispose(); }catch(e){} } _uwT(); };
