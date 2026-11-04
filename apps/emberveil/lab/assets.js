@@ -37,7 +37,7 @@
     mats: {},                         // shared static materials
     templates: {},                    // fileKey|node -> template Object3D
     grad: null, rim: null, res: new T.Vector2(1280, 720),
-    actors: new Set(), linear: true, nodeIndex: {}, mergeCache: {},
+    actors: new Set(), linear: true, nodeIndex: {}, mergeCache: {}, sat: { value: 1.0 },
   };
 
   // ------------------------------------------------------------------ helpers
@@ -133,9 +133,9 @@
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
     m.userData.U = U;
     m.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, U); sh.uniforms.uRim = S.rim;
+      Object.assign(sh.uniforms, U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
       sh.vertexShader = 'varying vec3 vObjPos;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
-      sh.fragmentShader = 'uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' +
+      sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' +
         sh.fragmentShader.replace(OUT_RE, (m0) => `
   float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
   float rim = smoothstep(0.55, 0.72, rimF);
@@ -156,6 +156,7 @@
     outgoingLight = mix(outgoingLight, uGlow.rgb * 1.5, smoothstep(0.35, 0.85, b) * (0.55 + 0.25*sin(uTime*4.0)));
   }
   outgoingLight += uGlow.rgb * uGlow.a * rim;
+  outgoingLight = max(mix(vec3(dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722))), outgoingLight, uSatG), 0.0); // shared mid-tone saturation (game: SATG)
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
@@ -623,7 +624,8 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     ICON.cam.position.set(c.x, c.y + d * 0.12, c.z + d); ICON.cam.lookAt(c); ICON.cam.updateProjectionMatrix();
     const prevRT = R.getRenderTarget(), prevC = R.getClearColor(new T.Color()), prevA = R.getClearAlpha();
     const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size);
-    R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam);
+    const pexp = R.toneMappingExposure; R.toneMappingExposure = S.iconExpo || 1.15; // icons stay vivid under the game's ACES tone mapping
+    R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp;
     const px = new Uint8Array(size * size * 4); R.readRenderTargetPixels(ICON.rt, 0, 0, size, size, px);
     R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res);
     ICON.scene.remove(holder); if (actor) actor.dispose();
@@ -660,7 +662,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return { files: Object.keys(S.files).length, textures: seen.size, textureMB: +(texBytes / 1048576).toFixed(2), actors: S.actors.size, clips: Object.keys(S.clips.medium).length + Object.keys(S.clips.large).length };
   }
   function init(o = {}) {
-    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) };
+    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 };
     S.linear = !S.renderer || S.renderer.outputEncoding === T.LinearEncoding;
     S.loader = new T.GLTFLoader();
     const mo = global.MeshoptDecoder; if (mo) S.loader.setMeshoptDecoder(mo);

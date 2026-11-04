@@ -40,7 +40,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:QL,gradientMap:GRAD,rim:RIM}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:QL,gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));

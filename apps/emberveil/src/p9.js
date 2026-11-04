@@ -267,8 +267,8 @@ function loop(now){
   PA.update(Math.max(dt,frozen?0:rdt*.2)); PN.update(Math.max(dt,frozen?0:rdt*.2)); DECALS.update(dt,G.time);
   SHADOW.end();
   const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z);
-  if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.7:1.1)+Math.sin(now/180)*.15+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; }
-    else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?1.25:zid===3?.7:0)+(P.ember>=100?.4:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
+  if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; }
+    else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;
   wlBegin(); updateDmgNums(rdt); if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid') updateHpBars(); hudTick(rdt); if(typeof sysLabels==='function') sysLabels(rdt); wlEnd();
   asTick(dt,rdt);

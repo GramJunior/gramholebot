@@ -138,9 +138,16 @@ function unloadWorld(){
   DECALS.clear(); PA.clear(); PN.clear();
   W=null;
 }
+// v6 свет: глубже туман (светлота ×~0.6, насыщенность +15%), меньше заливки полусферы, сильнее ключевой «солнце» — у тени есть объём,
+// а не серая каша; экспозиция и насыщенность по зоне (ACES в материалах — одинаково на всех пресетах, в т.ч. «Низк.»)
+const LOOK6={0:{h:.36,s:.8,e:.88,sat:1.12},title:{h:.42,s:.85,e:.86,sat:1.02},1:{h:.36,s:.8,e:.86,sat:1.12},2:{h:.38,s:.85,e:.96,sat:1.12},3:{h:.46,s:.85,e:1.1,sat:1.08},4:{h:.54,s:.85,e:1.14,sat:1.06},5:{h:.5,s:.82,e:1.12,sat:1.04},6:{h:.52,s:.82,e:1.12,sat:.98}};
+const _hsl={h:0,s:0,l:0};
+function deepFog(hex){ const c=new THREE.Color(hex); c.getHSL(_hsl); c.setHSL(_hsl.h,Math.min(1,_hsl.s*1.15),_hsl.l*(.6+.2*(1-_hsl.l))); return c; }
 function setZoneLook(Z){
-  scene.fog.color.set(Z.fog); scene.fog.near=Z.fogN; scene.fog.far=Z.fogF; scene.background=null; R.setClearColor(Z.fog,1);
-  hemi.color.set(Z.hemi[0]); hemi.groundColor.set(Z.hemi[1]); hemi.intensity=Z.hemi[2]*.62; sun.color.set(Z.sun[0]); sun.intensity=Z.sun[1]*.7;
+  const L=LOOK6[Z.title?'title':Z.id]||LOOK6[1]; const fc=deepFog(Z.fog);
+  scene.fog.color.copy(fc); scene.fog.near=Z.fogN; scene.fog.far=Z.fogF; scene.background=null; R.setClearColor(fc,1);
+  hemi.color.set(Z.hemi[0]); hemi.groundColor.set(Z.hemi[1]).multiplyScalar(.8); hemi.intensity=Z.hemi[2]*L.h; sun.color.set(Z.sun[0]); sun.intensity=Z.sun[1]*L.s;
+  LOOK.zoneExpo=L.e; SATG.value=L.sat; applyExposure();
   RIM.value.set(Z.rim||0xfff0c8);
   document.body.dataset.zone=Z.id; asZone(Z);
 }
@@ -247,7 +254,7 @@ const HOUSE_POS=[[-6,-22,.3],[-19,-13,.9],[19,-14,-.9],[0,21,PI],[17,17,-2.3],[-
 const TOWER_POS=[[-22,-20],[22,-20],[-23,20],[23,20]];
 const NPC_POS={elder:[3,-10.2],smith:[-10,-3.5],alch:[10,-4.2],beast:[11.2,5.3],stranger:[-11,5.5]};
 function makeVillage(){
-  unloadWorld(); const Z=Object.assign({},ZONES[0],{id:0,fog:0xe8d8b8,fogN:50,fogF:120,hemi:[0xfff0d0,0x8a7a4a,.9],sun:[0xffe0b0,1.0],ground:[0x8cbc58,0x7aac4a,0x9ac860],path:0xc8a46a,rim:0xffe8c0});
+  unloadWorld(); const Z=Object.assign({},ZONES[0],{id:0,fog:0xe8d8b8,fogN:50,fogF:120,hemi:[0xfff0d0,0x8a7a4a,.9],sun:[0xffe0b0,1.0],ground:[0x74a646,0x62943a,0x84b250],path:0xae8c56,rim:0xffe8c0});
   newW('village',Z); setZoneLook(Z);
   W.walk={nodes:[{x:0,z:0,r:24},{x:-6,z:-31,r:4.5}],segs:[{ax:0,az:0,bx:-6,bz:-31,w:7}]};
   W.start={x:0,z:6};

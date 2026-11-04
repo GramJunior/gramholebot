@@ -51,7 +51,7 @@ function newSave(){
     meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
     // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true}
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1}
   };
 }
 let S=newSave();
@@ -289,7 +289,15 @@ function genCssTextures(){
       for(let i=0;i<w*h;i++){ const v=r()<.5?0:255; d[i*4]=v;d[i*4+1]=v;d[i*4+2]=v;d[i*4+3]=r()*22; } g.putImageData(id,0,0);
       g.strokeStyle='rgba(0,0,0,.12)'; for(let i=0;i<40;i++){ g.beginPath(); const x=r()*w,y=r()*h; g.moveTo(x,y); g.lineTo(x+r()*30-15,y+r()*30-15); g.stroke(); }
     });
-    const st=document.documentElement.style;
+    // v6: тёмный резной камень/кожа для панелей — шум + трещины + блики (накладывается поверх градиента панели)
+    const sx=makeTex(256,256,(g,w,h)=>{
+      const id=g.createImageData(w,h); const d=id.data; const r=mulberry(19);
+      for(let i=0;i<w*h;i++){ const n=(r()+r()+r())/3; const v=n<.5?0:255; d[i*4]=v;d[i*4+1]=v*.85;d[i*4+2]=v*.6;d[i*4+3]=Math.abs(n-.5)*46; }
+      g.putImageData(id,0,0);
+      for(let i=0;i<26;i++){ g.strokeStyle=r()<.7?'rgba(0,0,0,.35)':'rgba(255,200,130,.06)'; g.lineWidth=.6+r()*.9; g.beginPath(); let x=r()*w,y=r()*h; g.moveTo(x,y); for(let k=0;k<5;k++){ x+=r()*30-15; y+=r()*30-15; g.lineTo(x,y); } g.stroke(); }
+      for(let i=0;i<14;i++){ const x=r()*w,y=r()*h,rr=18+r()*50; const gr=g.createRadialGradient(x,y,0,x,y,rr); gr.addColorStop(0,r()<.5?'rgba(0,0,0,.22)':'rgba(255,190,110,.05)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(x-rr,y-rr,rr*2,rr*2); }
+    });
+    const st=document.documentElement.style; st.setProperty('--stex','url('+sx.toDataURL()+')');
     st.setProperty('--ptex','url('+p.toDataURL()+')'); st.setProperty('--wtex','url('+wd.toDataURL()+')'); st.setProperty('--ltex','url('+lt.toDataURL()+')');
   }catch(e){}
 }
@@ -377,7 +385,7 @@ const ico=(n,cls='')=>`<svg class="ico ${cls}" viewBox="0 0 24 24">${IC[n]||IC.s
 const RES_IC={gold:'gold',wood:'wood',ore:'ore',ess:'ess',shards:'shard'};
 const RES_NAME={gold:'Золото',wood:'Древесина',ore:'Руда',ess:'Эссенция',shards:'Осколки Бездны'};
 const RES_COL={gold:'#e6b43a',wood:'#b07a44',ore:'#9aa7b0',ess:'#6fe0d6',shards:'#c47cff'};
-const resChip=(k,v,cls='')=>`<span class="rchip ${cls}" style="color:${RES_COL[k]}">${ico(RES_IC[k])}<span style="color:#f3dcb0">${fmt(v)}</span></span>`;
+const resChip=(k,v,cls='')=>`<span class="rchip ${cls}" data-k="${k}" style="color:${RES_COL[k]}">${ico(RES_IC[k])}<span style="color:#f3dcb0">${fmt(v)}</span></span>`;
 const costHtml=(c)=>'<span class="costs">'+Object.keys(c).filter(k=>c[k]>0).map(k=>`<span class="cost ${S.res[k]<c[k]?'no':''}"><span style="color:${RES_COL[k]}">${ico(RES_IC[k])}</span>${fmt(c[k])}</span>`).join('')+'</span>';
 const canPay=c=>Object.keys(c).every(k=>(S.res[k]||0)>=c[k]);
 function pay(c){ if(!canPay(c)) return false; for(const k in c) S.res[k]-=c[k]; return true; }

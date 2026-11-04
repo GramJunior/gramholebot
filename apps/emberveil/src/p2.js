@@ -30,18 +30,34 @@ try{
   R=new THREE.WebGLRenderer({canvas,antialias:Q.aa,powerPreference:'high-performance',alpha:false,stencil:false});
 }catch(e){ window.__loadErr('Ваше устройство не поддерживает WebGL.<br><small>Попробуйте другой браузер.</small>'); throw e; }
 R.setClearColor(0x1a0f08,1);
+// v6 «тёмное фэнтези»: плёночный тонмаппинг ACES прямо в шейдерах материалов (работает и на «Низк.» без постобработки).
+// Конвейер остаётся «в пространстве дисплея» (цвета вершин и атласов KayKit заданы как sRGB и выводятся как есть = корректный sRGB на экране);
+// ACES гасит пересвет в светах, а общая экспозиция = база зоны × ползунок «Яркость» (S.set.bright, 0.7…1.3).
+// Плёночный ACES Filmic с корректным sRGB: цвет кадра (sRGB) → линейный → ACES (RRT+ODT, как THREE.ACESFilmicToneMapping) → снова sRGB.
+// Так ACES работает как задумано (глубже тени, мягкие света, «сочные» средние тона), а не «серит» картинку, как при подаче ему sRGB-значений.
+(function(){ const C=THREE.ShaderChunk; const k='vec3 CustomToneMapping( vec3 color ) { return color; }';
+  if(C.tonemapping_pars_fragment.indexOf(k)>=0) C.tonemapping_pars_fragment=C.tonemapping_pars_fragment.replace(k,
+`vec3 CustomToneMapping( vec3 color ) {
+  vec3 c = pow( max( color, vec3( 0.0 ) ), vec3( 2.2 ) );
+  return pow( ACESFilmicToneMapping( c ), vec3( 1.0 / 2.2 ) );
+}`); })();
+R.toneMapping=THREE.CustomToneMapping; R.toneMappingExposure=1.0;
+const LOOK={expo:1.0,zoneExpo:1.0}; // экспозиция зоны (setZoneLook) и итоговая
+function applyExposure(){ const b=S&&S.set&&S.set.bright!=null?S.set.bright:1; LOOK.expo=LOOK.zoneExpo*clamp(b,.6,1.4); R.toneMappingExposure=LOOK.expo; }
+// общая насыщенность средних тонов для toon-материалов (игровых и KayKit): один uniform на всех
+const SATG={value:1.16};
 let PR=Math.min(window.devicePixelRatio||1,Q.prMax);
 R.setPixelRatio(PR);
 const scene=new THREE.Scene();
 const cam=new THREE.PerspectiveCamera(36,1,0.5,220);
 scene.fog=new THREE.Fog(0x9fc2a0,40,95);
-const hemi=new THREE.HemisphereLight(0xfff2d0,0x5a6a3a,0.75); scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xfff0d0,0.95); sun.position.set(-12,24,10); scene.add(sun); scene.add(sun.target);
+const hemi=new THREE.HemisphereLight(0xfff2d0,0x4a5a2a,0.5); scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0d0,1.1); sun.position.set(-12,24,10); scene.add(sun); scene.add(sun.target);
 const emberLight=new THREE.PointLight(0xff9a4a,0,16,1.6); emberLight.position.set(0,3,0); scene.add(emberLight);
 const C3=(h)=>new THREE.Color(h);
 
 // ---------- toon material ----------
-const GRAD=(()=>{const d=new Uint8Array([105,105,105,180,180,180,255,255,255]); const t=new THREE.DataTexture(d,3,1,THREE.RGBFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t;})();
+const GRAD=(()=>{const d=new Uint8Array([78,78,78,168,168,168,255,255,255]); const t=new THREE.DataTexture(d,3,1,THREE.RGBFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.generateMipmaps=false; t.needsUpdate=true; return t;})();
 const RIM={value:new THREE.Color(0xfff0c8)};
 const TOON_OUT_RE=/#include <output_fragment>|gl_FragColor = vec4\( outgoingLight, diffuseColor\.a \);/;
 function toonMat(tint,tintA,flash){
@@ -49,14 +65,15 @@ function toonMat(tint,tintA,flash){
   const U={uFlash:{value:flash||0},uTint:{value:new THREE.Vector4(...(tint?[C3(tint).r,C3(tint).g,C3(tint).b]:[0,0,0]),tintA||0)}};
   m.userData.U=U;
   m.onBeforeCompile=(sh)=>{
-    sh.uniforms.uFlash=U.uFlash; sh.uniforms.uTint=U.uTint; sh.uniforms.uRim=RIM;
+    sh.uniforms.uFlash=U.uFlash; sh.uniforms.uTint=U.uTint; sh.uniforms.uRim=RIM; sh.uniforms.uSatG=SATG;
     sh.vertexShader='attribute float aE;\nvarying float vE;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vE=aE;');
     // r128: meshtoon_frag заканчивается строкой gl_FragColor = vec4( outgoingLight, diffuseColor.a ); (чанка <output_fragment> ещё нет)
-    sh.fragmentShader='uniform float uFlash;\nuniform vec4 uTint;\nuniform vec3 uRim;\nvarying float vE;\n'+sh.fragmentShader.replace(TOON_OUT_RE,m0=>
+    sh.fragmentShader='uniform float uFlash;\nuniform vec4 uTint;\nuniform vec3 uRim;\nuniform float uSatG;\nvarying float vE;\n'+sh.fragmentShader.replace(TOON_OUT_RE,m0=>
 `  float rimF=1.0-clamp(dot(normalize(normal),normalize(vViewPosition)),0.0,1.0);
   outgoingLight+=uRim*smoothstep(0.6,0.7,rimF)*(1.0-vE)*0.32*diffuseColor.rgb;
   outgoingLight=mix(outgoingLight,diffuseColor.rgb,vE);
   outgoingLight=mix(outgoingLight,uTint.rgb*(0.4+0.8*dot(outgoingLight,vec3(0.33))),uTint.a);
+  outgoingLight=max(mix(vec3(dot(outgoingLight,vec3(0.2126,0.7152,0.0722))),outgoingLight,uSatG),0.0);
   outgoingLight=mix(outgoingLight,vec3(1.0,0.93,0.8),uFlash);
 `+m0);
   };
@@ -353,7 +370,7 @@ const RTT=(()=>{
       c.position.set(...camPos); c.lookAt(...look); c.updateProjectionMatrix();
       const prevRT=R.getRenderTarget(); const prevCol=R.getClearColor(new THREE.Color()); const prevA=R.getClearAlpha();
       const prevFog=sc.fog;
-      R.setRenderTarget(rt); R.setClearColor(bg===undefined?0x000000:bg, bg===undefined?0:1); R.clear(); R.render(sc,c);
+      const pexp=R.toneMappingExposure; R.toneMappingExposure=1.15; R.setRenderTarget(rt); R.setClearColor(bg===undefined?0x000000:bg, bg===undefined?0:1); R.clear(); R.render(sc,c); R.toneMappingExposure=pexp;
       const px=new Uint8Array(sz*sz*4); R.readRenderTargetPixels(rt,0,0,sz,sz,px);
       R.setRenderTarget(prevRT); R.setClearColor(prevCol,prevA);
       sc.remove(obj);

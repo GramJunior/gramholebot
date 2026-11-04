@@ -1,11 +1,12 @@
 // ================= p8: UI =================
-const frame=(inner,cls='')=>`<div class="woodframe ${cls}"><i class="stud tl"></i><i class="stud tr"></i><i class="stud bl"></i><i class="stud br"></i><div class="inner parch">${inner}</div></div>`;
+// v6: по умолчанию — тёмная панель «камень + золото» (класс dk); пергамент — только для диалогов, заданий и лора (surf='parch')
+const frame=(inner,cls='',surf='dk')=>`<div class="woodframe ${cls} ${surf==='dk'?'gf':''}"><i class="stud tl"></i><i class="stud tr"></i><i class="stud bl"></i><i class="stud br"></i><div class="inner ${surf}">${inner}</div></div>`;
 function show(id,on=true){ const el=$(id); if(el) el.classList.toggle('hidden',!on); }
 // ---------- toasts / banner ----------
 // toast(): see p17 notification queue (max 2 visible, de-duplicated; loot goes to the side feed)
 function toastEl(html,icon,rar,kind){
-  const t=document.createElement('div'); t.className='toast parch bg-r'+(rar||0);
-  t.innerHTML=(icon?`<span class="ti" style="background-image:url(${icon})"></span>`:kind==='quest'?`<span style="color:#7c2418;font-size:20px">${ico('scroll')}</span>`:'')+`<span>${html}</span>`;
+  const t=document.createElement('div'); t.className='toast dkt bg-r'+(rar||0);
+  t.innerHTML=(icon?`<span class="ti" style="background-image:url(${icon})"></span>`:kind==='quest'?`<span style="color:#ffb35a;font-size:20px">${ico('scroll')}</span>`:'')+`<span>${html}</span>`;
   $('toasts').appendChild(t); return t;
 }
 let _banT=0;
@@ -170,7 +171,7 @@ function playDialog(key,cb,custom){
   if(key){ S.seen[key]=1; saveGame(); }
   DLGS.q=lines.slice(); DLGS.i=0; DLGS.cb=cb; G.dialog=true; DLGS.choice=null;
   show('dlg'); show('dlgBack');
-  $('dlg').innerHTML=`<button class="btn woodb small" id="dlgSkip">Пропустить</button><div id="dlgBox">${frame('<div id="dlgText"></div><div id="dlgNext">коснитесь ▸</div>')}<div id="dlgPort"><img id="dlgImg" alt=""></div><div id="dlgName"></div></div>`;
+  $('dlg').innerHTML=`<button class="btn woodb small" id="dlgSkip">Пропустить</button><div id="dlgBox">${frame('<div id="dlgText"></div><div id="dlgNext">коснитесь ▸</div>','','parch')}<div id="dlgPort"><img id="dlgImg" alt=""></div><div id="dlgName"></div></div>`;
   $('dlgSkip').onclick=ev=>{ ev.stopPropagation(); if(DLGS.choice) return; const ci=DLGS.q.findIndex((l,i)=>i>DLGS.i&&l[0]==='choice'); if(ci>=0){ clearInterval(DLGS.timer); DLGS.typing=false; DLGS.i=ci; dlgShow(); } else dlgEnd(); };
   $('dlg').onclick=()=>dlgNext(); $('dlgBack').onclick=()=>dlgNext();
   dlgShow();
@@ -341,6 +342,7 @@ function pSettings(pause){
   const seg=(k,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${S.set[k]===v?'on':''}" ${act(()=>{ S.set[k]=v; applySettings(k); saveGame(); rerender(); })}>${l}</button>`).join('')}</div>`;
   h+=`<div class="set"><label>Звуки</label><input type="range" min="0" max="1" step="0.05" value="${S.set.sfx}" id="sSfx"></div>
   <div class="set"><label>Музыка</label><input type="range" min="0" max="1" step="0.05" value="${S.set.mus}" id="sMus"></div>
+  <div class="set"><label>Яркость <small id="sBriV">${Math.round((S.set.bright==null?1:S.set.bright)*100)}%</small></label><input type="range" min="0.7" max="1.3" step="0.05" value="${S.set.bright==null?1:S.set.bright}" id="sBri"></div>
   <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
   <div class="muted" style="margin:-2px 0 6px">«Авто» не выбирает «Выс.» само — высокое качество (сглаживание, мягкое свечение, глубина резкости в диалогах) включается только здесь.</div>
   <div class="set"><label>Постэффекты</label>${seg('post',[['auto','Авто'],['off','Выкл']])}</div>
@@ -361,7 +363,7 @@ function pSettings(pause){
   <div class="muted" style="margin-top:6px">ПК: WASD — бег, J/Пробел — атака, 1-3 — умения, R — Вспышка, Shift — кувырок, Q — зелье, F — бомба, E — взаимодействие, I — герой, M — карта, Esc — пауза.</div>
   ${!Store.ok?'<div class="card" style="margin-top:8px">Хранилище браузера недоступно — прогресс не сохранится после закрытия.</div>':''}
   ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ Store.del(SKEY); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
-  setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
+  setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const br=$('sBri'); if(br) br.oninput=()=>{ S.set.bright=+br.value; applyExposure(); const v=$('sBriV'); if(v) v.textContent=Math.round(S.set.bright*100)+'%'; saveGame(); }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
 function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }

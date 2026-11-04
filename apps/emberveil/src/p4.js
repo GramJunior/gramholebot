@@ -171,7 +171,7 @@ const BOSSES={
 // ---------- zones & stages ----------
 const ZONES=[
   {id:1,n:'Солнечные Луга',sub:'Окраины Брода',lv:1,mus:'z1',fog:0xcfe3c2,fogN:42,fogF:110,sky:0xb8d8e8,hemi:[0xfff4d8,0x7a9a4a,.85],sun:[0xfff0c8,1.0],
-    ground:[0x8cc05a,0x7ab04a,0xa0cc66],path:0xcca868,edge:0x5a8a32,cliff:0x6a8a3a,liquid:[0x4aa0c8,0x7ad0e8,0],
+    ground:[0x78ae4a,0x66a03e,0x8aba56],path:0xb4925a,edge:0x5a8a32,cliff:0x6a8a3a,liquid:[0x4aa0c8,0x7ad0e8,0],
     wall:['treeRound','treeBirch','treeRound','bush','rock'],deco:['flowers','grass','bush','hay','fence','rock'],amb:'pollen',enemies:['goblin','goblinArcher','boar','mushroom'],boss:'gobKing',rim:0xfff0c8},
   {id:2,n:'Шепчущая Чаща',sub:'Старый лес',lv:6,mus:'z2',fog:0x6a8a5a,fogN:34,fogF:90,sky:0x4a6a4a,hemi:[0xffe0a0,0x2a4a2a,.75],sun:[0xffd890,.95],
     ground:[0x4a7a32,0x3e6a2a,0x5a8a3a],path:0x8a6a42,edge:0x2e4a22,cliff:0x3a5a2a,liquid:[0x2a6a7a,0x4a9aa0,0],

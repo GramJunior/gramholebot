@@ -217,21 +217,24 @@ function abyssCard(){
 }
 
 // ---------- results ----------
+function resTile(l){ const m=/^\s*(<svg[\s\S]*?<\/svg>)?\s*([^<]*?)\s*:?\s*<b>([\s\S]*?)<\/b>([\s\S]*)$/.exec(l); if(!m) return `<div class="resTile"><span>${l}</span></div>`;
+  const v=m[3].trim(); const num=/^\d{1,6}$/.test(v); return `<div class="resTile">${m[1]||ico('star')}<span><i class="rl">${m[2]}</i><b ${num?`data-cu="${v}"`:''}>${num?'0':v}</b>${m[4]?`<small>${m[4]}</small>`:''}</span></div>`; }
 function showResults(o){
   const el=$('res'); show('res');
-  const items=(o.items||[]).slice(0,12);
-  el.innerHTML=frame(`<h2>${o.title}</h2>${o.sub?`<div class="muted">${o.sub}</div>`:''}
+  const items=(o.items||[]).slice(0,12); const lose=o.stars!==undefined?o.stars<1:/Отступ|поглотила|огне|отбит|Поражени/i.test(o.title);
+  el.innerHTML=frame(`<div class="resBan ${lose?'lose':''}">${o.title}</div><h2 class="resT">${o.title}</h2>${o.sub?`<div class="resSub">${o.sub}</div>`:''}
     ${o.stars!==undefined?`<div class="stars">${[1,2,3].map(i=>`<span class="star ${o.stars>=i?'on':''}">★</span>`).join('')}</div>`:''}
-    ${o.starTxt?`<div class="muted" style="font-size:12px">${o.starTxt}</div>`:''}
-    <div class="card" style="margin-top:8px;font-size:14px;text-align:left;columns:2">${o.lines.map(l=>`<div>${l}</div>`).join('')}</div>
-    ${items.length?`<div class="lootrow">${items.map(it=>slotHtml(ITEM_BASES[it.base].slot,it)).join('')}</div>`:''}
+    ${o.starTxt?`<div class="muted" style="font-size:13px">${o.starTxt}</div>`:''}
+    <div class="resTiles" style="--n:${Math.min(8,o.lines.length)}">${o.lines.map((l,i)=>resTile(l).replace('class="resTile"',`class="resTile" style="animation-delay:${.25+i*.07}s"`)).join('')}</div>
+    ${items.length?`<div class="lootrow">${items.map((it,i)=>slotHtml(ITEM_BASES[it.base].slot,it).replace(/^<div class="it /,`<div style="animation-delay:${.9+i*.12}s" class="it `)).join('')}</div>`:''}
     ${o.extra||''}<div class="row" style="justify-content:center;flex-wrap:wrap;margin-top:6px">${o.btns.map(b=>`<button class="btn ${b[2]||'leather'}" ${act(b[1])}>${b[0]}</button>`).join('')}</div>`);
   bindPanel();
-  [...el.querySelectorAll('.star')].forEach((s,i)=>setTimeout(()=>{ s.classList.add('show'); if(s.classList.contains('on')) AU.sfx('gold',1,1+i*.2); },300+i*280));
+  [...el.querySelectorAll('.star')].forEach((s,i)=>setTimeout(()=>{ s.classList.add('show'); if(s.classList.contains('on')){ AU.sfx('gold',1,1+i*.2); vib('light'); } },350+i*320));
+  setTimeout(()=>{ for(const b of el.querySelectorAll('b[data-cu]')){ const v=+b.dataset.cu, t0=performance.now(); const st=now=>{ const k=Math.min(1,(now-t0)/800); b.textContent=Math.round(v*(1-Math.pow(1-k,3))); if(k<1&&b.isConnected) requestAnimationFrame(st); }; requestAnimationFrame(st); } },300);
 }
 function showBoons(cb){
   const pool=BOONS.slice(); const pick3=[]; while(pick3.length<3) pick3.push(pool.splice(randi(0,pool.length-1),1)[0]);
   const el=$('boons'); show('boons');
-  el.innerHTML=`<h2>Дар Бездны</h2><div class="muted" style="color:#d8b77a">Выберите один</div><div class="boonRow">`+pick3.map(b=>`<button class="boon parch" ${act(()=>{ show('boons',false); cb(b); })}><span class="bi">${ico(b.ic)}</span><span><h4>${b.n}</h4><p>${b.d}</p></span></button>`).join('')+'</div>';
+  el.innerHTML=`<h2>Дар Бездны</h2><div class="muted" style="color:#d8b77a">Выберите один</div><div class="boonRow">`+pick3.map(b=>`<button class="boon dkc" ${act(()=>{ show('boons',false); cb(b); })}><span class="bi">${ico(b.ic)}</span><span><h4>${b.n}</h4><p>${b.d}</p></span></button>`).join('')+'</div>';
   bindPanel();
 }
