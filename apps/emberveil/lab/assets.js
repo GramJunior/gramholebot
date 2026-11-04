@@ -125,22 +125,89 @@
   // r128 meshtoon_frag ends with 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );' (no <output_fragment> chunk yet)
   const OUT_RE = /#include <output_fragment>|gl_FragColor = vec4\( outgoingLight, diffuseColor\.a \);/;
   // Toon material compatible with the game's toonMat(): userData.U = {uFlash, uTint}; rim uniform shared (S.rim).
+  // v14 «живые персонажи»: скин-модели получают ту же кисть, что и мир (мазки на ткани и волосах, зерно кожи/кожаных деталей,
+  // пятна и царапины металла, мягкие складки), мягкие нормали, AO у ног, тёплый контровой свет, глаза с бликами, моргание и
+  // простые выражения, качание плащей. Всё внутри того же материала: ни одного нового вызова отрисовки.
+  const CHAR_VS_PARS = 'attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform float uSoft; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
+  const CHAR_VS = `
+  {
+    vec4 evB = bindMatrix * vec4( transformed, 1.0 );
+    float sw = aFx.x;
+    if ( sw > 0.0 ) { // плащи: отстают при беге, подлетают, колышутся (физика «на глаз», в позе привязки — дальше обычный скиннинг)
+      float fl = sin( uTime * 5.3 + evB.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + evB.x * 6.0 + uSway.w * 1.7 ) * 0.4;
+      float s2 = sw * sw;
+      evB.xyz += vec3( uSway.y * 0.22 * s2 + fl * 0.025 * sw, ( 0.03 + 0.42 * uSway.x ) * s2, -( 0.05 + 0.5 * uSway.x ) * s2 + fl * ( 0.03 + 0.06 * uSway.x ) * sw );
+      transformed = ( bindMatrixInverse * evB ).xyz;
+    }
+    vBind = evB.xyz; vBN = normalize( mat3( bindMatrix ) * normal ); vFx = aFx;
+  }`;
+  const CHAR_FS_PARS = 'uniform sampler2D tBrush; uniform vec2 uBlink; uniform vec3 uSkin; uniform vec2 uCH; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
+  const CHAR_FS = `
+  float evMetal = 0.0, evHL = 0.0, evEye = 0.0;
+  {
+    vec3 c = diffuseColor.rgb; float mxC = max( c.r, max( c.g, c.b ) ), mnC = min( c.r, min( c.g, c.b ) ), satC = mxC - mnC, lumC = dot( c, vec3( 0.299, 0.587, 0.114 ) );
+    vec3 nB = normalize( vBN ); vec3 p = vBind;
+    vec2 tg = normalize( vec2( -nB.z, nB.x ) + vec2( 1e-4 ) );
+    vec2 uvB = mix( vec2( dot( p.xz, tg ), p.y ), p.xz, smoothstep( 0.5, 0.8, abs( nB.y ) ) );
+    vec4 bP = texture2D( tBrush, uvB * 1.9 + vec2( 0.37, 0.11 ) );
+    float rb = c.r - c.b;
+    float skin = step( c.b, c.g ) * step( c.g, c.r + 0.02 ) * smoothstep( 0.5, 0.6, lumC ) * smoothstep( 0.06, 0.12, rb ) * ( 1.0 - smoothstep( 0.4, 0.52, rb ) );
+    evMetal = ( 1.0 - smoothstep( 0.07, 0.17, satC ) ) * smoothstep( 0.22, 0.36, lumC ) * ( 1.0 - skin );
+    float leather = smoothstep( 0.08, 0.22, rb ) * ( 1.0 - smoothstep( 0.3, 0.46, lumC ) ) * ( 1.0 - skin );
+    float cloth = clamp( 1.0 - skin - evMetal - leather, 0.0, 1.0 );
+    float cape = vFx.x > 0.0 ? 1.0 : 0.0;
+    float m = 1.0;
+    m *= mix( 1.0, 0.8 + 0.4 * bP.r, cloth * 0.85 );                          // ткань, волосы: мазки кисти
+    m *= mix( 1.0, 0.78 + 0.44 * bP.g, leather );                             // кожа ремней, сапог: волокна
+    m *= mix( 1.0, 0.93 + 0.14 * bP.b, skin );                                // лицо и руки: мягкие пятна
+    m *= mix( 1.0, 0.84 + 0.3 * bP.b + ( bP.a - 0.5 ) * 0.22, evMetal );       // металл: пятна и царапины
+    float fold = sin( dot( p.xz, tg ) * 15.0 + bP.b * 4.0 + p.y * 2.0 );
+    m *= 1.0 - ( 0.09 * fold + 0.03 ) * ( cloth * 0.55 + cape * 0.9 ) * ( 1.0 - skin );   // мягкие складки ткани / плаща
+    float hN = ( p.y - uCH.x ) / uCH.y;
+    m *= mix( 0.66, 1.0, smoothstep( 0.0, 0.2, hN ) ) * mix( 1.0, 1.07, smoothstep( 0.55, 1.0, hN ) );   // AO у ног, свет сверху
+    m *= mix( 0.84, 1.0, smoothstep( -0.75, -0.15, nB.y ) );                 // нижние грани темнее
+    c *= m;
+    c = mix( c, c * vec3( 1.06, 0.98, 0.9 ), skin * 0.5 );                    // тёплая кожа
+    if ( vFx.w < 0.5 ) { // глаза: блик, тёплая радужка снизу, веки (моргание, прищур, «радость»)
+      vec2 e = vFx.yz; evEye = 1.0;
+      vec3 ec = mix( vec3( 0.03, 0.025, 0.04 ), vec3( 0.2, 0.12, 0.08 ), smoothstep( 0.6, 0.05, e.y ) );
+      float h1 = smoothstep( 0.24, 0.13, length( ( e - vec2( 0.64, 0.7 ) ) * vec2( 1.0, 1.15 ) ) );
+      float h2 = smoothstep( 0.11, 0.05, length( ( e - vec2( 0.33, 0.28 ) ) * vec2( 1.0, 1.15 ) ) );
+      evHL = max( h1, h2 * 0.8 );
+      float top = 1.0 - uBlink.x * 1.1, bot = uBlink.y * 1.1;
+      float lid = clamp( step( top, e.y ) + step( e.y, bot ), 0.0, 1.0 );
+      evHL *= 1.0 - lid;
+      ec = mix( ec, uSkin * 0.9, lid );
+      float ln = smoothstep( 0.1, 0.0, abs( e.y - top ) ) * step( 0.03, uBlink.x ) + smoothstep( 0.1, 0.0, abs( e.y - bot ) ) * step( 0.03, uBlink.y );
+      ec = mix( ec, vec3( 0.1, 0.06, 0.05 ), clamp( ln, 0.0, 1.0 ) );
+      c = ec;
+    }
+    diffuseColor.rgb = c;
+  }`;
+  const CHAR_OUT = `
+  outgoingLight += vec3( 1.0, 0.95, 0.86 ) * evMetal * smoothstep( 0.3, 0.62, rimF ) * 0.16;   // металл: светлая кромка
+  outgoingLight += uRim * smoothstep( 0.62, 0.8, rimF ) * 0.22 * diffuseColor.rgb * ( 1.0 - evEye );  // тёплый контровой свет персонажа
+  outgoingLight = mix( outgoingLight, vec3( 1.0, 0.98, 0.95 ), evHL * 0.9 );`;
+  // Toon material compatible with the game's toonMat(): userData.U = {uFlash, uTint}; rim uniform shared (S.rim).
   function toonMat(map, o = {}) {
     const m = new T.MeshToonMaterial({ map: map || null, gradientMap: S.grad, color: 0xffffff,
       transparent: !!o.transparent, opacity: o.opacity === undefined ? 1 : o.opacity, depthWrite: o.depthWrite !== false, side: T.FrontSide });
     m.skinning = !!o.skinning;
+    const ch = !!(o.skinning && S.charFX && o.char !== false);
     const U = { uFlash: { value: 0 }, uTint: { value: new T.Vector4(0, 0, 0, 0) }, uGlow: { value: new T.Vector4(0, 0, 0, 0) }, uMode: { value: o.mode || 0 }, uTime: EVAssets.time };
+    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush });
     if (o.tint) { const c = C3(o.tint[0]); U.uTint.value.set(c.r, c.g, c.b, o.tint[1]); }
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
-    m.userData.U = U;
+    m.userData.U = U; m.userData.char = ch;
     m.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
-      sh.vertexShader = 'varying vec3 vObjPos;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
-      sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' +
-        sh.fragmentShader.replace(OUT_RE, (m0) => `
+      Object.assign(sh.uniforms, m.userData.U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
+      sh.vertexShader = 'varying vec3 vObjPos;\n' + (ch ? 'uniform float uTime;\n' + CHAR_VS_PARS : '') + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (ch ? CHAR_VS : '') + '\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
+      if (ch) sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = normalize( mix( vec3( normal ), onormal, uSoft ) );');
+      sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' + (ch ? CHAR_FS_PARS : '') +
+        sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + (ch ? CHAR_FS : '')).replace(OUT_RE, (m0) => `
   float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
   float rim = smoothstep(0.55, 0.72, rimF);
-  outgoingLight += uRim * rim * 0.32 * diffuseColor.rgb;
+  outgoingLight += uRim * rim * ${ch ? '0.2' : '0.32'} * diffuseColor.rgb;${ch ? CHAR_OUT : ''}
   float lum = dot(outgoingLight, vec3(0.33));
   outgoingLight = mix(outgoingLight, uTint.rgb * (0.4 + 0.8 * lum), uTint.a);
   if (uMode > 0.5 && uMode < 1.5) { // lava / ember skin: dark basalt + glowing cracks driven by atlas brightness
@@ -161,7 +228,7 @@
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
-    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '');
+    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '') + (ch ? 'c' : '');
     if (o.paint && S.paint) { const base = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { base(sh, r); S.paint(sh); }; m.userData.paint = 1; }
     return m;
   }
