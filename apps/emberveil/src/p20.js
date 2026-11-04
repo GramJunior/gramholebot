@@ -94,7 +94,9 @@ function prologueEnd(err){ if(!PRO.on) return; PRO.on=false; G.prologue=false; c
 function startGameAfterPrologue(){ const fresh=!S.started; if(fresh){ S.started=true; S.gear.weapon=genItem(1,{base:'sword1',rar:0}); S.gear.weapon.aff=[]; S.gear.weapon.name='Дедов меч'; S.gear.offhand=genItem(1,{base:'shield1',rar:0}); S.gear.chest=genItem(1,{base:'chest_cloth',rar:0});
     for(const b of ['bow1','staff1','axe1']) addItem(genItem(1,{base:b,rar:0}),true);
     S.hero.talents.sword.s1=1; S.hero.talents.axe.s1=1; S.hero.talents.bow.s1=1; S.hero.talents.staff.s1=1; for(const it of S.inv) it.nw=false;
-    ensureDaily(); S.q.flags['b_'+STORY[0].id]=0; saveGame(true); }
+    ensureDaily(); S.q.flags['b_'+STORY[0].id]=0; saveGame(true);
+    // v15: новый игрок — сначала «Учебный плац» (src/p30.js), потом пробуждение в Броде
+    if(typeof yardWanted==='function'&&yardWanted()){ $('fade').classList.remove('on'); yardStart(false,()=>startGameAfterPrologue()); return; } }
   refreshPlayer(true); enterVillage(cb=>{ $('fade').classList.remove('on'); if(!S.seen.wake){ S.seen.wake=1; trackOnce('ftue','wake'); playDialog('wake',()=>{ ftueStep('wake'); cb(); }); } else cb(); }); }
 // title: «Начать путь» goes straight into the prologue
 const _startGame=startGame; startGame=function(fresh){ if(fresh&&!S.seen.prologue&&!/[?&]noprologue/.test(location.search)&&!window.__noPrologue){ prologueStart(false); return; } if(fresh){ S.seen.prologue=S.seen.prologue||1; S.seen.wake=S.seen.wake||0; }
@@ -144,15 +146,28 @@ const _runEnd=runEnd; runEnd=function(win,reason,keep){ if(W&&W.kind==='prologue
 const _sysLabels=sysLabels; sysLabels=function(dt){ _sysLabels(dt); if(!FTUE_active()||G.mode!=='village'||!W||PANEL.kind||G.dialog) return; const f=ftueNext(); if(!f) return; let p=null, lab='';
   if(f.id==='build'&&!S.bld.forge){ p=VPOS.forge; lab='Кузница'; } else if(f.id==='pet'&&!S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Питомник'; } else if(f.id==='pet'&&S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Яйцо — к Ойке'; } else if(f.id==='stage11'||f.id==='companion'||f.id==='boss'||f.id==='kill'||f.id==='equip'&&!S.inv.some(i=>compareTo(i)>0)||f.id==='rare'){ p=[-6,-30]; lab='В поход'; } else if(f.id==='equip'){ return; } else if(f.id==='raid'&&raidUnlocked()){ return; }
   if(p) wlAdd(p[0],3.6+Math.sin(G.time*4)*.25,p[1],`<span class="ftMark">▼ ${lab}</span>`,'ft'); };
-const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='prologue'){ el.innerHTML=`<h4>${ico('flame')} Падение Златоверха</h4><div class="q">Держите площадь Златоверха вместе со стражей</div>`; el.style.display=''; return; } if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display=''; };
+const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='prologue'){ el.innerHTML=`<h4>${ico('flame')} Падение Златоверха</h4><div class="q">Держите площадь Златоверха вместе со стражей</div>`; el.style.display=''; return; } if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display='';
+  // v15: на телефоне (альбом, высота ≤ 430) — тонкая плашка прогресса вместо большой панели (касание — задания)
+  el.classList.toggle('slim',!!(LAYOUT.land&&LAYOUT.h<=480)); };
 
 // ---------- quick equip: a better item was picked up → one tap to wear it (non-blocking) ----------
 const QEQ={it:null,t:0};
 function qeqOffer(it){ if(!it||!S.inv.includes(it)||compareTo(it)<=0) return; if(!canEquip(it,ITEM_BASES[it.base].slot==='ring'?'ring1':ITEM_BASES[it.base].slot)) return; const B=ITEM_BASES[it.base]; if(B.cls&&B.cls!==PS.cls&&B.slot==='weapon'&&S.gear.weapon) return;
   QEQ.it=it; let el=$('qeq'); if(!el){ el=document.createElement('div'); el.id='qeq'; document.body.appendChild(el); }
-  el.className='dk on bg-r'+it.rar; el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
-  $('qeqB').onclick=ev=>{ ev.stopPropagation(); if(QEQ.it&&S.inv.includes(QEQ.it)){ equip(QEQ.it); hudPortrait(); toast(`Надето: <b class="r${QEQ.it.rar}">${esc(QEQ.it.name)}</b>`); track('quick_equip',''+QEQ.it.rar); } el.classList.remove('on'); };
-  clearTimeout(QEQ.t); QEQ.t=setTimeout(()=>el.classList.remove('on'),7000); }
+  el.className='dk bg-r'+it.rar; qeqPlace(el); void el.offsetWidth; el.classList.add('on'); el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
+  $('qeqB').onclick=ev=>{ ev.stopPropagation(); if(QEQ.it&&S.inv.includes(QEQ.it)){ equip(QEQ.it); hudPortrait(); toast(`Надето: <b class="r${QEQ.it.rar}">${esc(QEQ.it.name)}</b>`); track('quick_equip',''+QEQ.it.rar); } el.classList.remove('on'); document.documentElement.classList.remove('qeqTop'); };
+  clearTimeout(QEQ.t); QEQ.t=setTimeout(()=>{ el.classList.remove('on'); document.documentElement.classList.remove('qeqTop'); },7000); }
+// v15: карточка «Надеть» — снизу по центру, но не поверх кнопок действий (зелье/бомба) и с учётом выреза/полоски «домой»;
+// в скрытом состоянии уезжает целиком за край (раньше translateY(120%) оставлял полоску карточки видимой над нижним отступом).
+function qeqPlace(el){ try{ const sf=LAYOUT.safe||{l:0,r:0,b:0}, W0=window.innerWidth; let right=W0-sf.r-8;
+    const acts=$('acts'); if(acts&&!acts.classList.contains('left')){ for(const b of acts.querySelectorAll('.ab')){ if(b.offsetParent===null||b.style.display==='none') continue; const r=b.getBoundingClientRect(); if(r.width&&r.bottom>(LAYOUT.h||innerHeight)-90) right=Math.min(right,r.left-8); } }
+    // левые ~30 % экрана — зона большого пальца (плавающий джойстик): карточку туда не ставим
+    const left0=Math.max(sf.l+8,(acts&&acts.classList.contains('left'))?sf.l+8:W0*.3), avail=right-left0;
+    el.classList.remove('top','cmp'); document.documentElement.classList.remove('qeqTop');
+    if(avail>=220){ const w=Math.min(360,avail); if(w<300) el.classList.add('cmp'); let x=W0/2-w/2; if(x+w>right) x=right-w; x=Math.max(left0,x); el.style.width=w+'px'; el.style.left=x+'px'; }
+    else { // мало места снизу (маленькие телефоны): сверху по центру под полосами здоровья, подсказки сдвигаются ниже
+      const w=Math.min(340,W0-sf.l-sf.r-24); el.classList.add('top'); if(w<300) el.classList.add('cmp'); el.style.width=w+'px'; el.style.left=(sf.l+(W0-sf.l-sf.r-w)/2)+'px'; document.documentElement.classList.add('qeqTop'); }
+  }catch(e){} }
 // ---------- revive once per stage for a rewarded ad ----------
 function reviveOffer(){ if(G.bot||!ADS.ready()||!G.run||G.mode!=='stage'||!W||W.kind!=='stage'||G.run.revived||!ADS.left('revive')||!S.started) return false; G.run.revived=true; const P=G.P; P.dead=true; P.state='dead'; P.st=0; G.paused=true; track('ad_offer_shown','revive');
   openPanel('offline',{html:`<div class="card"><p class="dcap">Искра гаснет… но ещё тлеет. Уголёк может раздуть её снова — один раз за вылазку.</p></div><div class="row" style="gap:8px">${adBtn('revive','Встать (ролик)',()=>{ closePanel(); P.dead=false; P.state='idle'; P.hp=P.maxHp*.6; P.iframe=2; fx('lvl',P.x,0,P.z); AU.sfx('heal'); spirit('death',true); G.paused=false; },'leather')}<button class="btn woodb" ${act(()=>{ closePanel(); G.paused=false; S.st.deaths++; later(.4,()=>runEnd(false)); })}>Отступить</button></div>`});

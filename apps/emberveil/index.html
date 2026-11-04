@@ -23,9 +23,11 @@
   --disp:'Ruslan Display','Yeseva One',Georgia,'Times New Roman',serif;
   --sc:'Alegreya SC','Alegreya',Georgia,'Times New Roman',serif;
   --body:'Kurale','Philosopher',Georgia,'Times New Roman',serif;
-  --sb:max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px));
-  --st:max(env(safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)));
-  --sl:max(env(safe-area-inset-left,0px),var(--tg-safe-area-inset-left,0px)); --sr:max(env(safe-area-inset-right,0px),var(--tg-safe-area-inset-right,0px));
+  /* v15: безопасные отступы = максимум из env() (вырез, «чёлка», полоска «домой»), CSS-переменных Telegram и значений из Telegram.WebApp (--js*, ставит layout());
+     --vgap — нижняя часть WebView, которая не видна (Telegram не в полноэкранном режиме / visualViewport) */
+  --sb:calc(max(env(safe-area-inset-bottom,0px),calc(var(--tg-safe-area-inset-bottom,0px) + var(--tg-content-safe-area-inset-bottom,0px)),var(--jsb,0px)) + var(--vgap,0px));
+  --st:max(env(safe-area-inset-top,0px),calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px)),var(--jst,0px));
+  --sl:max(env(safe-area-inset-left,0px),var(--tg-safe-area-inset-left,0px),var(--jsl,0px)); --sr:max(env(safe-area-inset-right,0px),var(--tg-safe-area-inset-right,0px),var(--jsr,0px));
   --k:1; --ak:1; --slot:64px;
   --ptex:none; --wtex:none; --ltex:none;
 }
@@ -579,13 +581,28 @@ html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 74px*var(--k,1));lef
 .chopt{flex:1 1 30%;min-width:150px;min-height:48px;text-align:left;padding:8px 10px;border-radius:8px;cursor:pointer;color:#f3dcb0;background:linear-gradient(180deg,#6a2a16,#3e160a);box-shadow:inset 0 1px 0 #ffb08055,0 3px 0 #1a0804,0 0 0 1.5px var(--brass);font-family:var(--body);transition:transform .08s,filter .15s}
 .chopt:hover{filter:brightness(1.15)} .chopt:active{transform:translateY(2px)}
 .chopt b{display:block;font-family:var(--sc);font-size:calc(15px*var(--k,1));color:#ffe2a8} .chopt small{display:block;font-size:12px;opacity:.85;margin-top:2px}
-#qeq{position:fixed;left:50%;bottom:calc(max(var(--sb),4px) + 12px);transform:translateX(-50%) translateY(120%);z-index:31;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border-radius:10px;width:min(360px,60vw);transition:transform .3s;box-shadow:0 0 0 2px var(--rc,#c9973f),0 6px 18px rgba(0,0,0,.6)}
-#qeq.on{transform:translateX(-50%)} #qeq img{width:44px;height:44px;border-radius:6px;background:radial-gradient(circle,#6b4a2c,#2a170b)} #qeq small{display:block;color:#3f7a2a;font-family:var(--sc);font-weight:800}
+#qeq{position:fixed;left:50%;bottom:calc(max(var(--sb),4px) + 10px);transform:translateY(calc(100% + max(var(--sb),4px) + 24px));visibility:hidden;z-index:31;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border-radius:10px;width:min(360px,60vw);transition:transform .3s,visibility 0s .3s;box-shadow:0 0 0 2px var(--rc,#c9973f),0 6px 18px rgba(0,0,0,.6)}
+#qeq.on{transform:none;visibility:visible;transition:transform .3s,visibility 0s}
+#qeq.top{bottom:auto;top:calc(max(var(--st),4px) + 58px*var(--k,1));transform:translateY(calc(-100% - 160px))}
+#qeq.top.on{transform:none}
+#qeq.cmp{gap:6px;padding:4px 6px 4px 4px} #qeq.cmp img{width:36px;height:36px} #qeq.cmp .grow{min-width:0}
+#qeq.cmp b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #qeq.cmp small{font-size:12px} #qeq.cmp .btn.small{padding:5px 9px;min-height:36px;font-size:13px}
+html.qeqTop.land #toasts{top:calc(max(var(--st),4px) + 58px*var(--k,1) + 62px)} #qeq img{width:44px;height:44px;border-radius:6px;background:radial-gradient(circle,#6b4a2c,#2a170b)} #qeq small{display:block;color:#3f7a2a;font-family:var(--sc);font-weight:800}
 /* v8: тёмная плашка — цвет редкости читается (раньше светло-оранжевый на пергаменте) */
 #qeq.dk{background:linear-gradient(180deg,#2a1f18,#16100c);color:#f3e6cc}
 #qeq.dk b{display:block;font-size:14px;line-height:1.15;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,.85);-webkit-text-stroke:.2px rgba(0,0,0,.5)}
 #qeq.dk small{color:#9ae07a;text-shadow:0 1px 0 #000}
 .ftq{font-family:var(--sc);font-size:.92em;color:#fff2c8;background:linear-gradient(90deg,#7c2418,#a8382a);margin:-5px -9px 5px;padding:3px 9px;border-radius:6px 6px 0 0}
+#hQuest.slim{background:none!important;box-shadow:none!important;padding:0!important;width:auto!important;max-width:min(calc(250px*var(--k)),calc(30vw - max(var(--sl),6px) - 14px));border:0}
+#hQuest.slim::before,#hQuest.slim::after{display:none!important}
+#hQuest.slim>*:not(.ftq){display:none!important}
+#hQuest.slim .ftq{margin:0;border-radius:13px;padding:3px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 0 0 1px rgba(255,210,140,.35),0 3px 8px rgba(0,0,0,.5);font-size:12px}
+/* v15: подсказки — компактная плашка сверху по центру (не над героем), до 2 строк */
+html.land #toasts{top:calc(max(var(--st),4px) + 60px*var(--k));width:min(400px,40vw)}
+html.land #hRight{flex-wrap:wrap;min-width:0;row-gap:4px} /* v15: узкие телефоны — кнопки справа переносятся, а не уходят за край */
+html.land.short .toast{font-size:12.5px;line-height:1.3;padding:5px 10px 5px 9px;max-width:100%}
+html.land.short .toast>span:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+html.land.short .toast .ti{width:24px;height:24px;flex-basis:24px}
 .wl.ft{pointer-events:none} .ftMark{display:inline-block;font-family:var(--sc);font-weight:800;color:#2b1606;background:linear-gradient(180deg,#ffe08a,#f2a634);padding:3px 10px;border-radius:12px;box-shadow:0 2px 0 #7d5a20,0 0 14px #ffb347;white-space:nowrap}
 #hPort.framed{box-shadow:0 0 0 3px var(--fr),0 0 14px var(--fr)}
 #hEvent{position:absolute;right:calc(max(var(--sr),6px) + 8px);top:calc(max(var(--st),4px) + 62px*var(--k,1));display:flex;align-items:center;gap:6px;padding:4px 10px 4px 6px;border-radius:18px;min-height:40px;color:#2b1606;
@@ -680,7 +697,7 @@ html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 74px*var(--k,1));lef
 @keyframes fadeIn{from{opacity:0}}
 #icard{width:min(640px,96vw);max-height:100%;display:flex;animation:popIn .18s ease-out}
 @keyframes popIn{from{transform:scale(.92);opacity:0}}
-#icard>.woodframe{flex:1;display:flex;min-height:0;max-height:calc(100vh - var(--st) - var(--sb) - 12px)}
+#icard>.woodframe{flex:1;display:flex;min-height:0;max-height:calc(var(--vh,100vh) - var(--st) - var(--sb) - 12px)}
 #icard>.woodframe>.inner{flex:1;overflow-y:auto;position:relative;padding:12px 14px 12px}
 #icard .ic-x{position:absolute;right:6px;top:6px;z-index:3;width:40px;height:40px;font-size:20px;color:var(--ink2)}
 .ic-body{display:grid;grid-template-columns:calc(132px*var(--k)) minmax(0,1fr);gap:14px;align-items:start}
@@ -1464,7 +1481,7 @@ html.land .tab{gap:7px}
 .calD.done{filter:saturate(.5)}
 .calD .rchip .ico,.ptCell .rchip .ico{width:28px;height:28px}
 .calD .cosic .ico,.ptCell .cosic .ico{width:60%;height:60%}
-html.land.short .calD{min-height:max(48px,calc((100vh - 178px)/4 - 6px));padding-top:12px}
+html.land.short .calD{min-height:max(48px,calc((var(--vh,100vh) - 178px)/4 - 6px));padding-top:12px}
 html.land.short .calD .rchip .ico{width:24px;height:24px}
 html.land.short .calD .rchip>span{font-size:14.5px}
 html.land.short .calTop .btn.big{min-height:46px;font-size:17px}
@@ -1488,7 +1505,7 @@ html.land #res h2.resT,#res h2.resT{display:none}
 #mapScroll{background:var(--stex),radial-gradient(ellipse at 50% 50%,#2a1d14,#0c0806 80%);background-size:256px 256px,100% 100%}
 #mapCv{box-shadow:0 0 0 2px #6c4612,0 0 0 4px #e4b25a,0 0 30px rgba(0,0,0,.8)}
 .blist{grid-template-columns:repeat(auto-fill,minmax(calc(470px*var(--k)),1fr))}
-html.land.short .calD{height:max(46px,calc((100vh - 176px)/4 - 6px));min-height:0;padding-top:11px}
+html.land.short .calD{height:max(46px,calc((var(--vh,100vh) - 176px)/4 - 6px));min-height:0;padding-top:11px}
 html.land.short .calD .rchip .ico{width:22px;height:22px}
 html.land.short .calD .cosic{width:26px;height:26px;flex-basis:26px}
 html.land.short .calD>b,html.land.short .calD .rchip>span{font-size:13.5px}
@@ -1522,7 +1539,7 @@ html.land.short .bscene .bimg{width:104px;height:88px}
 html.land.short .calTop .ttl small{display:none}
 html.land.short .calTop .ttl b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 html.land.short .calTop{margin-bottom:5px}
-html.land.short .calD{height:max(44px,calc((100vh - 160px)/4 - 6px))}
+html.land.short .calD{height:max(44px,calc((var(--vh,100vh) - 160px)/4 - 6px))}
 html.land.short .wheelSide p{font-size:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 html.land.short .wheelSide h3{font-size:24px}
 html.land.short .wheelSide{gap:8px}
@@ -1628,6 +1645,64 @@ html.qlow #hud .ico.ic{animation-iteration-count:1!important}
 .chip{gap:5px}
 .wheelWin .ico.ic{width:48px;height:48px}
 .sitem .sic .ico.ic,.offer .med .ico.ic,.bcard2 .med .ico.ic{width:1.25em;height:1.25em}
+
+/* ===== v15: «Учебный плац» — стоп-кадр с подсветкой кнопки, плашка «попробуйте», карточка «Управление» ===== */
+#yard{position:fixed;inset:0;z-index:70;display:none;pointer-events:auto}
+#yard.on{display:block}
+#yard.dim{background:rgba(10,6,3,.62)}
+#yard .yHole{position:fixed;border-radius:16px;box-shadow:0 0 0 200vmax rgba(10,6,3,.62),0 0 0 3px #ffd27a,0 0 24px 6px rgba(255,180,80,.75);animation:yPulse 1.4s ease-in-out infinite;cursor:pointer}
+#yard .yHole.rnd{border-radius:50%}
+@keyframes yPulse{50%{box-shadow:0 0 0 200vmax rgba(10,6,3,.62),0 0 0 4px #fff0b8,0 0 34px 10px rgba(255,190,90,.9)}}
+#yard .yFinger{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95) 0 30%,rgba(255,255,255,.35) 32% 60%,transparent 62%);pointer-events:none;animation:yTap 1.3s ease-in-out infinite}
+#yard .yFinger::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,240,200,.9);animation:yRip 1.3s ease-out infinite}
+#yard .yFinger.drag{animation:yDrag 2.2s ease-in-out infinite}
+#yard .yFinger.drag::after{animation:none;opacity:.5}
+@keyframes yTap{0%,100%{transform:translate(18px,22px) scale(1)}35%{transform:translate(0,0) scale(1)}45%{transform:translate(0,0) scale(.78)}60%{transform:translate(0,0) scale(1)}}
+@keyframes yRip{0%,35%{transform:scale(.5);opacity:0}45%{opacity:1}100%{transform:scale(1.9);opacity:0}}
+@keyframes yDrag{0%,100%{transform:translate(0,0)}20%{transform:translate(0,0)}40%{transform:translate(46px,-30px)}60%{transform:translate(-40px,-38px)}80%{transform:translate(-30px,34px)}}
+#yard .yCard{position:fixed;top:50%;transform:translateY(-50%);width:min(380px,calc(100vw - var(--sl) - var(--sr) - 24px));max-height:calc(var(--vh,100vh) - var(--st) - var(--sb) - 16px);overflow:auto;padding:12px 14px 12px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(40,28,18,.97),rgba(20,13,9,.97));color:var(--tx,#f3e6cc);box-shadow:0 0 0 1px #120a05,inset 0 0 0 1px rgba(234,180,90,.55),0 12px 30px rgba(0,0,0,.7);animation:fadeIn .2s}
+#yard.side-c .yCard{left:50%;transform:translate(-50%,-50%)}
+#yard.side-l .yCard{left:calc(max(var(--sl),8px) + 12px)}
+#yard.side-r .yCard{right:calc(max(var(--sr),8px) + 12px)}
+#yard .yTag{font-family:var(--sc);font-size:11px;letter-spacing:.14em;color:#d8b77a;text-transform:uppercase}
+#yard h3{font-family:var(--disp);font-size:20px;color:#ffd98a;margin:2px 0 6px;display:flex;align-items:center;gap:8px;text-shadow:0 2px 0 #3b1306}
+#yard .yIc{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5a3a20,#24140b);box-shadow:0 0 0 2px #c9973f;font-size:20px;flex:0 0 34px}
+#yard p{font-size:14.5px;line-height:1.38;margin:4px 0}
+#yard p.yT .ico{color:#ffd27a}
+#yard p.yK{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+#yard p.yK small{color:#b9976a;font-size:12px;margin-left:4px}
+#yard p.yM{color:#c9b38c;font-size:13px}
+#yard .yBtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+#yard .yBtns .btn.leather{flex:1 1 auto}
+#yard .ySk{margin-left:auto;font-family:var(--sc);font-size:13px;color:#b9976a;text-decoration:underline;text-underline-offset:3px;padding:8px 4px;min-height:36px}
+kbd{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;border-radius:6px;font-family:var(--sc);font-weight:800;font-size:13px;color:#2b1606;
+  background:linear-gradient(180deg,#fff1c8,#e2c07a);box-shadow:inset 0 -3px 0 rgba(90,55,15,.45),0 0 0 1px #7d5a20,0 2px 3px rgba(0,0,0,.5)}
+kbd+kbd{margin-left:3px}
+.kor{font-style:normal;font-size:11px;color:#b9976a;margin:0 5px}
+#yard .ctlMini{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;font-size:13px}
+#yard .ctlMini span{display:inline-flex;align-items:center;gap:4px}
+#yChip{position:fixed;left:50%;top:calc(max(var(--st),4px) + 60px*var(--k,1));transform:translate(-50%,-14px);opacity:0;pointer-events:none;z-index:32;display:flex;align-items:center;gap:8px;padding:4px 6px 4px 5px;border-radius:24px;max-width:min(520px,calc(100vw - var(--sl) - var(--sr) - 16px));
+  background:linear-gradient(90deg,rgba(40,28,18,.95),rgba(20,13,9,.93));box-shadow:inset 0 0 0 1px rgba(234,180,90,.6),0 6px 16px rgba(0,0,0,.55);color:#f3e6cc;font-size:14px;transition:transform .25s,opacity .25s}
+#yChip.on{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+#yChip .yIc{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#2a170b;box-shadow:0 0 0 1.5px #c9973f;font-size:17px;flex:0 0 30px}
+#yChip .yTx{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-family:var(--sc);font-weight:700}
+#yChip .yKs kbd{height:22px;min-width:22px;font-size:12px}
+#yChip .btn.small{min-height:32px;padding:4px 10px;font-size:13px}
+#yChip.ok{box-shadow:inset 0 0 0 2px #9ae07a,0 0 18px rgba(140,230,110,.6)}
+#yChip.ok .yTx{color:#c8ffb0}
+.yGlow{animation:yGlow 1.2s ease-in-out infinite!important}
+@keyframes yGlow{50%{filter:brightness(1.35) drop-shadow(0 0 10px #ffd27a)}}
+.ctlCard{display:grid;gap:4px;margin:4px 0 8px}
+.ctlRow{display:grid;grid-template-columns:minmax(120px,auto) auto 1fr;align-items:center;gap:4px 10px;padding:4px 8px;border-radius:7px;background:rgba(0,0,0,.18);font-size:13px}
+.ctlRow .ctlN{font-family:var(--sc);font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ctlRow .ctlK{display:flex;align-items:center;flex-wrap:wrap}
+.ctlRow .ctlK kbd{height:22px;min-width:22px;font-size:12px}
+.ctlRow .ctlT{color:var(--tx2,#cdb994);font-size:12.5px;line-height:1.3}
+@media (max-width:700px){ .ctlRow{grid-template-columns:auto 1fr} .ctlRow .ctlT{grid-column:1/-1} }
+html.land.short #yard h3{font-size:18px;margin-bottom:4px} html.land.short #yard p{font-size:13.5px;margin:3px 0} html.land.short #yard .yBtns{margin-top:7px}
+html.land.xshort #yard .yCard{padding:9px 11px} html.land.xshort #yard .yIc{width:28px;height:28px;flex-basis:28px;font-size:16px}
+@media (prefers-reduced-motion:reduce){ #yard .yHole,#yard .yFinger,#yard .yFinger::after,.yGlow{animation:none!important} }
 </style>
 </head>
 <body>
@@ -2660,6 +2735,19 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2, blur2: true },
   };
 
+  // v15: contrast-adaptive sharpen (CAS-like, 4 taps) applied while stretching the internal target to the canvas — keeps the
+  // upscaled image crisp on phones; strength 0 = plain bilinear. Weight falls off on hard edges (no halos / no extra aliasing).
+  const SHARP_GLSL = `
+uniform float uSharp; uniform vec2 uPx;
+vec3 sharpTap(sampler2D t, vec2 u, vec4 sc, vec3 c){
+  if (uSharp <= 0.0) return c;
+  vec3 n = texture2D(t, min(u + vec2(0.0, uPx.y), sc.zw)).rgb, s = texture2D(t, max(u - vec2(0.0, uPx.y), vec2(0.0))).rgb;
+  vec3 e = texture2D(t, min(u + vec2(uPx.x, 0.0), sc.zw)).rgb, w = texture2D(t, max(u - vec2(uPx.x, 0.0), vec2(0.0))).rgb;
+  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w)));
+  vec3 amp = clamp(min(mn, 1.0 - mx) / max(mx, vec3(1e-3)), 0.0, 1.0);
+  vec3 k = sqrt(amp) * uSharp * 0.25;
+  return clamp(c + (4.0 * c - n - s - e - w) * k, 0.0, 1.0);
+}`;
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   function quad() {
     const g = new T.BufferGeometry();
@@ -2688,12 +2776,12 @@ void main(){
   c += texture2D(tDiffuse, vUv + uDir*3.230769).rgb * 0.070270; c += texture2D(tDiffuse, vUv - uDir*3.230769).rgb * 0.070270;
   gl_FragColor = vec4(c, 1.0);
 }`;
-  const GRADE_FS = `
+  const GRADE_FS = SHARP_GLSL + `
 uniform sampler2D tDiffuse; uniform sampler2D tBloom; uniform float uBloom; uniform float uHasBloom;
 uniform vec3 uLift; uniform vec3 uGamma; uniform vec3 uGain; uniform float uSat; uniform float uContrast;
 uniform float uVig; uniform vec3 uVigColor; uniform float uAspect; uniform float uFade; uniform vec3 uFadeColor; uniform vec4 uSc; varying vec2 vUv;
 void main(){
-  vec3 c = texture2D(tDiffuse, min(vUv * uSc.xy, uSc.zw)).rgb;
+  vec2 u0 = min(vUv * uSc.xy, uSc.zw); vec3 c = sharpTap(tDiffuse, u0, uSc, texture2D(tDiffuse, u0).rgb);
   if (uHasBloom > 0.5) c += min(texture2D(tBloom, vUv).rgb * uBloom, vec3(0.35));
   // soft shoulder above 0.8: highlights roll off towards 1.0 instead of clipping to flat white
   vec3 hi = max(c - 0.8, vec3(0.0)); c = min(c, vec3(0.8)) + hi / (1.0 + hi * 5.0);
@@ -2708,7 +2796,7 @@ void main(){
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
 
-  const COPY_FS = 'uniform sampler2D tDiffuse; uniform vec4 uSc; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tDiffuse, min(vUv * uSc.xy, uSc.zw)).rgb, 1.0); }';
+  const COPY_FS = SHARP_GLSL + 'uniform sampler2D tDiffuse; uniform vec4 uSc; varying vec2 vUv; void main(){ vec2 u = min(vUv * uSc.xy, uSc.zw); gl_FragColor = vec4(sharpTap(tDiffuse, u, uSc, texture2D(tDiffuse, u).rgb), 1.0); }';
 
   function create(R, scene, camera, opts = {}) {
     const fsq = quad();
@@ -2716,13 +2804,13 @@ void main(){
     // the scene is drawn into the bottom-left sub-rect (viewport) of the target and stretched to the canvas. No reallocations, no canvas resizes.
     const P = { q: 'med', preset: PRESETS.med, w: 1, h: 1, pr: R.getPixelRatio(), rts: {}, scale: 1, allocs: 0, lowRT: null, dof: { on: false, focus: 8, aperture: 0.015, maxblur: 0.008 } };
     const rt = (w, h, depth) => new T.WebGLRenderTarget(w, h, { minFilter: T.LinearFilter, magFilter: T.LinearFilter, format: T.RGBAFormat, depthBuffer: !!depth, stencilBuffer: false });
-    const SC = { value: new T.Vector4(1, 1, 1, 1) };
-    const mCopy = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uSc: SC }, vertexShader: VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false });
+    const SC = { value: new T.Vector4(1, 1, 1, 1) }, SHARP = { value: 0 }, PX = { value: new T.Vector2(1, 1) };
+    const mCopy = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uSc: SC, uSharp: SHARP, uPx: PX }, vertexShader: VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false });
     const mBright = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uTexel: { value: new T.Vector2() }, uTh: { value: 0.8 }, uKnee: { value: 0.15 }, uSc: SC }, vertexShader: VS, fragmentShader: BRIGHT_FS, depthTest: false, depthWrite: false });
     const mBlur = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uDir: { value: new T.Vector2() } }, vertexShader: VS, fragmentShader: BLUR_FS, depthTest: false, depthWrite: false });
     const GU = { tDiffuse: { value: null }, tBloom: { value: null }, uBloom: { value: 0.6 }, uHasBloom: { value: 0 },
       uLift: { value: new T.Vector3(0, 0, 0) }, uGamma: { value: new T.Vector3(1, 1, 1) }, uGain: { value: new T.Vector3(1, 1, 1) }, uSat: { value: 1 }, uContrast: { value: 1.04 },
-      uVig: { value: 0.3 }, uVigColor: { value: new T.Color(0.12, 0.06, 0.04) }, uAspect: { value: 1 }, uFade: { value: 0 }, uFadeColor: { value: new T.Color(0, 0, 0) }, uSc: SC };
+      uVig: { value: 0.3 }, uVigColor: { value: new T.Color(0.12, 0.06, 0.04) }, uAspect: { value: 1 }, uFade: { value: 0 }, uFadeColor: { value: new T.Color(0, 0, 0) }, uSc: SC, uSharp: SHARP, uPx: PX };
     const mGrade = new T.ShaderMaterial({ uniforms: GU, vertexShader: VS, fragmentShader: GRADE_FS, depthTest: false, depthWrite: false });
     let mFXAA = null, unreal = null, bokeh = null;
     const target = { bloom: 0.6, th: 0.8 };
@@ -2754,6 +2842,9 @@ void main(){
       /** dynamic resolution: fraction (0.25..1) of the canvas buffer the scene is rendered at — no reallocation */
       setScale(s) { P.scale = Math.max(0.25, Math.min(1, +s || 1)); return fx; },
       get scale() { return P.scale; },
+      /** v15: sharpen strength (0..0.6) for the final stretch to the canvas (contrast-adaptive, 4 taps in the existing pass) */
+      setSharp(v) { SHARP.value = Math.max(0, Math.min(0.6, +v || 0)); return fx; },
+      get sharp() { return SHARP.value; },
       get allocs() { return P.allocs; },
       /** grade: {lift:[r,g,b], gamma:[r,g,b], gain:[r,g,b], sat, contrast, vignette, vigColor, bloom, bloomTh} */
       setZone(g) { if (!g) return fx;
@@ -2774,7 +2865,7 @@ void main(){
       render(dt) {
         const [W, H] = bufSize(); const sc = P.dof.on && bokeh ? 1 : P.scale;
         const sw = Math.max(1, Math.round(W * sc)), sh = Math.max(1, Math.round(H * sc));
-        SC.value.set(sw / W, sh / H, (sw - 0.5) / W, (sh - 0.5) / H);
+        SC.value.set(sw / W, sh / H, (sw - 0.5) / W, (sh - 0.5) / H); PX.value.set(1 / W, 1 / H);
         if (!P.preset.post) {
           if (sw >= W - 1 && sh >= H - 1) { R.setRenderTarget(null); R.render(scene, camera); return; }
           if (!P.lowRT || P.lowRT.width !== W || P.lowRT.height !== H) { if (P.lowRT) P.lowRT.dispose(); P.lowRT = rt(W, H, true); P.allocs++; }
@@ -3506,7 +3597,7 @@ function newSave(){
     meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
     // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false}
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false,sharp:'auto'}
   };
 }
 let S=newSave();
@@ -4156,8 +4247,23 @@ function applyExposure(){ const b=S&&S.set&&S.set.bright!=null?S.set.bright:1; L
 // общая насыщенность средних тонов для toon-материалов (игровых и KayKit): один uniform на всех
 const SATG={value:1.16};
 // потолок PR для текущего пресета; ?rs=0.75 в адресе фиксирует PR (замеры), ?drs=0 выключает динамическое разрешение
-function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(window.devicePixelRatio||1,IS_MOBILE?Q.prMax:Q.prMaxD); }
-function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(prCap(),Q.prMin); }
+// v15 «Чёткость» (Настройки): auto — на телефонах с плотным экраном (DPR ≥ 2: iPhone, Pixel, Telegram) разрешение важнее эффектов:
+// потолок не ниже 1,25–1,5 и пол динамического разрешения 1,0–1,1 CSS px (раньше пол 0,5–0,7 CSS px = 17–23 % пикселей экрана
+// при DPR 3 → «пиксельная» картинка). Если кадров всё равно мало, «Авто» сначала снимает эффекты (пресет ниже), а не разрешение.
+// high — разрешение закреплено (DRS не опускает), eco — прежнее поведение (экономия батареи: пол пресета).
+function sharpMode(){ const m=typeof S!=='undefined'&&S&&S.set&&S.set.sharp; return m==='high'||m==='eco'?m:'auto'; }
+const SHARP_CAP={perf:1.25,low:1.5,med:1.5,high:1.75}, SHARP_MIN={perf:1.0,low:1.0,med:1.1,high:1.2};
+function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; const d=window.devicePixelRatio||1, m=sharpMode();
+  let c=Math.min(d,IS_MOBILE?Q.prMax:Q.prMaxD);
+  if(m==='high') c=Math.min(d,Math.max(c,IS_MOBILE?2:2));
+  else if(m==='eco') c=Math.min(c,IS_MOBILE?1.25:1.25);
+  else if(IS_MOBILE&&d>=1.75) c=Math.min(d,Math.max(c,SHARP_CAP[QL]||1.5));
+  return c; }
+function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; const cap=prCap(), m=sharpMode();
+  if(m==='high') return cap;
+  if(m==='eco') return Math.min(cap,Q.prMin);
+  if(IS_MOBILE) return Math.min(cap,Math.max(Q.prMin,(window.devicePixelRatio||1)>=1.75?(SHARP_MIN[QL]||1):.85));
+  return Math.min(cap,Q.prMin); }
 // v9 (мерцание): PR — масштаб рендера (динамическое разрешение), CPR — плотность буфера холста. Холст НЕ меняет размер при смене PR:
 // сцена рисуется во внутреннюю цель нужного размера (EVPostFX.setScale) и растягивается на холст. Размер холста меняется только
 // при смене окна/пресета и только прямо перед отрисовкой кадра (rsFlush), иначе браузер показывает очищенный (чёрный) буфер.
@@ -4524,20 +4630,24 @@ function liquidMat(c1,c2,lava){
 // ---------- camera rig ----------
 const CAMR={x:0,z:0,tx:0,tz:0,dist:30,pitch:0.94,shake:0,shx:0,shz:0,override:null,fovW:10.8,fovH:15,zoom:1,look:{x:0,y:0,z:0}};
 // камера пересчитывается сразу, а буфер холста — только в rsFlush() прямо перед отрисовкой (в том же кадре)
+// v15: размер холста — его настоящий CSS-размер (в Telegram/WebView innerHeight бывает не равен видимой области)
+function vpSize(){ let w=canvas.clientWidth, h=canvas.clientHeight; if(!(w>0&&h>0)){ w=window.innerWidth||1; h=window.innerHeight||1; } return [w,h]; }
 function camResize(){
-  const w=window.innerWidth,h=window.innerHeight; cam.aspect=w/h;
+  const [w,h]=vpSize(); cam.aspect=w/h;
   CAMR.dist=camFrame();
   cam.updateProjectionMatrix();
   RSZ.dirty=true;
 }
 function rsFlush(){
-  const w=window.innerWidth,h=window.innerHeight, sc=clamp(PR/CPR,.25,1);
-  if(RSZ.dirty){ RSZ.dirty=false;
+  let w=RSZ.w||window.innerWidth, h=RSZ.h||window.innerHeight; const sc=clamp(PR/CPR,.25,1);
+  if(RSZ.dirty){ RSZ.dirty=false; [w,h]=vpSize();
     if(w!==RSZ.w||h!==RSZ.h||Math.abs(CPR-RSZ.cpr)>.001){ const a=w/h; if(Math.abs(cam.aspect-a)>1e-4){ cam.aspect=a; CAMR.dist=camFrame(); cam.updateProjectionMatrix(); }
       R.setPixelRatio(CPR); R.setSize(w,h,false); RSZ.w=w; RSZ.h=h; RSZ.cpr=CPR; RSZ.n.canvas++; RSZ.scale=-1; asResize(w,h); } }
   if(Math.abs(sc-RSZ.scale)>.001){ RSZ.scale=sc; if(AS.FX&&AS.FX.setScale) AS.FX.setScale(sc);
     PA.mat.uniforms.uScale.value=PN.mat.uniforms.uScale.value=h*CPR*sc*0.5/Math.tan(cam.fov*PI/360);
-    if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*CPR*sc,h*CPR*sc); }
+    if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*CPR*sc,h*CPR*sc);
+    // лёгкая резкость (CAS-подобная) при растяжении внутренней цели на холст и при буфере реже экрана (телефоны): 4 выборки в уже идущем проходе
+    if(AS.FX&&AS.FX.setSharp){ const d=window.devicePixelRatio||1, up=d/(CPR*sc); AS.FX.setSharp(up>1.15?clamp((up-1)*.35,.12,.5):0); } }
 }
 function camUpdate(dt,tx,tz){
   let d=CAMR.dist*CAMR.zoom, px, pz, ly=0.6;
@@ -8827,8 +8937,11 @@ function setupInput(){
     AU.init();
     const right=S.set.joy==='right'; const half=ev.clientX<window.innerWidth*.55;
     if((half&&!right)||(!half&&right)||G.mode==='village'){
-      if(JOY.id!==null) return; JOY.id=ev.pointerId; JOY.ox=ev.clientX; JOY.oy=ev.clientY; JOY.on=true;
-      const j=$('joy'); if(j){ j.style.left=(ev.clientX-75)+'px'; j.style.top=(ev.clientY-75)+'px'; j.style.bottom='auto'; j.classList.add('on'); }
+      if(JOY.id!==null) return; JOY.id=ev.pointerId; JOY.on=true;
+      // v15: основание джойстика всегда целиком на экране (с учётом выреза/«чёлки» и кнопок Telegram) — центр прижимается внутрь
+      const sf=LAYOUT.safe||{t:0,r:0,b:0,l:0}, R=75*(LAYOUT.land?LAYOUT.ak:1)+4, W0=window.innerWidth, H0=LAYOUT.h||window.innerHeight;
+      JOY.ox=clamp(ev.clientX,sf.l+R,Math.max(sf.l+R,W0-sf.r-R)); JOY.oy=clamp(ev.clientY,sf.t+R,Math.max(sf.t+R,H0-sf.b-R));
+      const j=$('joy'); if(j){ j.style.left=(JOY.ox-75)+'px'; j.style.top=(JOY.oy-75)+'px'; j.style.bottom='auto'; j.classList.add('on'); }
     }
   };
   const onMove=ev=>{ if(ev.pointerId!==JOY.id) return; let dx=ev.clientX-JOY.ox, dy=ev.clientY-JOY.oy; const l=Math.hypot(dx,dy), m=58; if(l>m){ dx=dx/l*m; dy=dy/l*m; }
@@ -9033,7 +9146,7 @@ function pCodex(){
 }
 // ---------- settings ----------
 function pSettings(pause){
-  let h='';
+  let h=''; if(!S.set.sharp) S.set.sharp='auto';
   if(pause){ h+=`<div class="row" style="flex-direction:column;gap:8px;margin-bottom:10px"><button class="btn leather" style="width:100%" ${act(()=>closePanel())}>${ico('play')} Продолжить</button>
     <button class="btn woodb" style="width:100%" ${act(()=>{ PANEL.kind='hero'; PANEL.tab='gear'; renderPanel(); })}>${ico('equip')} Снаряжение и умения</button>
     <button class="btn woodb" style="width:100%" ${act(()=>{ closePanel(); if(S.cons.scroll>0&&G.mode==='stage'){ S.cons.scroll--; runEnd(false,'Вы вернулись по свитку',true); } else runEnd(false,'Вы отступили'); })}>${ico('door')} ${S.cons.scroll>0&&G.mode==='stage'?'Свиток возвращения (добыча сохранится)':'Отступить в деревню'}</button></div>`; }
@@ -9043,6 +9156,8 @@ function pSettings(pause){
   <div class="set"><label>Яркость <small id="sBriV">${Math.round((S.set.bright==null?1:S.set.bright)*100)}%</small></label><input type="range" min="0.7" max="1.3" step="0.05" value="${S.set.bright==null?1:S.set.bright}" id="sBri"></div>
   <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['perf','Произв.'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
   <div class="muted" style="margin:-2px 0 6px">«Произв.» — максимум кадров: без постэффектов и контуров, меньше частиц и разрешение. «Авто» подбирает пресет по замерам кадров (не выше «Сред.»); «Выс.» — только вручную.</div>
+  <div class="set"><label>Чёткость</label>${seg('sharp',[['auto','Авто'],['high','Высокая'],['eco','Экономия']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">${({auto:'«Авто»: на телефонах разрешение важнее эффектов — если кадров мало, сначала убираются эффекты.',high:'«Высокая»: разрешение закреплено (самая чёткая картинка, телефон греется сильнее).',eco:'«Экономия»: разрешение снижается при нагрузке — дольше держит батарея.'})[S.set.sharp||'auto']} Сейчас: ${Math.round(PR*100)/100}× (экран ${Math.round((window.devicePixelRatio||1)*100)/100}×).</div>
   <div class="set"><label>Частота кадров</label>${seg('fps',[[60,'60'],[30,'30 · экономия']])}</div>
   <div class="set"><label>Показатели производительности</label>${seg('perfHud',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px"><button class="btn woodb small" ${act(()=>perfBenchStart())}>${ico('clock')} Тест производительности</button><button class="btn woodb small" ${act(()=>perfCopy())}>${ico('scroll')} Скопировать отчёт</button></div>
@@ -9060,14 +9175,14 @@ function pSettings(pause){
   <div class="set"><label>Напоминания бота</label><div class="seg"><button class="${metaS().notify?'on':''}" ${act(()=>notifySet(true))}>Вкл</button><button class="${metaS().notify?'':'on'}" ${act(()=>notifySet(false))}>Выкл</button></div></div>
   <div class="muted" style="margin:-2px 0 6px">${netOn()&&NET.tg?'Бот напишет, когда вылупится яйцо, наполнится склад или ждёт дар дня (не чаще 3 раз в день).':'Работает в Telegram при подключении к сети.'}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn woodb small" ${act(()=>openPanel('chron'))}>${ico('book')} Летопись выборов</button><button class="btn woodb small" ${act(()=>openPanel('coll'))}>${ico('gem')} Коллекция</button><button class="btn woodb small" ${act(()=>shareGame('invite'))}>${ico('mug')} Пригласить друга</button>${S.seen.prologue?`<button class="btn woodb small" ${act(()=>{ closePanel(); if(G.mode==='title'||G.mode==='village') prologueStart(true); })}>${ico('flame')} Пролог заново</button>`:''}</div>`:''}
-  <div class="muted" style="margin-top:10px">Телефон: держите горизонтально. Левый большой палец — бег (джойстик появляется там, где коснулись), правый — атака, умения, кувырок. В деревне снизу — меню: Герой, Стройка, Отряд, Набег, Задания, Поход.</div>
-  <div class="muted" style="margin-top:6px">ПК: WASD — бег, J/Пробел — атака, 1-3 — умения, R — Вспышка, Shift — кувырок, Q — зелье, F — бомба, E — взаимодействие, I — герой, M — карта, Esc — пауза.</div>
+  ${typeof controlsHtml==='function'?controlsHtml():''}
+  ${!pause&&typeof yardStart==='function'?`<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn woodb small" ${act(()=>{ closePanel(); if(G.mode==='village') yardStart(true); })}>${ico('sword')} Учебный плац${S.seen.yard?'':' · новое'}</button></div>`:''}
   ${!Store.ok?'<div class="card" style="margin-top:8px">Хранилище браузера недоступно — прогресс не сохранится после закрытия.</div>':''}
   ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ Store.del(SKEY); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
   setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const br=$('sBri'); if(br) br.oninput=()=>{ S.set.bright=+br.value; applyExposure(); const v=$('sBriV'); if(v) v.textContent=Math.round(S.set.bright*100)+'%'; saveGame(); }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; AQ.downT=performance.now(); applyQuality(resolveQuality(),'set'); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='perfHud') perfHudShow(S.set.perfHud); if(k==='fps'){ PERF.ceil=9; } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; AQ.downT=performance.now(); applyQuality(resolveQuality(),'set'); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='sharp'){ applyQuality(QL,'set'); } if(k==='perfHud') perfHudShow(S.set.perfHud); if(k==='fps'){ PERF.ceil=9; } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
 // ================= p8b: building panels, map, results =================
 function canBuildNow(id){ const lv=S.bld[id]; if(lv>=5) return false; if(bldUnlock(id)>S.bld.hall) return false; if(id!=='hall'&&lv+1>S.bld.hall) return false; return canPay(bldCost(id,lv+1)); }
 function bldTabs(id){
@@ -9569,8 +9684,21 @@ function pvpBotInput(){ const P=G.P; if(!PVP||PVP.done) return {mx:0,mz:0,atk:fa
 // и ставим игру на паузу; на планшете/ПК в портрете интерфейс остаётся рабочим (старая портретная вёрстка).
 const LAYOUT={land:false,needRot:false,k:1,ak:1,w:0,h:0,touch:false};
 function isTouchDev(){ try{ return IS_MOBILE||(window.matchMedia&&matchMedia('(pointer:coarse)').matches); }catch(e){ return IS_MOBILE; } }
+// v15: Telegram Mini App — отступы берём и из объекта WebApp (safeAreaInset + contentSafeAreaInset, Bot API 8.0: в полноэкранном
+// режиме кнопки «Закрыть» и «⌄ ⋯» лежат поверх игры), а не только из CSS-переменных --tg-* (их ставит telegram-web-app.js, и не всегда).
+// --vgap — сколько снизу «съедено» у видимой области (WebView выше видимого: Telegram не в полноэкранном режиме, visualViewport).
+function tgApp(){ try{ const w=window.Telegram&&window.Telegram.WebApp; return w&&(w.initData||w.platform&&w.platform!=='unknown')?w:null; }catch(e){ return null; } }
+function insetsJS(){ const o={t:0,b:0,l:0,r:0,gap:0,vh:window.innerHeight||1}; const tg=tgApp();
+  if(tg){ const a=tg.safeAreaInset||{}, c=tg.contentSafeAreaInset||{}; o.t=(+a.top||0)+(+c.top||0); o.b=(+a.bottom||0)+(+c.bottom||0); o.l=(+a.left||0)+(+c.left||0); o.r=(+a.right||0)+(+c.right||0);
+    if(!tg.isFullscreen&&tg.viewportStableHeight>100&&tg.viewportStableHeight<o.vh-2) o.gap=Math.round(o.vh-tg.viewportStableHeight); }
+  try{ const v=window.visualViewport; if(v&&Math.abs((v.scale||1)-1)<.01&&v.height>100){ const g=Math.round(o.vh-v.height-(v.offsetTop||0)); if(g>2&&g<o.vh*.4) o.gap=Math.max(o.gap,g); } }catch(e){}
+  o.vh=Math.max(100,o.vh-o.gap); return o; }
 function layout(){
-  const w=window.innerWidth||1, h=window.innerHeight||1, root=document.documentElement;
+  const w=window.innerWidth||1, h0=window.innerHeight||1, root=document.documentElement;
+  const IN=insetsJS(); LAYOUT.ins=IN; const h=IN.vh;
+  root.style.setProperty('--jst',IN.t+'px'); root.style.setProperty('--jsb',IN.b+'px'); root.style.setProperty('--jsl',IN.l+'px'); root.style.setProperty('--jsr',IN.r+'px');
+  root.style.setProperty('--vgap',IN.gap+'px'); root.style.setProperty('--vh',h+'px'); void h0;
+  LAYOUT.safe=safeMeasure();
   const land=w>=h*1.02, touch=isTouchDev();
   // phone in portrait: short side < 600 → ask to rotate. Tablets / desktop windows stay usable in portrait.
   const needRot=!land&&touch&&Math.min(w,h)<600;
@@ -9585,6 +9713,10 @@ function layout(){
   cl.toggle('wide',land&&w/h>2.05); cl.toggle('roomy',land&&h>=700&&w>=1000); cl.toggle('touch',touch);
   if(needRot!==LAYOUT.needRot){ LAYOUT.needRot=needRot; cl.toggle('needrot',needRot); G.rotPause=needRot; if(needRot){ G.input.mx=G.input.mz=0; G.input.atk=false; } }
 }
+// разрешённые CSS-значения отступов (env() + Telegram) в px — для JS-позиционирования (джойстик, карточка «Надеть», обучение)
+let _safeProbe=null;
+function safeMeasure(){ try{ if(!_safeProbe){ _safeProbe=document.createElement('div'); _safeProbe.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:var(--st) var(--sr) var(--sb) var(--sl)'; document.body.appendChild(_safeProbe); }
+  const cs=getComputedStyle(_safeProbe); return {t:parseFloat(cs.paddingTop)||0,r:parseFloat(cs.paddingRight)||0,b:parseFloat(cs.paddingBottom)||0,l:parseFloat(cs.paddingLeft)||0}; }catch(e){ return {t:0,r:0,b:0,l:0}; } }
 // one-shot: after the first user gesture try fullscreen + landscape lock (all guarded)
 let _orientTried=false;
 function tryOrientationLock(){
@@ -9607,8 +9739,17 @@ function setupLayout(){
   layout();
   window.addEventListener('resize',layout); window.addEventListener('orientationchange',()=>setTimeout(()=>{ layout(); camResize(); },250));
   window.addEventListener('pointerdown',tryOrientationLock,{passive:true});
-  try{ const tg=window.Telegram&&window.Telegram.WebApp; if(tg&&tg.onEvent){ tg.onEvent('fullscreenChanged',()=>{ layout(); camResize(); }); tg.onEvent('safeAreaChanged',layout); tg.onEvent('contentSafeAreaChanged',layout); } }catch(e){}
+  const relayout=()=>{ layout(); camResize(); };
+  try{ if(window.visualViewport) visualViewport.addEventListener('resize',relayout); }catch(e){}
+  tgHook(); window.addEventListener('load',()=>{ tgHook(); relayout(); });
+  // telegram-web-app.js грузится async: если он пришёл после старта — подписываемся, когда появится
+  let n=0; const iv=setInterval(()=>{ if(tgHook()||++n>20) clearInterval(iv); },500);
 }
+let _tgHooked=false;
+function tgHook(){ if(_tgHooked) return true; const tg=tgApp(); if(!tg||!tg.onEvent) return false; _tgHooked=true;
+  const relayout=()=>{ layout(); camResize(); };
+  try{ for(const e of ['fullscreenChanged','safeAreaChanged','contentSafeAreaChanged','viewportChanged']) tg.onEvent(e,relayout); }catch(e){}
+  try{ initTG(); }catch(e){} relayout(); return true; }
 // Landscape-aware camera: keep the same vertical extent of gameplay on 16:9…21:9, portrait keeps the classic framing.
 function camFrame(){
   const a=cam.aspect, tf=Math.tan(cam.fov*PI/360);
@@ -11744,7 +11885,9 @@ function prologueEnd(err){ if(!PRO.on) return; PRO.on=false; G.prologue=false; c
 function startGameAfterPrologue(){ const fresh=!S.started; if(fresh){ S.started=true; S.gear.weapon=genItem(1,{base:'sword1',rar:0}); S.gear.weapon.aff=[]; S.gear.weapon.name='Дедов меч'; S.gear.offhand=genItem(1,{base:'shield1',rar:0}); S.gear.chest=genItem(1,{base:'chest_cloth',rar:0});
     for(const b of ['bow1','staff1','axe1']) addItem(genItem(1,{base:b,rar:0}),true);
     S.hero.talents.sword.s1=1; S.hero.talents.axe.s1=1; S.hero.talents.bow.s1=1; S.hero.talents.staff.s1=1; for(const it of S.inv) it.nw=false;
-    ensureDaily(); S.q.flags['b_'+STORY[0].id]=0; saveGame(true); }
+    ensureDaily(); S.q.flags['b_'+STORY[0].id]=0; saveGame(true);
+    // v15: новый игрок — сначала «Учебный плац» (src/p30.js), потом пробуждение в Броде
+    if(typeof yardWanted==='function'&&yardWanted()){ $('fade').classList.remove('on'); yardStart(false,()=>startGameAfterPrologue()); return; } }
   refreshPlayer(true); enterVillage(cb=>{ $('fade').classList.remove('on'); if(!S.seen.wake){ S.seen.wake=1; trackOnce('ftue','wake'); playDialog('wake',()=>{ ftueStep('wake'); cb(); }); } else cb(); }); }
 // title: «Начать путь» goes straight into the prologue
 const _startGame=startGame; startGame=function(fresh){ if(fresh&&!S.seen.prologue&&!/[?&]noprologue/.test(location.search)&&!window.__noPrologue){ prologueStart(false); return; } if(fresh){ S.seen.prologue=S.seen.prologue||1; S.seen.wake=S.seen.wake||0; }
@@ -11794,15 +11937,28 @@ const _runEnd=runEnd; runEnd=function(win,reason,keep){ if(W&&W.kind==='prologue
 const _sysLabels=sysLabels; sysLabels=function(dt){ _sysLabels(dt); if(!FTUE_active()||G.mode!=='village'||!W||PANEL.kind||G.dialog) return; const f=ftueNext(); if(!f) return; let p=null, lab='';
   if(f.id==='build'&&!S.bld.forge){ p=VPOS.forge; lab='Кузница'; } else if(f.id==='pet'&&!S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Питомник'; } else if(f.id==='pet'&&S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Яйцо — к Ойке'; } else if(f.id==='stage11'||f.id==='companion'||f.id==='boss'||f.id==='kill'||f.id==='equip'&&!S.inv.some(i=>compareTo(i)>0)||f.id==='rare'){ p=[-6,-30]; lab='В поход'; } else if(f.id==='equip'){ return; } else if(f.id==='raid'&&raidUnlocked()){ return; }
   if(p) wlAdd(p[0],3.6+Math.sin(G.time*4)*.25,p[1],`<span class="ftMark">▼ ${lab}</span>`,'ft'); };
-const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='prologue'){ el.innerHTML=`<h4>${ico('flame')} Падение Златоверха</h4><div class="q">Держите площадь Златоверха вместе со стражей</div>`; el.style.display=''; return; } if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display=''; };
+const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='prologue'){ el.innerHTML=`<h4>${ico('flame')} Падение Златоверха</h4><div class="q">Держите площадь Златоверха вместе со стражей</div>`; el.style.display=''; return; } if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display='';
+  // v15: на телефоне (альбом, высота ≤ 430) — тонкая плашка прогресса вместо большой панели (касание — задания)
+  el.classList.toggle('slim',!!(LAYOUT.land&&LAYOUT.h<=480)); };
 
 // ---------- quick equip: a better item was picked up → one tap to wear it (non-blocking) ----------
 const QEQ={it:null,t:0};
 function qeqOffer(it){ if(!it||!S.inv.includes(it)||compareTo(it)<=0) return; if(!canEquip(it,ITEM_BASES[it.base].slot==='ring'?'ring1':ITEM_BASES[it.base].slot)) return; const B=ITEM_BASES[it.base]; if(B.cls&&B.cls!==PS.cls&&B.slot==='weapon'&&S.gear.weapon) return;
   QEQ.it=it; let el=$('qeq'); if(!el){ el=document.createElement('div'); el.id='qeq'; document.body.appendChild(el); }
-  el.className='dk on bg-r'+it.rar; el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
-  $('qeqB').onclick=ev=>{ ev.stopPropagation(); if(QEQ.it&&S.inv.includes(QEQ.it)){ equip(QEQ.it); hudPortrait(); toast(`Надето: <b class="r${QEQ.it.rar}">${esc(QEQ.it.name)}</b>`); track('quick_equip',''+QEQ.it.rar); } el.classList.remove('on'); };
-  clearTimeout(QEQ.t); QEQ.t=setTimeout(()=>el.classList.remove('on'),7000); }
+  el.className='dk bg-r'+it.rar; qeqPlace(el); void el.offsetWidth; el.classList.add('on'); el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
+  $('qeqB').onclick=ev=>{ ev.stopPropagation(); if(QEQ.it&&S.inv.includes(QEQ.it)){ equip(QEQ.it); hudPortrait(); toast(`Надето: <b class="r${QEQ.it.rar}">${esc(QEQ.it.name)}</b>`); track('quick_equip',''+QEQ.it.rar); } el.classList.remove('on'); document.documentElement.classList.remove('qeqTop'); };
+  clearTimeout(QEQ.t); QEQ.t=setTimeout(()=>{ el.classList.remove('on'); document.documentElement.classList.remove('qeqTop'); },7000); }
+// v15: карточка «Надеть» — снизу по центру, но не поверх кнопок действий (зелье/бомба) и с учётом выреза/полоски «домой»;
+// в скрытом состоянии уезжает целиком за край (раньше translateY(120%) оставлял полоску карточки видимой над нижним отступом).
+function qeqPlace(el){ try{ const sf=LAYOUT.safe||{l:0,r:0,b:0}, W0=window.innerWidth; let right=W0-sf.r-8;
+    const acts=$('acts'); if(acts&&!acts.classList.contains('left')){ for(const b of acts.querySelectorAll('.ab')){ if(b.offsetParent===null||b.style.display==='none') continue; const r=b.getBoundingClientRect(); if(r.width&&r.bottom>(LAYOUT.h||innerHeight)-90) right=Math.min(right,r.left-8); } }
+    // левые ~30 % экрана — зона большого пальца (плавающий джойстик): карточку туда не ставим
+    const left0=Math.max(sf.l+8,(acts&&acts.classList.contains('left'))?sf.l+8:W0*.3), avail=right-left0;
+    el.classList.remove('top','cmp'); document.documentElement.classList.remove('qeqTop');
+    if(avail>=220){ const w=Math.min(360,avail); if(w<300) el.classList.add('cmp'); let x=W0/2-w/2; if(x+w>right) x=right-w; x=Math.max(left0,x); el.style.width=w+'px'; el.style.left=x+'px'; }
+    else { // мало места снизу (маленькие телефоны): сверху по центру под полосами здоровья, подсказки сдвигаются ниже
+      const w=Math.min(340,W0-sf.l-sf.r-24); el.classList.add('top'); if(w<300) el.classList.add('cmp'); el.style.width=w+'px'; el.style.left=(sf.l+(W0-sf.l-sf.r-w)/2)+'px'; document.documentElement.classList.add('qeqTop'); }
+  }catch(e){} }
 // ---------- revive once per stage for a rewarded ad ----------
 function reviveOffer(){ if(G.bot||!ADS.ready()||!G.run||G.mode!=='stage'||!W||W.kind!=='stage'||G.run.revived||!ADS.left('revive')||!S.started) return false; G.run.revived=true; const P=G.P; P.dead=true; P.state='dead'; P.st=0; G.paused=true; track('ad_offer_shown','revive');
   openPanel('offline',{html:`<div class="card"><p class="dcap">Искра гаснет… но ещё тлеет. Уголёк может раздуть её снова — один раз за вылазку.</p></div><div class="row" style="gap:8px">${adBtn('revive','Встать (ролик)',()=>{ closePanel(); P.dead=false; P.state='idle'; P.hp=P.maxHp*.6; P.iframe=2; fx('lvl',P.x,0,P.z); AU.sfx('heal'); spirit('death',true); G.paused=false; },'leather')}<button class="btn woodb" ${act(()=>{ closePanel(); G.paused=false; S.st.deaths++; later(.4,()=>runEnd(false)); })}>Отступить</button></div>`});
@@ -14292,11 +14448,179 @@ function spiritWorldTick(dt){
   while(U.emit>=1){ U.emit-=1; _spc.setHSL(.06+Math.random()*.05,1,.55+Math.random()*.2); PA.emit(g.position.x+rand(-.08,.08),g.position.y+rand(-.05,.12),g.position.z+rand(-.08,.08),rand(-.3,.3),rand(.5,1.4),rand(-.3,.3),rand(.5,.9),.11,.02,_spc,.9,-1.5,.5); }
 }
 // настройки: иконка пункта «Уголёк» — сам дух
-const _pSettingsSp=pSettings; pSettings=function(pause){ let h=_pSettingsSp(pause); return h.replace(/(<label>)(<svg[^>]*>[\s\S]*?<\/svg>)?(\s*Уголёк)/,(m,a,svg,t)=>`${a}<img class="spIc" src="${spiritPortrait('smug')}" alt="">${t}`); };
+const _pSettingsSp=pSettings; pSettings=function(pause){ let h=_pSettingsSp(pause); return h.replace(/(<label>)(<svg[^>]*>(?:(?!<\/svg>)[\s\S])*<\/svg>)?(\s*Уголёк)/,(m,a,svg,t)=>`${a}<img class="spIc" src="${spiritPortrait('smug')}" alt="">${t}`); };
 // Летопись: строка от Уголька наверху
 const _chronSp=PANEL_EXT.chron; PANEL_EXT.chron=()=>{ const r=_chronSp(); const n=Object.keys(STS().ch).length; const line=n?'Я помню каждое твоё решение. Даже те, что ты хотел бы забыть.':'Пусто. Пока. Летопись любит смелых — и тех, кто ошибается красиво.';
   r.body=`<div class="spChron"><img src="${spiritPortrait(n?'calm':'smug')}" alt=""><div><b>Уголёк</b><span>${line}</span></div></div>`+r.body; return r; };
 Object.assign(window.__game,{ spiritArt:(m,s)=>spiritArt(m||'calm',s||256), spiritFlare });
+
+// ================= p30 (v15): «Учебный плац» — обучение управлению на пустой спокойной карте + карточка «Управление» =================
+// Показывается новому игроку сразу после пролога (до пробуждения в Броде), пропускается, повторяется из Настроек.
+// Каждый шаг — «стоп-кадр»: игра на паузе, сцена затемнена, подсвечена настоящая кнопка на экране (на телефоне — касание-подсказка),
+// на ПК — клавиши. Потом игрок пробует сам на чучеле; шаг засчитывается по действию (или «Далее»).
+// Плац идёт на копии сохранения (как пролог): зелья/бомбы/умения для пробы не тратятся по-настоящему, сохранение не пишется.
+STAGE_TYPES.training={n:'Учебный плац',d:'Учебный плац у Брода.'};
+if(typeof SET_IC!=='undefined') SET_IC['Чёткость']='eye';
+ENEMIES.dummy={n:'Соломенное чучело',hp:1,dmg:0,spd:0,ai:'static',rng:0,cd:99,xp:0,col:0xd8b060};
+ENEMY_MODELS.dummy=()=>{ const rig=mkRig({hip:0,type:'blob',h:1.85,r:.5}); rig.torso=piv(rig.body,0,0,0);
+  pmesh(cgeo('dummy_v15',b=>{ b.cyl(.07,.08,1.9,0x6a4426,{p:[0,.95,0],seg:7}); b.box(1.15,.09,.09,0x6a4426,{p:[0,1.32,0]});
+    b.cyl(.27,.31,.72,0xd8b060,{p:[0,1.05,0],seg:9}); b.tor(.29,.035,0x8a5a2a,{p:[0,.86,0],r:[PI/2,0,0],ol:0}); b.tor(.28,.035,0x8a5a2a,{p:[0,1.26,0],r:[PI/2,0,0],ol:0});
+    b.sph(.23,0xc8a878,{p:[0,1.62,0],s:[1,1.08,1]}); b.cone(.1,.25,0xd8b060,{p:[.5,1.32,0],r:[0,0,-PI/2]}); b.cone(.1,.25,0xd8b060,{p:[-.5,1.32,0],r:[0,0,PI/2]});
+    b.cyl(.19,.19,.03,0xf2ead8,{p:[0,1.08,.3],r:[PI/2,0,0],ol:0,seg:16}); b.cyl(.13,.13,.035,0xc8281a,{p:[0,1.08,.305],r:[PI/2,0,0],ol:0,seg:16}); b.cyl(.06,.06,.04,0xf2ead8,{p:[0,1.08,.31],r:[PI/2,0,0],ol:0,seg:12}); },.04),rig.torso);
+  return rig; };
+
+const YARD={on:false,real:null,god:false,i:-1,mode:'',t:0,n:{},replay:false,after:null,dist:0,lx:0,lz:0,okT:0,sawKey:false,pot:0,bomb:0,ch:0,card:null};
+// устройство ввода: касание, клавиатура или оба (гибрид — ноутбук с сенсором, планшет с клавиатурой)
+function inputKinds(){ let touch=false,kbd=false; try{ touch=LAYOUT.touch||IS_MOBILE||matchMedia('(any-pointer:coarse)').matches; kbd=!IS_MOBILE||matchMedia('(any-pointer:fine)').matches||matchMedia('(any-hover:hover)').matches; }catch(e){ touch=IS_MOBILE; kbd=!IS_MOBILE; }
+  if(YARD.sawKey) kbd=true; if(!touch&&!kbd) kbd=true; return {touch,kbd}; }
+window.addEventListener('keydown',ev=>{ if(!/^(Tab|Meta|Alt|Control)/.test(ev.key||'')) YARD.sawKey=true; },true);
+const kc=k=>`<kbd>${k}</kbd>`;
+// раскладка — та же, что в обработчиках клавиш (p8.js setupInput, p23.js заклинание)
+const CONTROLS=[
+  {id:'move',d:'Бег по плацу и в бою',t:'Бег',ic:'boots',touch:'Коснитесь левой половины экрана и ведите палец — джойстик появится под пальцем',keys:[['W','A','S','D'],['↑','←','↓','→']]},
+  {id:'attack',d:'Цель выбирается сама; удержание — серия ударов',t:'Атака',ic:'sword',touch:'Большая кнопка справа: цель выбирается сама, удержание — серия ударов',keys:[['J'],['Пробел']]},
+  {id:'dodge',d:'Рывок с неуязвимостью — уходите из красных зон',t:'Кувырок',ic:'dodge',touch:'Кнопка со стрелкой: рывок в сторону бега, на миг неуязвимы',keys:[['Shift'],['K']]},
+  {id:'skill',d:'Сильные приёмы с перезарядкой',t:'Умения 1–3',ic:'spark',touch:'Три кнопки вокруг атаки; цифра — ранг, тень — перезарядка',keys:[['1'],['2'],['3']]},
+  {id:'ult',d:'Мощный удар, когда шкала жара полна',t:'Вспышка Искры',ic:'flame',touch:'Сияющая кнопка: шкала жара под здоровьем полна — бейте',keys:[['R']]},
+  {id:'potion',d:'Лечит часть здоровья',t:'Зелье',ic:'potion',touch:'Кнопка с флаконом — лечит; число — сколько осталось',keys:[['Q']]},
+  {id:'bomb',d:'Летит в ближайшего врага, взрыв по области',t:'Бомба',ic:'bomb',touch:'Летит в ближайшего врага, бьёт по области',keys:[['F']]},
+  {id:'spell',d:'Заклинание из фолианта, своя перезарядка',t:'Заклинание',ic:'magic',touch:'Кнопка цвета стихии — заклинание из фолианта',keys:[['T']]},
+  {id:'loot',d:'Сундук открывается сам, добыча подбирается на бегу',t:'Сундуки и добыча',ic:'chest',touch:'Подойдите — сундук откроется сам, добыча подбирается на бегу',keys:[['E']],kdesc:'в деревне — поговорить/строить'},
+  {id:'bag',d:'Снаряжение, умения и сумка',t:'Герой и сумка',ic:'hero',touch:'«Надеть» на карточке новой вещи; всё снаряжение — «Герой» внизу в деревне',keys:[['I']]},
+  {id:'map',d:'Карта этапов; Esc — пауза',t:'Карта и пауза',ic:'map',touch:'«Поход» внизу в деревне — карта этапов; ⏸ справа сверху — пауза',keys:[['M'],['Esc']]}];
+function keysHtml(c){ return c.keys.map(g=>g.map(kc).join('')).join('<i class="kor">или</i>'); }
+// карточка «Управление» (Настройки и Привал) — только для текущего устройства (на гибридных — оба столбца)
+function controlsHtml(){ const K=inputKinds();
+  return `<div class="sect">${ico('help')} Управление${K.touch&&K.kbd?' · касание и клавиатура':K.touch?' · касание':' · клавиатура'}</div><div class="ctlCard">${CONTROLS.map(c=>`<div class="ctlRow"><span class="ctlN">${ico(c.ic)} ${c.t}</span>${K.kbd?`<span class="ctlK">${keysHtml(c)}</span>`:''}<span class="ctlT">${K.touch?c.touch:c.d}</span></div>`).join('')}</div>`; }
+
+// шаги плаца
+const YSTEPS=[
+  {id:'move',sel:'@joy',try:'Пробегитесь по плацу',done:()=>YARD.dist>3.5},
+  {id:'attack',sel:'#bAtk',try:'Ударьте чучело 3 раза',done:()=>(YARD.n.attack||0)>=3},
+  {id:'dodge',sel:'#bDodge',try:'Сделайте кувырок',done:()=>(YARD.n.dodge||0)>=1},
+  {id:'skill',sel:'#bS1',try:'Примените умение',done:()=>(YARD.n.skill||0)>=1,more:'Второе и третье умения откроются с уровнями (очки — в «Герое»).'},
+  {id:'ult',sel:'#bUlt',try:'Ударьте Вспышкой Искры',done:()=>(YARD.n.ult||0)>=1,pre:()=>{ G.P.ember=100; },more:'Жар копится от ударов — для пробы шкала уже полна.'},
+  {id:'potion',sel:'#bPot',try:'Выпейте зелье',done:()=>(YARD.n.potion||0)>=1,pre:()=>{ G.P.hp=Math.max(1,G.P.maxHp*.45); }},
+  {id:'bomb',sel:'#bBomb',try:'Бросьте бомбу в чучела',done:()=>(YARD.n.bomb||0)>=1},
+  {id:'spell',sel:'#bSpell',try:'Сотворите заклинание',done:()=>(YARD.n.spell||0)>=1,more:'Заклинания учат в храме по фолиантам; для пробы дан «Огненный шар».'},
+  {id:'loot',sel:'@chest',try:'Откройте сундук у северной изгороди',done:()=>YARD.ch>0&&G.time-YARD.chT>1.6,more:'Бочки и ящики тоже бейте — в них монеты.'},
+  {id:'bag',sel:'#hPort',info:1,more:'Если вещь лучше вашей, внизу всплывёт карточка «Надеть» — одно касание.'},
+  {id:'map',sel:'#bPause',info:1}];
+const yCtl=id=>CONTROLS.find(c=>c.id===id);
+// иконка шага = иконка настоящей кнопки на экране (умение класса, заклинание из фолианта)
+function yIcon(st,c){ try{ const b=st.sel&&st.sel[0]==='#'&&st.sel!=='#hPort'&&st.sel!=='#bPause'?document.querySelector(st.sel+' .ic'):null; if(b&&b.innerHTML.trim()) return b.innerHTML; }catch(e){} return ico(c.ic); }
+function yTrack(k){ const keep=S; if(YARD.real) S=YARD.real; try{ trackOnce('ftue','yard_'+k); }catch(e){} S=keep; }
+
+function yardStart(replay,after){
+  if(YARD.on||PRO.on) return; YARD.replay=!!replay; YARD.after=after||null; AU.init(); show('title',false); show('panel',false); PANEL.kind=null;
+  YARD.real=S; YARD.god=!!G.god; YARD.on=true; G.prologue=true; // G.prologue: сохранение выключено (как в прологе)
+  const s=JSON.parse(JSON.stringify(S)); S=s; S.started=true; S.cons.potion=Math.max(3,S.cons.potion|0); S.cons.bomb=Math.max(2,S.cons.bomb|0);
+  const cls=curCls(); S.hero.talents[cls]=Object.assign({},S.hero.talents[cls],{s1:Math.max(1,talentRank(cls,'s1')),s2:Math.max(1,talentRank(cls,'s2')),s3:Math.max(1,talentRank(cls,'s3')),ult:Math.max(1,talentRank(cls,'ult'))});
+  S.spell=S.spell||{known:{},tomes:{},slot:'',runes:{},rune:{}}; if(!S.spell.slot||!(S.spell.known[S.spell.slot]>0)){ S.spell.known.fire=Math.max(1,S.spell.known.fire||0); S.spell.slot='fire'; }
+  S.seen.joyHint=1; S.seen.tut1=1; S.seen.keyTip=1;
+  yTrack('start'); track('yard',replay?'replay':'new');
+  const go=()=>fadeTo(()=>{ try{ yardBuild(); }catch(e){ console.error(e); yardEnd(true); } });
+  if(typeof withAssets==='function') withAssets([asZoneGroup(1)],go); else go();
+}
+function yardBuild(){
+  clearEntities(); computeStats(); unloadWorld();
+  const Z=Object.assign({},ZONES[0],{n:'Учебный плац',enemies:['goblin']});
+  newW('stage',Z); W.kind='training'; W.lvl=1; setZoneLook(Z);
+  W.walk={nodes:[{x:0,z:0,r:10.5}],segs:[]}; W.start={x:0,z:4}; const b={minX:-30,maxX:30,minZ:-30,maxZ:30}; W.bounds=b;
+  buildGround(Z,b,{noPath:true}); scatterWalls(Object.assign({},Z,{wall:['treeRound','treeBirch','treeRound','bush']}),b,Q.props*.55);
+  // изгородь по кругу (вход — с юга), стойки, флажки, сено — чистая земля внутри
+  for(let i=0;i<32;i++){ const a=(i+.5)/32*TAU; if(Math.abs(angWrap(a-PI/2))<.22) continue; const x=Math.cos(a)*10.8, z=Math.sin(a)*10.8; W.props.push({type:'fence',x,z,s:1,ry:-a+PI/2}); W.obst.push({x,z,r:.5}); }
+  for(const [t,x,z,ry] of [['banner',-2.4,-10,0],['banner',2.4,-10,0],['hay',-8,3.5,.6],['hay',7.6,-4.5,2],['lantern',-6.8,-6.8,0],['lantern',6.8,6.8,0],['lantern',-6.8,6.8,0],['lantern',6.8,-6.8,0]]){ W.props.push({type:t,x,z,s:1,ry}); if(t!=='banner') W.obst.push({x,z,r:.6}); }
+  W.info={z:1,s:0,key:'T',lvl:1,name:'Учебный плац',zone:Z,type:'training',par:999}; W.obj={type:'training',done:false,txt:'Учебный плац'};
+  buildPropMeshes();
+  G.mode='stage'; G.run={info:W.info,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:S.hero.xp,startLvl:S.hero.lvl};
+  heroRebuildRig(); refreshPlayer(true); spawnPets(); placePlayer(0,4,PI); G.P.ember=0; G.god=true;
+  W.dummies=[]; for(const [x,z] of [[-3,-3.2],[0,-4.6],[3,-3.2]]){ const e=spawnEnemy('dummy',x,z,1,{}); e.maxHp=e.hp=1e6; e.face=Math.atan2(-x,4-z); e.rig.root.rotation.y=e.face; e.dummy=1; W.dummies.push(e); }
+  mkObj('barrel',5.2,.8,{}); mkObj('crate',-5.4,1.2,{}); mkObj('barrel',-5,2.4,{}); W.yChest=mkObj('chest',0,-8.4,{ry:0});
+  show('hud'); hudBuild(); AU.music('village'); cullProps(0,0,true);
+  YARD.i=-1; YARD.n={}; YARD.dist=0; YARD.lx=G.P.x; YARD.lz=G.P.z; YARD.ch=0; YARD.pot=S.cons.potion; YARD.bomb=S.cons.bomb;
+  banner('Учебный плац','Тлеющий Брод, утро');
+  later(1.4,()=>yCard('intro'));
+}
+// стоп-кадр
+function yHoleRect(sel){ const sf=LAYOUT.safe||{t:0,r:0,b:0,l:0}, w=innerWidth, h=LAYOUT.h||innerHeight;
+  if(sel==='@joy'){ const r=Math.min(110,h*.28); const left=S.set.joy==='right'; const cx=left?w-sf.r-r-30:sf.l+r+34, cy=h-sf.b-r-24; return {x:cx-r,y:cy-r,w:r*2,h:r*2,round:1}; }
+  if(sel==='@chest'){ const o=W&&W.yChest; if(!o) return null; const [sx,sy]=worldToScreen(o.x,.6,o.z); return {x:sx-48,y:sy-48,w:96,h:96,round:1}; }
+  const el=sel&&document.querySelector(sel); if(!el||el.offsetParent===null&&getComputedStyle(el).position!=='fixed') return null; const r=el.getBoundingClientRect(); if(!r.width) return null;
+  const p=6; return {x:r.left-p,y:r.top-p,w:r.width+p*2,h:r.height+p*2,round:1,el}; }
+function yEl(){ let el=$('yard'); if(!el){ el=document.createElement('div'); el.id='yard'; document.body.appendChild(el);
+    el.addEventListener('pointerdown',ev=>{ ev.stopPropagation(); const a=ev.target.closest('[data-y]'); if(!a) return; ev.preventDefault(); const k=a.dataset.y; AU.sfx('ui'); if(k==='try') yTry(); else if(k==='next') yNext(); else if(k==='skip') yardEnd(false,true); else if(k==='end') yardEnd(false); else if(k==='go') yNext(); });
+    el.addEventListener('pointerup',ev=>ev.stopPropagation()); }
+  return el; }
+function yCard(kind){ const el=yEl(); G.paused=true; G.input.mx=G.input.mz=0; G.input.atk=false; YARD.card=kind; const K=inputKinds(); const tot=YSTEPS.length;
+  let hole=null, body='', btns='';
+  if(kind==='intro'){ body=`<div class="yTag">Учебный плац · ~1 минута</div><h3>Разомнёмся, Искроносец</h3><p>Здесь тихо: только соломенные чучела, бочки и сундук. Покажу по одному, что нажимать${K.touch&&K.kbd?' — пальцем и на клавиатуре':K.touch?' на экране':' на клавиатуре'}, и дам попробовать.</p>`;
+    btns=`<button class="btn leather" data-y="go">${ico('play')} Начать</button><button class="ySk" data-y="skip">Пропустить плац</button>`; }
+  else if(kind==='end'){ body=`<div class="yTag">Плац пройден</div><h3>Руки помнят!</h3><p>Все кнопки — в «Настройки → Управление». Плац можно повторить там же.</p><div class="ctlMini">${CONTROLS.slice(0,8).map(c=>`<span>${ico(c.ic)} ${K.kbd?keysHtml({keys:c.keys.slice(0,1)}):c.t}</span>`).join('')}</div>`;
+    btns=`<button class="btn leather" data-y="end">${ico('door')} В Брод</button>`; }
+  else { const st=YSTEPS[YARD.i], c=yCtl(st.id); hole=yHoleRect(st.sel);
+    body=`<div class="yTag">Шаг ${YARD.i+1} из ${tot}</div><h3><span class="yIc">${yIcon(st,c)}</span>${c.t}</h3>`+
+      (K.touch?`<p class="yT">${ico('help')} ${c.touch}</p>`:'')+(K.kbd?`${K.touch?'':`<p class="yT">${c.d}</p>`}<p class="yK">${keysHtml(c)}${c.kdesc?` <small>${c.kdesc}</small>`:''}</p>`:'')+(st.more?`<p class="yM">${st.more}</p>`:'');
+    btns=st.info?`<button class="btn leather" data-y="next">Далее ▸</button>`:`<button class="btn leather" data-y="try">${ico('play')} Попробовать</button><button class="btn woodb small" data-y="next">Далее ▸</button>`;
+    btns+=`<button class="ySk" data-y="skip">Пропустить плац</button>`; }
+  const side=hole?(hole.x+hole.w/2>innerWidth*.5?'l':'r'):'c';
+  el.className='on side-'+side+(hole?'':' dim');
+  el.innerHTML=(hole?`<div class="yHole${hole.round?' rnd':''}" data-y="${kind==='step'&&!YSTEPS[YARD.i].info?'try':'next'}" style="left:${hole.x}px;top:${hole.y}px;width:${hole.w}px;height:${hole.h}px"></div>`+(K.touch?`<div class="yFinger${YSTEPS[YARD.i]&&YSTEPS[YARD.i].sel==='@joy'?' drag':''}" style="left:${hole.x+hole.w/2}px;top:${hole.y+hole.h/2}px"></div>`:''):'')+
+    `<div class="yCard dk">${body}<div class="yBtns">${btns}</div></div>`;
+  const ch=$('yChip'); if(ch) ch.classList.remove('on');
+}
+function yNext(){ const st0=YSTEPS[YARD.i]; if(st0&&!YARD.n['tr_'+st0.id]){ YARD.n['tr_'+st0.id]=1; yTrack(st0.id+(YARD.n['ok_'+st0.id]||st0.info?'':'_next')); }
+  YARD.i++; if(YARD.i>=YSTEPS.length){ yCard('end'); return; }
+  const st=YSTEPS[YARD.i]; if(st.sel==='#bSpell'&&!$('bSpell')) hudBuild(); YARD.card='step'; yCard('step'); }
+function yTry(){ const st=YSTEPS[YARD.i]; if(!st) return; const el=$('yard'); if(el){ el.className=''; el.innerHTML=''; } YARD.card=null; G.paused=false;
+  if(st.pre) try{ st.pre(); }catch(e){}
+  YARD.dist=0; YARD.lx=G.P.x; YARD.lz=G.P.z; YARD.okT=0; YARD.n.attack=0; YARD.n.dodge=0; YARD.n.skill=0; YARD.n.ult=0; YARD.n.potion=0; YARD.n.bomb=0; YARD.n.spell=0;
+  const K=inputKinds(), c=yCtl(st.id);
+  let chip=$('yChip'); if(!chip){ chip=document.createElement('div'); chip.id='yChip'; chip.className='pe'; document.body.appendChild(chip); chip.addEventListener('pointerdown',ev=>{ ev.stopPropagation(); if(ev.target.closest('[data-y=next]')){ ev.preventDefault(); AU.sfx('ui'); yNext(); } }); }
+  chip.innerHTML=`<span class="yIc">${yIcon(st,c)}</span><span class="yTx">${st.try}${K.kbd?` <span class="yKs">${keysHtml({keys:c.keys.slice(0,2)})}</span>`:''}</span><button class="btn woodb small" data-y="next">Далее ▸</button>`; chip.classList.add('on'); chip.classList.remove('ok');
+  const b=st.sel&&st.sel[0]==='#'?document.querySelector(st.sel):null; document.querySelectorAll('.yGlow').forEach(x=>x.classList.remove('yGlow')); if(b) b.classList.add('yGlow');
+}
+function yardTick(dt){ if(!YARD.on||!W||W.kind!=='training'||!G.P) return; const P=G.P;
+  for(const e of W.dummies||[]) if(e.alive&&e.hp<e.maxHp*.9) e.hp=e.maxHp;
+  if(P.hp<P.maxHp*.3&&YSTEPS[YARD.i]&&YSTEPS[YARD.i].id!=='potion') P.hp=P.maxHp*.6;
+  YARD.dist+=Math.hypot(P.x-YARD.lx,P.z-YARD.lz); YARD.lx=P.x; YARD.lz=P.z;
+  if(G.run&&G.run.chests>YARD.ch){ YARD.ch=G.run.chests; YARD.chT=G.time; }
+  if(S.cons.potion<YARD.pot){ YARD.n.potion=(YARD.n.potion||0)+1; } YARD.pot=S.cons.potion; if(S.cons.bomb<YARD.bomb){ YARD.n.bomb=(YARD.n.bomb||0)+1; } YARD.bomb=S.cons.bomb;
+  const st=YSTEPS[YARD.i]; if(!st||YARD.card||st.info) return;
+  if(!YARD.okT&&st.done()){ YARD.okT=G.time; YARD.n['ok_'+st.id]=1; const ch=$('yChip'); if(ch){ ch.classList.add('ok'); const t=ch.querySelector('.yTx'); if(t) t.innerHTML=`${ico('check')} Отлично!`; } AU.sfx('quest'); vib('light'); }
+  if(YARD.okT&&G.time-YARD.okT>1.1){ YARD.okT=0; document.querySelectorAll('.yGlow').forEach(x=>x.classList.remove('yGlow')); yNext(); }
+}
+function yardEnd(err,skipped){ if(!YARD.on) return; const i=YARD.i; YARD.on=false; G.prologue=false; G.paused=false; YARD.card=null;
+  const el=$('yard'); if(el){ el.className=''; el.innerHTML=''; } const ch=$('yChip'); if(ch) ch.classList.remove('on'); document.querySelectorAll('.yGlow').forEach(x=>x.classList.remove('yGlow'));
+  clearEntities(); G.god=YARD.god; CAMR.override=null;
+  S=YARD.real; YARD.real=null; S.seen.yard=1; S.seen.joyHint=1; S.seen.tut1=1;
+  if(skipped) trackOnce('ftue','yard_skip_s'+Math.max(0,i)); else if(!err) trackOnce('ftue','yard_done'); saveGame(true);
+  computeStats(); refreshPlayer(true);
+  const after=YARD.after; YARD.after=null;
+  fadeTo(()=>{ if(after) after(); else enterVillage(); });
+}
+// счётчики действий (обёртки поверх всех прежних; кнопки и клавиши вызывают функции по имени)
+const _yAtk=playerAttack; playerAttack=function(){ const r=_yAtk.apply(this,arguments); if(YARD.on&&!G.paused) YARD.n.attack=(YARD.n.attack||0)+1; return r; };
+const _yDodge=dodge; dodge=function(){ const c=G.P&&G.P.rollCd; const r=_yDodge.apply(this,arguments); if(YARD.on&&G.P&&G.P.rollCd>(c||0)) YARD.n.dodge=(YARD.n.dodge||0)+1; return r; };
+const _ySkill=useSkill; useSkill=function(id){ const r=_ySkill.apply(this,arguments); if(YARD.on&&r===true){ if(id==='ult') YARD.n.ult=(YARD.n.ult||0)+1; else YARD.n.skill=(YARD.n.skill||0)+1; } return r; };
+const _ySpell=castSpell; castSpell=function(){ const r=_ySpell.apply(this,arguments); if(YARD.on&&r) YARD.n.spell=(YARD.n.spell||0)+1; return r; };
+const _yUpd=updateStage; updateStage=function(dt){ _yUpd(dt); if(W&&W.kind==='training') yardTick(dt); };
+const _yRunEnd=runEnd; runEnd=function(){ if(W&&W.kind==='training'){ yardEnd(false,true); return; } return _yRunEnd.apply(this,arguments); };
+const _yHudQuest=hudQuest; hudQuest=function(){ _yHudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='training'){ el.classList.remove('slim'); el.innerHTML=`<h4>${ico('sword')} Учебный плац</h4><div class="q">Пробуйте управление на чучелах</div>`; el.style.display=''; } };
+// клавиши во время стоп-кадра: Enter/Пробел — «Попробовать»/«Далее», клавиша шага — сразу пробовать; остальное не проходит в игру
+window.addEventListener('keydown',ev=>{ if(!YARD.on||!YARD.card) return; ev.stopImmediatePropagation(); ev.preventDefault(); if(ev.repeat) return;
+  const st=YARD.card==='step'?YSTEPS[YARD.i]:null;
+  if(ev.code==='Escape'){ yardEnd(false,true); return; }
+  if(ev.code==='Enter'||ev.code==='Space'){ if(YARD.card==='intro') yNext(); else if(YARD.card==='end') yardEnd(false); else if(st&&st.info) yNext(); else yTry(); return; }
+  if(st&&!st.info){ const ks=yCtl(st.id).keys.flat().map(k=>({'Пробел':'Space','Shift':'ShiftLeft','↑':'ArrowUp','←':'ArrowLeft','↓':'ArrowDown','→':'ArrowRight'})[k]||(k.length===1?(/\d/.test(k)?'Digit'+k:'Key'+k):k)); if(ks.includes(ev.code)||ev.code==='ShiftRight'&&ks.includes('ShiftLeft')) yTry(); }
+},true);
+// поворот/размер во время стоп-кадра — перерисовать подсветку
+window.addEventListener('resize',()=>{ if(YARD.on&&YARD.card) setTimeout(()=>{ if(YARD.on&&YARD.card) yCard(YARD.card); },120); });
+// новый игрок: после пролога → плац → пробуждение в Броде. Старые сохранения плац не видят (предложение — один раз в деревне).
+function yardWanted(){ return !S.seen.yard&&!window.__noYard&&!/[?&]noyard/.test(location.search); }
+const _yVillageSeq=typeof ftueVillageSeq==='function'?ftueVillageSeq:null;
+if(_yVillageSeq) ftueVillageSeq=function(seq){ _yVillageSeq(seq); if(!S.seen.yard&&!S.seen.yardOffer&&S.started&&S.seen.wake){ S.seen.yardOffer=1; seq.push(cb=>{ later(4,()=>toast(`${ico('sword')} Новое: <b>Учебный плац</b> — Настройки → «Учебный плац»`,null,2,'quest')); cb(); }); } };
+Object.assign(window.__game,{ yard:(r)=>yardStart(r!==false), yardState:()=>({on:YARD.on,i:YARD.i,card:YARD.card,step:YSTEPS[YARD.i]&&YSTEPS[YARD.i].id,n:Object.assign({},YARD.n),dist:+YARD.dist.toFixed(1)}), yardTry:()=>yTry(), yardNext:()=>yNext(), yardSkip:()=>yardEnd(false,true), controls:()=>controlsHtml(), render:()=>({w:R.domElement.width,h:R.domElement.height,pr:PR,cpr:CPR,q:QL,sharp:AS.FX&&AS.FX.sharp,scale:RSZ.scale,dpr:devicePixelRatio,css:vpSize()}) });
 // ================= pz: boot =================
 boot();
 })();

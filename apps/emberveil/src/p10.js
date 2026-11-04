@@ -3,8 +3,21 @@
 // и ставим игру на паузу; на планшете/ПК в портрете интерфейс остаётся рабочим (старая портретная вёрстка).
 const LAYOUT={land:false,needRot:false,k:1,ak:1,w:0,h:0,touch:false};
 function isTouchDev(){ try{ return IS_MOBILE||(window.matchMedia&&matchMedia('(pointer:coarse)').matches); }catch(e){ return IS_MOBILE; } }
+// v15: Telegram Mini App — отступы берём и из объекта WebApp (safeAreaInset + contentSafeAreaInset, Bot API 8.0: в полноэкранном
+// режиме кнопки «Закрыть» и «⌄ ⋯» лежат поверх игры), а не только из CSS-переменных --tg-* (их ставит telegram-web-app.js, и не всегда).
+// --vgap — сколько снизу «съедено» у видимой области (WebView выше видимого: Telegram не в полноэкранном режиме, visualViewport).
+function tgApp(){ try{ const w=window.Telegram&&window.Telegram.WebApp; return w&&(w.initData||w.platform&&w.platform!=='unknown')?w:null; }catch(e){ return null; } }
+function insetsJS(){ const o={t:0,b:0,l:0,r:0,gap:0,vh:window.innerHeight||1}; const tg=tgApp();
+  if(tg){ const a=tg.safeAreaInset||{}, c=tg.contentSafeAreaInset||{}; o.t=(+a.top||0)+(+c.top||0); o.b=(+a.bottom||0)+(+c.bottom||0); o.l=(+a.left||0)+(+c.left||0); o.r=(+a.right||0)+(+c.right||0);
+    if(!tg.isFullscreen&&tg.viewportStableHeight>100&&tg.viewportStableHeight<o.vh-2) o.gap=Math.round(o.vh-tg.viewportStableHeight); }
+  try{ const v=window.visualViewport; if(v&&Math.abs((v.scale||1)-1)<.01&&v.height>100){ const g=Math.round(o.vh-v.height-(v.offsetTop||0)); if(g>2&&g<o.vh*.4) o.gap=Math.max(o.gap,g); } }catch(e){}
+  o.vh=Math.max(100,o.vh-o.gap); return o; }
 function layout(){
-  const w=window.innerWidth||1, h=window.innerHeight||1, root=document.documentElement;
+  const w=window.innerWidth||1, h0=window.innerHeight||1, root=document.documentElement;
+  const IN=insetsJS(); LAYOUT.ins=IN; const h=IN.vh;
+  root.style.setProperty('--jst',IN.t+'px'); root.style.setProperty('--jsb',IN.b+'px'); root.style.setProperty('--jsl',IN.l+'px'); root.style.setProperty('--jsr',IN.r+'px');
+  root.style.setProperty('--vgap',IN.gap+'px'); root.style.setProperty('--vh',h+'px'); void h0;
+  LAYOUT.safe=safeMeasure();
   const land=w>=h*1.02, touch=isTouchDev();
   // phone in portrait: short side < 600 → ask to rotate. Tablets / desktop windows stay usable in portrait.
   const needRot=!land&&touch&&Math.min(w,h)<600;
@@ -19,6 +32,10 @@ function layout(){
   cl.toggle('wide',land&&w/h>2.05); cl.toggle('roomy',land&&h>=700&&w>=1000); cl.toggle('touch',touch);
   if(needRot!==LAYOUT.needRot){ LAYOUT.needRot=needRot; cl.toggle('needrot',needRot); G.rotPause=needRot; if(needRot){ G.input.mx=G.input.mz=0; G.input.atk=false; } }
 }
+// разрешённые CSS-значения отступов (env() + Telegram) в px — для JS-позиционирования (джойстик, карточка «Надеть», обучение)
+let _safeProbe=null;
+function safeMeasure(){ try{ if(!_safeProbe){ _safeProbe=document.createElement('div'); _safeProbe.style.cssText='position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:var(--st) var(--sr) var(--sb) var(--sl)'; document.body.appendChild(_safeProbe); }
+  const cs=getComputedStyle(_safeProbe); return {t:parseFloat(cs.paddingTop)||0,r:parseFloat(cs.paddingRight)||0,b:parseFloat(cs.paddingBottom)||0,l:parseFloat(cs.paddingLeft)||0}; }catch(e){ return {t:0,r:0,b:0,l:0}; } }
 // one-shot: after the first user gesture try fullscreen + landscape lock (all guarded)
 let _orientTried=false;
 function tryOrientationLock(){
@@ -41,8 +58,17 @@ function setupLayout(){
   layout();
   window.addEventListener('resize',layout); window.addEventListener('orientationchange',()=>setTimeout(()=>{ layout(); camResize(); },250));
   window.addEventListener('pointerdown',tryOrientationLock,{passive:true});
-  try{ const tg=window.Telegram&&window.Telegram.WebApp; if(tg&&tg.onEvent){ tg.onEvent('fullscreenChanged',()=>{ layout(); camResize(); }); tg.onEvent('safeAreaChanged',layout); tg.onEvent('contentSafeAreaChanged',layout); } }catch(e){}
+  const relayout=()=>{ layout(); camResize(); };
+  try{ if(window.visualViewport) visualViewport.addEventListener('resize',relayout); }catch(e){}
+  tgHook(); window.addEventListener('load',()=>{ tgHook(); relayout(); });
+  // telegram-web-app.js грузится async: если он пришёл после старта — подписываемся, когда появится
+  let n=0; const iv=setInterval(()=>{ if(tgHook()||++n>20) clearInterval(iv); },500);
 }
+let _tgHooked=false;
+function tgHook(){ if(_tgHooked) return true; const tg=tgApp(); if(!tg||!tg.onEvent) return false; _tgHooked=true;
+  const relayout=()=>{ layout(); camResize(); };
+  try{ for(const e of ['fullscreenChanged','safeAreaChanged','contentSafeAreaChanged','viewportChanged']) tg.onEvent(e,relayout); }catch(e){}
+  try{ initTG(); }catch(e){} relayout(); return true; }
 // Landscape-aware camera: keep the same vertical extent of gameplay on 16:9…21:9, portrait keeps the classic framing.
 function camFrame(){
   const a=cam.aspect, tf=Math.tan(cam.fov*PI/360);

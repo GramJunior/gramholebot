@@ -54,8 +54,23 @@ function applyExposure(){ const b=S&&S.set&&S.set.bright!=null?S.set.bright:1; L
 // общая насыщенность средних тонов для toon-материалов (игровых и KayKit): один uniform на всех
 const SATG={value:1.16};
 // потолок PR для текущего пресета; ?rs=0.75 в адресе фиксирует PR (замеры), ?drs=0 выключает динамическое разрешение
-function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(window.devicePixelRatio||1,IS_MOBILE?Q.prMax:Q.prMaxD); }
-function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(prCap(),Q.prMin); }
+// v15 «Чёткость» (Настройки): auto — на телефонах с плотным экраном (DPR ≥ 2: iPhone, Pixel, Telegram) разрешение важнее эффектов:
+// потолок не ниже 1,25–1,5 и пол динамического разрешения 1,0–1,1 CSS px (раньше пол 0,5–0,7 CSS px = 17–23 % пикселей экрана
+// при DPR 3 → «пиксельная» картинка). Если кадров всё равно мало, «Авто» сначала снимает эффекты (пресет ниже), а не разрешение.
+// high — разрешение закреплено (DRS не опускает), eco — прежнее поведение (экономия батареи: пол пресета).
+function sharpMode(){ const m=typeof S!=='undefined'&&S&&S.set&&S.set.sharp; return m==='high'||m==='eco'?m:'auto'; }
+const SHARP_CAP={perf:1.25,low:1.5,med:1.5,high:1.75}, SHARP_MIN={perf:1.0,low:1.0,med:1.1,high:1.2};
+function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; const d=window.devicePixelRatio||1, m=sharpMode();
+  let c=Math.min(d,IS_MOBILE?Q.prMax:Q.prMaxD);
+  if(m==='high') c=Math.min(d,Math.max(c,IS_MOBILE?2:2));
+  else if(m==='eco') c=Math.min(c,IS_MOBILE?1.25:1.25);
+  else if(IS_MOBILE&&d>=1.75) c=Math.min(d,Math.max(c,SHARP_CAP[QL]||1.5));
+  return c; }
+function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; const cap=prCap(), m=sharpMode();
+  if(m==='high') return cap;
+  if(m==='eco') return Math.min(cap,Q.prMin);
+  if(IS_MOBILE) return Math.min(cap,Math.max(Q.prMin,(window.devicePixelRatio||1)>=1.75?(SHARP_MIN[QL]||1):.85));
+  return Math.min(cap,Q.prMin); }
 // v9 (мерцание): PR — масштаб рендера (динамическое разрешение), CPR — плотность буфера холста. Холст НЕ меняет размер при смене PR:
 // сцена рисуется во внутреннюю цель нужного размера (EVPostFX.setScale) и растягивается на холст. Размер холста меняется только
 // при смене окна/пресета и только прямо перед отрисовкой кадра (rsFlush), иначе браузер показывает очищенный (чёрный) буфер.
@@ -422,20 +437,24 @@ function liquidMat(c1,c2,lava){
 // ---------- camera rig ----------
 const CAMR={x:0,z:0,tx:0,tz:0,dist:30,pitch:0.94,shake:0,shx:0,shz:0,override:null,fovW:10.8,fovH:15,zoom:1,look:{x:0,y:0,z:0}};
 // камера пересчитывается сразу, а буфер холста — только в rsFlush() прямо перед отрисовкой (в том же кадре)
+// v15: размер холста — его настоящий CSS-размер (в Telegram/WebView innerHeight бывает не равен видимой области)
+function vpSize(){ let w=canvas.clientWidth, h=canvas.clientHeight; if(!(w>0&&h>0)){ w=window.innerWidth||1; h=window.innerHeight||1; } return [w,h]; }
 function camResize(){
-  const w=window.innerWidth,h=window.innerHeight; cam.aspect=w/h;
+  const [w,h]=vpSize(); cam.aspect=w/h;
   CAMR.dist=camFrame();
   cam.updateProjectionMatrix();
   RSZ.dirty=true;
 }
 function rsFlush(){
-  const w=window.innerWidth,h=window.innerHeight, sc=clamp(PR/CPR,.25,1);
-  if(RSZ.dirty){ RSZ.dirty=false;
+  let w=RSZ.w||window.innerWidth, h=RSZ.h||window.innerHeight; const sc=clamp(PR/CPR,.25,1);
+  if(RSZ.dirty){ RSZ.dirty=false; [w,h]=vpSize();
     if(w!==RSZ.w||h!==RSZ.h||Math.abs(CPR-RSZ.cpr)>.001){ const a=w/h; if(Math.abs(cam.aspect-a)>1e-4){ cam.aspect=a; CAMR.dist=camFrame(); cam.updateProjectionMatrix(); }
       R.setPixelRatio(CPR); R.setSize(w,h,false); RSZ.w=w; RSZ.h=h; RSZ.cpr=CPR; RSZ.n.canvas++; RSZ.scale=-1; asResize(w,h); } }
   if(Math.abs(sc-RSZ.scale)>.001){ RSZ.scale=sc; if(AS.FX&&AS.FX.setScale) AS.FX.setScale(sc);
     PA.mat.uniforms.uScale.value=PN.mat.uniforms.uScale.value=h*CPR*sc*0.5/Math.tan(cam.fov*PI/360);
-    if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*CPR*sc,h*CPR*sc); }
+    if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*CPR*sc,h*CPR*sc);
+    // лёгкая резкость (CAS-подобная) при растяжении внутренней цели на холст и при буфере реже экрана (телефоны): 4 выборки в уже идущем проходе
+    if(AS.FX&&AS.FX.setSharp){ const d=window.devicePixelRatio||1, up=d/(CPR*sc); AS.FX.setSharp(up>1.15?clamp((up-1)*.35,.12,.5):0); } }
 }
 function camUpdate(dt,tx,tz){
   let d=CAMR.dist*CAMR.zoom, px, pz, ly=0.6;

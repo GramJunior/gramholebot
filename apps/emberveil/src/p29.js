@@ -107,7 +107,7 @@ function spiritWorldTick(dt){
   while(U.emit>=1){ U.emit-=1; _spc.setHSL(.06+Math.random()*.05,1,.55+Math.random()*.2); PA.emit(g.position.x+rand(-.08,.08),g.position.y+rand(-.05,.12),g.position.z+rand(-.08,.08),rand(-.3,.3),rand(.5,1.4),rand(-.3,.3),rand(.5,.9),.11,.02,_spc,.9,-1.5,.5); }
 }
 // настройки: иконка пункта «Уголёк» — сам дух
-const _pSettingsSp=pSettings; pSettings=function(pause){ let h=_pSettingsSp(pause); return h.replace(/(<label>)(<svg[^>]*>[\s\S]*?<\/svg>)?(\s*Уголёк)/,(m,a,svg,t)=>`${a}<img class="spIc" src="${spiritPortrait('smug')}" alt="">${t}`); };
+const _pSettingsSp=pSettings; pSettings=function(pause){ let h=_pSettingsSp(pause); return h.replace(/(<label>)(<svg[^>]*>(?:(?!<\/svg>)[\s\S])*<\/svg>)?(\s*Уголёк)/,(m,a,svg,t)=>`${a}<img class="spIc" src="${spiritPortrait('smug')}" alt="">${t}`); };
 // Летопись: строка от Уголька наверху
 const _chronSp=PANEL_EXT.chron; PANEL_EXT.chron=()=>{ const r=_chronSp(); const n=Object.keys(STS().ch).length; const line=n?'Я помню каждое твоё решение. Даже те, что ты хотел бы забыть.':'Пусто. Пока. Летопись любит смелых — и тех, кто ошибается красиво.';
   r.body=`<div class="spChron"><img src="${spiritPortrait(n?'calm':'smug')}" alt=""><div><b>Уголёк</b><span>${line}</span></div></div>`+r.body; return r; };

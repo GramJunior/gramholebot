@@ -133,8 +133,11 @@ function setupInput(){
     AU.init();
     const right=S.set.joy==='right'; const half=ev.clientX<window.innerWidth*.55;
     if((half&&!right)||(!half&&right)||G.mode==='village'){
-      if(JOY.id!==null) return; JOY.id=ev.pointerId; JOY.ox=ev.clientX; JOY.oy=ev.clientY; JOY.on=true;
-      const j=$('joy'); if(j){ j.style.left=(ev.clientX-75)+'px'; j.style.top=(ev.clientY-75)+'px'; j.style.bottom='auto'; j.classList.add('on'); }
+      if(JOY.id!==null) return; JOY.id=ev.pointerId; JOY.on=true;
+      // v15: основание джойстика всегда целиком на экране (с учётом выреза/«чёлки» и кнопок Telegram) — центр прижимается внутрь
+      const sf=LAYOUT.safe||{t:0,r:0,b:0,l:0}, R=75*(LAYOUT.land?LAYOUT.ak:1)+4, W0=window.innerWidth, H0=LAYOUT.h||window.innerHeight;
+      JOY.ox=clamp(ev.clientX,sf.l+R,Math.max(sf.l+R,W0-sf.r-R)); JOY.oy=clamp(ev.clientY,sf.t+R,Math.max(sf.t+R,H0-sf.b-R));
+      const j=$('joy'); if(j){ j.style.left=(JOY.ox-75)+'px'; j.style.top=(JOY.oy-75)+'px'; j.style.bottom='auto'; j.classList.add('on'); }
     }
   };
   const onMove=ev=>{ if(ev.pointerId!==JOY.id) return; let dx=ev.clientX-JOY.ox, dy=ev.clientY-JOY.oy; const l=Math.hypot(dx,dy), m=58; if(l>m){ dx=dx/l*m; dy=dy/l*m; }
@@ -339,7 +342,7 @@ function pCodex(){
 }
 // ---------- settings ----------
 function pSettings(pause){
-  let h='';
+  let h=''; if(!S.set.sharp) S.set.sharp='auto';
   if(pause){ h+=`<div class="row" style="flex-direction:column;gap:8px;margin-bottom:10px"><button class="btn leather" style="width:100%" ${act(()=>closePanel())}>${ico('play')} Продолжить</button>
     <button class="btn woodb" style="width:100%" ${act(()=>{ PANEL.kind='hero'; PANEL.tab='gear'; renderPanel(); })}>${ico('equip')} Снаряжение и умения</button>
     <button class="btn woodb" style="width:100%" ${act(()=>{ closePanel(); if(S.cons.scroll>0&&G.mode==='stage'){ S.cons.scroll--; runEnd(false,'Вы вернулись по свитку',true); } else runEnd(false,'Вы отступили'); })}>${ico('door')} ${S.cons.scroll>0&&G.mode==='stage'?'Свиток возвращения (добыча сохранится)':'Отступить в деревню'}</button></div>`; }
@@ -349,6 +352,8 @@ function pSettings(pause){
   <div class="set"><label>Яркость <small id="sBriV">${Math.round((S.set.bright==null?1:S.set.bright)*100)}%</small></label><input type="range" min="0.7" max="1.3" step="0.05" value="${S.set.bright==null?1:S.set.bright}" id="sBri"></div>
   <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['perf','Произв.'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
   <div class="muted" style="margin:-2px 0 6px">«Произв.» — максимум кадров: без постэффектов и контуров, меньше частиц и разрешение. «Авто» подбирает пресет по замерам кадров (не выше «Сред.»); «Выс.» — только вручную.</div>
+  <div class="set"><label>Чёткость</label>${seg('sharp',[['auto','Авто'],['high','Высокая'],['eco','Экономия']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">${({auto:'«Авто»: на телефонах разрешение важнее эффектов — если кадров мало, сначала убираются эффекты.',high:'«Высокая»: разрешение закреплено (самая чёткая картинка, телефон греется сильнее).',eco:'«Экономия»: разрешение снижается при нагрузке — дольше держит батарея.'})[S.set.sharp||'auto']} Сейчас: ${Math.round(PR*100)/100}× (экран ${Math.round((window.devicePixelRatio||1)*100)/100}×).</div>
   <div class="set"><label>Частота кадров</label>${seg('fps',[[60,'60'],[30,'30 · экономия']])}</div>
   <div class="set"><label>Показатели производительности</label>${seg('perfHud',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px"><button class="btn woodb small" ${act(()=>perfBenchStart())}>${ico('clock')} Тест производительности</button><button class="btn woodb small" ${act(()=>perfCopy())}>${ico('scroll')} Скопировать отчёт</button></div>
@@ -366,11 +371,11 @@ function pSettings(pause){
   <div class="set"><label>Напоминания бота</label><div class="seg"><button class="${metaS().notify?'on':''}" ${act(()=>notifySet(true))}>Вкл</button><button class="${metaS().notify?'':'on'}" ${act(()=>notifySet(false))}>Выкл</button></div></div>
   <div class="muted" style="margin:-2px 0 6px">${netOn()&&NET.tg?'Бот напишет, когда вылупится яйцо, наполнится склад или ждёт дар дня (не чаще 3 раз в день).':'Работает в Telegram при подключении к сети.'}</div>
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 8px"><button class="btn woodb small" ${act(()=>openPanel('chron'))}>${ico('book')} Летопись выборов</button><button class="btn woodb small" ${act(()=>openPanel('coll'))}>${ico('gem')} Коллекция</button><button class="btn woodb small" ${act(()=>shareGame('invite'))}>${ico('mug')} Пригласить друга</button>${S.seen.prologue?`<button class="btn woodb small" ${act(()=>{ closePanel(); if(G.mode==='title'||G.mode==='village') prologueStart(true); })}>${ico('flame')} Пролог заново</button>`:''}</div>`:''}
-  <div class="muted" style="margin-top:10px">Телефон: держите горизонтально. Левый большой палец — бег (джойстик появляется там, где коснулись), правый — атака, умения, кувырок. В деревне снизу — меню: Герой, Стройка, Отряд, Набег, Задания, Поход.</div>
-  <div class="muted" style="margin-top:6px">ПК: WASD — бег, J/Пробел — атака, 1-3 — умения, R — Вспышка, Shift — кувырок, Q — зелье, F — бомба, E — взаимодействие, I — герой, M — карта, Esc — пауза.</div>
+  ${typeof controlsHtml==='function'?controlsHtml():''}
+  ${!pause&&typeof yardStart==='function'?`<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn woodb small" ${act(()=>{ closePanel(); if(G.mode==='village') yardStart(true); })}>${ico('sword')} Учебный плац${S.seen.yard?'':' · новое'}</button></div>`:''}
   ${!Store.ok?'<div class="card" style="margin-top:8px">Хранилище браузера недоступно — прогресс не сохранится после закрытия.</div>':''}
   ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ Store.del(SKEY); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
   setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const br=$('sBri'); if(br) br.oninput=()=>{ S.set.bright=+br.value; applyExposure(); const v=$('sBriV'); if(v) v.textContent=Math.round(S.set.bright*100)+'%'; saveGame(); }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; AQ.downT=performance.now(); applyQuality(resolveQuality(),'set'); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='perfHud') perfHudShow(S.set.perfHud); if(k==='fps'){ PERF.ceil=9; } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; AQ.downT=performance.now(); applyQuality(resolveQuality(),'set'); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='sharp'){ applyQuality(QL,'set'); } if(k==='perfHud') perfHudShow(S.set.perfHud); if(k==='fps'){ PERF.ceil=9; } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }

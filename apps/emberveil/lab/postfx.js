@@ -23,6 +23,19 @@
     high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2, blur2: true },
   };
 
+  // v15: contrast-adaptive sharpen (CAS-like, 4 taps) applied while stretching the internal target to the canvas — keeps the
+  // upscaled image crisp on phones; strength 0 = plain bilinear. Weight falls off on hard edges (no halos / no extra aliasing).
+  const SHARP_GLSL = `
+uniform float uSharp; uniform vec2 uPx;
+vec3 sharpTap(sampler2D t, vec2 u, vec4 sc, vec3 c){
+  if (uSharp <= 0.0) return c;
+  vec3 n = texture2D(t, min(u + vec2(0.0, uPx.y), sc.zw)).rgb, s = texture2D(t, max(u - vec2(0.0, uPx.y), vec2(0.0))).rgb;
+  vec3 e = texture2D(t, min(u + vec2(uPx.x, 0.0), sc.zw)).rgb, w = texture2D(t, max(u - vec2(uPx.x, 0.0), vec2(0.0))).rgb;
+  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w)));
+  vec3 amp = clamp(min(mn, 1.0 - mx) / max(mx, vec3(1e-3)), 0.0, 1.0);
+  vec3 k = sqrt(amp) * uSharp * 0.25;
+  return clamp(c + (4.0 * c - n - s - e - w) * k, 0.0, 1.0);
+}`;
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   function quad() {
     const g = new T.BufferGeometry();
@@ -51,12 +64,12 @@ void main(){
   c += texture2D(tDiffuse, vUv + uDir*3.230769).rgb * 0.070270; c += texture2D(tDiffuse, vUv - uDir*3.230769).rgb * 0.070270;
   gl_FragColor = vec4(c, 1.0);
 }`;
-  const GRADE_FS = `
+  const GRADE_FS = SHARP_GLSL + `
 uniform sampler2D tDiffuse; uniform sampler2D tBloom; uniform float uBloom; uniform float uHasBloom;
 uniform vec3 uLift; uniform vec3 uGamma; uniform vec3 uGain; uniform float uSat; uniform float uContrast;
 uniform float uVig; uniform vec3 uVigColor; uniform float uAspect; uniform float uFade; uniform vec3 uFadeColor; uniform vec4 uSc; varying vec2 vUv;
 void main(){
-  vec3 c = texture2D(tDiffuse, min(vUv * uSc.xy, uSc.zw)).rgb;
+  vec2 u0 = min(vUv * uSc.xy, uSc.zw); vec3 c = sharpTap(tDiffuse, u0, uSc, texture2D(tDiffuse, u0).rgb);
   if (uHasBloom > 0.5) c += min(texture2D(tBloom, vUv).rgb * uBloom, vec3(0.35));
   // soft shoulder above 0.8: highlights roll off towards 1.0 instead of clipping to flat white
   vec3 hi = max(c - 0.8, vec3(0.0)); c = min(c, vec3(0.8)) + hi / (1.0 + hi * 5.0);
@@ -71,7 +84,7 @@ void main(){
   gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
 }`;
 
-  const COPY_FS = 'uniform sampler2D tDiffuse; uniform vec4 uSc; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tDiffuse, min(vUv * uSc.xy, uSc.zw)).rgb, 1.0); }';
+  const COPY_FS = SHARP_GLSL + 'uniform sampler2D tDiffuse; uniform vec4 uSc; varying vec2 vUv; void main(){ vec2 u = min(vUv * uSc.xy, uSc.zw); gl_FragColor = vec4(sharpTap(tDiffuse, u, uSc, texture2D(tDiffuse, u).rgb), 1.0); }';
 
   function create(R, scene, camera, opts = {}) {
     const fsq = quad();
@@ -79,13 +92,13 @@ void main(){
     // the scene is drawn into the bottom-left sub-rect (viewport) of the target and stretched to the canvas. No reallocations, no canvas resizes.
     const P = { q: 'med', preset: PRESETS.med, w: 1, h: 1, pr: R.getPixelRatio(), rts: {}, scale: 1, allocs: 0, lowRT: null, dof: { on: false, focus: 8, aperture: 0.015, maxblur: 0.008 } };
     const rt = (w, h, depth) => new T.WebGLRenderTarget(w, h, { minFilter: T.LinearFilter, magFilter: T.LinearFilter, format: T.RGBAFormat, depthBuffer: !!depth, stencilBuffer: false });
-    const SC = { value: new T.Vector4(1, 1, 1, 1) };
-    const mCopy = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uSc: SC }, vertexShader: VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false });
+    const SC = { value: new T.Vector4(1, 1, 1, 1) }, SHARP = { value: 0 }, PX = { value: new T.Vector2(1, 1) };
+    const mCopy = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uSc: SC, uSharp: SHARP, uPx: PX }, vertexShader: VS, fragmentShader: COPY_FS, depthTest: false, depthWrite: false });
     const mBright = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uTexel: { value: new T.Vector2() }, uTh: { value: 0.8 }, uKnee: { value: 0.15 }, uSc: SC }, vertexShader: VS, fragmentShader: BRIGHT_FS, depthTest: false, depthWrite: false });
     const mBlur = new T.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uDir: { value: new T.Vector2() } }, vertexShader: VS, fragmentShader: BLUR_FS, depthTest: false, depthWrite: false });
     const GU = { tDiffuse: { value: null }, tBloom: { value: null }, uBloom: { value: 0.6 }, uHasBloom: { value: 0 },
       uLift: { value: new T.Vector3(0, 0, 0) }, uGamma: { value: new T.Vector3(1, 1, 1) }, uGain: { value: new T.Vector3(1, 1, 1) }, uSat: { value: 1 }, uContrast: { value: 1.04 },
-      uVig: { value: 0.3 }, uVigColor: { value: new T.Color(0.12, 0.06, 0.04) }, uAspect: { value: 1 }, uFade: { value: 0 }, uFadeColor: { value: new T.Color(0, 0, 0) }, uSc: SC };
+      uVig: { value: 0.3 }, uVigColor: { value: new T.Color(0.12, 0.06, 0.04) }, uAspect: { value: 1 }, uFade: { value: 0 }, uFadeColor: { value: new T.Color(0, 0, 0) }, uSc: SC, uSharp: SHARP, uPx: PX };
     const mGrade = new T.ShaderMaterial({ uniforms: GU, vertexShader: VS, fragmentShader: GRADE_FS, depthTest: false, depthWrite: false });
     let mFXAA = null, unreal = null, bokeh = null;
     const target = { bloom: 0.6, th: 0.8 };
@@ -117,6 +130,9 @@ void main(){
       /** dynamic resolution: fraction (0.25..1) of the canvas buffer the scene is rendered at — no reallocation */
       setScale(s) { P.scale = Math.max(0.25, Math.min(1, +s || 1)); return fx; },
       get scale() { return P.scale; },
+      /** v15: sharpen strength (0..0.6) for the final stretch to the canvas (contrast-adaptive, 4 taps in the existing pass) */
+      setSharp(v) { SHARP.value = Math.max(0, Math.min(0.6, +v || 0)); return fx; },
+      get sharp() { return SHARP.value; },
       get allocs() { return P.allocs; },
       /** grade: {lift:[r,g,b], gamma:[r,g,b], gain:[r,g,b], sat, contrast, vignette, vigColor, bloom, bloomTh} */
       setZone(g) { if (!g) return fx;
@@ -137,7 +153,7 @@ void main(){
       render(dt) {
         const [W, H] = bufSize(); const sc = P.dof.on && bokeh ? 1 : P.scale;
         const sw = Math.max(1, Math.round(W * sc)), sh = Math.max(1, Math.round(H * sc));
-        SC.value.set(sw / W, sh / H, (sw - 0.5) / W, (sh - 0.5) / H);
+        SC.value.set(sw / W, sh / H, (sw - 0.5) / W, (sh - 0.5) / H); PX.value.set(1 / W, 1 / H);
         if (!P.preset.post) {
           if (sw >= W - 1 && sh >= H - 1) { R.setRenderTarget(null); R.render(scene, camera); return; }
           if (!P.lowRT || P.lowRT.width !== W || P.lowRT.height !== H) { if (P.lowRT) P.lowRT.dispose(); P.lowRT = rt(W, H, true); P.allocs++; }
