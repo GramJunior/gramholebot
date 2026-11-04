@@ -127,7 +127,7 @@ function onBossDeath(e){
   for(let i=0;i<6;i++) later(i*.15,()=>fx('boom',e.x+rand(-2,2),rand(0,2),e.z+rand(-2,2),{r:2.5,col:pick([0xffa040,0xffd27a,0xff6a2a])}));
   if(G.abyss){ // mini boss
     later(.6,()=>{ for(let i=0;i<2;i++) spawnDrop('item',e.x,e.z,{item:genItem(e.lvl,{mf:PS.mf+150,rmin:2})}); for(let i=0;i<8;i++) spawnDrop('mat',e.x,e.z,{res:'shards',v:randi(2,4)}); for(let i=0;i<8;i++) spawnDrop('gold',e.x,e.z,{v:Math.round(rand(6,12)*F(e.lvl))}); });
-    if(e.echo&&typeof echoReward==='function') later(1.2,()=>echoReward());
+    if(e.echo&&!e._echoR&&typeof echoReward==='function'){ e._echoR=1; later(1.2,()=>echoReward()); }
     G.boss.showDead=false; objText(); return;
   }
   const id=e.kind, z=W.info.z, first=!stageDone(W.info.key);

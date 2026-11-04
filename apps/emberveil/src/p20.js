@@ -1,8 +1,8 @@
-// ================= p20: cold-open prologue «Ночь Пепла» + guided first session (FTUE) + quick equip, revive, event rewards =================
+// ================= p20: cold-open prologue «Падение Златоверха» + guided first session (FTUE) + quick equip, revive, event rewards =================
 // Пролог: герой на полной силе (40 ур., легендарное снаряжение, Вспышка готова) с союзниками держит площадь Златоверха против войска Хмари.
 // Прилетает Игнар, затем появляется Пепельный Король — сценарное поражение: сила отнята, Искра расколота → пробуждение в Тлеющем Броде.
 // Во время пролога сохранение выключено (G.prologue), настоящее сохранение подменяется временным и возвращается целым.
-STAGE_TYPES.prologue={n:'Ночь Пепла',d:'Пролог: падение Златоверха.'};
+STAGE_TYPES.prologue={n:'Падение Златоверха',d:'Пролог: падение Златоверха.'};
 const PRO_FILES=['necromancer','knight','paladin','rogue_hooded','tiefling','skel_warrior','kit_weapons2'];
 const PRO={on:false,t:0,ph:0,real:null,god:false,drag:null,king:null,cap:null,waves:0,replay:false};
 function prologueSave(){ const s=newSave(); s.started=true; s.look=S.look||0; s.set=S.set; s.hero.lvl=40; s.hero.tp=0; s.seen={joyHint:1,tut1:1,wake:1,prologue:1,keyTip:1}; for(const a of ACH) s.q.ach[a.id]=1;
@@ -16,7 +16,7 @@ function proCap(html,ms){ let c=$('proCap'); if(!c){ c=document.createElement('d
 function proFlash(a,ms){ let f=$('proFlash'); if(!f){ f=document.createElement('div'); f.id='proFlash'; document.body.appendChild(f); } f.style.transition='opacity '+(ms||120)+'ms'; f.style.opacity=a; }
 function prologueStart(replay){
   if(PRO.on) return; PRO.replay=!!replay; trackOnce('ftue','prologue_start'); AU.init(); show('title',false); show('panel',false); PANEL.kind=null;
-  PRO.real=S; PRO.god=!!G.god; PRO.on=true; G.prologue=true; S=prologueSave();
+  PRO.real=S; PRO.god=!!G.god; PRO.on=true; G.prologue=true; const keep={myth:S.st.myth,uid:S.uid}; const fake=prologueSave(); S.st.myth=keep.myth; S.uid=keep.uid; S=fake;
   const go=()=>fadeTo(()=>{ try{ prologueBuild(); }catch(e){ console.error(e); prologueEnd(true); } });
   if(typeof withAssets==='function') withAssets(PRO_FILES,go); else go();
 }
@@ -31,7 +31,7 @@ function prologueBuild(){
   // the Heart-Ember of Vale on its altar (north)
   const hg=new THREE.Group(); hg.position.set(0,0,-8.5); worldRoot.add(hg); pmesh(heartGeoBase(),hg); const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),hg,0,2.3,0); core.scale.setScalar(1.9); W.obst.push({x:0,z:-8.5,r:2.2});
   W.proHeart={g:hg,core};
-  W.info={z:6,s:0,key:'P',lvl:8,name:'Ночь Пепла',zone:Z,type:'prologue',par:999}; W.obj={type:'prologue',done:false,txt:'Держите площадь'};
+  W.info={z:6,s:0,key:'P',lvl:8,name:'Падение Златоверха',zone:Z,type:'prologue',par:999}; W.obj={type:'prologue',done:false,txt:'Держите площадь'};
   buildPropMeshes();
   G.mode='stage'; G.run={info:W.info,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:0,startLvl:40};
   refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(0,5,PI); G.P.ember=100; G.god=true;
@@ -57,15 +57,15 @@ function prologueTick(dt){ if(!PRO.on||!W||W.kind!=='prologue') return; PRO.t+=d
   if(PRO.drag) animDragon(PRO.drag.e,PRO.drag.rig,dt);
   if(W.obj) W.obj.txt=ph<3?`Хмари на площади: ${alive}`:ph<5?'Дракон!':'Пепельный Король';
 }
-function proDragonIn(){ const rig=BOSS_MODELS.dragon(); worldRoot.add(rig.root); const e={t:0,airY:0,moving:0,pose:'',poseK:0,face:0,rig}; rig.root.position.set(-26,14,-20); PRO.drag={rig,e,x:-26,y:14,z:-20};
-  AU.sfx('roar'); shake(.8); banner('Игнар!','Последний дракон летит над столицей'); later(1.2,()=>spirit('pro_dragon',true)); cineBars(true); CAMR.override={x:-4,z:-2,zoom:.85}; }
+function proDragonIn(){ const rig=BOSS_MODELS.dragon(); worldRoot.add(rig.root); const e={t:0,airY:0,moving:0,pose:'',poseK:0,face:0,rig}; rig.root.position.set(-22,7,-18); PRO.drag={rig,e,x:-22,y:7,z:-18};
+  AU.sfx('roar'); shake(.8); banner('Игнар!','Последний дракон летит над столицей'); later(1.2,()=>spirit('pro_dragon',true)); cineBars(true); CAMR.override={x:-8,z:-6,zoom:.95}; }
 SPIRIT.pro_dragon=['Дракон?! Он… жжёт не нас. Он жжёт Хмарь!']; SPIRIT.pro_king=['Это не человек. Это холод в короне. Держись!']; SPIRIT.pro_lost=['…больно. Я раскалываюсь… найди… меня…'];
 function proDragonTick(dt,u){ const D=PRO.drag; if(!D) return; D.e.t+=dt; const rig=D.rig;
-  if(u<3.2){ const k=u/3.2; D.x=lerp(-26,0,k); D.z=lerp(-20,-13,k); D.y=lerp(14,6,k); D.e.airY=1; rig.root.rotation.y=Math.atan2(26,7); }
-  else if(u<5.6){ D.e.pose='breath'; D.e.poseK=Math.min(1,(u-3.2)*2); rig.root.rotation.y=0;
+  if(u<3.2){ const k=smooth(u/3.2); D.x=lerp(-22,0,k); D.z=lerp(-18,-9,k); D.y=lerp(7,2.4,k); D.e.airY=1; rig.root.rotation.y=Math.atan2(22,9); CAMR.override={x:D.x*.8,z:D.z-.7*D.y+2,zoom:.95}; }
+  else if(u<5.6){ D.e.pose='breath'; D.e.poseK=Math.min(1,(u-3.2)*2); rig.root.rotation.y=0; CAMR.override={x:0,z:D.z-.7*D.y+1.8,zoom:.95};
     if(!D.burn){ D.burn=1; AU.sfx('boom'); shake(1); for(const e of G.enemies) if(e.alive&&!e.boss){ const x=e.x,z=e.z; later(rand(.1,1.1),()=>{ fx('fire',x,.5,z,{k:10}); fx('boom',x,.5,z,{r:1.8,col:0xff6a1a}); if(e.alive){ e.invuln=false; e.hp=0; killEnemy(e); } }); }
       for(let i=0;i<14;i++) later(i*.08,()=>{ const a=rand(-.7,.7); const r=rand(3,12); fx('fire',D.x+Math.sin(a)*r,1,D.z+Math.cos(a)*r,{k:6}); }); } }
-  else if(u<8){ D.e.pose=''; const k=(u-5.6)/2.4; D.x=lerp(0,0,k); D.z=lerp(-13,-12.2,k); D.y=lerp(6,0,smooth(k)); D.e.airY=1-k; if(k>.9&&!D.land){ D.land=1; shake(1.1); fx('dust',0,0,-12,{k:30}); AU.sfx('boom'); } }
+  else if(u<8){ D.e.pose=''; const k=(u-5.6)/2.4; D.x=0; D.z=lerp(-9,-13,k); D.y=lerp(2.4,0,smooth(k)); CAMR.override={x:0,z:D.z-.7*D.y+1.8,zoom:.95}; D.e.airY=1-k; if(k>.9&&!D.land){ D.land=1; shake(1.1); fx('dust',0,0,-12,{k:30}); AU.sfx('boom'); } }
   else if(PRO.ph===3){ PRO.ph=4; PRO.t4=PRO.t; CAMR.override=null; cineBars(false); D.e.pose='roar'; }
   rig.root.position.set(D.x,D.y,D.z); rig.root.scale.setScalar(.85); }
 function proKingIn(){ const k=spawnBoss('ashKing',0,-3.5,40,{hpMul:3}); k.invuln=true; k.intro=true; PRO.king=k; fx('boom',0,1,-3.5,{r:4,col:0x4a1a2a,smoke:0x1a1010}); AU.sfx('roar'); AU.sfx('sting'); shake(.8);
@@ -105,14 +105,14 @@ function proPrefetch(){ if(!S.seen.prologue&&typeof asLoad==='function'&&asOn())
 // ---------- FTUE: guided first session ----------
 const FTUE=[
   {id:'wake',n:'Очнуться в Броде'},{id:'build',n:'Постройте кузницу',hint:'Подойдите к участку с табличкой и нажмите большую кнопку — или «Стройка» внизу.'},
-  {id:'stage11',n:'Выйдите за ворота: этап 1-1',hint:'Ворота на севере ведут к карте. «Поход» внизу — тоже.'},{id:'kill',n:'Первая победа',hint:'Атака — большая кнопка справа; цель выбирается сама.'},
+  {id:'stage11',n:'Пройдите этап 1-1',hint:'Ворота на севере ведут к карте. «Поход» внизу — тоже.'},{id:'kill',n:'Первая победа',hint:'Атака — большая кнопка справа; цель выбирается сама.'},
   {id:'equip',n:'Наденьте вещь получше',hint:'Новая вещь лучше вашей — нажмите «Надеть» или откройте «Героя».'},{id:'rare',n:'Найдите редкую добычу',hint:'Сундуки и вожаки (с цветным кольцом) дают лучшие вещи.'},
   {id:'companion',n:'Спасите пленника (1-2)',hint:'На «Горящей мельнице» в клетке ждёт Бран — разбейте клетку и выведите его.'},{id:'pet',n:'Высидите питомца',hint:'Постройте питомник и отдайте яйцо Ойке — первое вылупится почти сразу.'},
   {id:'boss',n:'Победите Брюхана (1-5)',hint:'Заманите его разбег на пороховую бочку — взрыв оглушает.'},{id:'raid',n:'Отразите первый набег',hint:'Кнопка «Набег» внизу: поставьте башню на светящееся место и начните бой.'}];
 const ftueS=()=>{ const t=metaS().tk; return t; };
 function FTUE_active(){ return !S.seen.ftue_done&&!!S.started&&!G.prologue; }
 function ftueDone(id){ return !!metaS().tk['ftue:'+id]; }
-function ftueStep(id){ if(!S.started||G.prologue) return; if(trackOnce('ftue',id)){ const i=FTUE.findIndex(f=>f.id===id); if(i>=0&&id!=='wake'){ const nx=FTUE.find(f=>!ftueDone(f.id)); later(.8,()=>toast(`${ico('check')} <b>${FTUE[i].n}</b>${nx?` · дальше: ${nx.n}`:''}`,null,2,'quest')); } if(FTUE.every(f=>ftueDone(f.id))&&!S.seen.ftue_done){ S.seen.ftue_done=1; trackOnce('ftue','done'); later(2,()=>{ banner('Брод стоит!','Обучение пройдено — дальше вы сами'); giveReward({gold:500,sparks:30},'Награда за первые шаги'); }); } saveGame(); hudQuest(); } }
+function ftueStep(id){ if(!S.started||G.prologue) return; if(S.seen.ftue_done){ trackOnce('ftue',id); return; } if(trackOnce('ftue',id)){ const i=FTUE.findIndex(f=>f.id===id); if(i>=0&&id!=='wake'){ const nx=FTUE.find(f=>!ftueDone(f.id)); later(.8,()=>toast(`${ico('check')} <b>${FTUE[i].n}</b>${nx?` · дальше: ${nx.n}`:''}`,null,2,'quest')); } if(FTUE.every(f=>ftueDone(f.id))&&!S.seen.ftue_done){ S.seen.ftue_done=1; trackOnce('ftue','done'); later(2,()=>{ banner('Брод стоит!','Обучение пройдено — дальше вы сами'); giveReward({gold:500,sparks:30},'Награда за первые шаги'); }); } saveGame(); hudQuest(); } }
 function ftueNext(){ return FTUE.find(f=>!ftueDone(f.id)); }
 let _ftHintT=0;
 function ftueHint(force){ if(!FTUE_active()) return; const f=ftueNext(); if(!f||!f.hint) return; if(!force&&performance.now()-_ftHintT<45000) return; _ftHintT=performance.now(); toast(`<b>${esc(f.n)}.</b> ${f.hint}`); }
@@ -136,13 +136,15 @@ function ftueRare(it){ ftueStep('rare'); }
 const _killEnemy2=killEnemy; killEnemy=function(e,o){ const w=e.alive; _killEnemy2(e,o); if(!w||!W||W.kind==='prologue') return; if(S.st.kills>=1) ftueStep('kill');
   // FTUE guarantees: an upgrade after a few kills in 1-1, a rare (epic) drop in 1-1/1-2 from the first elite or camp leader
   if(W.info&&W.info.z===1&&!S.seen.ftueUp&&S.st.kills>=3){ S.seen.ftueUp=1; const it=genItem(2,{base:'sword2',rar:1}); it.name='Клинок Брода'; spawnDrop('item',e.x,e.z,{item:it}); }
-  if(W.info&&W.info.z===1&&W.info.s<=2&&!S.seen.ftueRare&&(e.elite||S.st.kills>=12)){ S.seen.ftueRare=1; const it=genItem(3,{slot:'chest',rar:2}); spawnDrop('item',e.x,e.z,{item:it}); fx('ring',e.x,.1,e.z,{col:0x9a5ae0}); later(.3,()=>toast('Что-то <b style="color:#b07aff">фиолетовое</b> блеснуло в траве!')); } };
+  if(W.info&&W.info.z===1&&W.info.s<=2&&(e.elite||S.st.kills>=8)) ftueRareDrop(e.x,e.z); };
+function ftueRareDrop(x,z){ if(S.seen.ftueRare) return; S.seen.ftueRare=1; const it=genItem(3,{slot:'chest',rar:2}); spawnDrop('item',x,z,{item:it}); fx('ring',x,.1,z,{col:0x9a5ae0}); later(.3,()=>toast('Что-то <b style="color:#b07aff">фиолетовое</b> блеснуло в траве!')); }
+const _interactObjs2=interactObjs; interactObjs=function(){ const c=G.run&&G.run.chests; _interactObjs2(); if(G.run&&G.run.chests>c&&W.info&&W.info.z===1&&W.info.s<=2) ftueRareDrop(G.P.x,G.P.z-1); };
 const _runEnd=runEnd; runEnd=function(win,reason,keep){ if(W&&W.kind==='prologue') return; const I=G.run&&G.run.info; _runEnd(win,reason,keep); if(win&&I&&I.key==='1-1') ftueStep('stage11'); if(win&&I&&I.key==='1-5') ftueStep('boss'); };
 // world marker over the FTUE target (village)
 const _sysLabels=sysLabels; sysLabels=function(dt){ _sysLabels(dt); if(!FTUE_active()||G.mode!=='village'||!W||PANEL.kind||G.dialog) return; const f=ftueNext(); if(!f) return; let p=null, lab='';
   if(f.id==='build'&&!S.bld.forge){ p=VPOS.forge; lab='Кузница'; } else if(f.id==='pet'&&!S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Питомник'; } else if(f.id==='pet'&&S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Яйцо — к Ойке'; } else if(f.id==='stage11'||f.id==='companion'||f.id==='boss'||f.id==='kill'||f.id==='equip'&&!S.inv.some(i=>compareTo(i)>0)||f.id==='rare'){ p=[-6,-30]; lab='В поход'; } else if(f.id==='equip'){ return; } else if(f.id==='raid'&&raidUnlocked()){ return; }
   if(p) wlAdd(p[0],3.6+Math.sin(G.time*4)*.25,p[1],`<span class="ftMark">▼ ${lab}</span>`,'ft'); };
-const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display=''; };
+const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='prologue'){ el.innerHTML=`<h4>${ico('flame')} Падение Златоверха</h4><div class="q">Держите площадь Златоверха вместе со стражей</div>`; el.style.display=''; return; } if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display=''; };
 
 // ---------- quick equip: a better item was picked up → one tap to wear it (non-blocking) ----------
 const QEQ={it:null,t:0};

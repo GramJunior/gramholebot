@@ -142,7 +142,7 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 Описано в разделе 7 ниже. Игре нужен только адрес сервера.
 
 ### Обновление сервера
-После изменений в коде выполните `npx wrangler deploy`. Для новой миграции положите файл `migrations/0002_….sql` и выполните `npx wrangler d1 migrations apply emberveil --remote`.
+После изменений в коде выполните `npx wrangler deploy`. Новые миграции применяются командой `npx wrangler d1 migrations apply emberveil --remote` (сейчас их две: `0001_init.sql` и `0002_meta.sql` — имя игрока и таблицы метрик). **После обновления до версии с `0002_meta.sql` сначала примените миграцию, потом `deploy`.** Локально: `npm run db:init:local`.
 
 ## 4. Проверка у себя на компьютере
 
@@ -217,7 +217,11 @@ curl -X PUT $API/admin/config/products -H "$ADM" -d '[
   {"id":"skin_cloak_ember","title":"Плащ «Тлеющий»","description":"Облик героя","stars":100,"type":"cosmetic","once":true} ]'
 ```
 
-Есть ещё ключи `daily` (награды 7-дневного цикла, список контрактов) и `referral` (подарки за друга). Посмотреть всё, включая значения по умолчанию: `curl $API/admin/config -H "$ADM"`. Вернуть ключ к значению по умолчанию: `curl -X DELETE $API/admin/config/events -H "$ADM"`.
+Пока `events` пуст, игра крутит встроенную недельную ротацию (Эхо Колосса пн–вт, Ночь Пепла ср–чт, Выходные удачи сб–вс). Модификаторы, которые понимает игра: `dropMul`, `goldMul`, `xpMul` (опыт пропуска), `shardMul`, `abyssMod: "ashnight"`, `seasonBoss: "colossus"` (или id другого босса). Известные `id` (`colossus_echo`, `ash_night`, `lucky_weekend`) получают свои иконки.
+
+По умолчанию пропуск «Путь Угля» — 30 уровней: бесплатная дорожка (ресурсы + облики на 5/10/15/20/25/30), премиум — только облики (`{"cosmetic":"skin_frost"}`) и искры (`{"sparks":15}`, косметическая валюта). Список id обликов — `COSM` в `apps/emberveil/src/p18.js`. Опыт пути игра считает сама по игре; сервер ведёт свой (Бездна, набеги, награда дня, контракты), игра показывает больший.
+
+Есть ещё ключи `daily` (награды 7-дневного цикла — игра растит их по неделям в 28-дневном календаре, список контрактов) и `referral` (подарки за друга). Посмотреть всё, включая значения по умолчанию: `curl $API/admin/config -H "$ADM"`. Вернуть ключ к значению по умолчанию: `curl -X DELETE $API/admin/config/events -H "$ADM"`.
 
 **Другие команды админки:**
 | Запрос | Что делает |
@@ -230,6 +234,26 @@ curl -X PUT $API/admin/config/products -H "$ADM" -d '[
 | `POST /admin/refund {"chargeId":"…"}` | вернуть Stars через Telegram и забрать товар |
 
 `pid` — публичный id игрока. Его видно в рейтингах и в профиле.
+
+## 5б. Метрики
+
+Игра шлёт события пачками на `POST /events` (`{e:'ftue', k:'first_kill'}` → счётчик `ftue:first_kill`). Сервер хранит **только суточные счётчики** (`ev_counts`: день, имя события, сколько раз, сколько разных игроков) и дни захода игроков (`active_days`: id игрока + день) — никаких других данных. Спам-защита: не больше 2000 событий в день от игрока, не больше 50 за запрос.
+
+```bash
+curl "$API/admin/metrics?days=14" -H "$ADM"            # всё за 2 недели
+curl "$API/admin/metrics?days=30&prefix=ftue" -H "$ADM" # только воронка обучения
+```
+В ответе:
+- `cohorts` — когорты по дню первого захода: `newPlayers`, `d1`/`d1Pct` (сколько вернулись на следующий день), `d7`/`d7Pct` (на 7-й день). Пока день не наступил — `null`. **D1 = d1Pct, D7 = d7Pct** соответствующей когорты; для недели берите среднее по когортам, взвешенное по `newPlayers`. Ориентиры для мобильных RPG: D1 35–45 %, D7 12–20 %.
+- `dau` — уникальные игроки по дням.
+- `events` — счётчики: `name`, `n` (сколько раз), `users` (разных игроков).
+
+Как читать воронку обучения: `users` у `ftue:prologue_start` → `ftue:prologue_end` → `ftue:wake` → `ftue:build` → `ftue:stage11` → … → `ftue:raid` → `ftue:done`. Самая большая просадка — место для правки. `ftue:prologue_skip_t30` показывает, на какой секунде пролог пропускают. Монетизация: `purchase_intent:<товар>` → `purchase_success:<товар>`; `purchase_blocked:offline|no_tg` — сколько хотели купить вне Telegram. Реклама: `ad_offer:<место>` → `ad_watch:<место>`, `ad_unavailable` — если SDK не подключён. Возвраты: `day_return:d1`, `d7`… (по часам устройства, для быстрой проверки).
+
+Прямой SQL (например, D1 за конкретный день):
+```bash
+npx wrangler d1 execute emberveil --remote --command "WITH f AS (SELECT uid, MIN(day) d0 FROM active_days GROUP BY uid) SELECT d0, COUNT(*) n, SUM(EXISTS(SELECT 1 FROM active_days a WHERE a.uid=f.uid AND a.day=date(f.d0,'+1 day'))) d1 FROM f GROUP BY d0 ORDER BY d0 DESC LIMIT 14"
+```
 
 ## 6. Как проверить платежи
 
@@ -326,7 +350,7 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 | `GET /health` | проверка, что сервер жив |
 | `POST /auth/telegram {initData}` | вход из Telegram → токен на 6 часов |
 | `POST /auth/guest {deviceId}` | гостевой вход (только при `ALLOW_GUEST=1`) |
-| 🔒 `GET /me`, `POST /me/settings {notify}`, `DELETE /me` | профиль, напоминания, удаление данных |
+| 🔒 `GET /me`, `POST /me/settings {notify?, name?}`, `DELETE /me` | профиль, напоминания, имя в рейтингах (2–20 букв/цифр, `null` — снова имя из Telegram), удаление данных |
 | 🔒 `GET /save`, `PUT /save {baseVersion,data,overwrite?}` | облачное сохранение (409 при конфликте, в ответе копия с сервера) |
 | 🔒 `POST /abyss/start`, `POST /abyss/finish` | забег в Бездну (токен забега выдаёт сервер) |
 | `GET /lb/abyss?board=week\|all\|season&filter=global\|friends\|clan` | рейтинги |
@@ -339,8 +363,9 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 | 🔒 `POST /pay/invoice {productId}`, `GET /entitlements` | покупки за Stars |
 | 🔒 `GET /referrals`, `POST /friends/add`, `GET /inbox`, `POST /inbox/claim` | друзья и подарки |
 | 🔒 `POST /notify/schedule {kind,inSec}` | напоминание через бота |
+| 🔒 `POST /events {events:[{e,k}]}` | аналитика игры: до 50 событий за раз, хранятся только суточные счётчики |
 | `POST /tg/webhook` | обновления от Telegram (проверяется секретный заголовок) |
-| `GET\|PUT\|DELETE /admin/config[/:key]`, `POST /admin/grant\|inbox\|ban\|refund`, `GET /admin/audit\|stats` | админка (`ADMIN_SECRET`) |
+| `GET\|PUT\|DELETE /admin/config[/:key]`, `POST /admin/grant\|inbox\|ban\|refund`, `GET /admin/audit\|stats\|metrics` | админка (`ADMIN_SECRET`) |
 
 ## 9. Защита от читов: что проверяется
 

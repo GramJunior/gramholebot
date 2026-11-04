@@ -548,6 +548,7 @@ html.land #lootFeed{top:calc(max(var(--st),4px) + 150px*var(--k,1))}
 
 /* ===== v4: prologue, cinema, spirit, FTUE, meta screens ===== */
 body.cine::before,body.cine::after{content:'';position:fixed;left:0;right:0;height:9vh;background:#000;z-index:38;pointer-events:none;animation:cineIn .5s ease-out both}
+body.cine #hud>*:not(#banner){opacity:0;transition:opacity .4s} #hud>*{transition:opacity .4s}
 body.cine::before{top:0} body.cine::after{bottom:0}
 @keyframes cineIn{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 #proCap{position:fixed;left:50%;top:20%;transform:translateX(-50%);width:min(640px,86vw);text-align:center;z-index:95;pointer-events:none;opacity:0;transition:opacity .8s;color:#f3dcb0;text-shadow:0 2px 12px #000,0 0 2px #000}
@@ -559,13 +560,13 @@ body.cine::before{top:0} body.cine::after{bottom:0}
 #proCap .lvlDrop{font-family:var(--sc);font-size:calc(22px*var(--k))} #proCap .lvlDrop b{color:#ff6a4a;font-size:1.4em}
 @keyframes crack{0%{transform:scale(1.8);opacity:0;filter:blur(6px)}40%{opacity:1}55%{transform:scale(.96) rotate(-1deg)}70%{transform:scale(1.02) rotate(1deg)}100%{transform:scale(1)}}
 #proFlash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:89}
-#proSkip{position:fixed;top:calc(var(--st) + 10px);right:calc(var(--sr) + 12px);z-index:96}
-#spirit{position:fixed;left:calc(max(var(--sl),6px) + 8px);top:calc(max(var(--st),4px) + 72px*var(--k,1) + 64px);z-index:31;display:flex;align-items:center;gap:8px;max-width:min(380px,44vw);padding:6px 12px 6px 6px;border-radius:30px;
+#proSkip{position:fixed;top:calc(var(--st) + 10px);right:calc(var(--sr) + 74px);z-index:96}
+#spirit{position:fixed;left:calc(max(var(--sl),6px) + 8px);top:calc(max(var(--st),4px) + 72px*var(--k,1) + 64px);z-index:29;display:flex;align-items:center;gap:8px;max-width:min(380px,44vw);padding:6px 12px 6px 6px;border-radius:30px;
   background:linear-gradient(90deg,rgba(60,18,6,.92),rgba(30,10,4,.82));box-shadow:0 0 0 1.5px #ff8a2b88,0 0 18px #ff6a1a55;color:#ffe8c0;font-family:var(--body);font-size:calc(13.5px*var(--k,1));pointer-events:none;opacity:0;transform:translateX(-14px);transition:opacity .35s,transform .35s}
 #spirit.on{opacity:1;transform:none} #spirit img{width:40px;height:40px;border-radius:50%;flex:0 0 40px;animation:spPulse 1.6s ease-in-out infinite}
 #spirit b{display:block;font-family:var(--sc);font-size:.8em;color:var(--emberL);letter-spacing:.08em}
 @keyframes spPulse{50%{box-shadow:0 0 14px #ffb347}}
-html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 84px*var(--k,1));left:50%;transform:translateX(-50%) translateY(10px)} html.land #spirit.on{transform:translateX(-50%)}
+html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 74px*var(--k,1));left:50%;transform:translate(-50%,10px);max-width:min(400px,46vw)} html.land #spirit.on{transform:translate(-50%,0)}
 #cineCap{position:fixed;left:50%;bottom:16vh;transform:translateX(-50%);width:min(720px,90vw);text-align:center;z-index:41;opacity:0;transition:opacity .7s;pointer-events:none;color:#fff1d2;text-shadow:0 2px 10px #000}
 #cineCap.on{opacity:1} #cineCap small{font-family:var(--sc);letter-spacing:.4em;color:var(--emberL)} #cineCap h2{font-family:var(--disp);font-size:calc(38px*var(--k));margin:.1em 0} #cineCap p{font-size:calc(17px*var(--k));font-family:var(--body)}
 .chq{font-family:var(--sc);font-weight:700;margin-bottom:6px;color:var(--ox)}
@@ -606,10 +607,10 @@ html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 84px*var(--k,1));lef
 .premTag{font-family:var(--sc);font-weight:800;color:#2b1606;background:linear-gradient(180deg,#fff0b0,#e6b43a);padding:8px 12px;border-radius:8px;box-shadow:0 0 14px #ffd27a}
 .passTrack{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px;scroll-behavior:smooth;position:relative}
 .ptLbl{position:sticky;left:0;z-index:2;display:flex;flex-direction:column;justify-content:space-around;padding-top:22px;gap:6px;font-family:var(--sc);font-size:11px;background:var(--parch);min-width:66px}
-.ptLbl span{height:74px;display:grid;place-items:center;border-radius:8px;background:rgba(90,59,34,.12)} .ptLbl .pr{color:#7d5a20;background:linear-gradient(180deg,#fff0b0,#e8c060)} .ptLbl .pr .ico{width:14px;height:14px}
+.ptLbl span{height:58px;display:grid;place-items:center;border-radius:8px;background:rgba(90,59,34,.12)} .ptLbl .pr{color:#7d5a20;background:linear-gradient(180deg,#fff0b0,#e8c060)} .ptLbl .pr .ico{width:14px;height:14px}
 .ptCol{flex:0 0 78px;display:flex;flex-direction:column;gap:6px;align-items:stretch}
 .ptN{text-align:center;font-family:var(--sc);font-weight:800;font-size:13px;height:16px;color:var(--ink3)} .ptCol.on .ptN{color:var(--ox)} .ptCol.next .ptN{color:#fff;background:var(--ox);border-radius:8px}
-.ptCell{position:relative;height:74px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px;text-align:center;font-size:11px;line-height:1.1;background:rgba(90,59,34,.14);box-shadow:inset 0 0 0 1px rgba(90,59,34,.3)}
+.ptCell{position:relative;height:58px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px;text-align:center;font-size:11px;line-height:1.1;background:rgba(90,59,34,.14);box-shadow:inset 0 0 0 1px rgba(90,59,34,.3)}
 .ptCell b{font-family:var(--sc);font-size:11px} .ptCell.premium{background:linear-gradient(180deg,rgba(255,236,170,.7),rgba(222,180,90,.45))}
 .ptCell.cos{box-shadow:inset 0 0 0 1.5px var(--brass)} .ptCell.ready{cursor:pointer;box-shadow:inset 0 0 0 2px var(--ember),0 0 12px #ff8a2b;animation:evGlow 1.6s infinite;--c:#ff8a2b}
 .ptCell.got{opacity:.55} .ptCell .ck,.ptCell .lk{position:absolute;right:3px;top:3px;font-style:normal;color:#3f7a2a} .ptCell .lk{color:#7d5a20} .ptCell .ico{width:14px;height:14px}
@@ -623,6 +624,7 @@ html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 84px*var(--k,1));lef
 .spinWrap{position:relative;width:132px;height:132px;flex:0 0 132px} .spinPin{position:absolute;left:50%;top:-6px;transform:translateX(-50%);border:9px solid transparent;border-top:16px solid var(--ox);z-index:2}
 .spinW{width:100%;height:100%;border-radius:50%;position:relative;background:conic-gradient(#c9973f 0 45deg,#7c2418 45deg 90deg,#c9973f 90deg 135deg,#7c2418 135deg 180deg,#c9973f 180deg 225deg,#7c2418 225deg 270deg,#c9973f 270deg 315deg,#6a2a9a 315deg 360deg);box-shadow:0 0 0 3px #3a2214,0 0 16px #ffb34788}
 .spinW span{position:absolute;left:50%;top:0;height:50%;transform-origin:50% 100%;width:0} .spinW span b{position:absolute;left:-28px;top:8px;width:56px;text-align:center;font-size:9.5px;font-family:var(--sc);color:#fff;text-shadow:0 1px 2px #000;transform:rotate(22.5deg);transform-origin:28px 58px}
+@media (max-height:420px){ .hideS{display:none} .ptCell{height:52px} .ptLbl span{height:52px} .calD{min-height:46px} .passHead,.calHead{margin-bottom:4px} }
 /* events, chronicle, endings */
 .evCard{display:flex;gap:10px;padding:10px;border-radius:10px;margin-bottom:8px;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 30%,#f5e6c0),#f0dfb6);box-shadow:inset 3px 0 0 var(--c),0 0 0 1px rgba(90,59,34,.3)}
 .evCard h4{margin:0 0 2px;font-family:var(--sc);font-size:16px} .evCard.soon{opacity:.75}
@@ -6211,6 +6213,7 @@ function pSettings(pause){
   h+=`<div class="set"><label>Звуки</label><input type="range" min="0" max="1" step="0.05" value="${S.set.sfx}" id="sSfx"></div>
   <div class="set"><label>Музыка</label><input type="range" min="0" max="1" step="0.05" value="${S.set.mus}" id="sMus"></div>
   <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">«Авто» не выбирает «Выс.» само — высокое качество (сглаживание, мягкое свечение, глубина резкости в диалогах) включается только здесь.</div>
   <div class="set"><label>Постэффекты</label>${seg('post',[['auto','Авто'],['off','Выкл']])}</div>
   <div class="set"><label>Модели</label>${seg('models',[['real','Детальные'],['simple','Простые']])}</div>
   <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
@@ -6568,7 +6571,7 @@ function pNetLb(){
   let h=`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">${segNet('board',[['week','Неделя'],['all','Всё время']])}${segNet('filter',[['global','Все'],['friends','Друзья'],['clan','Клан']])}</div>`;
   if(!r) return h+netWait();
   if(!r.ok) return h+`<div class="card muted">${esc(r.message||(r.offline?'Нет связи':'Рейтинг недоступен'))}</div>`;
-  h+=`<div class="muted" style="margin-bottom:4px">Бездна: глубже — выше; при равенстве — быстрее.${r.resetsAt?' Новая неделя: '+new Date(r.resetsAt).toLocaleDateString('ru-RU',{weekday:'long'})+'.':''}</div>`;
+  h+=`<div class="muted" style="margin-bottom:4px">Бездна: глубже — выше; при равенстве — быстрее. Считаются только забеги <b>с 1 этажа</b>, начатые при связи с сервером.${heroName()?'':` <a href="#" onclick="return false" class="nmlink">Задайте имя в настройках</a> — иначе вас видят как «${esc((NET.me&&NET.me.name)||'Гость')}».`}${r.resetsAt?' Новая неделя: '+new Date(r.resetsAt).toLocaleDateString('ru-RU',{weekday:'long'})+'.':''}</div>`;
   if(r.me) h+=`<div class="card row lbme"><b class="lbr">#${r.me.rank}</b><div class="grow">Вы · этаж <b>${r.me.floor}</b></div><span class="muted">${fmtT(r.me.timeMs)}</span></div>`;
   if(!r.entries||!r.entries.length) h+=`<div class="card muted">${L.filter==='clan'?'В клане ещё никто не спускался в Бездну.':L.filter==='friends'?'Позовите друзей — их рекорды появятся здесь.':'Летопись Бездны пока пуста. Станьте первым!'}</div>`;
   else h+=`<div class="lb">${r.entries.map(e=>`<div class="lbrow${e.me?' me':''}"><b class="lbr">${e.rank<=3?['🥇','🥈','🥉'][e.rank-1]:'#'+e.rank}</b><span class="grow">${esc(e.name)}${e.clanTag?` <span class="pill">${esc(e.clanTag)}</span>`:''}</span><b>${e.floor}</b><span class="muted">${fmtT(e.timeMs)}</span></div>`).join('')}</div>`;
@@ -6661,13 +6664,21 @@ function pvpStart(net){
     W.obj={type:'raid',done:false,txt:''}; pvpObjText();
     banner(PVP.revenge?'Месть!':'Набег на соседа',`${esc(PVP.name)} · погасите Сердце за ${PVP.limit/60|0} мин`); AU.music('boss'); AU.sfx('roar'); shake(.3);
   });
-  if(typeof withAssets==='function') withAssets(['village','village_late'],go); else go();
+  if(typeof withAssets==='function') withAssets(['village','village_late','knight','paladin','ranger'],go); else go();
 }
+// Defenders of a neighbour's village: town guard in KayKit armour (spearmen with shields, crossbowmen) and a captain.
+// Stats are a trained militia — tougher and better armed than goblins, the captain is a champion.
 function pvpGuard(x,z,L,i,cap){
-  const e=spawnEnemy(cap?'goblin':'goblin',x,z,L,{elite:cap?2:0,champion:cap});
-  e.pvpGuard=1; e.raider=cap; e.D=Object.assign({},e.D,{n:cap?'Сотник ополчения':'Ополченец',col:0x6a4a2a});
-  const rig=buildNPC(['v0','v1','v2'][i%3]); if(rig){ worldRoot.remove(e.rig.root); if(e.ring) worldRoot.remove(e.ring); worldRoot.add(rig.root); rig.root.position.set(x,0,z); const sc=cap?1.25:1; rig.root.scale.setScalar(sc); rig.h=(rig.h||1.9)*sc; rig.r=.5; e.rig=rig; e.meshes=[]; if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); }); if(cap){ const ring=ringMesh(0xffcf4a,1.2,.12,.75); worldRoot.add(ring); e.ring=ring; } }
-  e.hp=e.maxHp*=cap?1.2:.8; return e;
+  const xbow=!cap&&i%3===2; const kind=xbow?'goblinArcher':'goblin';
+  const e=spawnEnemy(kind,x,z,L,{elite:cap?2:0,champion:cap});
+  e.pvpGuard=1; e.raider=cap; e.D=Object.assign({},e.D,{n:cap?'Сотник стражи':xbow?'Арбалетчик стражи':'Копейщик стражи',col:0x4a5a7a,rng:xbow?10:1.9,cd:xbow?1.8:1.25});
+  const cid=cap?'vela':xbow?'lisa':'bran'; let rig=null; try{ rig=buildCompanion(cid,compGearObj(cid)); }catch(err){ rig=null; }
+  if(!rig) rig=buildNPC(['v0','v1','v2'][i%3]);
+  if(rig){ worldRoot.remove(e.rig.root); if(e.ring) worldRoot.remove(e.ring); worldRoot.add(rig.root); rig.root.position.set(x,0,z); const sc=cap?1.22:1; rig.root.scale.setScalar(sc); rig.h=(rig.h||2)*sc; rig.r=.5; e.rig=rig; e.meshes=[];
+    if(rig.actor){ try{ rig.actor.setTint(cap?0xd8b060:0x6a86b8,cap?.22:.18); }catch(err){} } else rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
+    if(cap){ const ring=ringMesh(0xffcf4a,1.2,.12,.75); worldRoot.add(ring); e.ring=ring; } }
+  // trained militia: more HP and armour than a goblin of the same level, a bit slower; crossbows hit harder from range
+  e.maxHp*=cap?1.35:xbow?1.5:2.1; e.hp=e.maxHp; e.dmg*=cap?1.15:xbow?1.25:1.1; e.spd*=xbow?.95:.9; return e;
 }
 function pvpObjText(){ if(!PVP) return; const d=PVP.structs.filter(s=>!s.alive).length, n=PVP.structs.length; const left=Math.max(0,PVP.limit-PVP.t);
   W.obj.txt=`Разрушено: ${Math.round(d/n*100)}% · Сердце: ${PVP.heart.alive?Math.round(PVP.heart.hp/PVP.heart.maxHp*100)+'%':'погасло'} · ${fmtT(left*1000)}`; }
@@ -7775,7 +7786,7 @@ function onBossDeath(e){
   for(let i=0;i<6;i++) later(i*.15,()=>fx('boom',e.x+rand(-2,2),rand(0,2),e.z+rand(-2,2),{r:2.5,col:pick([0xffa040,0xffd27a,0xff6a2a])}));
   if(G.abyss){ // mini boss
     later(.6,()=>{ for(let i=0;i<2;i++) spawnDrop('item',e.x,e.z,{item:genItem(e.lvl,{mf:PS.mf+150,rmin:2})}); for(let i=0;i<8;i++) spawnDrop('mat',e.x,e.z,{res:'shards',v:randi(2,4)}); for(let i=0;i<8;i++) spawnDrop('gold',e.x,e.z,{v:Math.round(rand(6,12)*F(e.lvl))}); });
-    if(e.echo&&typeof echoReward==='function') later(1.2,()=>echoReward());
+    if(e.echo&&!e._echoR&&typeof echoReward==='function'){ e._echoR=1; later(1.2,()=>echoReward()); }
     G.boss.showDead=false; objText(); return;
   }
   const id=e.kind, z=W.info.z, first=!stageDone(W.info.key);
@@ -8307,7 +8318,7 @@ function passClaimable(){ const p=passS(); const tier=passTier(); let n=0; for(c
 function rwHtml(rw){ if(!rw) return ''; if(rw.cosmetic){ const C=COSM[rw.cosmetic]; return C?`${cosIcon(rw.cosmetic)}<b>${esc(C.n)}</b>`:`${ico('star')}<b>Знак сезона</b>`; } const k=Object.keys(rw)[0]; if(k==='sparks') return `<span style="color:${RES_COL.sparks}">${ico('spark')}</span><b>${rw[k]}</b>`; return RES_IC[k]?resChip(k,rw[k]):''; }
 function hudPassDot(){ const b=$('mPass'); if(!b) return; b.querySelector('.dot')?.remove(); if(passClaimable()||calCanClaimLocal()) b.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
 function pPass(){ const s=passSeason(), p=passS(), T=passTiers(), tier=passTier(), xp=passXpNow(), per=s.xpPerTier; const into=xp-tier*per; const live=passLive();
-  let h=`<div class="passHead"><div class="grow"><h3>${esc(s.name)}</h3><div class="muted">${live?`Сезон закончится через ${fmtDur(s.end-Date.now())}`:Date.now()<s.start?`Начнётся через ${fmtDur(s.start-Date.now())}`:'Сезон завершён'} · опыт пути даёт любая игра: этапы, боссы, Бездна, набеги, контракты, вход</div>
+  let h=`<div class="passHead"><div class="grow"><div class="muted">${live?`Сезон закончится через ${fmtDur(s.end-Date.now())}`:Date.now()<s.start?`Начнётся через ${fmtDur(s.start-Date.now())}`:'Сезон завершён'}<span class="hideS"> · опыт пути даёт любая игра: этапы, боссы, Бездна, набеги, контракты, вход</span></div>
     <div class="passBar"><i style="width:${tier>=T.length?100:Math.round(into/per*100)}%"></i><b>Уровень ${tier} · ${tier>=T.length?'максимум':into+' / '+per+' оп.'}</b></div></div>
     ${p.prem?`<div class="premTag">${ico('crown')} Премиум</div>`:`<button class="btn leather prembuy" ${act(()=>payBuy(s.premiumProduct))}>${ico('crown')} Премиум<small>⭐ ${(shopProducts().find(x=>x.id===s.premiumProduct)||{stars:250}).stars}</small></button>`}</div>`;
   const cl=passClaimable(); if(cl) h+=`<button class="btn leather" style="width:100%;margin-bottom:6px" ${act(()=>{ for(const t of T){ passClaim(t.tier,'free'); passClaim(t.tier,'premium'); } rerender(); hudPassDot(); })}>${ico('check')} Забрать всё (${cl})</button>`;
@@ -8338,7 +8349,7 @@ function spinDo(extra){ const m=metaS(); const i=Math.random()<.08?7:randi(0,6);
   const el=$('spinW'); if(el){ el.style.transition='transform 2.2s cubic-bezier(.15,.85,.25,1)'; el.style.transform=`rotate(${1440+(360-i*45)-22.5}deg)`; }
   AU.sfx('page'); setTimeout(()=>{ if(s.rw.chest){ const it=genItem(S.hero.lvl+1,{rmin:2,mf:100}); addItem(it); toast(`Колесо Угля: <b class="r${it.rar}">${esc(it.name)}</b>`,iconFor(it),it.rar,'quest'); } else rwGive(s.rw,'Колесо Угля'); AU.sfx('legend',.6); saveGame(); if(PANEL.kind==='cal') rerender(); },2300); }
 function pCal(){ const m=metaS(); const R=calRewards(); const can=CAL.lastCan!==undefined?CAL.lastCan:calCanClaimLocal(); const n=m.cal.n; const doneN=can?n%28:((n-1)%28)+1; const todayI=can?n%28:-1;
-  let h=`<div class="calHead"><div class="grow"><h3>Дары очага</h3><div class="muted">Заходите каждый день: награды растут, на 7, 14, 21 и 28 день — облики и украшения.${netOn()?' День считает сервер — перевод часов не поможет.':' Без сети день считается по часам устройства.'}${CAL.srv&&CAL.srv.streak?` Серия: <b>${can?CAL.srv.nextStreak:CAL.srv.streak}</b>`:''}</div></div>
+  let h=`<div class="calHead"><div class="grow"><div class="muted"><span class="hideS">Заходите каждый день: награды растут, на 7, 14, 21 и 28 день — облики и украшения.</span>${netOn()?' День считает сервер — перевод часов не поможет.':' Без сети день считается по часам устройства.'}${CAL.srv&&CAL.srv.streak?` Серия: <b>${can?CAL.srv.nextStreak:CAL.srv.streak}</b>`:''}</div></div>
     ${can?`<button class="btn leather" ${act(()=>calClaim())}>${ico('gold')} Забрать день ${n%28+1}</button>`:`<span class="pill">Сегодня получено · завтра день ${n%28+1}</span>`}</div><div class="calGrid">`;
   R.forEach((rw,i)=>{ const done=i<doneN; const today=i===todayI; h+=`<div class="calD ${done?'done':''} ${today?'today':''} ${rw.cosmetic?'big':''}"><span class="dn">${i+1}</span>${rw.cosmetic?cosIcon(rw.cosmetic):rwHtml(rw)}${done?`<i class="ck">${ico('check')}</i>`:''}</div>`; });
   h+=`</div><div class="sect">Колесо Угля</div><div class="spinRow"><div class="spinWrap"><div id="spinW" class="spinW">${SPIN.map((s,i)=>`<span style="transform:rotate(${i*45}deg)"><b>${s.n}</b></span>`).join('')}</div><i class="spinPin"></i></div><div class="grow">
@@ -8375,7 +8386,7 @@ const NAME_RE=/^[A-Za-zА-Яа-яЁё0-9][A-Za-zА-Яа-яЁё0-9 _.\-]{1,19}$/;
 function nameClean(v){ return String(v||'').replace(/\s+/g,' ').trim(); }
 function heroName(){ return metaS().name||(NET.me&&NET.me.customName&&NET.me.name)||''; }
 function nameSave(v){ const n=nameClean(v); if(n&&!NAME_RE.test(n)){ toast('Имя: 2–20 символов — буквы, цифры, пробел, _ . -'); return false; } if(/^(гость|guest)$/i.test(n)){ toast('Придумайте имя поинтереснее, чем «Гость»'); return false; } metaS().name=n; metaS().nameSent=''; saveGame(); nameSync(); toast(n?`Теперь вас зовут <b>${esc(n)}</b>`:'Имя сброшено'); track('name_set',n?'custom':'reset'); return true; }
-function nameSync(){ const m=metaS(); if(!netOn()||!EVNet.profile||m.nameSent===(m.name||'-')) return; EVNet.profile.setName(m.name||null).then(r=>{ if(r&&r.ok){ m.nameSent=m.name||'-'; NET.me=Object.assign({},NET.me||{},r.me||{}); saveGame(); if(PANEL.kind==='net') rerender(); } else if(r&&!r.offline){ toast(esc(r.message||'Сервер не принял имя')); m.nameSent=m.name||'-'; } }); }
+function nameSync(){ const m=metaS(); if(!netOn()||!EVNet.profile||m.nameSent===(m.name||'-')) return; EVNet.profile.setName(m.name||null).then(r=>{ if(r&&r.ok){ m.nameSent=m.name||'-'; NET.me=Object.assign({},NET.me||{},r.me||{},{customName:!!r.customName}); saveGame(); if(PANEL.kind==='net') rerender(); } else if(r&&!r.offline){ toast(esc(r.message||'Сервер не принял имя')); m.nameSent=m.name||'-'; } }); }
 
 // ---------- bot reminders opt-in (server /notify) ----------
 function notifySet(on){ if(!netOn()||!NET.tg){ toast('Напоминания приходят от бота в Telegram — откройте игру через бота и с сетью'); return; } EVNet.notify.setEnabled(on).then(r=>{ if(r&&r.ok){ metaS().notify=!!r.notify; saveGame(); toast(r.notify?(r.canPm?'Бот напомнит о готовых яйцах, доходе и дарах дня':'Включено. Чтобы бот мог писать, откройте его и нажмите «Старт»'):'Напоминания выключены'); track('notify',r.notify?'on':'off'); if(PANEL.kind) rerender(); } else toast('Не удалось изменить: '+esc((r&&r.message)||'нет связи')); }); }
@@ -8430,7 +8441,7 @@ Object.assign(window.__game,{
   cos:(id)=>id?cosGrant(id,true):Object.assign({},metaS().cos), cosEquip:(id)=>cosEquip(id), coll:()=>cosPct(),
   pass:()=>({tier:passTier(),xp:passXpNow(),prem:passS().prem,cl:passClaimable(),season:passSeason().id}), passXp:(n)=>passXp(n,'test'), passPrem:(v=true)=>{ passS().prem=v; },
   cal:()=>Object.assign({},metaS().cal), calClaim:()=>calClaim(), ads:()=>({ready:ADS.ready(),left:Object.fromEntries(Object.keys(ADS.lim).map(k=>[k,ADS.left(k)]))}),
-  wk:()=>wkS(), name:(n)=>n===undefined?heroName():nameSave(n), share:(k)=>shareGame(k||'invite'),
+  liveSet:(c)=>{ LIVE.cfg=c; }, wk:()=>wkS(), name:(n)=>n===undefined?heroName():nameSave(n), share:(k)=>shareGame(k||'invite'),
 });
 // ================= p19: story — choices & consequences, chronicle, spirit «Уголёк», NPC/companion arcs, ghost echoes, cinematic camera, endings =================
 const STS=()=>S.story;
@@ -8519,7 +8530,7 @@ function spiritPortrait(){ if(_spPort) return _spPort; try{ const c=document.cre
 const CINE={on:false,prev:null};
 function cineBars(on){ document.body.classList.toggle('cine',!!on); }
 function cineFocus(sp){ if(!W||!G.P) return; let t=null; if(sp==='hero'||sp==='spirit'||sp==='choice') t=G.P; else if(W.npcs){ const n=W.npcs.find(n=>n.kind===sp); if(n) t=n; } if(!t&&G.boss&&G.boss.alive&&(sp===G.boss.kind||sp==='king'&&G.boss.kind==='ashKing'||sp==='dragon'&&G.boss.kind==='dragon'||sp==='bogMother'||sp==='morven')) t=G.boss;
-  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const mx=(t.x*.65+P.x*.35), mz=(t.z*.65+P.z*.35); CAMR.override={x:mx,z:mz+.6,zoom:t.boss?.5:.36,pitch:.62}; cineBars(true);
+  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const mx=(t.x*.8+P.x*.2), mz=(t.z*.8+P.z*.2); CAMR.override={x:mx,z:mz+.6,zoom:t.boss?.5:.36,pitch:.62}; cineBars(true);
   try{ if(AS.FX&&AS.post==='high'){ const d=Math.hypot(cam.position.x-t.x,cam.position.y-1.5,cam.position.z-t.z); AS.FX.setDOF(true,{focus:d,aperture:.012,maxblur:.008}); } }catch(e){} }
 function cineEnd(){ if(!CINE.on) return; CINE.on=false; CAMR.override=CINE.prev||null; CINE.prev=null; cineBars(false); try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} }
 const _dlgShow=dlgShow;
@@ -8554,7 +8565,7 @@ const SPIRIT={
   pet:['Оно на меня смотрит. Оно меня видит?! Оно меня видит.'],
   companion:['Компания! Наконец кто-то, кроме меня, будет над тобой подшучивать.'],
 };
-function spirit(trig,force){ try{ if(!S.set.spirit||!S.seen.wake&&trig!=='pro') return false; const sp=STS().sp; const now=performance.now(); if(!force&&now-(SP_RT.t||0)<22000) return false; const L=SPIRIT[trig]; if(!L) return false;
+function spirit(trig,force){ try{ if(PANEL.kind||!S.set.spirit||!S.seen.wake&&trig!=='pro') return false; const sp=STS().sp; const now=performance.now(); if(!force&&now-(SP_RT.t||0)<22000) return false; const L=SPIRIT[trig]; if(!L) return false;
   const cap={first_kill:1,secret:6,lore:6,echo:8,companion:1,pet:2}[trig]; if(cap&&(sp[trig]||0)>=cap&&!force) return false; sp[trig]=(sp[trig]||0)+1;
   let line=L[(sp[trig]-1)%L.length]; if(L.length>2&&line===SP_RT.last) line=L[(sp[trig])%L.length]; SP_RT.last=line; SP_RT.t=now; spiritSay(line); return true; }catch(e){ return false; } }
 const SP_RT={t:0,last:''};
@@ -8567,7 +8578,7 @@ killEnemy=function(e,o){ const wasAlive=e.alive; _killEnemy(e,o); if(!wasAlive||
   const t=G.time; _kStreak=_kStreak.filter(x=>t-x<1.6); _kStreak.push(t); if(_kStreak.length===3) spirit('streak'); };
 const _hurtPlayer=hurtPlayer; let _lowT=0;
 hurtPlayer=function(raw,o){ const d=_hurtPlayer(raw,o); const P=G.P; if(P&&d>0&&!P.dead&&P.hp<P.maxHp*.3&&G.time-_lowT>40){ _lowT=G.time; spirit('low_hp',true); } return d; };
-const _onLevelUp=onLevelUp; onLevelUp=function(){ _onLevelUp(); if(S.hero.lvl%3===0) spirit('level'); if(typeof ftueStep==='function') ftueStep('lvl'); };
+const _onLevelUp=onLevelUp; onLevelUp=function(){ _onLevelUp(); if(S.hero.lvl%3===0) spirit('level'); };
 const _synFire=synFire; synFire=function(id,e){ const r=_synFire(id,e); if(Math.random()<.35) spirit('synergy'); return r; };
 const _pickup=pickup; pickup=function(d){ _pickup(d); if(d.kind==='item'&&d.item&&d.item.rar>=2) { spirit('rare'); if(typeof ftueRare==='function') ftueRare(d.item); } if(d.kind==='item'&&typeof qeqOffer==='function') qeqOffer(d.item); };
 const _playerDie=playerDie; playerDie=function(){ if(typeof reviveOffer==='function'&&reviveOffer()) return; _playerDie(); later(.6,()=>spirit('death',true)); };
@@ -8664,14 +8675,14 @@ const ECHOES={
 function echoBuild(info){ const E=ECHOES[info.key]; if(!E||!W||!W.walk) return; const nodes=W.walk.nodes.filter(n=>!n.side); const node=nodes[Math.min(nodes.length-1,Math.max(1,Math.floor(nodes.length*.45)))]; if(!node) return;
   const x=node.x+node.r*.35, z=node.z; let rig=null; try{ rig=E.who==='knight'?buildCompanion('vela',compGearObj('vela')):E.who==='dragon'?null:buildNPC(E.who==='bogMother'?'elder':E.who); }catch(e){ rig=null; }
   const g=new THREE.Group(); g.position.set(x,0,z); worldRoot.add(g);
-  if(rig){ g.add(rig.root); rig.root.position.set(0,0,0); if(rig.actor){ try{ rig.actor.setOpacity(.45); rig.actor.setTint(0x9ad8ff,.6); rig.actor.play('idle'); }catch(e){} } else rig.root.traverse(o=>{ if(o.isMesh) o.material=MTghost; }); }
+  if(rig){ g.add(rig.root); rig.root.position.set(0,0,0); if(rig.actor){ try{ rig.actor.setOpacity(.62); rig.actor.setTint(0x9ad8ff,.75); rig.actor.setGlow('#9ad8ff',.5); rig.actor.play('idle'); }catch(e){} } else rig.root.traverse(o=>{ if(o.isMesh) o.material=MTghost; }); }
   else { const m=pmesh(cgeo('echo_wisp',b=>{ b.oct(.5,0x9ad8ff,{s:[1,1.8,1],e:1}); b.oct(.3,0xffffff,{s:[1,1.6,1],e:1,ol:0}); }),g,0,1.4,0); m.material=MTghost; }
   W.echo={x,z,g,rig,key:info.key,done:!!STS().echo[info.key],t:0}; }
 function echoTick(dt){ const E=W&&W.echo; if(!E||!G.P) return; E.t+=dt; if(E.rig&&E.rig.actor){ try{ E.rig.actor.update(dt); }catch(e){} } E.g.position.y=Math.sin(E.t*1.6)*.08; if(Math.random()<dt*5) fx('wisp',E.x+rand(-.6,.6),rand(.4,2.2),E.z+rand(-.6,.6),{col:0x9ad8ff});
   if(!E.heard&&Math.hypot(G.P.x-E.x,G.P.z-E.z)<3.2){ E.heard=true; const D=ECHOES[E.key]; const first=!STS().echo[E.key]; STS().echo[E.key]=Date.now(); saveGame();
     toast(`${ico('eye')} <b>Эхо прошлого:</b> <i>${D.lines[0]}</i>`,null,2,'quest'); if(D.lines[1]) later(4,()=>toast(`<i>${D.lines[1]}</i>`,null,2,'quest')); if(first){ track('echo',E.key); later(5,()=>spirit('echo',true)); }
     fx('magic',E.x,1,E.z,{col:0x9ad8ff,k:16}); AU.sfx('tele',.5); setTimeout(()=>{ if(W&&W.echo===E){ E.fade=true; } },7000); }
-  if(E.fade&&E.rig&&E.rig.actor){ E.op=(E.op===undefined?.45:E.op)-dt*.2; try{ E.rig.actor.setOpacity(Math.max(0,E.op)); }catch(e){} if(E.op<=0){ worldRoot.remove(E.g); W.echo=null; } } }
+  if(E.fade&&E.rig&&E.rig.actor){ E.op=(E.op===undefined?.62:E.op)-dt*.2; try{ E.rig.actor.setOpacity(Math.max(0,E.op)); }catch(e){} if(E.op<=0){ worldRoot.remove(E.g); W.echo=null; } } }
 
 // ---------- story flow hooks ----------
 function storyEv(type,d){ if(type==='stage'&&d.key==='4-5'&&!STS().ch.trust) S.q.flags.pendTrust=1; }
@@ -8679,6 +8690,7 @@ function storyVillageSeq(seq){ const c=STS().ch;
   // spared bog mother lives by the brook
   if(c.bog==='spare'&&W&&W.npcs&&!W.npcs.some(n=>n.kind==='bogw')){ try{ const rig=buildNPC('elder'); if(rig.actor){ rig.actor.setTint(0x5a9a5a,.45); } rig.root.scale.setScalar(.9); rig.root.position.set(16,0,2.5); worldRoot.add(rig.root); W.npcs.push({kind:'bogw',x:16,z:2.5,rig,face:-1.2,t:0,r:.5}); W.obst.push({x:16,z:2.5,r:.6}); }catch(e){ console.warn(e); } }
   if(c.bog==='spare'&&!S.seen.bogw_hi) seq.push(cb=>playDialog('bogw_hi',cb));
+  if(S.q.flags.pendBog&&!c.bog) seq.push(cb=>{ S.q.flags.pendBog=0; playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'&&!S.seen.bogw_hi) later(.5,()=>{}); cb(); }); });
   if(stageDone('1-5')&&S.bld.forge>0&&!c.ember) seq.push(cb=>playDialog('ch_ember',cb));
   if(S.q.flags.pendTrust&&!c.trust&&stageDone('4-5')) seq.push(cb=>{ S.q.flags.pendTrust=0; playDialog('ch_trust',cb); });
   if(STS().end&&!STS().ends.secret&&S.lore.length>=LORE.length&&S.endless.best>=10) seq.push(cb=>playDialog('epilogue',()=>{ STS().ends.secret=1; cosGrant('troph_crown'); track('ending','secret'); giveReward({sparks:100,shards:50},'Тайный эпилог'); saveGame(); cb(); }));
@@ -8687,7 +8699,7 @@ function storyVillageSeq(seq){ const c=STS().ch;
 }
 // Morven, Bog Mother, Dragon: choice moments during the boss stage
 const _onBossDeath=onBossDeath;
-onBossDeath=function(e){ if(e.kind==='bogMother'&&!G.abyss&&!STS().ch.bog){ _onBossDeath(e); later(1.8,()=>playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'){ S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='boss3_post'); S.q.flags.pend.push('boss3_post_spare'); } })); return; }
+onBossDeath=function(e){ if(e.kind==='bogMother'&&!G.abyss&&!STS().ch.bog){ _onBossDeath(e); S.q.flags.pendBog=1; later(1.2,()=>{ if(STS().ch.bog) return; S.q.flags.pendBog=0; playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'){ S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='boss3_post'); S.q.flags.pend.push('boss3_post_spare'); } }); }); return; }
   if(e.kind==='ashKing'&&!G.abyss){ _onBossDeath(e); S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='ending'); if(!S.seen.ending||!STS().end||S.q.flags.replayEnd) S.q.flags.endPending=1; return; }
   _onBossDeath(e); };
 DLG.boss3_post_spare=[['alch','Ты… отпустил её? Она лечила детей, а потом… Ладно. Может, она снова научится лечить. Я помогу.']];
@@ -8720,22 +8732,24 @@ PANEL_EXT.chron=()=>{ const c=STS().ch; let body=`<div class="muted" style="marg
 
 // ---------- the Heart of Тлеющий Брод: crafted centrepiece that grows as the ember is restored ----------
 function heartLevel(){ let n=0; for(const z of [1,2,3,4,5,6]) if(stageDone(z+'-5')) n++; if(STS().ch.ember==='heart') n++; return Math.min(7,n); }
-function heartGeoBase(){ return cgeo('heart2',b=>{ const st=0x4a4448, st2=0x5c5458, trim=0xc9973f;
-  b.cyl(2.05,2.25,.32,st,{p:[0,.16,0],seg:8,j:.04}); b.cyl(2.12,2.12,.06,trim,{p:[0,.34,0],seg:8});
-  b.cyl(1.55,1.75,.3,st2,{p:[0,.5,0],seg:8,j:.04}); b.cyl(1.05,1.25,.28,st,{p:[0,.79,0],seg:8});
-  b.cyl(.95,.6,.38,0x8a5a2a,{p:[0,1.1,0],seg:10}); b.tor(.92,.06,trim,{p:[0,1.28,0],r:[PI/2,0,0],ts:20}); b.cyl(.8,.8,.05,0xff7a2a,{p:[0,1.27,0],seg:10,e:1,ol:0});
-  for(let i=0;i<8;i++){ const a=i/8*TAU+PI/8; b.box(.18,.16,.42,0x3a3438,{p:[Math.cos(a)*1.95,.42,Math.sin(a)*1.95],r:[0,-a,0]}); }
-  for(let i=0;i<4;i++){ const a=i/4*TAU; b.box(.12,.5,.12,trim,{p:[Math.cos(a)*.98,1.02,Math.sin(a)*.98],r:[0,-a,.15]}); } },0.03); }
-function heartRuneGeo(lit){ return cgeo('hrune'+(lit?1:0),b=>{ b.box(.42,1.25,.3,0x3e383c,{p:[0,.62,0],j:.06}); b.cone(.3,.32,0x3e383c,{p:[0,1.38,0],seg:4,r:[0,PI/4,0]}); b.box(.2,.32,.04,lit?0xffa040:0x6a5a50,{p:[0,.78,.16],e:lit?1:0,ol:0}); b.box(.06,.5,.04,lit?0xffd27a:0x5a4a40,{p:[0,.78,.17],e:lit?1:0,ol:0}); },0.03); }
+function heartGeoBase(){ return cgeo('heart3',b=>{ const st=0x4a4448, st2=0x5c5458, trim=0xc9973f;
+  b.cyl(1.45,1.6,.26,st,{p:[0,.13,0],seg:8,j:.04}); b.cyl(1.5,1.5,.05,trim,{p:[0,.27,0],seg:8});
+  b.cyl(1.1,1.25,.24,st2,{p:[0,.4,0],seg:8,j:.04}); b.cyl(.75,.9,.22,st,{p:[0,.63,0],seg:8});
+  b.cyl(.7,.45,.3,0x8a5a2a,{p:[0,.88,0],seg:10}); b.tor(.68,.05,trim,{p:[0,1.03,0],r:[PI/2,0,0],ts:20}); b.cyl(.6,.6,.04,0xff7a2a,{p:[0,1.02,0],seg:10,e:1,ol:0});
+  for(let i=0;i<8;i++){ const a=i/8*TAU+PI/8; b.box(.14,.12,.3,0x3a3438,{p:[Math.cos(a)*1.4,.33,Math.sin(a)*1.4],r:[0,-a,0]}); }
+  for(let i=0;i<4;i++){ const a=i/4*TAU; b.box(.09,.38,.09,trim,{p:[Math.cos(a)*.72,.82,Math.sin(a)*.72],r:[0,-a,.15]}); } },0.03); }
+function heartRuneGeo(lit){ return cgeo('hrune2'+(lit?1:0),b=>{ b.box(.3,.85,.22,0x3e383c,{p:[0,.42,0],j:.06}); b.cone(.22,.24,0x3e383c,{p:[0,.96,0],seg:4,r:[0,PI/4,0]}); b.box(.15,.24,.03,lit?0xffa040:0x6a5a50,{p:[0,.55,.12],e:lit?1:0,ol:0}); b.box(.05,.36,.03,lit?0xffd27a:0x5a4a40,{p:[0,.55,.13],e:lit?1:0,ol:0}); },0.03); }
+function heartRunesGeo(lv){ return cgeo('hrunes_'+lv,b=>{ for(let i=0;i<7;i++){ const a=i/7*TAU-PI/2, lit=i<lv; const x=Math.cos(a)*2.05, z=Math.sin(a)*2.05, ry=-a+PI/2; const c=Math.cos(ry), sn=Math.sin(ry); const L=(px,py,pz)=>[x+px*c+pz*sn,py,z-px*sn+pz*c];
+    b.box(.3,.85,.22,0x3e383c,{p:L(0,.42,0),r:[0,ry,0],j:.06}); b.cone(.22,.24,0x3e383c,{p:L(0,.96,0),seg:4,r:[0,ry+PI/4,0]}); b.box(.15,.24,.03,lit?0xffa040:0x6a5a50,{p:L(0,.55,.12),r:[0,ry,0],e:lit?1:0,ol:0}); b.box(.05,.36,.03,lit?0xffd27a:0x5a4a40,{p:L(0,.55,.13),r:[0,ry,0],e:lit?1:0,ol:0}); } },0.03); }
 function heartBuild(){ if(!W||W.kind!=='village') return; if(W.heart2) worldRoot.remove(W.heart2.g); const g=new THREE.Group(); worldRoot.add(g); pmesh(heartGeoBase(),g);
-  const runes=[]; for(let i=0;i<7;i++){ const a=i/7*TAU-PI/2; const m=pmesh(heartRuneGeo(false),g,Math.cos(a)*2.75,0,Math.sin(a)*2.75); m.rotation.y=-a+PI/2; runes.push(m); }
-  const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),g,0,2.1,0);
-  const ring=pmesh(cgeo('hring',b=>{ b.tor(.85,.035,0xffb347,{r:[PI/2,0,0],ts:28,e:1,ol:0}); for(let i=0;i<6;i++){ const a=i/6*TAU; b.box(.1,.1,.1,0xffe0a0,{p:[Math.cos(a)*.85,0,Math.sin(a)*.85],e:1,ol:0}); } },0),g,0,2.1,0);
-  W.heart2={g,runes,core,ring,lv:-1}; W.heartCore=null; }
+  const runes=pmesh(heartRunesGeo(0),g); // all 7 rune stones in one merged mesh (1 draw call); lit runes = restored embers
+  const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),g,0,1.75,0);
+  const ring=pmesh(cgeo('hring',b=>{ b.tor(.85,.035,0xffb347,{r:[PI/2,0,0],ts:28,e:1,ol:0}); for(let i=0;i<6;i++){ const a=i/6*TAU; b.box(.1,.1,.1,0xffe0a0,{p:[Math.cos(a)*.85,0,Math.sin(a)*.85],e:1,ol:0}); } },0),g,0,1.75,0);
+  W.heart2={g,runes,core,ring,lv:-1}; W.heartCore=core; }
 function heartUpdate(force){ if(!W||W.kind!=='village') return; if(!W.heart2) heartBuild(); const H=W.heart2; const lv=heartLevel(); if(lv===H.lv&&!force) return; H.lv=lv;
-  H.runes.forEach((m,i)=>{ m.geometry=heartRuneGeo(i<lv); }); const s=.62+lv*.07; H.core.scale.setScalar(s); H.ring.scale.setScalar(.8+lv*.06); H.ring.visible=lv>=1; H.glow=.75+lv*.13; }
-function heartTick(dt){ const H=W&&W.heart2; if(!H) return; const t=G.time; H.core.rotation.y+=dt*.9; H.core.position.y=2.1+Math.sin(t*1.6)*.1; H.ring.rotation.y-=dt*.5; H.ring.rotation.z=Math.sin(t*.7)*.18; H.ring.position.y=H.core.position.y;
-  const rate=(4+H.lv*3)*Q.ambient; if(Math.random()<dt*rate) fx('ember',rand(-.6,.6),1.5,rand(-.6,.6)); if(H.lv>=6&&Math.random()<dt*6) fx('ember',rand(-.3,.3),2.6+rand(0,1),rand(-.3,.3),{col:0xffe0a0});
+  H.runes.geometry=heartRunesGeo(lv); const s=.48+lv*.06; H.core.scale.setScalar(s); H.ring.scale.setScalar(.62+lv*.05); H.ring.visible=lv>=1; H.glow=.75+lv*.13; }
+function heartTick(dt){ const H=W&&W.heart2; if(!H) return; const t=G.time; H.core.rotation.y+=dt*.9; H.core.position.y=1.75+Math.sin(t*1.6)*.08; H.ring.rotation.y-=dt*.5; H.ring.rotation.z=Math.sin(t*.7)*.18; H.ring.position.y=H.core.position.y;
+  const rate=(4+H.lv*3)*Q.ambient; if(Math.random()<dt*rate) fx('ember',rand(-.5,.5),1.2,rand(-.5,.5)); if(H.lv>=6&&Math.random()<dt*6) fx('ember',rand(-.3,.3),2.2+rand(0,1),rand(-.3,.3),{col:0xffe0a0});
   if(typeof emberLight!=='undefined'&&G.mode==='village') emberLight.intensity*=H.glow; }
 // replace the old hearth mesh: makeVillage builds it; we swap in the crafted one
 const _makeVillage=makeVillage; makeVillage=function(){ const r=_makeVillage(); try{ const old=worldRoot.children.filter(c=>c.isGroup&&c.children.some(m=>m.geometry===OBJ_GEO.heart()||m.geometry===OBJ_GEO.heartCore())); for(const o of old) worldRoot.remove(o); heartBuild(); heartUpdate(true); }catch(e){ console.error(e); } return r; };
@@ -8749,11 +8763,11 @@ const _bossStageTick=bossStageTick; bossStageTick=function(dt){ const was=W.boss
 const _interactObjs=interactObjs; interactObjs=function(){ const n=S.lore.length; _interactObjs(); if(S.lore.length>n) spirit('lore'); };
 const _hitObj=hitObj; hitObj=function(o,a,b,c){ const was=o&&o.kind==='secret'&&o.alive; const r=_hitObj(o,a,b,c); if(was&&!o.alive) spirit('secret'); return r; };
 Object.assign(window.__game,{ story:()=>JSON.parse(JSON.stringify(STS())), choose:(id,k)=>storyChoose(id,k), spirit:(t)=>spirit(t||'idle',true), chron:()=>openPanel('chron'), arcs:()=>Object.keys(ARCS).map(n=>[n,arcS(n).st,arcReady(n)]), arcTalk:(n)=>arcTalk(n), ending:(k)=>{ S.q.flags.endPending=1; STS().ch.heart=k||STS().ch.heart; }, endingScene:(k)=>endingScene(k||'ember',()=>{}), heart:()=>W&&W.heart2?{lv:W.heart2.lv}:null, echo:()=>W&&W.echo?{key:W.echo.key,x:W.echo.x,z:W.echo.z}:null, loyal:(id)=>loyalS(id) });
-// ================= p20: cold-open prologue «Ночь Пепла» + guided first session (FTUE) + quick equip, revive, event rewards =================
+// ================= p20: cold-open prologue «Падение Златоверха» + guided first session (FTUE) + quick equip, revive, event rewards =================
 // Пролог: герой на полной силе (40 ур., легендарное снаряжение, Вспышка готова) с союзниками держит площадь Златоверха против войска Хмари.
 // Прилетает Игнар, затем появляется Пепельный Король — сценарное поражение: сила отнята, Искра расколота → пробуждение в Тлеющем Броде.
 // Во время пролога сохранение выключено (G.prologue), настоящее сохранение подменяется временным и возвращается целым.
-STAGE_TYPES.prologue={n:'Ночь Пепла',d:'Пролог: падение Златоверха.'};
+STAGE_TYPES.prologue={n:'Падение Златоверха',d:'Пролог: падение Златоверха.'};
 const PRO_FILES=['necromancer','knight','paladin','rogue_hooded','tiefling','skel_warrior','kit_weapons2'];
 const PRO={on:false,t:0,ph:0,real:null,god:false,drag:null,king:null,cap:null,waves:0,replay:false};
 function prologueSave(){ const s=newSave(); s.started=true; s.look=S.look||0; s.set=S.set; s.hero.lvl=40; s.hero.tp=0; s.seen={joyHint:1,tut1:1,wake:1,prologue:1,keyTip:1}; for(const a of ACH) s.q.ach[a.id]=1;
@@ -8767,7 +8781,7 @@ function proCap(html,ms){ let c=$('proCap'); if(!c){ c=document.createElement('d
 function proFlash(a,ms){ let f=$('proFlash'); if(!f){ f=document.createElement('div'); f.id='proFlash'; document.body.appendChild(f); } f.style.transition='opacity '+(ms||120)+'ms'; f.style.opacity=a; }
 function prologueStart(replay){
   if(PRO.on) return; PRO.replay=!!replay; trackOnce('ftue','prologue_start'); AU.init(); show('title',false); show('panel',false); PANEL.kind=null;
-  PRO.real=S; PRO.god=!!G.god; PRO.on=true; G.prologue=true; S=prologueSave();
+  PRO.real=S; PRO.god=!!G.god; PRO.on=true; G.prologue=true; const keep={myth:S.st.myth,uid:S.uid}; const fake=prologueSave(); S.st.myth=keep.myth; S.uid=keep.uid; S=fake;
   const go=()=>fadeTo(()=>{ try{ prologueBuild(); }catch(e){ console.error(e); prologueEnd(true); } });
   if(typeof withAssets==='function') withAssets(PRO_FILES,go); else go();
 }
@@ -8782,7 +8796,7 @@ function prologueBuild(){
   // the Heart-Ember of Vale on its altar (north)
   const hg=new THREE.Group(); hg.position.set(0,0,-8.5); worldRoot.add(hg); pmesh(heartGeoBase(),hg); const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),hg,0,2.3,0); core.scale.setScalar(1.9); W.obst.push({x:0,z:-8.5,r:2.2});
   W.proHeart={g:hg,core};
-  W.info={z:6,s:0,key:'P',lvl:8,name:'Ночь Пепла',zone:Z,type:'prologue',par:999}; W.obj={type:'prologue',done:false,txt:'Держите площадь'};
+  W.info={z:6,s:0,key:'P',lvl:8,name:'Падение Златоверха',zone:Z,type:'prologue',par:999}; W.obj={type:'prologue',done:false,txt:'Держите площадь'};
   buildPropMeshes();
   G.mode='stage'; G.run={info:W.info,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:0,startLvl:40};
   refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(0,5,PI); G.P.ember=100; G.god=true;
@@ -8808,15 +8822,15 @@ function prologueTick(dt){ if(!PRO.on||!W||W.kind!=='prologue') return; PRO.t+=d
   if(PRO.drag) animDragon(PRO.drag.e,PRO.drag.rig,dt);
   if(W.obj) W.obj.txt=ph<3?`Хмари на площади: ${alive}`:ph<5?'Дракон!':'Пепельный Король';
 }
-function proDragonIn(){ const rig=BOSS_MODELS.dragon(); worldRoot.add(rig.root); const e={t:0,airY:0,moving:0,pose:'',poseK:0,face:0,rig}; rig.root.position.set(-26,14,-20); PRO.drag={rig,e,x:-26,y:14,z:-20};
-  AU.sfx('roar'); shake(.8); banner('Игнар!','Последний дракон летит над столицей'); later(1.2,()=>spirit('pro_dragon',true)); cineBars(true); CAMR.override={x:-4,z:-2,zoom:.85}; }
+function proDragonIn(){ const rig=BOSS_MODELS.dragon(); worldRoot.add(rig.root); const e={t:0,airY:0,moving:0,pose:'',poseK:0,face:0,rig}; rig.root.position.set(-22,7,-18); PRO.drag={rig,e,x:-22,y:7,z:-18};
+  AU.sfx('roar'); shake(.8); banner('Игнар!','Последний дракон летит над столицей'); later(1.2,()=>spirit('pro_dragon',true)); cineBars(true); CAMR.override={x:-8,z:-6,zoom:.95}; }
 SPIRIT.pro_dragon=['Дракон?! Он… жжёт не нас. Он жжёт Хмарь!']; SPIRIT.pro_king=['Это не человек. Это холод в короне. Держись!']; SPIRIT.pro_lost=['…больно. Я раскалываюсь… найди… меня…'];
 function proDragonTick(dt,u){ const D=PRO.drag; if(!D) return; D.e.t+=dt; const rig=D.rig;
-  if(u<3.2){ const k=u/3.2; D.x=lerp(-26,0,k); D.z=lerp(-20,-13,k); D.y=lerp(14,6,k); D.e.airY=1; rig.root.rotation.y=Math.atan2(26,7); }
-  else if(u<5.6){ D.e.pose='breath'; D.e.poseK=Math.min(1,(u-3.2)*2); rig.root.rotation.y=0;
+  if(u<3.2){ const k=smooth(u/3.2); D.x=lerp(-22,0,k); D.z=lerp(-18,-9,k); D.y=lerp(7,2.4,k); D.e.airY=1; rig.root.rotation.y=Math.atan2(22,9); CAMR.override={x:D.x*.8,z:D.z-.7*D.y+2,zoom:.95}; }
+  else if(u<5.6){ D.e.pose='breath'; D.e.poseK=Math.min(1,(u-3.2)*2); rig.root.rotation.y=0; CAMR.override={x:0,z:D.z-.7*D.y+1.8,zoom:.95};
     if(!D.burn){ D.burn=1; AU.sfx('boom'); shake(1); for(const e of G.enemies) if(e.alive&&!e.boss){ const x=e.x,z=e.z; later(rand(.1,1.1),()=>{ fx('fire',x,.5,z,{k:10}); fx('boom',x,.5,z,{r:1.8,col:0xff6a1a}); if(e.alive){ e.invuln=false; e.hp=0; killEnemy(e); } }); }
       for(let i=0;i<14;i++) later(i*.08,()=>{ const a=rand(-.7,.7); const r=rand(3,12); fx('fire',D.x+Math.sin(a)*r,1,D.z+Math.cos(a)*r,{k:6}); }); } }
-  else if(u<8){ D.e.pose=''; const k=(u-5.6)/2.4; D.x=lerp(0,0,k); D.z=lerp(-13,-12.2,k); D.y=lerp(6,0,smooth(k)); D.e.airY=1-k; if(k>.9&&!D.land){ D.land=1; shake(1.1); fx('dust',0,0,-12,{k:30}); AU.sfx('boom'); } }
+  else if(u<8){ D.e.pose=''; const k=(u-5.6)/2.4; D.x=0; D.z=lerp(-9,-13,k); D.y=lerp(2.4,0,smooth(k)); CAMR.override={x:0,z:D.z-.7*D.y+1.8,zoom:.95}; D.e.airY=1-k; if(k>.9&&!D.land){ D.land=1; shake(1.1); fx('dust',0,0,-12,{k:30}); AU.sfx('boom'); } }
   else if(PRO.ph===3){ PRO.ph=4; PRO.t4=PRO.t; CAMR.override=null; cineBars(false); D.e.pose='roar'; }
   rig.root.position.set(D.x,D.y,D.z); rig.root.scale.setScalar(.85); }
 function proKingIn(){ const k=spawnBoss('ashKing',0,-3.5,40,{hpMul:3}); k.invuln=true; k.intro=true; PRO.king=k; fx('boom',0,1,-3.5,{r:4,col:0x4a1a2a,smoke:0x1a1010}); AU.sfx('roar'); AU.sfx('sting'); shake(.8);
@@ -8856,14 +8870,14 @@ function proPrefetch(){ if(!S.seen.prologue&&typeof asLoad==='function'&&asOn())
 // ---------- FTUE: guided first session ----------
 const FTUE=[
   {id:'wake',n:'Очнуться в Броде'},{id:'build',n:'Постройте кузницу',hint:'Подойдите к участку с табличкой и нажмите большую кнопку — или «Стройка» внизу.'},
-  {id:'stage11',n:'Выйдите за ворота: этап 1-1',hint:'Ворота на севере ведут к карте. «Поход» внизу — тоже.'},{id:'kill',n:'Первая победа',hint:'Атака — большая кнопка справа; цель выбирается сама.'},
+  {id:'stage11',n:'Пройдите этап 1-1',hint:'Ворота на севере ведут к карте. «Поход» внизу — тоже.'},{id:'kill',n:'Первая победа',hint:'Атака — большая кнопка справа; цель выбирается сама.'},
   {id:'equip',n:'Наденьте вещь получше',hint:'Новая вещь лучше вашей — нажмите «Надеть» или откройте «Героя».'},{id:'rare',n:'Найдите редкую добычу',hint:'Сундуки и вожаки (с цветным кольцом) дают лучшие вещи.'},
   {id:'companion',n:'Спасите пленника (1-2)',hint:'На «Горящей мельнице» в клетке ждёт Бран — разбейте клетку и выведите его.'},{id:'pet',n:'Высидите питомца',hint:'Постройте питомник и отдайте яйцо Ойке — первое вылупится почти сразу.'},
   {id:'boss',n:'Победите Брюхана (1-5)',hint:'Заманите его разбег на пороховую бочку — взрыв оглушает.'},{id:'raid',n:'Отразите первый набег',hint:'Кнопка «Набег» внизу: поставьте башню на светящееся место и начните бой.'}];
 const ftueS=()=>{ const t=metaS().tk; return t; };
 function FTUE_active(){ return !S.seen.ftue_done&&!!S.started&&!G.prologue; }
 function ftueDone(id){ return !!metaS().tk['ftue:'+id]; }
-function ftueStep(id){ if(!S.started||G.prologue) return; if(trackOnce('ftue',id)){ const i=FTUE.findIndex(f=>f.id===id); if(i>=0&&id!=='wake'){ const nx=FTUE.find(f=>!ftueDone(f.id)); later(.8,()=>toast(`${ico('check')} <b>${FTUE[i].n}</b>${nx?` · дальше: ${nx.n}`:''}`,null,2,'quest')); } if(FTUE.every(f=>ftueDone(f.id))&&!S.seen.ftue_done){ S.seen.ftue_done=1; trackOnce('ftue','done'); later(2,()=>{ banner('Брод стоит!','Обучение пройдено — дальше вы сами'); giveReward({gold:500,sparks:30},'Награда за первые шаги'); }); } saveGame(); hudQuest(); } }
+function ftueStep(id){ if(!S.started||G.prologue) return; if(S.seen.ftue_done){ trackOnce('ftue',id); return; } if(trackOnce('ftue',id)){ const i=FTUE.findIndex(f=>f.id===id); if(i>=0&&id!=='wake'){ const nx=FTUE.find(f=>!ftueDone(f.id)); later(.8,()=>toast(`${ico('check')} <b>${FTUE[i].n}</b>${nx?` · дальше: ${nx.n}`:''}`,null,2,'quest')); } if(FTUE.every(f=>ftueDone(f.id))&&!S.seen.ftue_done){ S.seen.ftue_done=1; trackOnce('ftue','done'); later(2,()=>{ banner('Брод стоит!','Обучение пройдено — дальше вы сами'); giveReward({gold:500,sparks:30},'Награда за первые шаги'); }); } saveGame(); hudQuest(); } }
 function ftueNext(){ return FTUE.find(f=>!ftueDone(f.id)); }
 let _ftHintT=0;
 function ftueHint(force){ if(!FTUE_active()) return; const f=ftueNext(); if(!f||!f.hint) return; if(!force&&performance.now()-_ftHintT<45000) return; _ftHintT=performance.now(); toast(`<b>${esc(f.n)}.</b> ${f.hint}`); }
@@ -8887,13 +8901,15 @@ function ftueRare(it){ ftueStep('rare'); }
 const _killEnemy2=killEnemy; killEnemy=function(e,o){ const w=e.alive; _killEnemy2(e,o); if(!w||!W||W.kind==='prologue') return; if(S.st.kills>=1) ftueStep('kill');
   // FTUE guarantees: an upgrade after a few kills in 1-1, a rare (epic) drop in 1-1/1-2 from the first elite or camp leader
   if(W.info&&W.info.z===1&&!S.seen.ftueUp&&S.st.kills>=3){ S.seen.ftueUp=1; const it=genItem(2,{base:'sword2',rar:1}); it.name='Клинок Брода'; spawnDrop('item',e.x,e.z,{item:it}); }
-  if(W.info&&W.info.z===1&&W.info.s<=2&&!S.seen.ftueRare&&(e.elite||S.st.kills>=12)){ S.seen.ftueRare=1; const it=genItem(3,{slot:'chest',rar:2}); spawnDrop('item',e.x,e.z,{item:it}); fx('ring',e.x,.1,e.z,{col:0x9a5ae0}); later(.3,()=>toast('Что-то <b style="color:#b07aff">фиолетовое</b> блеснуло в траве!')); } };
+  if(W.info&&W.info.z===1&&W.info.s<=2&&(e.elite||S.st.kills>=8)) ftueRareDrop(e.x,e.z); };
+function ftueRareDrop(x,z){ if(S.seen.ftueRare) return; S.seen.ftueRare=1; const it=genItem(3,{slot:'chest',rar:2}); spawnDrop('item',x,z,{item:it}); fx('ring',x,.1,z,{col:0x9a5ae0}); later(.3,()=>toast('Что-то <b style="color:#b07aff">фиолетовое</b> блеснуло в траве!')); }
+const _interactObjs2=interactObjs; interactObjs=function(){ const c=G.run&&G.run.chests; _interactObjs2(); if(G.run&&G.run.chests>c&&W.info&&W.info.z===1&&W.info.s<=2) ftueRareDrop(G.P.x,G.P.z-1); };
 const _runEnd=runEnd; runEnd=function(win,reason,keep){ if(W&&W.kind==='prologue') return; const I=G.run&&G.run.info; _runEnd(win,reason,keep); if(win&&I&&I.key==='1-1') ftueStep('stage11'); if(win&&I&&I.key==='1-5') ftueStep('boss'); };
 // world marker over the FTUE target (village)
 const _sysLabels=sysLabels; sysLabels=function(dt){ _sysLabels(dt); if(!FTUE_active()||G.mode!=='village'||!W||PANEL.kind||G.dialog) return; const f=ftueNext(); if(!f) return; let p=null, lab='';
   if(f.id==='build'&&!S.bld.forge){ p=VPOS.forge; lab='Кузница'; } else if(f.id==='pet'&&!S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Питомник'; } else if(f.id==='pet'&&S.bld.pen&&S.pets.eggs.length){ p=VPOS.pen; lab='Яйцо — к Ойке'; } else if(f.id==='stage11'||f.id==='companion'||f.id==='boss'||f.id==='kill'||f.id==='equip'&&!S.inv.some(i=>compareTo(i)>0)||f.id==='rare'){ p=[-6,-30]; lab='В поход'; } else if(f.id==='equip'){ return; } else if(f.id==='raid'&&raidUnlocked()){ return; }
   if(p) wlAdd(p[0],3.6+Math.sin(G.time*4)*.25,p[1],`<span class="ftMark">▼ ${lab}</span>`,'ft'); };
-const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display=''; };
+const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest'); if(el&&W&&W.kind==='prologue'){ el.innerHTML=`<h4>${ico('flame')} Падение Златоверха</h4><div class="q">Держите площадь Златоверха вместе со стражей</div>`; el.style.display=''; return; } if(!el||!FTUE_active()||!(G.mode==='village'||G.mode==='stage')) return; const f=ftueNext(); if(!f) return; const i=FTUE.indexOf(f); el.insertAdjacentHTML('afterbegin',`<div class="ftq"><b>Первые шаги ${i}/${FTUE.length-1}</b> · ${esc(f.n)}</div>`); el.style.display=''; };
 
 // ---------- quick equip: a better item was picked up → one tap to wear it (non-blocking) ----------
 const QEQ={it:null,t:0};

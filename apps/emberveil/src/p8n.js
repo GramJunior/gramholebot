@@ -96,7 +96,7 @@ function pNetLb(){
   let h=`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">${segNet('board',[['week','Неделя'],['all','Всё время']])}${segNet('filter',[['global','Все'],['friends','Друзья'],['clan','Клан']])}</div>`;
   if(!r) return h+netWait();
   if(!r.ok) return h+`<div class="card muted">${esc(r.message||(r.offline?'Нет связи':'Рейтинг недоступен'))}</div>`;
-  h+=`<div class="muted" style="margin-bottom:4px">Бездна: глубже — выше; при равенстве — быстрее.${r.resetsAt?' Новая неделя: '+new Date(r.resetsAt).toLocaleDateString('ru-RU',{weekday:'long'})+'.':''}</div>`;
+  h+=`<div class="muted" style="margin-bottom:4px">Бездна: глубже — выше; при равенстве — быстрее. Считаются только забеги <b>с 1 этажа</b>, начатые при связи с сервером.${heroName()?'':` <a href="#" onclick="return false" class="nmlink">Задайте имя в настройках</a> — иначе вас видят как «${esc((NET.me&&NET.me.name)||'Гость')}».`}${r.resetsAt?' Новая неделя: '+new Date(r.resetsAt).toLocaleDateString('ru-RU',{weekday:'long'})+'.':''}</div>`;
   if(r.me) h+=`<div class="card row lbme"><b class="lbr">#${r.me.rank}</b><div class="grow">Вы · этаж <b>${r.me.floor}</b></div><span class="muted">${fmtT(r.me.timeMs)}</span></div>`;
   if(!r.entries||!r.entries.length) h+=`<div class="card muted">${L.filter==='clan'?'В клане ещё никто не спускался в Бездну.':L.filter==='friends'?'Позовите друзей — их рекорды появятся здесь.':'Летопись Бездны пока пуста. Станьте первым!'}</div>`;
   else h+=`<div class="lb">${r.entries.map(e=>`<div class="lbrow${e.me?' me':''}"><b class="lbr">${e.rank<=3?['🥇','🥈','🥉'][e.rank-1]:'#'+e.rank}</b><span class="grow">${esc(e.name)}${e.clanTag?` <span class="pill">${esc(e.clanTag)}</span>`:''}</span><b>${e.floor}</b><span class="muted">${fmtT(e.timeMs)}</span></div>`).join('')}</div>`;
@@ -189,13 +189,21 @@ function pvpStart(net){
     W.obj={type:'raid',done:false,txt:''}; pvpObjText();
     banner(PVP.revenge?'Месть!':'Набег на соседа',`${esc(PVP.name)} · погасите Сердце за ${PVP.limit/60|0} мин`); AU.music('boss'); AU.sfx('roar'); shake(.3);
   });
-  if(typeof withAssets==='function') withAssets(['village','village_late'],go); else go();
+  if(typeof withAssets==='function') withAssets(['village','village_late','knight','paladin','ranger'],go); else go();
 }
+// Defenders of a neighbour's village: town guard in KayKit armour (spearmen with shields, crossbowmen) and a captain.
+// Stats are a trained militia — tougher and better armed than goblins, the captain is a champion.
 function pvpGuard(x,z,L,i,cap){
-  const e=spawnEnemy(cap?'goblin':'goblin',x,z,L,{elite:cap?2:0,champion:cap});
-  e.pvpGuard=1; e.raider=cap; e.D=Object.assign({},e.D,{n:cap?'Сотник ополчения':'Ополченец',col:0x6a4a2a});
-  const rig=buildNPC(['v0','v1','v2'][i%3]); if(rig){ worldRoot.remove(e.rig.root); if(e.ring) worldRoot.remove(e.ring); worldRoot.add(rig.root); rig.root.position.set(x,0,z); const sc=cap?1.25:1; rig.root.scale.setScalar(sc); rig.h=(rig.h||1.9)*sc; rig.r=.5; e.rig=rig; e.meshes=[]; if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); }); if(cap){ const ring=ringMesh(0xffcf4a,1.2,.12,.75); worldRoot.add(ring); e.ring=ring; } }
-  e.hp=e.maxHp*=cap?1.2:.8; return e;
+  const xbow=!cap&&i%3===2; const kind=xbow?'goblinArcher':'goblin';
+  const e=spawnEnemy(kind,x,z,L,{elite:cap?2:0,champion:cap});
+  e.pvpGuard=1; e.raider=cap; e.D=Object.assign({},e.D,{n:cap?'Сотник стражи':xbow?'Арбалетчик стражи':'Копейщик стражи',col:0x4a5a7a,rng:xbow?10:1.9,cd:xbow?1.8:1.25});
+  const cid=cap?'vela':xbow?'lisa':'bran'; let rig=null; try{ rig=buildCompanion(cid,compGearObj(cid)); }catch(err){ rig=null; }
+  if(!rig) rig=buildNPC(['v0','v1','v2'][i%3]);
+  if(rig){ worldRoot.remove(e.rig.root); if(e.ring) worldRoot.remove(e.ring); worldRoot.add(rig.root); rig.root.position.set(x,0,z); const sc=cap?1.22:1; rig.root.scale.setScalar(sc); rig.h=(rig.h||2)*sc; rig.r=.5; e.rig=rig; e.meshes=[];
+    if(rig.actor){ try{ rig.actor.setTint(cap?0xd8b060:0x6a86b8,cap?.22:.18); }catch(err){} } else rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
+    if(cap){ const ring=ringMesh(0xffcf4a,1.2,.12,.75); worldRoot.add(ring); e.ring=ring; } }
+  // trained militia: more HP and armour than a goblin of the same level, a bit slower; crossbows hit harder from range
+  e.maxHp*=cap?1.35:xbow?1.5:2.1; e.hp=e.maxHp; e.dmg*=cap?1.15:xbow?1.25:1.1; e.spd*=xbow?.95:.9; return e;
 }
 function pvpObjText(){ if(!PVP) return; const d=PVP.structs.filter(s=>!s.alive).length, n=PVP.structs.length; const left=Math.max(0,PVP.limit-PVP.t);
   W.obj.txt=`Разрушено: ${Math.round(d/n*100)}% · Сердце: ${PVP.heart.alive?Math.round(PVP.heart.hp/PVP.heart.maxHp*100)+'%':'погасло'} · ${fmtT(left*1000)}`; }

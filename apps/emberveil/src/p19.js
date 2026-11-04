@@ -85,7 +85,7 @@ function spiritPortrait(){ if(_spPort) return _spPort; try{ const c=document.cre
 const CINE={on:false,prev:null};
 function cineBars(on){ document.body.classList.toggle('cine',!!on); }
 function cineFocus(sp){ if(!W||!G.P) return; let t=null; if(sp==='hero'||sp==='spirit'||sp==='choice') t=G.P; else if(W.npcs){ const n=W.npcs.find(n=>n.kind===sp); if(n) t=n; } if(!t&&G.boss&&G.boss.alive&&(sp===G.boss.kind||sp==='king'&&G.boss.kind==='ashKing'||sp==='dragon'&&G.boss.kind==='dragon'||sp==='bogMother'||sp==='morven')) t=G.boss;
-  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const mx=(t.x*.65+P.x*.35), mz=(t.z*.65+P.z*.35); CAMR.override={x:mx,z:mz+.6,zoom:t.boss?.5:.36,pitch:.62}; cineBars(true);
+  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const mx=(t.x*.8+P.x*.2), mz=(t.z*.8+P.z*.2); CAMR.override={x:mx,z:mz+.6,zoom:t.boss?.5:.36,pitch:.62}; cineBars(true);
   try{ if(AS.FX&&AS.post==='high'){ const d=Math.hypot(cam.position.x-t.x,cam.position.y-1.5,cam.position.z-t.z); AS.FX.setDOF(true,{focus:d,aperture:.012,maxblur:.008}); } }catch(e){} }
 function cineEnd(){ if(!CINE.on) return; CINE.on=false; CAMR.override=CINE.prev||null; CINE.prev=null; cineBars(false); try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} }
 const _dlgShow=dlgShow;
@@ -120,7 +120,7 @@ const SPIRIT={
   pet:['Оно на меня смотрит. Оно меня видит?! Оно меня видит.'],
   companion:['Компания! Наконец кто-то, кроме меня, будет над тобой подшучивать.'],
 };
-function spirit(trig,force){ try{ if(!S.set.spirit||!S.seen.wake&&trig!=='pro') return false; const sp=STS().sp; const now=performance.now(); if(!force&&now-(SP_RT.t||0)<22000) return false; const L=SPIRIT[trig]; if(!L) return false;
+function spirit(trig,force){ try{ if(PANEL.kind||!S.set.spirit||!S.seen.wake&&trig!=='pro') return false; const sp=STS().sp; const now=performance.now(); if(!force&&now-(SP_RT.t||0)<22000) return false; const L=SPIRIT[trig]; if(!L) return false;
   const cap={first_kill:1,secret:6,lore:6,echo:8,companion:1,pet:2}[trig]; if(cap&&(sp[trig]||0)>=cap&&!force) return false; sp[trig]=(sp[trig]||0)+1;
   let line=L[(sp[trig]-1)%L.length]; if(L.length>2&&line===SP_RT.last) line=L[(sp[trig])%L.length]; SP_RT.last=line; SP_RT.t=now; spiritSay(line); return true; }catch(e){ return false; } }
 const SP_RT={t:0,last:''};
@@ -133,7 +133,7 @@ killEnemy=function(e,o){ const wasAlive=e.alive; _killEnemy(e,o); if(!wasAlive||
   const t=G.time; _kStreak=_kStreak.filter(x=>t-x<1.6); _kStreak.push(t); if(_kStreak.length===3) spirit('streak'); };
 const _hurtPlayer=hurtPlayer; let _lowT=0;
 hurtPlayer=function(raw,o){ const d=_hurtPlayer(raw,o); const P=G.P; if(P&&d>0&&!P.dead&&P.hp<P.maxHp*.3&&G.time-_lowT>40){ _lowT=G.time; spirit('low_hp',true); } return d; };
-const _onLevelUp=onLevelUp; onLevelUp=function(){ _onLevelUp(); if(S.hero.lvl%3===0) spirit('level'); if(typeof ftueStep==='function') ftueStep('lvl'); };
+const _onLevelUp=onLevelUp; onLevelUp=function(){ _onLevelUp(); if(S.hero.lvl%3===0) spirit('level'); };
 const _synFire=synFire; synFire=function(id,e){ const r=_synFire(id,e); if(Math.random()<.35) spirit('synergy'); return r; };
 const _pickup=pickup; pickup=function(d){ _pickup(d); if(d.kind==='item'&&d.item&&d.item.rar>=2) { spirit('rare'); if(typeof ftueRare==='function') ftueRare(d.item); } if(d.kind==='item'&&typeof qeqOffer==='function') qeqOffer(d.item); };
 const _playerDie=playerDie; playerDie=function(){ if(typeof reviveOffer==='function'&&reviveOffer()) return; _playerDie(); later(.6,()=>spirit('death',true)); };
@@ -230,14 +230,14 @@ const ECHOES={
 function echoBuild(info){ const E=ECHOES[info.key]; if(!E||!W||!W.walk) return; const nodes=W.walk.nodes.filter(n=>!n.side); const node=nodes[Math.min(nodes.length-1,Math.max(1,Math.floor(nodes.length*.45)))]; if(!node) return;
   const x=node.x+node.r*.35, z=node.z; let rig=null; try{ rig=E.who==='knight'?buildCompanion('vela',compGearObj('vela')):E.who==='dragon'?null:buildNPC(E.who==='bogMother'?'elder':E.who); }catch(e){ rig=null; }
   const g=new THREE.Group(); g.position.set(x,0,z); worldRoot.add(g);
-  if(rig){ g.add(rig.root); rig.root.position.set(0,0,0); if(rig.actor){ try{ rig.actor.setOpacity(.45); rig.actor.setTint(0x9ad8ff,.6); rig.actor.play('idle'); }catch(e){} } else rig.root.traverse(o=>{ if(o.isMesh) o.material=MTghost; }); }
+  if(rig){ g.add(rig.root); rig.root.position.set(0,0,0); if(rig.actor){ try{ rig.actor.setOpacity(.62); rig.actor.setTint(0x9ad8ff,.75); rig.actor.setGlow('#9ad8ff',.5); rig.actor.play('idle'); }catch(e){} } else rig.root.traverse(o=>{ if(o.isMesh) o.material=MTghost; }); }
   else { const m=pmesh(cgeo('echo_wisp',b=>{ b.oct(.5,0x9ad8ff,{s:[1,1.8,1],e:1}); b.oct(.3,0xffffff,{s:[1,1.6,1],e:1,ol:0}); }),g,0,1.4,0); m.material=MTghost; }
   W.echo={x,z,g,rig,key:info.key,done:!!STS().echo[info.key],t:0}; }
 function echoTick(dt){ const E=W&&W.echo; if(!E||!G.P) return; E.t+=dt; if(E.rig&&E.rig.actor){ try{ E.rig.actor.update(dt); }catch(e){} } E.g.position.y=Math.sin(E.t*1.6)*.08; if(Math.random()<dt*5) fx('wisp',E.x+rand(-.6,.6),rand(.4,2.2),E.z+rand(-.6,.6),{col:0x9ad8ff});
   if(!E.heard&&Math.hypot(G.P.x-E.x,G.P.z-E.z)<3.2){ E.heard=true; const D=ECHOES[E.key]; const first=!STS().echo[E.key]; STS().echo[E.key]=Date.now(); saveGame();
     toast(`${ico('eye')} <b>Эхо прошлого:</b> <i>${D.lines[0]}</i>`,null,2,'quest'); if(D.lines[1]) later(4,()=>toast(`<i>${D.lines[1]}</i>`,null,2,'quest')); if(first){ track('echo',E.key); later(5,()=>spirit('echo',true)); }
     fx('magic',E.x,1,E.z,{col:0x9ad8ff,k:16}); AU.sfx('tele',.5); setTimeout(()=>{ if(W&&W.echo===E){ E.fade=true; } },7000); }
-  if(E.fade&&E.rig&&E.rig.actor){ E.op=(E.op===undefined?.45:E.op)-dt*.2; try{ E.rig.actor.setOpacity(Math.max(0,E.op)); }catch(e){} if(E.op<=0){ worldRoot.remove(E.g); W.echo=null; } } }
+  if(E.fade&&E.rig&&E.rig.actor){ E.op=(E.op===undefined?.62:E.op)-dt*.2; try{ E.rig.actor.setOpacity(Math.max(0,E.op)); }catch(e){} if(E.op<=0){ worldRoot.remove(E.g); W.echo=null; } } }
 
 // ---------- story flow hooks ----------
 function storyEv(type,d){ if(type==='stage'&&d.key==='4-5'&&!STS().ch.trust) S.q.flags.pendTrust=1; }
@@ -245,6 +245,7 @@ function storyVillageSeq(seq){ const c=STS().ch;
   // spared bog mother lives by the brook
   if(c.bog==='spare'&&W&&W.npcs&&!W.npcs.some(n=>n.kind==='bogw')){ try{ const rig=buildNPC('elder'); if(rig.actor){ rig.actor.setTint(0x5a9a5a,.45); } rig.root.scale.setScalar(.9); rig.root.position.set(16,0,2.5); worldRoot.add(rig.root); W.npcs.push({kind:'bogw',x:16,z:2.5,rig,face:-1.2,t:0,r:.5}); W.obst.push({x:16,z:2.5,r:.6}); }catch(e){ console.warn(e); } }
   if(c.bog==='spare'&&!S.seen.bogw_hi) seq.push(cb=>playDialog('bogw_hi',cb));
+  if(S.q.flags.pendBog&&!c.bog) seq.push(cb=>{ S.q.flags.pendBog=0; playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'&&!S.seen.bogw_hi) later(.5,()=>{}); cb(); }); });
   if(stageDone('1-5')&&S.bld.forge>0&&!c.ember) seq.push(cb=>playDialog('ch_ember',cb));
   if(S.q.flags.pendTrust&&!c.trust&&stageDone('4-5')) seq.push(cb=>{ S.q.flags.pendTrust=0; playDialog('ch_trust',cb); });
   if(STS().end&&!STS().ends.secret&&S.lore.length>=LORE.length&&S.endless.best>=10) seq.push(cb=>playDialog('epilogue',()=>{ STS().ends.secret=1; cosGrant('troph_crown'); track('ending','secret'); giveReward({sparks:100,shards:50},'Тайный эпилог'); saveGame(); cb(); }));
@@ -253,7 +254,7 @@ function storyVillageSeq(seq){ const c=STS().ch;
 }
 // Morven, Bog Mother, Dragon: choice moments during the boss stage
 const _onBossDeath=onBossDeath;
-onBossDeath=function(e){ if(e.kind==='bogMother'&&!G.abyss&&!STS().ch.bog){ _onBossDeath(e); later(1.8,()=>playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'){ S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='boss3_post'); S.q.flags.pend.push('boss3_post_spare'); } })); return; }
+onBossDeath=function(e){ if(e.kind==='bogMother'&&!G.abyss&&!STS().ch.bog){ _onBossDeath(e); S.q.flags.pendBog=1; later(1.2,()=>{ if(STS().ch.bog) return; S.q.flags.pendBog=0; playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'){ S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='boss3_post'); S.q.flags.pend.push('boss3_post_spare'); } }); }); return; }
   if(e.kind==='ashKing'&&!G.abyss){ _onBossDeath(e); S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='ending'); if(!S.seen.ending||!STS().end||S.q.flags.replayEnd) S.q.flags.endPending=1; return; }
   _onBossDeath(e); };
 DLG.boss3_post_spare=[['alch','Ты… отпустил её? Она лечила детей, а потом… Ладно. Может, она снова научится лечить. Я помогу.']];
@@ -286,22 +287,24 @@ PANEL_EXT.chron=()=>{ const c=STS().ch; let body=`<div class="muted" style="marg
 
 // ---------- the Heart of Тлеющий Брод: crafted centrepiece that grows as the ember is restored ----------
 function heartLevel(){ let n=0; for(const z of [1,2,3,4,5,6]) if(stageDone(z+'-5')) n++; if(STS().ch.ember==='heart') n++; return Math.min(7,n); }
-function heartGeoBase(){ return cgeo('heart2',b=>{ const st=0x4a4448, st2=0x5c5458, trim=0xc9973f;
-  b.cyl(2.05,2.25,.32,st,{p:[0,.16,0],seg:8,j:.04}); b.cyl(2.12,2.12,.06,trim,{p:[0,.34,0],seg:8});
-  b.cyl(1.55,1.75,.3,st2,{p:[0,.5,0],seg:8,j:.04}); b.cyl(1.05,1.25,.28,st,{p:[0,.79,0],seg:8});
-  b.cyl(.95,.6,.38,0x8a5a2a,{p:[0,1.1,0],seg:10}); b.tor(.92,.06,trim,{p:[0,1.28,0],r:[PI/2,0,0],ts:20}); b.cyl(.8,.8,.05,0xff7a2a,{p:[0,1.27,0],seg:10,e:1,ol:0});
-  for(let i=0;i<8;i++){ const a=i/8*TAU+PI/8; b.box(.18,.16,.42,0x3a3438,{p:[Math.cos(a)*1.95,.42,Math.sin(a)*1.95],r:[0,-a,0]}); }
-  for(let i=0;i<4;i++){ const a=i/4*TAU; b.box(.12,.5,.12,trim,{p:[Math.cos(a)*.98,1.02,Math.sin(a)*.98],r:[0,-a,.15]}); } },0.03); }
-function heartRuneGeo(lit){ return cgeo('hrune'+(lit?1:0),b=>{ b.box(.42,1.25,.3,0x3e383c,{p:[0,.62,0],j:.06}); b.cone(.3,.32,0x3e383c,{p:[0,1.38,0],seg:4,r:[0,PI/4,0]}); b.box(.2,.32,.04,lit?0xffa040:0x6a5a50,{p:[0,.78,.16],e:lit?1:0,ol:0}); b.box(.06,.5,.04,lit?0xffd27a:0x5a4a40,{p:[0,.78,.17],e:lit?1:0,ol:0}); },0.03); }
+function heartGeoBase(){ return cgeo('heart3',b=>{ const st=0x4a4448, st2=0x5c5458, trim=0xc9973f;
+  b.cyl(1.45,1.6,.26,st,{p:[0,.13,0],seg:8,j:.04}); b.cyl(1.5,1.5,.05,trim,{p:[0,.27,0],seg:8});
+  b.cyl(1.1,1.25,.24,st2,{p:[0,.4,0],seg:8,j:.04}); b.cyl(.75,.9,.22,st,{p:[0,.63,0],seg:8});
+  b.cyl(.7,.45,.3,0x8a5a2a,{p:[0,.88,0],seg:10}); b.tor(.68,.05,trim,{p:[0,1.03,0],r:[PI/2,0,0],ts:20}); b.cyl(.6,.6,.04,0xff7a2a,{p:[0,1.02,0],seg:10,e:1,ol:0});
+  for(let i=0;i<8;i++){ const a=i/8*TAU+PI/8; b.box(.14,.12,.3,0x3a3438,{p:[Math.cos(a)*1.4,.33,Math.sin(a)*1.4],r:[0,-a,0]}); }
+  for(let i=0;i<4;i++){ const a=i/4*TAU; b.box(.09,.38,.09,trim,{p:[Math.cos(a)*.72,.82,Math.sin(a)*.72],r:[0,-a,.15]}); } },0.03); }
+function heartRuneGeo(lit){ return cgeo('hrune2'+(lit?1:0),b=>{ b.box(.3,.85,.22,0x3e383c,{p:[0,.42,0],j:.06}); b.cone(.22,.24,0x3e383c,{p:[0,.96,0],seg:4,r:[0,PI/4,0]}); b.box(.15,.24,.03,lit?0xffa040:0x6a5a50,{p:[0,.55,.12],e:lit?1:0,ol:0}); b.box(.05,.36,.03,lit?0xffd27a:0x5a4a40,{p:[0,.55,.13],e:lit?1:0,ol:0}); },0.03); }
+function heartRunesGeo(lv){ return cgeo('hrunes_'+lv,b=>{ for(let i=0;i<7;i++){ const a=i/7*TAU-PI/2, lit=i<lv; const x=Math.cos(a)*2.05, z=Math.sin(a)*2.05, ry=-a+PI/2; const c=Math.cos(ry), sn=Math.sin(ry); const L=(px,py,pz)=>[x+px*c+pz*sn,py,z-px*sn+pz*c];
+    b.box(.3,.85,.22,0x3e383c,{p:L(0,.42,0),r:[0,ry,0],j:.06}); b.cone(.22,.24,0x3e383c,{p:L(0,.96,0),seg:4,r:[0,ry+PI/4,0]}); b.box(.15,.24,.03,lit?0xffa040:0x6a5a50,{p:L(0,.55,.12),r:[0,ry,0],e:lit?1:0,ol:0}); b.box(.05,.36,.03,lit?0xffd27a:0x5a4a40,{p:L(0,.55,.13),r:[0,ry,0],e:lit?1:0,ol:0}); } },0.03); }
 function heartBuild(){ if(!W||W.kind!=='village') return; if(W.heart2) worldRoot.remove(W.heart2.g); const g=new THREE.Group(); worldRoot.add(g); pmesh(heartGeoBase(),g);
-  const runes=[]; for(let i=0;i<7;i++){ const a=i/7*TAU-PI/2; const m=pmesh(heartRuneGeo(false),g,Math.cos(a)*2.75,0,Math.sin(a)*2.75); m.rotation.y=-a+PI/2; runes.push(m); }
-  const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),g,0,2.1,0);
-  const ring=pmesh(cgeo('hring',b=>{ b.tor(.85,.035,0xffb347,{r:[PI/2,0,0],ts:28,e:1,ol:0}); for(let i=0;i<6;i++){ const a=i/6*TAU; b.box(.1,.1,.1,0xffe0a0,{p:[Math.cos(a)*.85,0,Math.sin(a)*.85],e:1,ol:0}); } },0),g,0,2.1,0);
-  W.heart2={g,runes,core,ring,lv:-1}; W.heartCore=null; }
+  const runes=pmesh(heartRunesGeo(0),g); // all 7 rune stones in one merged mesh (1 draw call); lit runes = restored embers
+  const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),g,0,1.75,0);
+  const ring=pmesh(cgeo('hring',b=>{ b.tor(.85,.035,0xffb347,{r:[PI/2,0,0],ts:28,e:1,ol:0}); for(let i=0;i<6;i++){ const a=i/6*TAU; b.box(.1,.1,.1,0xffe0a0,{p:[Math.cos(a)*.85,0,Math.sin(a)*.85],e:1,ol:0}); } },0),g,0,1.75,0);
+  W.heart2={g,runes,core,ring,lv:-1}; W.heartCore=core; }
 function heartUpdate(force){ if(!W||W.kind!=='village') return; if(!W.heart2) heartBuild(); const H=W.heart2; const lv=heartLevel(); if(lv===H.lv&&!force) return; H.lv=lv;
-  H.runes.forEach((m,i)=>{ m.geometry=heartRuneGeo(i<lv); }); const s=.62+lv*.07; H.core.scale.setScalar(s); H.ring.scale.setScalar(.8+lv*.06); H.ring.visible=lv>=1; H.glow=.75+lv*.13; }
-function heartTick(dt){ const H=W&&W.heart2; if(!H) return; const t=G.time; H.core.rotation.y+=dt*.9; H.core.position.y=2.1+Math.sin(t*1.6)*.1; H.ring.rotation.y-=dt*.5; H.ring.rotation.z=Math.sin(t*.7)*.18; H.ring.position.y=H.core.position.y;
-  const rate=(4+H.lv*3)*Q.ambient; if(Math.random()<dt*rate) fx('ember',rand(-.6,.6),1.5,rand(-.6,.6)); if(H.lv>=6&&Math.random()<dt*6) fx('ember',rand(-.3,.3),2.6+rand(0,1),rand(-.3,.3),{col:0xffe0a0});
+  H.runes.geometry=heartRunesGeo(lv); const s=.48+lv*.06; H.core.scale.setScalar(s); H.ring.scale.setScalar(.62+lv*.05); H.ring.visible=lv>=1; H.glow=.75+lv*.13; }
+function heartTick(dt){ const H=W&&W.heart2; if(!H) return; const t=G.time; H.core.rotation.y+=dt*.9; H.core.position.y=1.75+Math.sin(t*1.6)*.08; H.ring.rotation.y-=dt*.5; H.ring.rotation.z=Math.sin(t*.7)*.18; H.ring.position.y=H.core.position.y;
+  const rate=(4+H.lv*3)*Q.ambient; if(Math.random()<dt*rate) fx('ember',rand(-.5,.5),1.2,rand(-.5,.5)); if(H.lv>=6&&Math.random()<dt*6) fx('ember',rand(-.3,.3),2.2+rand(0,1),rand(-.3,.3),{col:0xffe0a0});
   if(typeof emberLight!=='undefined'&&G.mode==='village') emberLight.intensity*=H.glow; }
 // replace the old hearth mesh: makeVillage builds it; we swap in the crafted one
 const _makeVillage=makeVillage; makeVillage=function(){ const r=_makeVillage(); try{ const old=worldRoot.children.filter(c=>c.isGroup&&c.children.some(m=>m.geometry===OBJ_GEO.heart()||m.geometry===OBJ_GEO.heartCore())); for(const o of old) worldRoot.remove(o); heartBuild(); heartUpdate(true); }catch(e){ console.error(e); } return r; };
