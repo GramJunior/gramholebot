@@ -313,7 +313,7 @@ const _updateVillage=updateVillage; updateVillage=function(dt){ _updateVillage(d
 const _startStage2=startStage2; startStage2=function(z,s){ _startStage2(z,s); setTimeout(()=>{ try{ if(W&&W.kind==='stage'&&W.info) echoBuild(W.info); }catch(e){ console.error(e); } },420); };
 const _updateStage=updateStage; updateStage=function(dt){ _updateStage(dt); if(W&&W.echo) echoTick(dt); if(W&&W.kind==='prologue'&&typeof prologueTick==='function') prologueTick(dt); };
 // cinematic boss intro: letterbox + close camera + spirit line
-const _bossStageTick=bossStageTick; bossStageTick=function(dt){ const was=W.bossStarted; _bossStageTick(dt); if(!was&&W.bossStarted){ cineBars(true); const id=W.bossId; later(.2,()=>{ if(G.boss){ CAMR.override={x:G.boss.x,z:G.boss.z+2.2,zoom:.42,pitch:.7}; } }); later(1.2,()=>spirit('boss_'+id,true)); later(2.6,()=>cineBars(false)); track('boss_intro',id); } };
+const _bossStageTick=bossStageTick; bossStageTick=function(dt){ const was=W.bossStarted; _bossStageTick(dt); if(!was&&W.bossStarted){ cineBars(true); const id=W.bossId; later(.2,()=>{ if(G.boss){ CAMR.override={x:G.boss.x,z:G.boss.z+1.1,zoom:.46,pitch:.7}; CINEO.t=G.boss; CINEO.boss=CAMR.override; CINEO.head=Math.max(1.8,(G.boss.rig&&G.boss.rig.root?G.boss.rig.root.scale.y:1)*1.6); cullProps(CAMR.x,CAMR.z,true); } }); later(1.2,()=>spirit('boss_'+id,true)); later(2.6,()=>cineBars(false)); track('boss_intro',id); } };
 // lore pages and secrets
 const _interactObjs=interactObjs; interactObjs=function(){ const n=S.lore.length; _interactObjs(); if(S.lore.length>n) spirit('lore'); };
 const _hitObj=hitObj; hitObj=function(o,a,b,c){ const was=o&&o.kind==='secret'&&o.alive; const r=_hitObj(o,a,b,c); if(was&&!o.alive) spirit('secret'); return r; };

@@ -62,7 +62,7 @@ function debrisTick(dt){ if(!W||!W.debris) return; for(let i=W.debris.length-1;i
 // герой, жители), прячется: здания и жители — полупрозрачные (как при «здание между камерой и героем»), инстансы пропсов — не
 // выставляются в отсечении (cullProps), запечённые пропсы деревни не попадают в «коридоры» перед жителями (см. NPC_CLEAR в p6).
 const CINEO={t:null,cam:null,head:1.4};
-function cineTarget(){ if(!CINE.on||!CAMR.override||!W) return null; return CINEO.t; }
+function cineTarget(){ if(CINEO.boss&&CAMR.override!==CINEO.boss&&!CINE.on){ CINEO.boss=null; CINEO.t=null; if(W) W.propCullAt=null; } if(!(CINE.on||CINEO.boss)||!CAMR.override||!W) return null; return CINEO.t; } // крупный план диалога или представления босса
 function cineCamPos(){ const o=CAMR.override; if(!o) return null; const d=o.dist||CAMR.dist*(o.zoom||.6), p=o.pitch||CAMR.pitch; return {x:o.x,y:Math.sin(p)*d+.6,z:o.z+Math.cos(p)*d}; }
 // true, если вертикальный цилиндр (x,z,r,h) пересекает отрезок от камеры до головы говорящего (с запасом)
 function cineBlocks(x,z,r,h,t,c){

@@ -141,7 +141,7 @@ const PAINT_FS=`
   if(uPaint.x>0.5){
     vec3 c=diffuseColor.rgb; float mxC=max(c.r,max(c.g,c.b)), mnC=min(c.r,min(c.g,c.b)), satC=mxC-mnC, lumC=dot(c,vec3(0.299,0.587,0.114));
     float leaf=clamp((c.g-max(c.r,c.b*0.9))*7.0,0.0,1.0);
-    float wood=clamp((c.r-c.b)*3.2-0.12,0.0,1.0)*(1.0-leaf)*smoothstep(0.66,0.3,lumC);
+    float wood=clamp((c.r-c.b)*3.2-0.12,0.0,1.0)*(1.0-leaf)*smoothstep(0.82,0.34,lumC);
     float stone=(1.0-clamp(satC*5.0,0.0,1.0))*(1.0-leaf);
     vec3 nW=normalize((vec4(normal,0.0)*viewMatrix).xyz);
     vec3 rel=vPW-vPB; float hP=vPH;
@@ -160,7 +160,7 @@ const PAINT_FS=`
     c=mix(c,uLeafTint*(lumC*1.9),leaf*uPaint.y);
     c*=mix(1.0,mix(0.7,1.12,smoothstep(0.5,3.4,hP)),leaf);
     c=mix(c,uLeafTint*(0.55+0.5*bP.b),stone*smoothstep(0.62,0.92,nW.y)*smoothstep(0.35,0.75,bP.b)*uPaint.y*2.2); // мох на верхних гранях камня (как на скальном слое земли)
-    c*=mix(0.5,1.0,smoothstep(-0.05,0.8,hP));
+    c*=mix(mix(0.5,0.9,smoothstep(0.55,0.95,nW.y)),1.0,smoothstep(-0.05,0.8,hP)); // AO у земли — на боковых гранях (настил моста, плиты и верх камней не темнеют)
     diffuseColor.rgb=c;
   }
 `;

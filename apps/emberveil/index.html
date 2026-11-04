@@ -3725,7 +3725,7 @@ const PAINT_FS=`
   if(uPaint.x>0.5){
     vec3 c=diffuseColor.rgb; float mxC=max(c.r,max(c.g,c.b)), mnC=min(c.r,min(c.g,c.b)), satC=mxC-mnC, lumC=dot(c,vec3(0.299,0.587,0.114));
     float leaf=clamp((c.g-max(c.r,c.b*0.9))*7.0,0.0,1.0);
-    float wood=clamp((c.r-c.b)*3.2-0.12,0.0,1.0)*(1.0-leaf)*smoothstep(0.66,0.3,lumC);
+    float wood=clamp((c.r-c.b)*3.2-0.12,0.0,1.0)*(1.0-leaf)*smoothstep(0.82,0.34,lumC);
     float stone=(1.0-clamp(satC*5.0,0.0,1.0))*(1.0-leaf);
     vec3 nW=normalize((vec4(normal,0.0)*viewMatrix).xyz);
     vec3 rel=vPW-vPB; float hP=vPH;
@@ -3744,7 +3744,7 @@ const PAINT_FS=`
     c=mix(c,uLeafTint*(lumC*1.9),leaf*uPaint.y);
     c*=mix(1.0,mix(0.7,1.12,smoothstep(0.5,3.4,hP)),leaf);
     c=mix(c,uLeafTint*(0.55+0.5*bP.b),stone*smoothstep(0.62,0.92,nW.y)*smoothstep(0.35,0.75,bP.b)*uPaint.y*2.2); // мох на верхних гранях камня (как на скальном слое земли)
-    c*=mix(0.5,1.0,smoothstep(-0.05,0.8,hP));
+    c*=mix(mix(0.5,0.9,smoothstep(0.55,0.95,nW.y)),1.0,smoothstep(-0.05,0.8,hP)); // AO у земли — на боковых гранях (настил моста, плиты и верх камней не темнеют)
     diffuseColor.rgb=c;
   }
 `;
@@ -5987,7 +5987,7 @@ function mkObj(kind,x,z,o={}){
     case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
     case 'crate': objMesh('obj:crate',OBJ_GEO.crate,g); ob.r=.55; ob.hp=1; ob.brk=1; break;
     case 'pot': { const u=W.zone&&W.zone.id>=4; objMesh(u?'obj:urn':'obj:pot',u?OBJ_GEO.urn:OBJ_GEO.pot,g); ob.r=.35; ob.hp=1; ob.brk=1; break; }
-    case 'chest': case 'vault': { const ap=asObj('obj:'+kind); if(ap){ const pop=new THREE.Group(); pop.add(ap); g.add(pop); ob.evPop=pop; ob.lid=chestRig(ap)||new THREE.Object3D(); ob.r=.7; ob.opened=false; g.rotation.y=(o.ry||0)+PI; break; } pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=o.ry||0; break; }
+    case 'chest': case 'vault': { const ap=asObj('obj:'+kind); if(ap){ const pop=new THREE.Group(); pop.add(ap); g.add(pop); ob.evPop=pop; ob.lid=chestRig(ap)||new THREE.Object3D(); ob.r=.7; ob.opened=false; g.rotation.y=(o.ry||0)+PI; break; } pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=(o.ry||0)+PI; { const v=kind==='vault', inn=new THREE.Mesh(CHEST_IN_G,CHEST_IN_M); inn.rotation.x=-PI/2; inn.position.set(0,v?.605:.505,0); inn.scale.set(v?1.1:.92,v?.72:.58,1); g.add(inn); } break; } // v10: лицом как модель KayKit, тёмное нутро под крышкой
     case 'ore': objMesh('obj:ore',OBJ_GEO.ore,g); ob.r=.8; ob.hp=4; ob.res='ore'; break;
     case 'wood': objMesh('obj:wood',OBJ_GEO.woodPile,g); ob.r=.8; ob.hp=3; ob.res='wood'; break;
     case 'ess': objMesh('obj:essNode',OBJ_GEO.essNode,g); ob.r=.7; ob.hp=4; ob.res='ess'; break;
@@ -11112,7 +11112,7 @@ const _updateVillage=updateVillage; updateVillage=function(dt){ _updateVillage(d
 const _startStage2=startStage2; startStage2=function(z,s){ _startStage2(z,s); setTimeout(()=>{ try{ if(W&&W.kind==='stage'&&W.info) echoBuild(W.info); }catch(e){ console.error(e); } },420); };
 const _updateStage=updateStage; updateStage=function(dt){ _updateStage(dt); if(W&&W.echo) echoTick(dt); if(W&&W.kind==='prologue'&&typeof prologueTick==='function') prologueTick(dt); };
 // cinematic boss intro: letterbox + close camera + spirit line
-const _bossStageTick=bossStageTick; bossStageTick=function(dt){ const was=W.bossStarted; _bossStageTick(dt); if(!was&&W.bossStarted){ cineBars(true); const id=W.bossId; later(.2,()=>{ if(G.boss){ CAMR.override={x:G.boss.x,z:G.boss.z+2.2,zoom:.42,pitch:.7}; } }); later(1.2,()=>spirit('boss_'+id,true)); later(2.6,()=>cineBars(false)); track('boss_intro',id); } };
+const _bossStageTick=bossStageTick; bossStageTick=function(dt){ const was=W.bossStarted; _bossStageTick(dt); if(!was&&W.bossStarted){ cineBars(true); const id=W.bossId; later(.2,()=>{ if(G.boss){ CAMR.override={x:G.boss.x,z:G.boss.z+1.1,zoom:.46,pitch:.7}; CINEO.t=G.boss; CINEO.boss=CAMR.override; CINEO.head=Math.max(1.8,(G.boss.rig&&G.boss.rig.root?G.boss.rig.root.scale.y:1)*1.6); cullProps(CAMR.x,CAMR.z,true); } }); later(1.2,()=>spirit('boss_'+id,true)); later(2.6,()=>cineBars(false)); track('boss_intro',id); } };
 // lore pages and secrets
 const _interactObjs=interactObjs; interactObjs=function(){ const n=S.lore.length; _interactObjs(); if(S.lore.length>n) spirit('lore'); };
 const _hitObj=hitObj; hitObj=function(o,a,b,c){ const was=o&&o.kind==='secret'&&o.alive; const r=_hitObj(o,a,b,c); if(was&&!o.alive) spirit('secret'); return r; };
@@ -12583,8 +12583,12 @@ function chestRig(ap){
   // KayKit: лицо сундука смотрит в +z модели → шарнир сзади (min z), крышка откидывается назад (rotation.x < 0)
   const piv=new THREE.Group(); piv.position.set((_cb.min.x+_cb.max.x)/2,_cb.min.y+(_cb.max.y-_cb.min.y)*.18,_cb.min.z);
   piv.updateMatrix(); lid.matrix.premultiply(new THREE.Matrix4().makeTranslation(-piv.position.x,-piv.position.y,-piv.position.z));
-  lid.parent.remove(lid); piv.add(lid); ap.add(piv); return piv;
+  lid.parent.remove(lid); piv.add(lid); ap.add(piv);
+  // тёмное «нутро» под крышкой: открытый сундук читается пустым и открытым издалека (закрытый — его не видно)
+  const inn=new THREE.Mesh(CHEST_IN_G,CHEST_IN_M); inn.rotation.x=-PI/2; inn.position.set(piv.position.x,_cb.min.y+.005,(_cb.min.z+_cb.max.z)/2); inn.scale.set((_cb.max.x-_cb.min.x)*.84,(_cb.max.z-_cb.min.z)*.8,1); ap.add(inn);
+  return piv;
 }
+const CHEST_IN_G=new THREE.PlaneGeometry(1,1), CHEST_IN_M=new THREE.MeshBasicMaterial({color:0x1a0f08});
 const backOut=u=>{ const c=1.9; return 1+(c+1)*Math.pow(u-1,3)+c*Math.pow(u-1,2); };
 function chestOpenFx(o){
   const big=o.kind==='vault', col=o.puz?0xd890ff:big?0xffc04a:0xffe2a0; const gy=groundY(o.x,o.z);
@@ -12630,7 +12634,7 @@ function debrisTick(dt){ if(!W||!W.debris) return; for(let i=W.debris.length-1;i
 // герой, жители), прячется: здания и жители — полупрозрачные (как при «здание между камерой и героем»), инстансы пропсов — не
 // выставляются в отсечении (cullProps), запечённые пропсы деревни не попадают в «коридоры» перед жителями (см. NPC_CLEAR в p6).
 const CINEO={t:null,cam:null,head:1.4};
-function cineTarget(){ if(!CINE.on||!CAMR.override||!W) return null; return CINEO.t; }
+function cineTarget(){ if(CINEO.boss&&CAMR.override!==CINEO.boss&&!CINE.on){ CINEO.boss=null; CINEO.t=null; if(W) W.propCullAt=null; } if(!(CINE.on||CINEO.boss)||!CAMR.override||!W) return null; return CINEO.t; } // крупный план диалога или представления босса
 function cineCamPos(){ const o=CAMR.override; if(!o) return null; const d=o.dist||CAMR.dist*(o.zoom||.6), p=o.pitch||CAMR.pitch; return {x:o.x,y:Math.sin(p)*d+.6,z:o.z+Math.cos(p)*d}; }
 // true, если вертикальный цилиндр (x,z,r,h) пересекает отрезок от камеры до головы говорящего (с запасом)
 function cineBlocks(x,z,r,h,t,c){
