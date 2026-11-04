@@ -101,7 +101,7 @@ function buildHeroProc(){
 function heroVis(gear){
   const v=k=>gear[k]?ITEM_BASES[gear[k].base].vis:null, r=k=>gear[k]?gear[k].rar:0, e=k=>gear[k]?gear[k].el||'':'';
   return {ch:v('chest')||'ch_cloth0',chr:r('chest'),hm:v('helm'),hmr:r('helm'),gl:v('gloves'),glr:r('gloves'),bt:v('boots'),btr:r('boots'),
-    wp:v('weapon')||'sw0',wpr:r('weapon'),wpe:e('weapon'),cls:gear.weapon?ITEM_BASES[gear.weapon.base].cls:'sword',
+    wp:v('weapon')||'sw0',wpr:r('weapon'),wpe:e('weapon'),wpu:gear.weapon&&gear.weapon.uniq||'',cls:gear.weapon?ITEM_BASES[gear.weapon.base].cls:'sword',
     oh:v('offhand'),ohr:r('offhand'),ohe:e('offhand'),am:!!gear.amulet,amr:r('amulet'),look:gear._look!==undefined?gear._look:(S.look||0)};
 }
 function dressHeroProc(rig,gear){
@@ -165,7 +165,7 @@ function dressHeroProc(rig,gear){
   // weapon + offhand mounts by class
   const cls=V.cls;
   rig.cls=cls;
-  const wg=V.wp==='sw0'?wpnGeo('sw1',0,''):wpnGeo(V.wp,V.wpr,V.wpe);
+  const wg=V.wp==='sw0'?wpnGeo('sw1',0,''):wpnGeo(V.wp,V.wpr,V.wpe,V.wpu);
   const wm=set('weapon',cls==='bow'?rig.handL:rig.handR,wg);
   wm.rotation.set(0,0,0); wm.scale.setScalar(cls==='staff'?1.1:1.22);
   if(cls==='sword'){ wm.rotation.set(PI/2-0.35,0,0); wm.position.set(0,0,.04); }

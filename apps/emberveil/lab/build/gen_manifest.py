@@ -215,5 +215,16 @@ ZONES = {
 M = {'version':1,'three':'r128','base':'../assets/','files':F,'groups':GROUPS,'rigs':{'medium':{'anims':['anim_medium','anim_medium_extra']},'large':{'anims':['anim_large']}},
      'fileRecolor':{'kit_nature':[{'h':[55,150],'s':[0.2,1],'sMul':0.78,'lMul':0.9}]},
      'clipsets':CLIPSETS,'glow':GLOW,'zones':ZONES,'entities':E}
+# v13: animated pets (Quaternius CC0, built by build_pets.mjs) — own clips embedded in each file (rig = file key)
+for k in ['pet_wolf','pet_drake','pet_mush','pet_owl']: M['files'][k]='chars/'+k+'.glb'
+M['groups']['pets']=['frost_golem','anim_large','pet_wolf','pet_drake','pet_mush','pet_owl']
+M['clipsets']['petAnimal']={'idle':'Idle','run':'Gallop','walk':'Walk','attack':'Attack','happy':'Gallop_Jump','ability':'Attack'}
+M['clipsets']['petFly']={'idle':'Flying_Idle','run':'Fast_Flying','walk':'Flying_Idle','attack':'Headbutt','happy':'Yes','ability':'Headbutt','hit':'HitReact'}
+M['clipsets']['petBlob']={'idle':'Idle','run':'Walk','walk':'Walk','attack':'Bite_Front','happy':'Dance','ability':'Jump','hit':'HitRecieve'}
+M['clipsets']['largeUnarmed']['happy']='Melee_Unarmed_Idle'
+E['pet:wolf']={'type':'char','file':'pet_wolf','rig':'pet_wolf','h':0.78,'clips':'petAnimal','src':'Quaternius Ultimate Animated Animals (CC0)','note':'v13: wolf pup'}
+E['pet:drake']={'type':'char','file':'pet_drake','rig':'pet_drake','h':1.05,'hover':0.0,'clips':'petFly','src':'Quaternius Ultimate Monsters — Dragon_Evolved (CC0)'}
+E['pet:mush']={'type':'char','file':'pet_mush','rig':'pet_mush','h':0.75,'clips':'petBlob','recolor':[{'h':[175,215],'s':[0.2,1],'hSet':282,'sMul':1.05}],'src':'Quaternius Ultimate Monsters — Mushnub (CC0)'}
+E['pet:owl']={'type':'char','file':'pet_owl','rig':'pet_owl','h':0.95,'hover':-0.5,'clips':'petFly','src':'Quaternius Ultimate Monsters — Pigeon (CC0), owl tufts added in game'}
 json.dump(M, open(OUT,'w'), ensure_ascii=False, indent=1)
 print('entities', len(E), 'files', len(F))

@@ -169,6 +169,12 @@ const AU=(()=>{
       case 'pick': osc('triangle',990*p,t,.08,.12*v); osc('triangle',1480*p,t+.06,.12,.1*v,null,{rv:1}); break;
       case 'gold': osc('square',1800*p,t,.05,.05*v,null,{lp:5000}); osc('triangle',2600*p,t+.04,.12,.06*v,null,{rv:1}); break;
       case 'loot': [523,659,784,1047].forEach((f,i)=>osc('triangle',f*p,t+i*.06,.4,.1*v,null,{rv:1})); break;
+      // v13: «звон добычи» по редкости (чем реже — тем выше, длиннее и ярче): обычный — щелчок, редкий — двузвучие, эпический — арпеджио, легендарный/мифический — колокольный аккорд с блеском
+      case 'drop0': osc('triangle',1320*p,t,.08,.08*v); break;
+      case 'drop1': [880,1320].forEach((f,i)=>osc('sine',f*p,t+i*.06,.25,.12*v,null,{rv:1})); break;
+      case 'drop2': [784,988,1319].forEach((f,i)=>osc('sine',f*p,t+i*.06,.4,.12*v,null,{rv:1})); osc('triangle',1976*p,t+.18,.3,.05*v,null,{rv:1}); break;
+      case 'drop3': [523,659,784,1047,1319].forEach((f,i)=>osc('sine',f*p,t+i*.07,.8,.11*v,null,{rv:1})); noise(t+.1,.9,.06*v,'highpass',7000,null,{a:.15,rv:1}); break;
+      case 'drop4': [392,523,659,784,1047,1568].forEach((f,i)=>osc('sine',f*p,t+i*.07,1.1,.11*v,null,{rv:1})); osc('sawtooth',98*p,t,.9,.06*v,null,{lp:600,to:196}); noise(t+.1,1.2,.08*v,'highpass',6500,null,{a:.2,rv:1}); break;
       case 'legend': [392,494,587,784,988].forEach((f,i)=>osc('sine',f,t+i*.08,.9,.12*v,null,{rv:1})); noise(t,1.2,.1*v,'highpass',6000,null,{a:.2,rv:1}); break;
       case 'ui': osc('triangle',660*p,t,.05,.08*v,null,{lp:3000}); noise(t,.03,.12*v,'bandpass',2500); break;
       case 'page': noise(t,.22,.22*v,'bandpass',1800,null,{to:3500,q:.7,a:.03}); break;

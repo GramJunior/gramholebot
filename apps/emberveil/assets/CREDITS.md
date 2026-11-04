@@ -337,3 +337,18 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 
 - `vendor/three.min.js`, `GLTFLoader.js`, `SkeletonUtils.js`, `BufferGeometryUtils.js`, `postprocessing/*`, `shaders/*` — three.js r128 (npm three@0.128.0), MIT, © three.js authors (`vendor/LICENSE-three.txt`).
 - `vendor/libs/meshopt_decoder.js` — meshoptimizer 0.14 decoder shipped with three r128, MIT, © Arseny Kapoulkine.
+
+## v13 — питомцы Quaternius (CC0) / Quaternius pets
+
+Four pets are animated creatures by **Quaternius** (quaternius.com), licence **CC0 1.0 Universal** (licence texts: `assets/LICENSES/Quaternius-*.txt`). Processing: `lab/build/build_pets.mjs` (trimmed clips, palette texture for colour-only materials, meshopt + quantize, 128 px textures).
+
+| file | source model | pack | source URL | licence |
+|---|---|---|---|---|
+| chars/pet_wolf.glb (Клык) | Wolf.glb (5 of 12 clips, recoloured palette) | Quaternius Ultimate Animated Animal Pack | https://raw.githubusercontent.com/trebeljahr/quaternius-showcase/main/public/glb/animals_pack/Wolf.glb (pack page https://quaternius.com/packs/ultimateanimatedanimals.html) | CC0-1.0 (mirror's LICENSES.md) |
+| chars/pet_drake.glb (Искра) | Flying/glTF/Dragon_Evolved.gltf (4 clips, simplified 60%) | Quaternius Ultimate Monsters | https://media.githubusercontent.com/media/series-ai/jam-ready-assets/main/quaternius-ultimate-monsters/3D/monster/Flying/glTF/Dragon_Evolved.gltf | CC0-1.0 (pack License.txt) |
+| chars/pet_mush.glb (Пыхтун) | Blob/glTF/Mushnub.gltf (cap recoloured purple at runtime) | Quaternius Ultimate Monsters | https://media.githubusercontent.com/media/series-ai/jam-ready-assets/main/quaternius-ultimate-monsters/3D/monster/Blob/glTF/Mushnub.gltf | CC0-1.0 |
+| chars/pet_owl.glb (Ночка) | Flying/glTF/Pigeon.gltf (owl ear tufts added in game) | Quaternius Ultimate Monsters | https://media.githubusercontent.com/media/series-ai/jam-ready-assets/main/quaternius-ultimate-monsters/3D/monster/Flying/glTF/Pigeon.gltf | CC0-1.0 |
+
+Mirror licence check: `series-ai/jam-ready-assets` ships `quaternius-ultimate-monsters/3D/monster/License.txt` (SPDX CC0-1.0, source https://quaternius.com/packs/ultimatemonsters.html); `trebeljahr/quaternius-showcase` LICENSES.md lists *Ultimate Animated Animal Pack* as CC0-1.0. Quaternius releases all packs as CC0.
+
+Everything else added in v13 (chests, weapons by rarity, armour, jewellery, consumables, keys, materials, salamander/otter/fairy pets, loot beams) is procedural code in `src/p27.js` — no third-party assets.

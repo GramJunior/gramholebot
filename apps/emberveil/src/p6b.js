@@ -349,7 +349,7 @@ function buildSecret(info){
   const M=ZMAT[zid]||ZMAT[1]; W.paint.push({x:room.x,z:room.z,r:room.r*.85,c:M.stone,k:.6,tiles:1});
   reserve(room.x,room.z,1.3,'secretReward');
   const loreLeft=LORE.map((l,i)=>i).filter(i=>!S.lore.includes(i)); const roll=Math.random(); let rew;
-  if(roll<.45&&loreLeft.length) rew=mkObj('scroll',room.x,room.z,{lore:pick(loreLeft)}); else if(roll<.75) rew=mkObj('egg',room.x,room.z,{egg:randomEggKind(zid)}); else rew=mkObj('vault',room.x,room.z,{ry:ry+PI});
+  if(roll<.45&&loreLeft.length) rew=mkObj('scroll',room.x,room.z,{lore:pick(loreLeft)}); else if(roll<.75) rew=mkObj('egg',room.x,room.z,{egg:randomEggKind(zid)}); else rew=mkObj('vault',room.x,room.z,{ry:ry+PI,secret:1});
   S0.reward=rew; fpAdd(room.x,room.z,.9,'o',rew);
   const cx=room.x+uz*1.8, cz=room.z-ux*1.8; const ch=mkObj('chest',cx,cz,{ry:ry+PI+rand(-.3,.3)}); S0.chest=ch; fpAdd(cx,cz,.8,'o',ch);
   for(const sg of [-1,1]) putProp(zid>=4?'candles':'lantern',room.x-ux*1.6+uz*2.6*sg,room.z-uz*1.6-ux*2.6*sg,{s:1,noRes:1});

@@ -42,7 +42,7 @@ function puzzleBuild(){
   // reward vault at the far wall
   let [vx0,vz0]=Z.type==='corridor'?[c.x,c.z]:at(-R.r+2.2,0);
   if(Z.type==='mirrors'){ Z.d1pre=chance(.5)?1:-1; // the mirror grid is world-aligned: put the chest on a free diagonal, far from the entrance
-    let best=null,bv=-1e9; for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]]){ if(dx===1&&dz===Z.d1pre) continue; const x=c.x+dx*3.7, z=c.z+dz*3.7; const v=-(dx*-ux+dz*-uz)*0-(dx*ux+dz*uz); if(v>bv){ bv=v; best=[x,z]; } } [vx0,vz0]=best; } Z.vault=mkObj('chest',vx0,vz0,{ry:Math.atan2(ux,uz)}); Z.vault.puz=true; Z.vault.r=.8;
+    let best=null,bv=-1e9; for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]]){ if(dx===1&&dz===Z.d1pre) continue; const x=c.x+dx*3.7, z=c.z+dz*3.7; const v=-(dx*-ux+dz*-uz)*0-(dx*ux+dz*uz); if(v>bv){ bv=v; best=[x,z]; } } [vx0,vz0]=best; } Z.vault=mkObj('chest',vx0,vz0,{ry:Math.atan2(ux,uz),puz:1}); Z.vault.puz=true; Z.vault.r=.8;
   if(Z.type!=='corridor'){ Z.vault.sealed=true; Z.vault.sealTxt='Сундук за решёткой. '+PUZ_TYPES[Z.type].hint; Z.bars=pzMesh(PZG.bars(),vx0,vz0); }
   for(const sgn of [-1,1]){ const [px,pz]=at(-R.r+1.4,sgn*3.4); if(Z.type!=='corridor'){ addProp(W.zone.id>=4?'candles':'lantern',px,pz,1); } }
   const T=Z.type;

@@ -47,7 +47,11 @@
   "frost_golem": "chars/frost_golem.glb",
   "monstrosity": "chars/monstrosity.glb",
   "skel_golem": "chars/skel_golem.glb",
-  "barbarian_large": "chars/barbarian_large.glb"
+  "barbarian_large": "chars/barbarian_large.glb",
+  "pet_wolf": "chars/pet_wolf.glb",
+  "pet_drake": "chars/pet_drake.glb",
+  "pet_mush": "chars/pet_mush.glb",
+  "pet_owl": "chars/pet_owl.glb"
  },
  "groups": {
   "core": [
@@ -167,7 +171,11 @@
   ],
   "pets": [
    "frost_golem",
-   "anim_large"
+   "anim_large",
+   "pet_wolf",
+   "pet_drake",
+   "pet_mush",
+   "pet_owl"
   ],
   "all": [
    "anim_large",
@@ -431,7 +439,34 @@
     "Melee_Unarmed_Punch",
     "Melee_Unarmed_Kick",
     "Melee_Unarmed_Smash"
-   ]
+   ],
+   "happy": "Melee_Unarmed_Idle"
+  },
+  "petAnimal": {
+   "idle": "Idle",
+   "run": "Gallop",
+   "walk": "Walk",
+   "attack": "Attack",
+   "happy": "Gallop_Jump",
+   "ability": "Attack"
+  },
+  "petFly": {
+   "idle": "Flying_Idle",
+   "run": "Fast_Flying",
+   "walk": "Flying_Idle",
+   "attack": "Headbutt",
+   "happy": "Yes",
+   "ability": "Headbutt",
+   "hit": "HitReact"
+  },
+  "petBlob": {
+   "idle": "Idle",
+   "run": "Walk",
+   "walk": "Walk",
+   "attack": "Bite_Front",
+   "happy": "Dance",
+   "ability": "Jump",
+   "hit": "HitRecieve"
   }
  },
  "glow": {
@@ -1515,28 +1550,61 @@
    "note": "tiny re-skinned golem (teal crystal glow like the egg colours)"
   },
   "pet:wolf": {
-   "type": "procedural",
-   "note": "keep buildPet('wolf')"
+   "type": "char",
+   "file": "pet_wolf",
+   "rig": "pet_wolf",
+   "h": 0.78,
+   "clips": "petAnimal",
+   "src": "Quaternius Ultimate Animated Animals (CC0)",
+   "note": "v13: wolf pup"
   },
   "pet:sala": {
    "type": "procedural",
    "note": "keep buildPet('sala')"
   },
   "pet:owl": {
-   "type": "procedural",
-   "note": "keep buildPet('owl')"
+   "type": "char",
+   "file": "pet_owl",
+   "rig": "pet_owl",
+   "h": 0.95,
+   "clips": "petFly",
+   "src": "Quaternius Ultimate Monsters — Pigeon (CC0), owl tufts added in game",
+   "hover": -0.5
   },
   "pet:fairy": {
    "type": "procedural",
    "note": "keep buildPet('fairy')"
   },
   "pet:mush": {
-   "type": "procedural",
-   "note": "keep buildPet('mush')"
+   "type": "char",
+   "file": "pet_mush",
+   "rig": "pet_mush",
+   "h": 0.75,
+   "clips": "petBlob",
+   "recolor": [
+    {
+     "h": [
+      175,
+      215
+     ],
+     "s": [
+      0.2,
+      1
+     ],
+     "hSet": 282,
+     "sMul": 1.05
+    }
+   ],
+   "src": "Quaternius Ultimate Monsters — Mushnub (CC0)"
   },
   "pet:drake": {
-   "type": "procedural",
-   "note": "keep buildPet('drake')"
+   "type": "char",
+   "file": "pet_drake",
+   "rig": "pet_drake",
+   "h": 1.05,
+   "hover": 0.0,
+   "clips": "petFly",
+   "src": "Quaternius Ultimate Monsters — Dragon_Evolved (CC0)"
   },
   "treeRound": {
    "type": "prop",

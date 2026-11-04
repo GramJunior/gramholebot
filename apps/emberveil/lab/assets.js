@@ -266,6 +266,8 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); stripRootMotion(c); S.clips[rig][c.name] = c; }
       return;
     }
+    // v13: creatures with their own clips (pets): clips live under rig = file key (entity.rig), names without the armature prefix
+    if (g.animations && g.animations.length) { S.clips[key] = S.clips[key] || {}; for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); S.clips[key][c.name] = c; } }
     const skinnedFile = key.indexOf('kit_') !== 0;
     if (!skinnedFile) for (const c of g.scene.children) S.nodeIndex[c.name] = key;
     const rec = S.manifest.fileRecolor && S.manifest.fileRecolor[key];
@@ -409,6 +411,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this.model.scale.setScalar(this.baseScale);
       this.height = def.h || 2; this.radius = (rest ? Math.max(rest.max.x - rest.min.x, rest.max.z - rest.min.z) * 0.5 * this.baseScale : 0.5);
       if (def.hover) this.model.position.y = def.hover;
+      if (def.yaw) this.model.rotation.y = def.yaw;
       // animation
       this.mixer = new T.AnimationMixer(this.model);
       this.actions = {}; this.current = null; this.currentName = null; this.combo = 0; this._t = 0; this._acc = 0;
@@ -490,7 +493,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     clip(name, idx) {
       let n = this.clipMap[name]; if (n === undefined) n = name;
       if (Array.isArray(n)) n = n[((idx || 0) % n.length + n.length) % n.length];
-      return S.clips[this.rig][n] || S.clips[this.rig][this.clipMap.idle] || null;
+      const C = S.clips[this.rig] || S.clips.medium; return C[n] || C[this.clipMap.idle] || null;
     }
     comboLength(name) { const n = this.clipMap[name]; return Array.isArray(n) ? n.length : 1; }
     action(clip) { let a = this.actions[clip.name]; if (!a) a = this.actions[clip.name] = this.mixer.clipAction(clip); return a; }
