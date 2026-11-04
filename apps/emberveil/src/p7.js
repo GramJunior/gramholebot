@@ -136,7 +136,8 @@ function hurtPlayer(raw,o={}){
   if(G.god) return 0;
   const L=o.lvl||W.lvl||1;
   let d=raw;
-  if(!o.true){ const ar=PS.armorT/(PS.armorT+48*F(L)); d*=1-Math.min(.75,ar); }
+  if(!o.true){ const ar=PS.armorT/(PS.armorT+ARMOR_K*F(L)); d*=1-Math.min(ARMOR_CAP,ar); }
+  if(o.src&&o.src.boss&&!o.dot&&raw>=o.src.dmg*.75) d=Math.max(d,P.maxHp*bossHitFloor(o.src)); // только крупные удары, не тики и мелкие снаряды
   if(o.el) d*=1-PS.res/100;
   d*=1-PS.dr/100;
   if(P.buff.guard>0) d*=1-P.buff.guardDr;
@@ -165,8 +166,8 @@ function spawnEnemy(kind,x,z,L,o={}){
   const D=ENEMIES[kind]; const rig=ENEMY_MODELS[kind](); worldRoot.add(rig.root);
   const e={id:EID++,type:'enemy',kind,D,lvl:L,x,z,y:0,face:rand(TAU),vx:0,vz:0,kx:0,kz:0,r:rig.r||.5,rig,state:o.aggro?'chase':'idle',st:0,cd:rand(.5,1.5),
     alive:true,camp:o.camp,mods:[],flashT:0,stat:{},t:rand(10),summon:o.summon,meshes:[]};
-  const hpM=F(L)*(1+.05*(L-1))*(W.kind==='abyss'?(G.abyss&&G.abyss.mods.includes('thick')?1.5:1):1);
-  e.maxHp=D.hp*hpM; e.dmg=D.dmg*1.2*F(L)*(G.abyss&&G.abyss.mods.includes('fury')?1.3:1); e.spd=D.spd*(G.abyss&&G.abyss.mods.includes('swift')?1.3:1);
+  const hpM=F(L)*(1+.06*(L-1))*diffHp(L)*(W.kind==='abyss'?(G.abyss&&G.abyss.mods.includes('thick')?1.5:1):1);
+  e.maxHp=D.hp*hpM; e.dmg=D.dmg*1.2*F(L)*diffDmg(L)*(G.abyss&&G.abyss.mods.includes('fury')?1.3:1); e.spd=D.spd*(G.abyss&&G.abyss.mods.includes('swift')?1.3:1);
   if(o.elite){ const keys=Object.keys(ELITE_MODS); const n=o.elite>=2?2:1; while(e.mods.length<n){ const k=pick(keys); if(!e.mods.includes(k)) e.mods.push(k);} e.elite=o.elite; e.maxHp*=o.champion?5.5:2.6; e.dmg*=1.35; const sc=o.champion?1.45:1.22; rig.root.scale.setScalar(sc); e.r*=sc;
     if(e.mods.includes('fast')) e.spd*=1.35; if(e.mods.includes('tough')) e.maxHp*=1.5;
     const ring=ringMesh(ELITE_MODS[e.mods[0]].col,1.1*sc,.12,.75); worldRoot.add(ring); e.ring=ring; }
@@ -189,6 +190,7 @@ function dmgEnemy(e,amt,o={}){
   if(!o.dot&&!o.syn&&src===P) synProcs(e,o);
   if(e.stat.freeze>0&&(o.crit||o.heavy)&&!o.dot&&!o.syn&&src&&src.type!=='enemy') amt=synShatter(e,amt,o);
   if(e.stat.shock>0) amt*=1.2; if(e.stat.mark>0) amt*=1.15; if(e.bossShield) amt*=(e.bossShieldK||.2); if(e.vulnT>0) amt*=(e.vulnK||2);
+  if(e.boss&&e.soak) amt=bossSoak(e,amt);
   e.hp-=amt; e.lastHit=G.time; if(src&&src.dmgLog!==undefined) src.dmgLog+=Math.min(amt,e.hp+amt);
   if(!o.silent) dmgNum(e.x,(e.rig.h||1.5)*(e.boss?.75:1)+.2,e.z,Math.round(amt),o.crit?'crit':o.els&&o.els[0]?o.els[0]:o.dot?(o.dotEl||''):'');
   if(!o.dot){ e.flashT=.09; if(o.crit){ fx('crit',e.x,1,e.z); AU.sfx('crit',.7); } else fx('hit',e.x,1+(e.boss?1:0),e.z);
@@ -219,7 +221,7 @@ function killEnemy(e,o={}){
   fx('death',e.x,0,e.z,{col:e.D.col!==undefined?new THREE.Color(e.D.col).multiplyScalar(.5).getHex():0x2a2018});
   AU.sfx('die',.7);
   if(!e.summon||e.boss){
-    addXp(e.boss?e.bossD.xp*F(e.lvl)*.6:e.D.xp*Math.pow(F(e.lvl),.8)*(e.elite?3:1));
+    addXp(e.boss?e.bossD.xp*F(e.lvl)*.6:e.D.xp*Math.pow(F(e.lvl),.88)*(e.elite?3:1));
     if(G.run) G.run.kills++;
     ev('kill',{kind:e.kind,elite:!!e.elite,boss:!!e.boss});
     if(!e.boss) dropLoot(e);
@@ -443,9 +445,7 @@ function interactObjs(){
       if(o.puz){ o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++; puzzleLoot(o); continue; }
       if(o.kind==='vault'&&S.keys<=0){ if(!o.warned){ o.warned=1; toast('Сундук заперт — нужен ключ сокровищницы',null,null); } continue; }
       if(o.kind==='vault') S.keys--; o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++;
-      const L=W.lvl, mf=PS.mf; const n=o.kind==='vault'?3:randi(1,2);
-      for(let i=0;i<n;i++) later(.25+i*.15,()=>spawnDrop('item',o.x,o.z,{item:genItem(L+(o.kind==='vault'?1:0),{mf:mf+(o.kind==='vault'?120:30),rmin:o.kind==='vault'?2:0})}));
-      later(.2,()=>{ for(let i=0;i<5;i++) spawnDrop('gold',o.x,o.z,{v:Math.round(rand(4,9)*F(L)*(1+PS.gold/100))}); if(chance(.35)) spawnDrop('gem',o.x,o.z,{gem:pick(Object.keys(GEMS))+(chance(.15)?'1':'0')}); if(chance(o.kind==='vault'?.5:.2)) spawnDrop('mat',o.x,o.z,{res:'ess',v:randi(2,5)}); if(chance(.1)) spawnDrop('key',o.x,o.z); });
+      worldChestLoot(o);
     }
     if(o.kind==='scroll'&&d<1.4){ o.alive=false; worldRoot.remove(o.mesh); if(!S.lore.includes(o.lore)) S.lore.push(o.lore); AU.sfx('page'); toast(`Страница летописи: <b>«${LORE[o.lore].n}»</b>`,null,null,'quest'); ev('lore'); if(G.run) G.run.lore=o.lore; }
     if(o.kind==='egg'&&d<1.4){ o.alive=false; worldRoot.remove(o.mesh); S.pets.eggs.push({kind:o.egg,start:0}); S.st.eggs=(S.st.eggs||0)+1; AU.sfx('hatch'); toast(`Найдено яйцо: <b>${PET_DEFS[o.egg].t}</b>! Отнесите его в питомник.`,iconForGeo('egg'+o.egg,eggGeo(o.egg)),PET_DEFS[o.egg].rar); ev('egg'); }
@@ -454,7 +454,7 @@ function interactObjs(){
 }
 
 // ---------- drops ----------
-const DROP_GEO={gold:()=>OBJ_GEO.coin(),potion:()=>OBJ_GEO.potion(),gem:()=>OBJ_GEO.gemDrop(),key:()=>OBJ_GEO.key(),mat:r=>({ore:OBJ_GEO.matOre,wood:OBJ_GEO.matWood,ess:OBJ_GEO.matEss,shards:OBJ_GEO.matShard}[r]())};
+const DROP_GEO={gold:()=>OBJ_GEO.coin(),potion:()=>OBJ_GEO.potion(),gem:()=>OBJ_GEO.gemDrop(),key:()=>OBJ_GEO.key(),mat:r=>(({ore:OBJ_GEO.matOre,wood:OBJ_GEO.matWood,ess:OBJ_GEO.matEss,shards:OBJ_GEO.matShard,herb:OBJ_GEO.matWood,dust:OBJ_GEO.matShard,core:OBJ_GEO.matEss}[r])||OBJ_GEO.matEss)()};
 function spawnDrop(kind,x,z,o={}){
   let m;
   if(kind==='item'){ const io=itemIconObj(o.item); m=new THREE.Group(); io.m.scale.setScalar(.75); if(io.slot==='weapon'||io.slot==='offhand') io.m.rotation.z=-.7; m.add(io.m); const bm=new THREE.Mesh(beamGeo,BEAM_MATS[o.item.rar]); bm.scale.set(1,o.item.rar>=3?6:3.5,1); bm.position.y=-1.0; m.add(bm); o.beam=bm; if(o.item.rar>=3) AU.sfx('legend'); }

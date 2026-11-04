@@ -48,7 +48,7 @@ const LIVE={cfg:null,at:0,ent:null};
 function liveLoad(){ if(!window.EVNet||!EVNet.config) return; EVNet.config.get().then(c=>{ if(c&&(c.ok||c.cached)){ LIVE.cfg=c; LIVE.at=Date.now(); passSync(); if(G.mode==='village') hudEventChip(); } }).catch(()=>{}); }
 // Local default events: weekly rotation so there is (almost) always something on. Server `events` (non-empty) overrides it.
 const EVENT_DEFS={
-  colossus_echo:{name:'Эхо Колосса',descr:'Сезонный босс: стражи Бездны на 5-м и 10-м этажах — «Эхо Колосса». Первая победа за событие — трофей, искры и облик питомца.',icon:'skull',col:'#ff7a3a',mods:{seasonBoss:'colossus'},days:[1,2]},
+  colossus_echo:{name:'Эхо Колосса',descr:'Сезонный босс: стражи Бездны на 5-м и 10-м этажах — «Эхо Колосса». Первая победа за событие — трофей, самоцветы и облик питомца.',icon:'skull',col:'#ff7a3a',mods:{seasonBoss:'colossus'},days:[1,2]},
   ash_night:{name:'Ночь Пепла',descr:'Бездна темнеет: на каждом этаже «Тьма» и «Ярость», зато осколков Бездны ×2.',icon:'abyss',col:'#b04aff',mods:{abyssMod:'ashnight',shardMul:2},days:[3,4]},
   lucky_weekend:{name:'Выходные удачи',descr:'Двойная добыча: вещи падают вдвое чаще, золота ×1,5. Опыт пропуска ×1,5.',icon:'gold',col:'#ffd27a',mods:{dropMul:2,goldMul:1.5,xpMul:1.5},days:[6,0]},
 };
@@ -128,7 +128,7 @@ function hudFrame(){ const f=COSM[cosEquipped('frame')]; const el=$('hPort'); if
 function cosIcon(id,big){ const C=COSM[id]; const ic={skin:'helm',glow:'sword',pet:'paw',deco:'house',frame:'ring',trophy:'crown'}[C.t]; return `<span class="cosic ${big?'big':''}" style="--c:${C.c}">${ico(ic)}</span>`; }
 function cosSrcTxt(id){ const C=COSM[id]; if(cosOwned(id)) return ''; switch(C.src){ case 'pass': { const T=passTiers().find(t=>(t.free&&t.free.cosmetic===id)||(t.premium&&t.premium.cosmetic===id)); return `Путь Угля${T?' · ур. '+T.tier:''}${C.prem?' · премиум':''}`; }
     case 'stars': { const p=shopProducts().find(p=>(PRODUCT_GRANT[p.id]||[]).includes(id)); return p?`⭐ ${p.stars} · ${esc(p.title)}`:'Лавка Странника'; }
-    case 'cal': return 'Календарь входа'; case 'event': return 'Событие'; case 'boss': return C.boss?`Победите босса ${C.boss}`:`Бездна, этаж ${C.abyss}`; case 'sparks': return `${C.price} искр`; case 'friend': return `Пригласите ${C.need} ${plural(C.need,'друга','друзей','друзей')}`; }
+    case 'cal': return 'Календарь входа'; case 'event': return 'Событие'; case 'boss': return C.boss?`Победите босса ${C.boss}`:`Бездна, этаж ${C.abyss}`; case 'sparks': return `${C.price} самоцветов`; case 'friend': return `Пригласите ${C.need} ${plural(C.need,'друга','друзей','друзей')}`; }
   return ''; }
 
 // ---------- village decorations & trophies ----------
@@ -195,7 +195,7 @@ function pPass(){ const s=passSeason(), p=passS(), T=passTiers(), tier=passTier(
   h+=`<div class="passTrack" id="passTrack"><div class="ptLbl"><span>Бесплатно</span><span class="pr">${ico('crown')} Премиум</span></div>${T.map(t=>{ const got=t.tier<=tier; const cf=p.cl.includes('free:'+t.tier), cp=p.cl.includes('premium:'+t.tier);
     const cell=(rw,trk,claimed,lock)=>`<div class="ptCell ${trk} ${claimed?'got':''} ${got&&!claimed&&!lock?'ready':''} ${lock?'lock':''} ${rw&&rw.cosmetic?'cos':''}" ${got&&!claimed&&!lock?act(()=>{ passClaim(t.tier,trk); rerender(); hudPassDot(); }):''}>${rwHtml(rw)}${claimed?`<i class="ck">${ico('check')}</i>`:lock?`<i class="lk">${ico('lock')}</i>`:''}</div>`;
     return `<div class="ptCol ${got?'on':''} ${t.tier===tier+1?'next':''}"><div class="ptN">${t.tier}</div>${cell(t.free,'free',cf,false)}${cell(t.premium,'premium',cp,!p.prem)}</div>`; }).join('')}</div>`;
-  h+=`<div class="muted" style="margin-top:6px">Премиум-дорожка — только облики, свечения, рамки, украшения и искры для коллекции. Сила героя за деньги не продаётся.${netOn()?'':' Без сети покупка недоступна; прогресс пути сохраняется.'}</div>`;
+  h+=`<div class="muted" style="margin-top:6px">Премиум-дорожка — только облики, свечения, рамки, украшения и самоцветы для коллекции. Сила героя за деньги не продаётся.${netOn()?'':' Без сети покупка недоступна; прогресс пути сохраняется.'}</div>`;
   setTimeout(()=>{ const tr=$('passTrack'); if(tr){ const c=tr.querySelector('.ptCol.next')||tr.querySelector('.ptCol.on:last-of-type'); if(c) tr.scrollLeft=Math.max(0,c.offsetLeft-tr.clientWidth/2); } },0);
   return h; }
 

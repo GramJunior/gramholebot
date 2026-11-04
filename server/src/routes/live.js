@@ -19,7 +19,8 @@ export async function getConfig(c) {
     events: activeEvents(events, c.now),
     upcoming: events.filter((e) => e && e.start && e.start > c.now).slice(0, 5),
     shop: shopRotation(cfg.shop || {}, c.now),
-    products: (cfg.products || []).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once })),
+    products: (cfg.products || []).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once, weekly: !!p.weekly, tag: p.tag || undefined, grant: p.grant || undefined })),
+    freeChestHours: cfg.freeChestHours,
     daily: { rewards: (cfg.daily || {}).rewards || [] },
   }, 200, { 'cache-control': 'public, max-age=60' });
 }
@@ -91,6 +92,9 @@ function validateConfig(key, v) {
   } else if (key === 'products') {
     if (!Array.isArray(v)) bad('products — массив');
     for (const p of v) if (!p || !/^[a-z0-9_]{2,40}$/.test(p.id || '') || !p.title || !Number.isInteger(p.stars) || p.stars < 1 || p.stars > 100000) bad('товар: id (a-z0-9_), title, stars (целое 1..100000)');
+    for (const p of v) if (p.grant !== undefined && (typeof p.grant !== 'object' || !p.grant || Object.values(p.grant).some((x) => !Number.isFinite(x) || x < 0 || x > 1e6))) bad('товар: grant — объект {ключ: число ≥ 0}');
+  } else if (key === 'freeChestHours') {
+    if (!Number.isFinite(v) || v < 0.5 || v > 72) bad('freeChestHours — число часов 0.5..72');
   } else if (key === 'battlepass') {
     if (!v || !Array.isArray(v.tiers)) bad('battlepass.tiers — массив');
   } else if (!v || typeof v !== 'object') bad('ожидался объект');

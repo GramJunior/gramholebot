@@ -319,8 +319,13 @@
         });
       });
     },
-    /** Owned items: { items:[{productId, qty, expiresAt, active}] } */
+    /** Owned items: { items:[{productId, qty, claimed, expiresAt, active}] } */
     entitlements: function () { return call('GET', '/entitlements'); },
+    /**
+     * Claim paid consumables/bundles (gems, chests, packs). Idempotent per claimId: repeating the same id
+     * returns the same grants, so a lost response can be retried safely. -> { ok, claimId, grants:[{productId, n, grant}] }
+     */
+    claim: function (claimId) { return call('POST', '/pay/claim', { claimId: claimId }); },
     /** Product list from config. */
     products: function () { return configApi.get().then(function (c) { return c.ok || c.cached ? { ok: true, products: c.products || [] } : c; }); },
   };
@@ -445,6 +450,8 @@
     },
 
     pay: payApi,
+    /** Free wooden chest timer (server clock): POST /chest/free -> { ok, next } (ok:false + next when not ready yet). */
+    chest: { free: function () { return call('POST', '/chest/free', {}); } },
 
     referrals: {
       /** { code, link, invited, friends:[{pid,name}] } */

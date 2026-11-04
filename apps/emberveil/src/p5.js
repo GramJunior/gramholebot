@@ -35,7 +35,8 @@ function itemName(it){
   if(it.rar>=1&&it.aff.length) return B.name+' '+AFFIX[it.aff[0].k].sx;
   return B.name;
 }
-const upMul=it=>1+.08*(it.up||0);
+// заточка: +7% за уровень до +10, затем +5% (до +15)
+const upMul=it=>{ const u=it.up||0; return 1+.07*Math.min(u,10)+.05*Math.max(0,u-10); };
 function itemMain(it){
   const B=ITEM_BASES[it.base], m=RAR[it.rar].m*upMul(it), f=F(it.ilvl); const o={};
   if(B.dmg) o.wdmg=B.dmg*f*m;
@@ -65,9 +66,10 @@ function setCount(){ const c={}; for(const k in S.gear){ const it=S.gear[k]; if(
 function curCls(){ return S.gear.weapon?ITEM_BASES[S.gear.weapon.base].cls:'sword'; }
 function computeStats(){
   const L=S.hero.lvl; const s={hp:0,wdmg:0,armor:0,armorP:0,hpP:0,res:0,dmgP:0,crit:5,critD:50,aspd:0,move:0,regen:0,regenP:0,ls:0,cdr:0,gold:0,mf:0,thorns:0,thornsP:0,
-    fire:0,ice:0,poison:0,light:0,elP:0,skill:0,pet:0,xp:0,pierce:0,spellShield:0,dr:0,burn:0,ult:0,uniq:{}};
+    fire:0,ice:0,poison:0,light:0,elP:0,skill:0,spell:0,pet:0,xp:0,pierce:0,spellShield:0,dr:0,burn:0,ult:0,uniq:{}};
   const add=(o)=>{ for(const k in o){ if(k==='uniq')continue; s[k]=(s[k]||0)+o[k]; } };
-  for(const k in S.gear){ const it=S.gear[k]; if(!it) continue; add(itemStats(it)); if(it.uniq) s.uniq[it.uniq]=1; }
+  const fair=typeof fairItem==='function'&&fairMode(); for(const k in S.gear){ let it=S.gear[k]; if(!it) continue; if(fair) it=fairItem(it); add(itemStats(it)); if(it.uniq) s.uniq[it.uniq]=1; }
+  if(typeof attrAdd==='function') attrAdd(s);
   const sc=setCount(); s.sets=sc;
   for(const id in sc){ if(sc[id]>=2) add(SETS[id].b2); if(sc[id]>=4) add(SETS[id].b4); }
   const cls=curCls(); const T=S.hero.talents[cls]||{};
@@ -81,7 +83,7 @@ function computeStats(){
   const baseHp=95*Math.pow(F(L),.88)+8*L;
   s.maxHp=Math.round((baseHp+s.hp)*(1+s.hpP/100));
   if(!s.wdmg) s.wdmg=6*F(L);
-  s.atk=s.wdmg*(1+s.dmgP/100)*(1+.025*(L-1));
+  s.atk=s.wdmg*(1+s.dmgP/100)*(1+.015*(L-1));
   s.armorT=s.armor*(1+s.armorP/100);
   s.res=Math.min(s.res,75); s.crit=Math.min(s.crit,75); s.cdr=Math.min(s.cdr,50); s.ls=Math.min(s.ls,20); s.dr=Math.min(s.dr,40);
   if(s.uniq.ashskin) s.dr+=15; if(s.uniq.catalyst) s.synP=(s.synP||0)+60;
@@ -97,7 +99,7 @@ const MAX_LVL=40;
 function addXp(n){
   n=Math.round(n*(1+(PS.xp||0)/100)); if(S.hero.lvl>=MAX_LVL) return;
   S.hero.xp+=n;
-  while(S.hero.lvl<MAX_LVL&&S.hero.xp>=xpNeed(S.hero.lvl)){ S.hero.xp-=xpNeed(S.hero.lvl); S.hero.lvl++; S.hero.tp++; onLevelUp(); }
+  while(S.hero.lvl<MAX_LVL&&S.hero.xp>=xpNeed(S.hero.lvl)){ S.hero.xp-=xpNeed(S.hero.lvl); S.hero.lvl++; S.hero.tp++; S.hero.ap=(S.hero.ap||0)+(typeof AP_PER_LVL!=='undefined'?AP_PER_LVL:2); onLevelUp(); }
 }
 function talentRank(cls,id){ return (S.hero.talents[cls]||{})[id]||0; }
 function skillRank(id){ return talentRank(curCls(),id); }

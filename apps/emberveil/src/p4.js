@@ -1,6 +1,7 @@
 // ================= p4: game data =================
 const F=(L)=>Math.pow(1.12,Math.max(0,L-1));
-const RAR=[{n:'Обычный',c:'#d9ccae',m:1,aff:1},{n:'Редкий',c:'#62a8e8',m:1.12,aff:2},{n:'Эпический',c:'#b47cf0',m:1.26,aff:3},{n:'Легендарный',c:'#f2a634',m:1.42,aff:4},{n:'Мифический',c:'#ff4c39',m:1.62,aff:4}];
+// v5: множители редкости сжаты (было 1/1.12/1.26/1.42/1.62), чтобы легендарки не обесценивали поздние зоны
+const RAR=[{n:'Обычный',c:'#d9ccae',m:1,aff:1},{n:'Редкий',c:'#62a8e8',m:1.1,aff:2},{n:'Эпический',c:'#b47cf0',m:1.2,aff:3},{n:'Легендарный',c:'#f2a634',m:1.32,aff:4},{n:'Мифический',c:'#ff4c39',m:1.45,aff:4}];
 const SLOT_NAME={weapon:'Оружие',offhand:'Левая рука',helm:'Шлем',chest:'Доспех',gloves:'Перчатки',boots:'Сапоги',amulet:'Амулет',ring1:'Кольцо',ring2:'Кольцо',ring:'Кольцо'};
 const SLOT_IC={weapon:'sword',offhand:'shield',helm:'helm',chest:'chest',gloves:'gloves',boots:'boots',amulet:'amulet',ring1:'ring',ring2:'ring'};
 const CLS_NAME={sword:'Меч и щит',axe:'Двуручное',bow:'Лук',staff:'Посох'};
@@ -119,7 +120,7 @@ const PASSIVES={
   bow:[{id:'p1',n:'Орлиный глаз',ic:'eye',d:r=>`+${15*r}% крит. урона`,st:r=>({critD:15*r})},{id:'p2',n:'Лёгкий шаг',ic:'feather',d:r=>`+${5*r}% скорости`,st:r=>({move:5*r})},{id:'p3',n:'Пронзание',ic:'target',d:r=>`Стрелы пробивают ещё ${r} врага`,st:r=>({pierce:r})},{id:'p4',n:'Смоляные стрелы',ic:'flame',d:r=>`${8*r}% шанс облить врага смолой, +${10*r}% урона синергий`,st:r=>({oilHit:8*r,synP:10*r})}],
   staff:[{id:'p1',n:'Поток',ic:'clock',d:r=>`-${6*r}% к перезарядке`,st:r=>({cdr:6*r})},{id:'p2',n:'Стихийник',ic:'spark',d:r=>`+${12*r}% стихийного урона`,st:r=>({elP:12*r})},{id:'p3',n:'Чародейский щит',ic:'shield',d:r=>`Умения дают щит в ${6*r}% здоровья`,st:r=>({spellShield:6*r})},{id:'p4',n:'Резонанс',ic:'spark',d:r=>`+${15*r}% урона синергий`,st:r=>({synP:15*r})}]
 };
-const MAX_SKILL_RANK=5, MAX_PASSIVE_RANK=3;
+const MAX_SKILL_RANK=7, MAX_PASSIVE_RANK=3; // v5: ранги 6–7 — за фолианты мастерства (ур. 20/30)
 
 // ---------- pets ----------
 const PET_DEFS={
@@ -158,13 +159,13 @@ const ELITE_MODS={
   ice:{n:'Ледяной',mat:'ice',col:0x6fd8ff},tough:{n:'Каменный',mat:null,col:0xd8c8a0},explo:{n:'Взрывной',mat:null,col:0xffd040}
 };
 const BOSSES={
-  gobKing:{n:'Брюхан',t:'Вождь гоблинов',hp:2000,dmg:20,spd:3.0,model:'gobKing',scale:1,r:1.3,phases:[1,.6,.3],xp:160,mus:'boss'},
-  rotroot:{n:'Гнилокорень',t:'Древо-отступник',hp:3800,dmg:26,spd:1.8,model:'rotroot',scale:1,r:1.5,phases:[1,.66,.33],xp:300,el:'poison'},
-  bogMother:{n:'Матушка Трясина',t:'Ведьма болот',hp:6800,dmg:30,spd:2.6,model:'bogMother',scale:1,r:2.0,phases:[1,.6,.3],xp:500,el:'poison'},
-  morven:{n:'Морвен',t:'Костяной рыцарь',hp:10000,dmg:34,spd:3.4,model:'morven',scale:1,r:1.1,phases:[1,.6,.3],xp:750,el:'ice'},
-  colossus:{n:'Пепельный Колосс',t:'Сердце вулкана',hp:18000,dmg:40,spd:1.8,model:'colossus',scale:1,r:1.9,phases:[1,.66,.33],xp:1100,el:'fire'},
-  dragon:{n:'Игнар',t:'Последний дракон',hp:24000,dmg:43,spd:3,model:'dragon',scale:1,r:2.3,phases:[1,.6],xp:1500,el:'fire'},
-  ashKing:{n:'Остен',t:'Пепельный Король',hp:28000,dmg:46,spd:3.8,model:'ashKing',scale:1,r:1.1,phases:[1,.66,.33],xp:2400,el:'fire'}
+  gobKing:{n:'Брюхан',t:'Вождь гоблинов',hp:1500,dmg:16,spd:3.0,model:'gobKing',scale:1,r:1.3,phases:[1,.6,.3],xp:160,mus:'boss'},
+  rotroot:{n:'Гнилокорень',t:'Древо-отступник',hp:2600,dmg:16,spd:1.8,model:'rotroot',scale:1,r:1.5,phases:[1,.66,.33],xp:300,el:'poison'},
+  bogMother:{n:'Матушка Трясина',t:'Ведьма болот',hp:6000,dmg:28,spd:2.6,model:'bogMother',scale:1,r:2.0,phases:[1,.6,.3],xp:500,el:'poison'},
+  morven:{n:'Морвен',t:'Костяной рыцарь',hp:8500,dmg:32,spd:3.4,model:'morven',scale:1,r:1.1,phases:[1,.6,.3],xp:750,el:'ice'},
+  colossus:{n:'Пепельный Колосс',t:'Сердце вулкана',hp:12500,dmg:36,spd:1.8,model:'colossus',scale:1,r:1.9,phases:[1,.66,.33],xp:1100,el:'fire'},
+  dragon:{n:'Игнар',t:'Последний дракон',hp:16000,dmg:40,spd:3,model:'dragon',scale:1,r:2.3,phases:[1,.6],xp:1500,el:'fire'},
+  ashKing:{n:'Остен',t:'Пепельный Король',hp:18000,dmg:42,spd:3.8,model:'ashKing',scale:1,r:1.1,phases:[1,.66,.33],xp:2400,el:'fire'}
 };
 
 // ---------- zones & stages ----------
@@ -210,8 +211,8 @@ function stageInfo(z,s){ const Z=ZONES[z-1]; const type=STAGE_PLAN[z-1][s-1]; re
 
 // ---------- buildings ----------
 const BUILDINGS={
-  hall:{n:'Ратуша',ic:'hall',npc:'elder',d:'Сердце деревни. Её уровень ограничивает уровень остальных зданий и открывает новые участки.',base:{gold:400,wood:160,ore:80},eff:l=>`Макс. уровень зданий: ${l}. Налог: ${l*30} золота/ч.`},
-  forge:{n:'Кузница',ic:'anvil',npc:'smith',d:'Ковка, улучшение, перековка и гранение снаряжения.',base:{gold:60,wood:25},eff:l=>`Улучшение до +${l*2}. Ковка до «${RAR[Math.min(4,l-1)].n}».`},
+  hall:{n:'Ратуша',ic:'hall',npc:'elder',d:'Сердце деревни. Её уровень ограничивает уровень остальных зданий и открывает новые участки.',base:{gold:400,wood:100,ore:40},eff:l=>`Макс. уровень зданий: ${l}. Налог: ${l*30} золота/ч.`},
+  forge:{n:'Кузница',ic:'anvil',npc:'smith',d:'Ковка, улучшение, перековка и гранение снаряжения.',base:{gold:60,wood:25},eff:l=>`Заточка до +${l*2}${l>=5?' (+15 с 20 ур. героя)':''}. Рецепты ковки ${l} ступени${l>=4?', второй горн':''}${l>=5?', возвышение редкости':''}.`},
   alch:{n:'Лавка алхимика',ic:'flask',npc:'alch',d:'Зелья, бомбы и эликсиры.',base:{gold:150,wood:60,ess:5},eff:l=>`Зелий в сумке: ${3+l}. Лечение зелий +${l*5}%.`},
   pen:{n:'Питомник',ic:'paw',npc:'beast',d:'Высиживание яиц и обучение питомцев.',base:{gold:180,wood:80,ess:8},eff:l=>`Высиживание: ${Math.max(1,10-l*2)} мин. ${l>=3?'Второй питомец!':'Второй питомец с 3 ур.'}`},
   tavern:{n:'Таверна',ic:'mug',npc:'stranger',d:'Доска заданий: поручения и ежедневные контракты.',base:{gold:220,wood:120},eff:l=>`Ежедневных заданий: ${2+Math.min(l,3)}. Награды +${(l-1)*10}%.`},

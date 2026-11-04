@@ -11,6 +11,7 @@ import { getConfigKey } from '../lib/config.js';
 import { randomId } from '../lib/crypto.js';
 import { tgCall } from '../lib/telegram.js';
 import { requireAdmin } from './live.js';
+import { nextWeekStart } from '../lib/time.js';
 
 const DAY = 86400000;
 
@@ -27,6 +28,7 @@ export async function createInvoice(c) {
   const p = (products || []).find((x) => x.id === str(body.productId, 40));
   if (!p) fail(404, 'no_product', 'Товар не найден');
   if (p.once && (await ownedActive(c.env, user.id, p.id, c.now))) fail(409, 'owned', 'Уже куплено');
+  if (p.weekly && (await weeklyBought(c.env, user.id, p.id, c.now))) fail(409, 'owned_week', 'Уже куплено на этой неделе');
   const payload = randomId(16);
   await c.env.DB.prepare('INSERT INTO invoices (payload, uid, product_id, stars, created_at) VALUES (?,?,?,?,?)').bind(payload, user.id, p.id, p.stars, c.now).run();
   let link;
@@ -47,8 +49,8 @@ export async function createInvoice(c) {
 
 export async function listEntitlements(c) {
   const user = await requireUser(c);
-  const rows = (await c.env.DB.prepare('SELECT product_id, qty, expires_at FROM entitlements WHERE uid=? AND qty>0').bind(user.id).all()).results;
-  return json({ ok: true, items: rows.map((r) => ({ productId: r.product_id, qty: r.qty, expiresAt: r.expires_at || null, active: !r.expires_at || r.expires_at > c.now })) });
+  const rows = (await c.env.DB.prepare('SELECT product_id, qty, claimed, expires_at FROM entitlements WHERE uid=? AND qty>0').bind(user.id).all()).results;
+  return json({ ok: true, items: rows.map((r) => ({ productId: r.product_id, qty: r.qty, ...(r.claimed ? { claimed: r.claimed } : {}), expiresAt: r.expires_at || null, active: !r.expires_at || r.expires_at > c.now })) });
 }
 
 /** Validate a pre_checkout_query. Returns { ok, error? } — error text is shown to the user. */
@@ -61,6 +63,7 @@ export async function checkPreCheckout(env, q, now) {
   const p = (products || []).find((x) => x.id === inv.product_id);
   if (!p) return { ok: false, error: 'Товар больше не продаётся.' };
   if (p.once && (await ownedActive(env, inv.uid, p.id, now))) return { ok: false, error: 'Этот товар у вас уже есть.' };
+  if (p.weekly && (await weeklyBought(env, inv.uid, p.id, now))) return { ok: false, error: 'Недельный набор уже куплен.' };
   return { ok: true };
 }
 
@@ -117,4 +120,55 @@ export async function adminRefund(c) {
     fail(502, 'tg_failed', 'Telegram отклонил возврат: ' + String(e.message).replace(/^tg_error:refundStarPayment:/, ''));
   }
   return json({ ok: true, ...(await revokePayment(c.env, pay.charge_id, c.now)) });
+}
+
+// ---------- v5 «Лавка»: consumables & bundles ----------
+// Paid products with a `grant` are consumables: every successful payment raises entitlements.qty;
+// the game claims (qty - claimed) once. The claim is idempotent per claimId so a lost response can be retried.
+
+/** POST /pay/claim { claimId } -> { ok, claimId, grants:[{productId, n, grant}] } */
+export async function claimPurchases(c) {
+  const user = await requireUser(c);
+  const body = await readJson(c.req, 512);
+  const claimId = str(body.claimId, 48);
+  if (!/^[a-z0-9_-]{6,48}$/i.test(claimId)) fail(400, 'bad_claim', 'Нужен claimId');
+  const prev = await c.env.DB.prepare('SELECT uid, result FROM pay_claims WHERE claim_id=?').bind(claimId).first();
+  if (prev) {
+    if (prev.uid !== user.id) fail(409, 'claim_taken', 'Этот claimId уже использован');
+    return json({ ok: true, claimId, grants: JSON.parse(prev.result), repeat: true });
+  }
+  const rows = (await c.env.DB.prepare('SELECT product_id, qty, claimed FROM entitlements WHERE uid=? AND qty>claimed').bind(user.id).all()).results || [];
+  const products = (await getConfigKey(c.env, 'products')) || [];
+  const grants = [];
+  for (const r of rows) {
+    const p = products.find((x) => x.id === r.product_id);
+    if (!p || !p.grant) continue; // cosmetics/pass/subscriptions are read from /entitlements
+    const n = r.qty - r.claimed;
+    // compare-and-set: a concurrent claim with another id cannot grant the same purchase twice
+    const up = await c.env.DB.prepare('UPDATE entitlements SET claimed=?, updated_at=? WHERE uid=? AND product_id=? AND claimed=?').bind(r.qty, c.now, user.id, r.product_id, r.claimed).run();
+    if (up.meta.changes) grants.push({ productId: p.id, n, grant: p.grant });
+  }
+  await c.env.DB.prepare('INSERT INTO pay_claims (claim_id, uid, result, created_at) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(claimId, user.id, JSON.stringify(grants), c.now).run();
+  return json({ ok: true, claimId, grants });
+}
+
+/** Weekly products (weekly:true) can be bought once per ISO week (game-local). */
+export async function weeklyBought(env, uid, productId, now) {
+  const start = nextWeekStart(now, env) - 7 * DAY;
+  const r = await env.DB.prepare("SELECT COUNT(*) n FROM payments WHERE uid=? AND product_id=? AND status='paid' AND created_at>=?").bind(uid, productId, start).first();
+  return (r && r.n) > 0;
+}
+
+/** POST /chest/free -> { ok:true, next } when the free wooden chest is ready (server clock), else { ok:false, next }. */
+export async function freeChest(c) {
+  const user = await requireUser(c);
+  const hours = Number(await getConfigKey(c.env, 'freeChestHours')) || 4;
+  const period = hours * 3600000;
+  const t = await c.env.DB.prepare('SELECT at, n FROM user_timers WHERE uid=? AND key=?').bind(user.id, 'free_chest').first();
+  if (t && c.now < t.at + period) return json({ ok: false, error: 'not_ready', next: t.at + period, n: t.n });
+  // conditional upsert: two parallel taps cannot both succeed
+  const r = await c.env.DB.prepare(`INSERT INTO user_timers (uid, key, at, n) VALUES (?,?,?,1)
+    ON CONFLICT(uid, key) DO UPDATE SET at=excluded.at, n=n+1 WHERE user_timers.at <= ?`).bind(user.id, 'free_chest', c.now, c.now - period).run();
+  if (!r.meta.changes) return json({ ok: false, error: 'not_ready', next: (t ? t.at : c.now) + period });
+  return json({ ok: true, next: c.now + period, n: (t ? t.n : 0) + 1 });
 }

@@ -1,7 +1,7 @@
 // Live config: values stored in the `config` table override these defaults.
 // Admins change them through PUT /admin/config/<key> (see README).
 
-export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid'];
+export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid', 'freeChestHours'];
 
 const DAY = 86400000;
 
@@ -37,6 +37,9 @@ export const DEFAULTS = {
   events: [],
 
   // Village shop rotation (prices in game currency, applied on the client).
+  // Free wooden chest timer (POST /chest/free), hours.
+  freeChestHours: 4,
+
   shop: {
     rotationHours: 24,
     slots: 4,
@@ -51,8 +54,21 @@ export const DEFAULTS = {
     ],
   },
 
-  // Telegram Stars products (no pay-to-win: cosmetics + battle pass).
+  // Telegram Stars products. Cosmetics/pass/subscription are entitlements; products with `grant` are consumables:
+  // the game claims them once via POST /pay/claim (idempotent). `once` — buy once, `weekly` — once per ISO week.
+  // Grant keys (applied by the game, src/p21.js grantBundle): sparks (= «Самоцветы»), open_<tier> (chest opened now),
+  // chest_<tier> (stored chest), key_iron/key_gold/key_leg, frag, prot/tome/potion…, slot2 (second builder).
+  // No combat power is sold directly: gems buy time/chests; PvP raids & Abyss board use «Честный бой» (see game README).
   products: [
+    { id: 'crys_80', title: 'Горсть самоцветов', description: '80 самоцветов', stars: 49, type: 'currency', grant: { sparks: 80 } },
+    { id: 'crys_450', title: 'Мешочек самоцветов', description: '450 самоцветов (+12%)', stars: 249, type: 'currency', grant: { sparks: 450 }, tag: 'Хит' },
+    { id: 'crys_1000', title: 'Сундучок самоцветов', description: '1000 самоцветов (+25%)', stars: 499, type: 'currency', grant: { sparks: 1000 } },
+    { id: 'crys_2200', title: 'Казна самоцветов', description: '2200 самоцветов (+37%)', stars: 999, type: 'currency', grant: { sparks: 2200 }, tag: 'Выгодно' },
+    { id: 'starter_pack', title: 'Набор новичка', description: '300 самоцветов, 2 золотых сундука, 5 железных ключей, 3 свитка защиты', stars: 99, type: 'bundle', once: true, grant: { sparks: 300, open_gold: 2, key_iron: 5, prot: 3 }, tag: '×5 выгода' },
+    { id: 'weekly_pack', title: 'Недельный набор', description: '400 самоцветов, легендарный сундук, 2 золотых ключа', stars: 149, type: 'bundle', weekly: true, grant: { sparks: 400, open_leg: 1, key_gold: 2 } },
+    { id: 'build_slot', title: 'Второй строитель', description: 'Навсегда: две стройки одновременно (+50 самоцветов)', stars: 199, type: 'bundle', once: true, grant: { slot2: 1, sparks: 50 } },
+    { id: 'chest_gold3', title: 'Три золотых сундука', description: 'Открываются сразу, ключи не нужны', stars: 129, type: 'bundle', grant: { open_gold: 3 } },
+    { id: 'chest_leg1', title: 'Легендарный сундук', description: 'Открывается сразу: легендарная вещь гарантирована', stars: 119, type: 'bundle', grant: { open_leg: 1 } },
     { id: 'bp_s1', title: 'Боевой пропуск — Сезон 1', description: 'Премиум-дорожка: облики, рамки, эмоции питомцев', stars: 250, type: 'battlepass', once: true },
     { id: 'skin_cloak_ember', title: 'Плащ «Тлеющий»', description: 'Косметический облик героя', stars: 100, type: 'cosmetic', once: true },
     { id: 'pack_village_lanterns', title: 'Фонари Брода', description: 'Украшения для деревни', stars: 75, type: 'cosmetic', once: true },

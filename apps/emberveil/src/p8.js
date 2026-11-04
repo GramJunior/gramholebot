@@ -206,8 +206,7 @@ function closePanel(){ const oc=PANEL.opts&&PANEL.opts.onClose; show('panel',fal
 function renderPanel(){
   let k=PANEL.kind; let title='',sub='',tabs=[],body='';
   const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
-  if(k==='hero'){ title='Искроносец'; sub=`Уровень ${S.hero.lvl} · Сила снаряжения ${gearPower()}`; tabs=[['gear','Снаряжение','bag'],['skills','Умения','spark'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','book']]; PANEL.tab=PANEL.tab||'gear'; if(PANEL.tab==='codex') PANEL.tab='know';
-    body=({gear:pGear,skills:pSkills,pets:pPets,squad:pSquad,quests:pQuests,know:()=>{ if(S.syn&&S.syn.unread){ S.syn.unread=0; setTimeout(hudKnowDot,0); } return pKnow()+pCodex(); }})[PANEL.tab](); }
+  if(k==='hero'){ const o=heroPanel(); title=o.title; sub=o.sub; tabs=o.tabs; body=o.body; }
   else if(k==='bld'){ const id=PANEL.opts.id; const B=BUILDINGS[id]; title=B.n; sub=S.bld[id]?`Уровень ${S.bld[id]}`:'Не построено';
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }
   else if(k==='settings'||k==='pause'){ title=k==='pause'?'Привал':'Настройки'; body=pSettings(k==='pause'); }

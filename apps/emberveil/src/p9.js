@@ -160,7 +160,7 @@ function runEnd(win,reason,keep){
   if(win){ stars=1+(r.t<=I.par?1:0)+(r.minHp>=.35?1:0); starTxt=`${r.t<=I.par?'★ быстро':'☆ медленно'} · ${r.minHp>=.35?'★ стойко':'☆ было опасно'}`;
     const prev=S.prog.stages[I.key]; const first=!prev;
     S.prog.stages[I.key]={stars:Math.max(stars,prev?prev.stars:0),best:Math.min(r.t,prev?prev.best:1e9)};
-    if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
+    if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; addXp(xpNeed(S.hero.lvl)*(I.s===5?.45:.3)); if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
     ev('stage',{key:I.key,nopot:r.pots===0,first,stars}); AU.sfx('win'); track('stage_finish',I.key);
   } else if(!keep){ const lost=Math.round(r.gold*.3); S.res.gold=Math.max(0,S.res.gold-lost); r.lost=lost; }
   if(!win) track(keep?'stage_leave':'stage_fail',I.key);
@@ -283,6 +283,7 @@ function botInput(){
   G._bs=G._bs||{x:0,z:0,t:0,esc:0,ex:0,ez:0}; const bs=G._bs; if(Math.hypot(P.x-bs.x,P.z-bs.z)>1.2){ bs.x=P.x; bs.z=P.z; bs.t=G.time; } else if(G.time-bs.t>4&&bs.esc<=0){ bs.esc=1.2; const a=rand(TAU); bs.ex=Math.sin(a); bs.ez=Math.cos(a); bs.t=G.time; }
   if(bs.esc>0){ bs.esc-=1/30; return {mx:bs.ex,mz:bs.ez,atk:true}; }
   let e=nearestEnemy(P.x,P.z,40);
+  if(G.boss&&G.boss.alive&&G.boss.bossShield){ let hb=null,hd=1e9; for(const x of G.enemies) if(x.alive&&x.kind==='rotHeart'){ const d=dist(x,P); if(d<hd){ hd=d; hb=x; } } if(hb) e=hb; } // бот знает механику: сначала сердца гнили
   const tot=W.objs.find(o=>o.alive&&o.kind==='totem'&&Math.hypot(o.x-P.x,o.z-P.z)<14); if(tot&&(!e||dist(e,P)>3.5)) e=null;
   if(tot&&!e){ const d=dist(tot,P); if(d>2.2){ tx=tot.x; tz=tot.z; } atk=d<4; }
   // dodge telegraphs: if standing inside an active red decal near end -> roll away
@@ -314,7 +315,7 @@ window.__game={
   start:(fresh=true)=>startGame(fresh), village:()=>enterVillage(), stage:(z,s)=>startStage(z,s), abyss:(f=1)=>startAbyss(f),
   give:(o)=>{ for(const k in o) S.res[k]=(S.res[k]||0)+o[k]; hudRefresh(); },
   item:(lvl,o)=>{ const it=genItem(lvl,o||{}); addItem(it,true); return it; },
-  equipBest:(lvl,rar=2,cls)=>{ for(const s of ['weapon','offhand','helm','chest','gloves','boots','amulet','ring1','ring2']){ const it=genItem(lvl,{slot:slotKey(s),rar,cls:s==='weapon'?cls:undefined}); S.inv.push(it); equip(it,s); } },
+  equipBest:(lvl,rar=2,cls)=>{ G._eqForce=1; for(const s of ['weapon','offhand','helm','chest','gloves','boots','amulet','ring1','ring2']){ const it=genItem(lvl,{slot:slotKey(s),rar,cls:s==='weapon'?cls:undefined}); S.inv.push(it); equip(it,s); } G._eqForce=0; },
   setLvl:(l)=>{ S.hero.lvl=l; S.hero.tp=l; refreshPlayer(true); },
   talents:(cls,r)=>{ for(const s of SKILLS[cls]) S.hero.talents[cls][s.id]=r; for(const p of PASSIVES[cls]) S.hero.talents[cls][p.id]=Math.min(3,r); refreshPlayer(true); },
   god:(v=true)=>{ G.god=v; }, bot:(v=true)=>{ G.bot=v; }, speed:(v)=>{ G.speed=v; },
@@ -323,7 +324,7 @@ window.__game={
   tp:(x,z)=>{ G.P.x=x; G.P.z=z; },
   input:(mx,mz,atk)=>{ G.input.mx=mx; G.input.mz=mz; G.input.atk=!!atk; },
   skill:id=>useSkill(id), dodge:()=>dodge(), potion:()=>drinkPotion(), bomb:()=>throwBomb(),
-  skipDialog:()=>{ while(G.dialog) dlgEnd(); }, build:(id)=>{ const c=bldCost(id,S.bld[id]+1); for(const k in c) S.res[k]+=c[k]; if(id!=='hall'&&S.bld[id]+1>S.bld.hall) S.bld.hall=S.bld[id]+1; doBuild(id); },
+  skipDialog:()=>{ while(G.dialog) dlgEnd(); }, build:(id)=>{ if(id!=='hall'&&S.bld[id]+1>S.bld.hall) S.bld.hall=S.bld[id]+1; if(typeof bldComplete==='function') bldComplete(id,S.bld[id]+1,'debug'); else { const c=bldCost(id,S.bld[id]+1); for(const k in c) S.res[k]+=c[k]; doBuild(id); } },
   egg:(k)=>{ S.pets.eggs.push({kind:k,start:1}); }, hatchAll:()=>{ for(const e of S.pets.eggs.slice()){ e.start=1; hatch(e); } spawnPets(); },
   openPanel, closePanel, openMap, closeMap, stageCard, save:()=>saveGame(true), mapTo:(z)=>{ for(let zz=1;zz<z;zz++) for(let s=1;s<=5;s++) S.prog.stages[zz+'-'+s]={stars:2,best:100}; },
   enemyCount:()=>G.enemies.filter(e=>e.alive).length,
