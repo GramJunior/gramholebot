@@ -32,6 +32,7 @@ Object.assign(window.__game,{
   puzBlocks:()=>{ const Z=W.puzzle; Z.blocks.forEach((b,i)=>{ b.x=Z.plates[i].x; b.z=Z.plates[i].z; }); },
   puzVault:()=>{ const Z=W.puzzle; G.P.x=Z.vault.x+Z.ux*1.2; G.P.z=Z.vault.z+Z.uz*1.2; },
 });
+Object.assign(window.__game,P6C_HOOKS);
 window.__game.spawnE=(k,x,z,o)=>spawnEnemy(k,x,z,W.lvl||1,Object.assign({aggro:1},o||{}));
 window.__game.x=function(code){ return eval(code); }; // debug: evaluate inside the game scope (tests/balance tools)
 // balance probe: player power vs enemy/boss at a stage level (analytic, averaged over several gear rolls)

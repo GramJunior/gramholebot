@@ -50,7 +50,7 @@ const PROPS={
   sign:b=>{ b.cyl(.06,.07,1.4,0x6a4a2a,{p:[0,.7,0]}); b.box(.9,.4,.06,0x8a6a42,{p:[0,1.25,.05]}); b.box(.6,.05,.02,0x3a2410,{p:[0,1.3,.09],ol:0}); b.box(.4,.05,.02,0x3a2410,{p:[0,1.18,.09],ol:0}); }
 };
 const PROP_GEO={};
-function propGeo(k){ if(PROP_GEO[k]) return PROP_GEO[k]; const b=new GB(['grass','flowers','fern','reeds'].includes(k)?0:0.045); PROPS[k](b); return PROP_GEO[k]=b.geo(); }
+function propGeo(k){ if(PROP_GEO[k]) return PROP_GEO[k]; const b=new GB(['grass','flowers','fern','reeds'].includes(k)?0:0.045); if(typeof RAND0!=='undefined'&&RAND0) realRand(()=>PROPS[k](b)); else PROPS[k](b); return PROP_GEO[k]=b.geo(); }
 
 // ----- interactive objects -----
 const OBJ_GEO={

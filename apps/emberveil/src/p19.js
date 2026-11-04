@@ -227,8 +227,8 @@ const ECHOES={
   '6-2':{who:'dragon',lines:['…я лягу на Сердце. Пусть думают, что я его пожираю. Так безопаснее — для них…']},
   '6-4':{who:'king',lines:['…Искроносец придёт. Они всегда приходят убивать змея. Я лишь подожду за его спиной…']},
 };
-function echoBuild(info){ const E=ECHOES[info.key]; if(!E||!W||!W.walk) return; const nodes=W.walk.nodes.filter(n=>!n.side); const node=nodes[Math.min(nodes.length-1,Math.max(1,Math.floor(nodes.length*.45)))]; if(!node) return;
-  const x=node.x+node.r*.35, z=node.z; let rig=null; try{ rig=E.who==='knight'?buildCompanion('vela',compGearObj('vela')):E.who==='dragon'?null:buildNPC(E.who==='bogMother'?'elder':E.who); }catch(e){ rig=null; }
+function echoBuild(info){ const E=ECHOES[info.key]; if(!E||!W||!W.walk) return; const nodes=W.areas?W.areas:W.walk.nodes.filter(n=>!n.side&&!n.joint); const node=nodes[Math.min(nodes.length-1,Math.max(1,Math.floor(nodes.length*.45)))]; if(!node) return;
+  let x=node.x+node.r*.35, z=node.z; if(typeof spotIn==='function'&&W.fp){ const sp=spotIn(node,node.r*.3,node.r*.6,.8,{k:'o',noRes:1}); if(sp){ x=sp[0]; z=sp[1]; } } let rig=null; try{ rig=E.who==='knight'?buildCompanion('vela',compGearObj('vela')):E.who==='dragon'?null:buildNPC(E.who==='bogMother'?'elder':E.who); }catch(e){ rig=null; }
   const g=new THREE.Group(); g.position.set(x,0,z); worldRoot.add(g);
   if(rig){ g.add(rig.root); rig.root.position.set(0,0,0); if(rig.actor){ try{ rig.actor.setOpacity(.62); rig.actor.setTint(0x9ad8ff,.75); rig.actor.setGlow('#9ad8ff',.5); rig.actor.play('idle'); }catch(e){} } else rig.root.traverse(o=>{ if(o.isMesh) o.material=MTghost; }); }
   else { const m=pmesh(cgeo('echo_wisp',b=>{ b.oct(.5,0x9ad8ff,{s:[1,1.8,1],e:1}); b.oct(.3,0xffffff,{s:[1,1.6,1],e:1,ol:0}); }),g,0,1.4,0); m.material=MTghost; }

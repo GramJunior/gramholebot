@@ -14,7 +14,7 @@ function placePlayer(x,z,face){ const P=G.P; P.x=x; P.z=z; P.face=face===undefin
 // ---------- village ----------
 function enterVillage(after){
   show('res',false); show('boons',false); clearEntities(); RUNBUF={}; G.run=null; G.abyss=null; computeStats();
-  makeVillage(); G.mode='village'; refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI);
+  makeVillage(); G.mode='village'; heroRebuildRig(); refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI);
   W.npcs=W.npcs.filter(n=>{ const need={smith:'forge',alch:'alch',beast:'pen'}[n.kind]; const ok=n.kind==='elder'||(n.kind==='stranger'?stageDone('1-5'):S.bld[need]>0); if(!ok) worldRoot.remove(n.rig.root); return ok; });
   show('hud'); hudBuild(); AU.music('village'); cullProps(0,0,true);
   const got=collectProduction(); const keys=Object.keys(got).filter(k=>got[k]>0);
@@ -68,7 +68,7 @@ function startStage2(z,s){
     clearEntities(); const info=stageInfo(z,s);
     RUNBUF={}; for(const k of ['elixir_str','elixir_def','elixir_spd']) if(CARD_ELIX[k]&&S.cons[k]>0){ S.cons[k]--; RUNBUF[k.split('_')[1]]=1; } CARD_ELIX={};
     makeStage(info); G.mode='stage'; G.run={info,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:S.hero.xp,startLvl:S.hero.lvl};
-    refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI); G.P.ember=0;
+    heroRebuildRig(); refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI); G.P.ember=0;
     show('hud'); hudBuild(); AU.music(info.zone.mus); cullProps(W.start.x,W.start.z,true);
     banner(info.name,`${info.zone.n} · ${STAGE_TYPES[info.type].n}`); track('stage_start',info.key);
     if(Object.keys(RUNBUF).length) toast('Эликсир выпит — сила разливается по жилам');
@@ -202,7 +202,7 @@ function abyssTick(dt){
   if(W.wavesLeft>0&&G.enemies.filter(e=>e.alive).length===0){ W.waveDelay-=dt; if(W.waveDelay<=0){ W.waveDelay=2.5; W.waveN++; W.wavesLeft--;
       if(W.miniBoss){ const ids=['gobKing','rotroot','bogMother','morven','colossus','ashKing']; const sb=evStr('seasonBoss'); const echo=sb&&BOSSES[sb]&&A.floor<=10; const id=echo?sb:ids[(Math.floor(A.floor/5)-1)%ids.length]; const e=spawnBoss(id,0,-4,W.lvl,{hpMul:echo?1.5:1,dmgMul:.85}); e.echo=echo; if(echo){ e.bossD=Object.assign({},e.bossD,{n:'Эхо Колосса',t:'сезонный босс'}); } e.intro=true; CAMR.override={x:0,z:-2,zoom:.6}; AU.sfx('roar'); later(.3,()=>banner(echo?'Событие':'Страж Бездны',e.bossD.n)); later(1.8,()=>{ CAMR.override=null; e.intro=false; }); }
       else { const n=Math.min(16,4+Math.floor(A.floor*.7)); const elC=(.06+A.floor*.012)*(A.mods.includes('elite')?2:1);
-        for(let i=0;i<n;i++){ const a=rand(TAU),r=rand(6,12); const x=Math.cos(a)*r,z=Math.sin(a)*r-2; const e=spawnEnemy(pick(W.enemyPool),x,z,W.lvl,{aggro:1,elite:chance(elC)?(A.floor>12&&chance(.3)?2:1):0}); fx('magic',x,.5,z,{col:0xb04aff,k:10}); } AU.sfx('tele',.6); }
+        for(let i=0;i<n;i++){ let a=rand(TAU),r=rand(6,12); for(let t=0;t<10&&!walkable(Math.cos(a)*r,Math.sin(a)*r-2,.6);t++){ a=rand(TAU); r=rand(4,10); } const x=Math.cos(a)*r,z=Math.sin(a)*r-2; const e=spawnEnemy(pick(W.enemyPool),x,z,W.lvl,{aggro:1,elite:chance(elC)?(A.floor>12&&chance(.3)?2:1):0}); fx('magic',x,.5,z,{col:0xb04aff,k:10}); } AU.sfx('tele',.6); }
       objText(); } }
   if(W._ot===undefined||(W._ot-=dt)<0){ W._ot=.4; objText(); }
 }
@@ -315,7 +315,8 @@ function botInput(){
   // dodge out of decals targeted at me
   let mx=0,mz=0; if(tx!==null){ const dx=tx-P.x,dz=tz-P.z,d=Math.hypot(dx,dz); if(d>.6){ mx=dx/d; mz=dz/d; } }
   // navigate path: if far along path, follow segment centerline direction
-  if(tx!==null&&W.walk&&!walkable(P.x+mx*1.5,P.z+mz*1.5,.2)){ let best=null,bd=1e9; for(const n of W.walk.nodes){ if(n.side) continue; const d=Math.hypot(n.x-tx,n.z-tz)+Math.hypot(n.x-P.x,n.z-P.z)*.2; if(Math.hypot(n.x-P.x,n.z-P.z)>2&&d<bd){bd=d;best=n;} } if(best){ const dx=best.x-P.x,dz=best.z-P.z,d=Math.hypot(dx,dz); mx=dx/d; mz=dz/d; } }
+  if(tx!==null&&W.walk&&W.kind!=='village'&&typeof navDir==='function'&&Math.hypot(tx-P.x,tz-P.z)>1.2){ const nd=navDir(P.x,P.z,tx,tz); if(nd){ mx=nd[0]; mz=nd[1]; } }
+  else if(tx!==null&&W.walk&&!walkable(P.x+mx*1.5,P.z+mz*1.5,.2)){ let best=null,bd=1e9; for(const n of W.walk.nodes){ if(n.side) continue; const d=Math.hypot(n.x-tx,n.z-tz)+Math.hypot(n.x-P.x,n.z-P.z)*.2; if(Math.hypot(n.x-P.x,n.z-P.z)>2&&d<bd){bd=d;best=n;} } if(best){ const dx=best.x-P.x,dz=best.z-P.z,d=Math.hypot(dx,dz); mx=dx/d; mz=dz/d; } }
   G.input.atk=atk; return {mx,mz,atk};
 }
 
@@ -352,6 +353,15 @@ window.__game={
     const d=document.createElement('div'); d.id='gal'; d.style.cssText='position:fixed;inset:0;z-index:999;background:#222;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start'; d.innerHTML=out.map(([l,u])=>`<div style="width:160px;text-align:center;color:#fff;font:11px sans-serif;margin:2px"><img src="${u}" style="width:160px;height:160px;display:block">${l}</div>`).join(''); document.body.appendChild(d); return out.length; }
 };
 
+// ---------- hero rig: makePlayer() runs before asBoot(), so the first rig is procedural — swap in the KayKit actor once models are ready ----------
+function heroRebuildRig(){
+  const P=G.P; if(!P||P.rig.actor||!asCan('hero')) return false;
+  let rig; try{ rig=buildHero(); }catch(e){ console.warn('heroRebuildRig',e); return false; } if(!rig||!rig.actor) return false;
+  const old=P.rig; const par=old.root.parent||scene; rig.root.position.copy(old.root.position); rig.root.rotation.copy(old.root.rotation); rig.root.visible=old.root.visible;
+  par.remove(old.root); old.root.traverse(o=>{ if(o.isMesh&&o.geometry&&!o.geometry.userData.shared){} });
+  if(old.tip&&old.tip.parent) old.tip.parent.remove(old.tip); rig.tip=old.tip||new THREE.Object3D(); P.rig=rig; par.add(rig.root);
+  refreshPlayer(false); if(typeof cosApply==='function') try{ cosApply(); }catch(e){} return true;
+}
 // ---------- boot ----------
 function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
@@ -360,7 +370,7 @@ function boot(){
     ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; PR=prCap(); R.setPixelRatio(PR); emberLight.visible=Q.point!==false; try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){} perfInit(); computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
-    ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
+    ['Разжигаем очаг…',()=>{ heroRebuildRig(); R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
     ['Готовим мир…',()=>{ for(const k of ['goblin','wolf','skelShield']) { const r=ENEMY_MODELS[k](); } }],
     ['',()=>{ showTitle(); requestAnimationFrame(loop); }]
   ];

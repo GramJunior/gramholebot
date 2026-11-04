@@ -1,6 +1,6 @@
 // ================= p3: hero, items, NPC, pet models =================
 const GEO={};
-function cgeo(key,fn,ol){ if(GEO[key]) return GEO[key]; const b=new GB(ol===undefined?0.035:ol); fn(b); return GEO[key]=b.geo(); }
+function cgeo(key,fn,ol){ if(GEO[key]) return GEO[key]; const b=new GB(ol===undefined?0.035:ol); if(typeof RAND0!=='undefined'&&RAND0) realRand(()=>fn(b)); else fn(b); return GEO[key]=b.geo(); }
 function pmesh(geo,parent,x=0,y=0,z=0){ const m=new THREE.Mesh(geo,MT); m.position.set(x,y,z); if(parent)parent.add(m); return m; }
 function piv(parent,x=0,y=0,z=0){ const g=new THREE.Group(); g.position.set(x,y,z); parent.add(g); return g; }
 const COL={skin:0xf2c39a,skin2:0xd9a27a,hair:0x8a3a18,leather:0x6a4426,leatherD:0x4a2e18,cloth:0x7a5a3a,banner:0x9e2b1c,bannerD:0x5e140c,steel:0xb4bec4,steelD:0x6c767e,brass:0xd2a04a,gold:0xf0c050,wood:0x7a4e2a,woodD:0x4e3018,bone:0xeae2c8,boneD:0xb8ab88};

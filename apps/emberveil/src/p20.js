@@ -150,7 +150,7 @@ const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest')
 const QEQ={it:null,t:0};
 function qeqOffer(it){ if(!it||!S.inv.includes(it)||compareTo(it)<=0) return; if(!canEquip(it,ITEM_BASES[it.base].slot==='ring'?'ring1':ITEM_BASES[it.base].slot)) return; const B=ITEM_BASES[it.base]; if(B.cls&&B.cls!==PS.cls&&B.slot==='weapon'&&S.gear.weapon) return;
   QEQ.it=it; let el=$('qeq'); if(!el){ el=document.createElement('div'); el.id='qeq'; document.body.appendChild(el); }
-  el.className='parch on bg-r'+it.rar; el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
+  el.className='dk on bg-r'+it.rar; el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
   $('qeqB').onclick=ev=>{ ev.stopPropagation(); if(QEQ.it&&S.inv.includes(QEQ.it)){ equip(QEQ.it); hudPortrait(); toast(`Надето: <b class="r${QEQ.it.rar}">${esc(QEQ.it.name)}</b>`); track('quick_equip',''+QEQ.it.rar); } el.classList.remove('on'); };
   clearTimeout(QEQ.t); QEQ.t=setTimeout(()=>el.classList.remove('on'),7000); }
 // ---------- revive once per stage for a rewarded ad ----------

@@ -14,14 +14,11 @@ const PZ_COL=[0xff5a3a,0x4ab8ff,0x8ae03a,0xffd040,0xc47cff];
 const PZ_CSS=['#ff5a3a','#4ab8ff','#8ae03a','#ffd040','#c47cff'];
 const PZ_GLOW={}; function pzGlowMat(c){ if(!PZ_GLOW[c]) PZ_GLOW[c]=toonMat(c,.75); return PZ_GLOW[c]; }
 function puzzlePlan(info,walk){
-  const type=PUZ_PLAN[info.key]; if(!type) return; const corr=type==='corridor'; const R=corr?3.6:7.2, D=corr?24:18.5;
-  const main=walk.nodes.filter(n=>!n.side);
-  const okAt=(x,z)=>walk.nodes.every(n=>Math.hypot(n.x-x,n.z-z)>n.r+R+3)&&walk.segs.every(s=>segDist(x,z,s)[0]>s.w/2+R+2);
-  const segOk=(n,x,z)=>walk.nodes.every(m=>m===n||segDist(m.x,m.z,{ax:n.x,az:n.z,bx:x,bz:z})[0]>m.r+2);
-  for(const idx of [2,3,1,4]){ const n=main[idx]; if(!n||idx>=main.length-1) continue;
-    for(const side of [n.x>0?-1:1,n.x>0?1:-1]){ for(const dz of [0,-4,4]){ const x=n.x+side*D, z=n.z+dz; if(!okAt(x,z)||!segOk(n,x,z)) continue;
-        const room={x,z,r:R,side:true,puz:true}; walk.nodes.push(room); walk.segs.push({ax:n.x,az:n.z,bx:x,bz:z,w:corr?3.2:3.6,side:true});
-        const L=Math.hypot(x-n.x,z-n.z); W.puzzle={type,room,from:n,ux:(n.x-x)/L,uz:(n.z-z)/L,els:[],st:{},solved:false,first:!(S.puz&&S.puz[info.key]),key:info.key,seen:false}; return; } } }
+  const type=PUZ_PLAN[info.key]; if(!type) return; const corr=type==='corridor'; const R=corr?3.6:7.2;
+  // v8: комната загадки — боковой отнорок от площадки, отделённый скалами от остального уровня (layoutSide, p6b)
+  const sd=layoutSide({R,len:corr?20:6.5,w:corr?3.4:4.4,pad:4}); if(!sd) return;
+  const room=sd.room; room.puz=true; const n=sd.from;
+  W.puzzle={type,room,from:n,ux:-sd.ux,uz:-sd.uz,els:[],st:{},solved:false,first:!(S.puz&&S.puz[info.key]),key:info.key,seen:false};
 }
 function pzMesh(geo,x,z,y=0,ry=0){ const m=new THREE.Mesh(geo,MT); m.position.set(x,y,z); m.rotation.y=ry; worldRoot.add(m); return m; }
 const PZG={
@@ -43,7 +40,9 @@ function pzObj(kind,x,z,o={}){ const ob=Object.assign({kind:'pz',pk:kind,x,z,r:o
 function puzzleBuild(){
   const Z=W.puzzle, R=Z.room, c={x:R.x,z:R.z}, ux=Z.ux, uz=Z.uz, vx=-uz, vz=ux; const at=(f,s)=>[c.x+ux*f+vx*s,c.z+uz*f+vz*s];
   // reward vault at the far wall
-  const [vx0,vz0]=Z.type==='corridor'?[c.x,c.z]:at(-R.r+2.2,0); Z.vault=mkObj('chest',vx0,vz0,{ry:Math.atan2(ux,uz)}); Z.vault.puz=true; Z.vault.r=.8;
+  let [vx0,vz0]=Z.type==='corridor'?[c.x,c.z]:at(-R.r+2.2,0);
+  if(Z.type==='mirrors'){ Z.d1pre=chance(.5)?1:-1; // the mirror grid is world-aligned: put the chest on a free diagonal, far from the entrance
+    let best=null,bv=-1e9; for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]]){ if(dx===1&&dz===Z.d1pre) continue; const x=c.x+dx*3.7, z=c.z+dz*3.7; const v=-(dx*-ux+dz*-uz)*0-(dx*ux+dz*uz); if(v>bv){ bv=v; best=[x,z]; } } [vx0,vz0]=best; } Z.vault=mkObj('chest',vx0,vz0,{ry:Math.atan2(ux,uz)}); Z.vault.puz=true; Z.vault.r=.8;
   if(Z.type!=='corridor'){ Z.vault.sealed=true; Z.vault.sealTxt='Сундук за решёткой. '+PUZ_TYPES[Z.type].hint; Z.bars=pzMesh(PZG.bars(),vx0,vz0); }
   for(const sgn of [-1,1]){ const [px,pz]=at(-R.r+1.4,sgn*3.4); if(Z.type!=='corridor'){ addProp(W.zone.id>=4?'candles':'lantern',px,pz,1); } }
   const T=Z.type;
@@ -53,7 +52,7 @@ function puzzleBuild(){
   if(T==='plates'){ Z.plates=[at(2.8,-3.6),at(-2.8,-3.2),at(.4,4)].map(([x,z])=>({x,z,m:pzMesh(PZG.plate(),x,z),t:0})); }
   if(T==='levers'){ const n=W.zone.id>=3?4:3; const order=[...Array(n).keys()].sort(()=>Math.random()-.5); Z.order=order; Z.prog=0; Z.levers=[];
     for(let i=0;i<n;i++){ const a=-1.2+i/(n-1)*2.4; const [x,z]=at(Math.cos(a)*3.2+.6,Math.sin(a)*4.6); const o=pzObj('lever',x,z,{idx:i,r:.7}); o.m=pzMesh(PZG.lever(),x,z,0,Math.atan2(c.x-x,c.z-z)); o.cr=pzMesh(PZG.crystal(),x,z,1.9); o.cr.material=pzGlowMat(PZ_COL[i]); Z.levers.push(o); } }
-  if(T==='mirrors'){ const g=2.3; const d1=chance(.5)?1:-1; const cell=(gx,gz)=>[c.x+gx*g,c.z+gz*g];
+  if(T==='mirrors'){ const g=2.3; const d1=Z.d1pre; const cell=(gx,gz)=>[c.x+gx*g,c.z+gz*g];
     Z.grid={g,d1}; const [ex,ez]=cell(-2,0); Z.emit={gx:-2,gz:0,m:pzMesh(PZG.emitter(),ex,ez)}; const [tx,tz]=cell(2,2*d1); Z.tgt={gx:2,gz:2*d1,m:pzMesh(PZG.target(),tx,tz)}; W.obst.push({x:ex,z:ez,r:.7},{x:tx,z:tz,r:.7});
     Z.mirrors=[[0,0],[0,2*d1],[0,-2*d1]].map(([gx,gz],i)=>{ const [x,z]=cell(gx,gz); const o=pzObj('mirror',x,z,{gx,gz,r:.7,ori:Math.random()<.5?0:1}); if(i<2&&o.ori===(d1>0?0:1)) o.ori^=1; o.m=pzMesh(PZG.mirror(),x,z); o.m.rotation.y=o.ori?-PI/4:PI/4; W.obst.push({x,z,r:.6}); return o; });
     Z.beams=[]; for(let i=0;i<6;i++){ const m=new THREE.Mesh(new THREE.BoxGeometry(1,.14,.14),BEAM_MAT); m.visible=false; worldRoot.add(m); Z.beams.push(m); } pzBeam(); }

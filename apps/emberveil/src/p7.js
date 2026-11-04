@@ -25,7 +25,7 @@ function refreshPlayer(full){
 function attachTip(){ const P=G.P, rig=P.rig; if(rig.actor){ asTipTo(rig); const w=rig.meshes.weapon; if(w&&rig.tip.parent!==w) w.add(rig.tip); return; } const w=rig.meshes.weapon; if(!w) return; if(rig.tip.parent) rig.tip.parent.remove(rig.tip); const cls=rig.cls; rig.tip.position.set(0,cls==='staff'?1.35:cls==='bow'?0:cls==='axe'?.85:.85,0); w.add(rig.tip); }
 function onGearChanged(){ refreshPlayer(false); if(typeof hudRefresh==='function') hudRefresh(); }
 function nearestEnemy(x,z,maxD,filter){ let best=null,bd=maxD; for(const e of G.enemies){ if(!e.alive||e.burrowed||e.untarget) continue; if(filter&&!filter(e)) continue; const d=Math.hypot(e.x-x,e.z-z)-e.r; if(d<bd){bd=d;best=e;} } return best; }
-function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
+function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
 
 function playerAttack(){
   const P=G.P; if(P.dead||P.state==='roll'||P.state==='skill'||G.mode==='village') return;
@@ -45,7 +45,7 @@ function doMeleeHit(P,mv){
   for(const e of G.enemies){ if(!e.alive||e.burrowed) continue; const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz); if(d>mv.rng+e.r) continue;
     const ang=Math.abs(angWrap(Math.atan2(dx,dz)-P.face)); if(ang>mv.arc/2&&d>e.r+.6) continue;
     const h=heroDmg(mv.m); dmgEnemy(e,h.amt,{crit:h.crit,els:h.els,kb:mv.kb||1.5,dir:Math.atan2(dx,dz),stun:mv.stun,src:P,heavy:mv.m>=1.7}); hits++; }
-  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
+  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
   if(mv.aoe){ const cx=P.x+fx0*1.8, cz=P.z+fz0*1.8; fx('dust',cx,0,cz,{k:8}); fx('ring',cx,0,cz,{r:mv.aoe,col:0xffd27a}); for(const e of G.enemies){ if(e.alive&&!e.burrowed&&Math.hypot(e.x-cx,e.z-cz)<mv.aoe+e.r&&!e._hitThis){ } } }
   if(PS.uniq.quake&&mv.aoe){ later(.12,()=>{ const cx=P.x+fx0*2.2, cz=P.z+fz0*2.2; fx('boom',cx,0,cz,{r:2.4,col:0xd8a050,smoke:0x6a5a40}); aoeDamage(cx,cz,2.6,.6,{}); }); }
   if(PS.uniq.blaze&&P.combo%3===0){ spawnProj('wave',P.x+fx0,P.z+fz0,P.face,{dmg:heroDmg(.9).amt,team:'p',pierce:99,life:.6,spd:16,el:'fire'}); }
@@ -163,7 +163,7 @@ function playerDie(){ const P=G.P; P.dead=true; P.state='dead'; P.st=0; AU.sfx('
 // ---------- enemies ----------
 let EID=1;
 function spawnEnemy(kind,x,z,L,o={}){
-  const D=ENEMIES[kind]; const rig=ENEMY_MODELS[kind](); worldRoot.add(rig.root);
+  const D=ENEMIES[kind]; const rig=typeof realRand==='function'?realRand(()=>ENEMY_MODELS[kind]()):ENEMY_MODELS[kind](); worldRoot.add(rig.root);
   const e={id:EID++,type:'enemy',kind,D,lvl:L,x,z,y:0,face:rand(TAU),vx:0,vz:0,kx:0,kz:0,r:rig.r||.5,rig,state:o.aggro?'chase':'idle',st:0,cd:rand(.5,1.5),
     alive:true,camp:o.camp,mods:[],flashT:0,stat:{},t:rand(10),summon:o.summon,meshes:[]};
   const hpM=F(L)*(1+.06*(L-1))*diffHp(L)*(W.kind==='abyss'?(G.abyss&&G.abyss.mods.includes('thick')?1.5:1):1);
@@ -404,7 +404,7 @@ function updateProjs(dt){
             if(PS.uniq.ricochet&&p.kind.startsWith('arrow')&&!p.ric){ const n=nearestEnemy(e.x,e.z,8,x=>x!==e&&!p.hit.has(x)); if(n){ const q=spawnProj('arrow',e.x,e.z,Math.atan2(n.x-e.x,n.z-e.z),{dmg:amt*.6,team:'p',ric:1}); q.hit.add(e); } }
             if(PS.uniq.burst&&p.kind==='bolt'){ fx('boom',p.x,1,p.z,{r:1.6,col:p.col||0xc8a0ff}); aoeDamage(p.x,p.z,1.8,.5,{}); }
             if(p.pierce-->0) continue; dead=true; break; } }
-        if(!dead) for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(Math.hypot(o.x-p.x,o.z-p.z)<o.r+p.r){ hitObj(o,p.dmg!==undefined?p.dmg:heroDmg(1).amt); dead=true; break; } }
+        if(!dead) for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; if(Math.hypot(o.x-p.x,o.z-p.z)<o.r+p.r){ hitObj(o,p.dmg!==undefined?p.dmg:heroDmg(1).amt); dead=true; break; } }
       } else {
         if(!P.dead&&Math.hypot(P.x-p.x,P.z-p.z)<P.r+p.r){ hurtPlayer(p.dmg,{src:p.src,lvl:p.lvl,el:p.el,kb:2,dir:Math.atan2(p.vx,p.vz)}); dead=true; }
         if(W.cart&&Math.hypot(W.cart.x-p.x,W.cart.z-p.z)<1.2){ cartHurt(p.dmg*.6); dead=true; }
@@ -427,7 +427,9 @@ function hitObj(o,amt){
   if(!o.alive) return;
   if(o.pvp){ pvpHit(o,amt); return; }
   if(o.hitme){ puzzleHit(o); return; }
-  if(o.kind==='secret'){ o.hp--; fx('dust',o.x,1,o.z,{k:6,col:0x8a8478}); AU.sfx('hit'); shake(.15); if(o.hp<=0){ o.alive=false; worldRoot.remove(o.mesh); if(o.seg) o.seg.closed=false; fx('boom',o.x,1,o.z,{r:2,col:0xd8c8a0,smoke:0x8a8478}); AU.sfx('boom'); banner('Тайник!','Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; } return; }
+  if(o.kind==='lever'){ if(o.cd>G.time) return; o.cd=G.time+.6; o.mesh.rotation.x=-.25; AU.sfx('hit',.7,1.3); const S0=W.secret; if(S0&&S0.wall&&S0.wall.alive){ fx('magic',o.x,1,o.z,{col:0x8ad8ff,k:10}); later(.3,()=>secretOpen(S0.wall,'Рычаг открыл тайный ход')); } o.alive=false; return; }
+  if(o.kind==='secret'){ if(o.locked){ if(!o.lockMsg||G.time-o.lockMsg>3){ o.lockMsg=G.time; dmgNum(o.x,2.6,o.z,'Заперто. Где-то рядом рычаг','txt'); AU.sfx('deny'); } return; }
+    o.hp--; fx('dust',o.x,1,o.z,{k:6,col:o.secretMode==='barricade'?0xa07040:0x8a8478}); AU.sfx('hit'); shake(.15); if(o.hp<=0){ if(typeof secretOpen==='function'&&W.secret) secretOpen(o,o.secretMode==='barricade'?'Баррикада разбита — проход открыт':null); else { o.alive=false; worldRoot.remove(o.mesh); if(o.seg) o.seg.closed=false; banner('Тайник!','Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; } } return; }
   if(o.brk){ o.alive=false; worldRoot.remove(o.mesh); if(o.oil){ spawnOil(o.x,o.z,2.2,18); fx('dust',o.x,.4,o.z,{k:8,col:0x2a1a10}); AU.sfx('hit',.8,.5); return; } fx('dust',o.x,.5,o.z,{k:8,col:0xa07040}); for(let i=0;i<5;i++) fx('hit',o.x,.5,o.z,{col:0xc89a6a}); AU.sfx('hit',.8,.7);
     if(chance(.55)) spawnDrop('gold',o.x,o.z,{v:Math.round(rand(2,6)*F(W.lvl||1)*(1+PS.gold/100))}); if(chance(.12)) spawnDrop('potion',o.x,o.z); if(chance(.06)) spawnDrop('item',o.x,o.z,{item:genItem(W.lvl,{mf:PS.mf})}); if(chance(.1)) spawnDrop('mat',o.x,o.z,{res:pick(['wood','ore']),v:randi(2,5)}); return; }
   if(o.res){ o.hp--; fx('hit',o.x,.8,o.z,{col:o.res==='ess'?0x6fe0d6:0xd8d0c0}); AU.sfx('hit',.8,o.res==='wood'?.6:1.3); shake(.08);
@@ -513,7 +515,7 @@ function updateCart(dt){
     if(!threat&&c.hp<c.maxHp){ c.hp=Math.min(c.maxHp,c.hp+c.maxHp*.02*dt); if(Math.random()<dt) objText(); }
     if(near&&!threat&&d>.3){ const sp=2.3*dt; c.x+=dx/d*sp; c.z+=dz/d*sp; c.mesh.rotation.y=angTo(c.mesh.rotation.y,Math.atan2(dx,dz),dt*3); c.moving=true; if(Math.random()<dt*4) fx('dust',c.x,0,c.z,{k:1}); } else c.moving=false;
     if(d<.6){ c.wp++; if(c.wp>=c.path.length){ c.arrived=true; objText(); AU.sfx('quest'); banner('Повозка доставлена',''); } }
-    for(const a of W.ambush){ if(!a.done&&Math.hypot(c.x-a.x,c.z-a.z)<5){ a.done=true; for(let i=0;i<randi(3,5);i++){ const ang=rand(TAU); const e=spawnEnemy(pick(W.zone.enemies),a.x+Math.cos(ang)*10,a.z+Math.sin(ang)*10,W.lvl,{aggro:1}); e.cartFocus=chance(.5); fx('magic',e.x,.5,e.z,{col:0x5a2a2a}); } banner('Засада!',''); AU.sfx('sting',.5); } }
+    for(const a of W.ambush){ if(!a.done&&Math.hypot(c.x-a.x,c.z-a.z)<5){ a.done=true; for(let i=0;i<randi(3,5);i++){ let ang=rand(TAU), rr=9; for(let t=0;t<10&&!walkable(a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,.6);t++){ ang=rand(TAU); rr=rand(5,9); } const e=spawnEnemy(pick(W.zone.enemies),a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,W.lvl,{aggro:1}); e.cartFocus=chance(.5); fx('magic',e.x,.5,e.z,{col:0x5a2a2a}); } banner('Засада!',''); AU.sfx('sting',.5); } }
   }
   c.mesh.position.set(c.x,0,c.z); if(c.col){ c.col.x=c.x; c.col.z=c.z; }
   if(Math.random()<dt*6) fx('ember',c.x+rand(-.3,.3),1.6,c.z+rand(-.3,.3));

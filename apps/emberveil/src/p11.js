@@ -123,7 +123,7 @@ function synTick(dt){
 // stage dressing: puddles (zones 1–3), oil barrels (zones 1,5,6), rain (zones 2–3)
 function synDressStage(info,main){
   const Z=info.zone;
-  if(Z.id<=3){ const n=Z.id===3?1:randi(2,3); for(let i=0;i<n;i++){ const nd=pick(main.slice(1,-1)); if(!nd) break; const a=rand(TAU),d=rand(1.5,nd.r*.55); W.pools.push({x:nd.x+Math.cos(a)*d,z:nd.z+Math.sin(a)*d,r:rand(1.5,2.3),wet:true}); } }
+  // v8: лужи ставит placeLiquids (p6b) — с проверкой, что они не на тропе и не под пропсами
   W.rain=(Z.id===2||Z.id===3)&&info.type!=='boss'&&chance(.4);
   W.oilBarrels=(Z.id===1||Z.id>=5)?randi(2,4):Z.id===4?1:0;
 }

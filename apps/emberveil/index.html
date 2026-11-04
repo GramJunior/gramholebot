@@ -576,6 +576,10 @@ html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 74px*var(--k,1));lef
 .chopt b{display:block;font-family:var(--sc);font-size:calc(15px*var(--k,1));color:#ffe2a8} .chopt small{display:block;font-size:12px;opacity:.85;margin-top:2px}
 #qeq{position:fixed;left:50%;bottom:calc(max(var(--sb),4px) + 12px);transform:translateX(-50%) translateY(120%);z-index:31;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border-radius:10px;width:min(360px,60vw);transition:transform .3s;box-shadow:0 0 0 2px var(--rc,#c9973f),0 6px 18px rgba(0,0,0,.6)}
 #qeq.on{transform:translateX(-50%)} #qeq img{width:44px;height:44px;border-radius:6px;background:radial-gradient(circle,#6b4a2c,#2a170b)} #qeq small{display:block;color:#3f7a2a;font-family:var(--sc);font-weight:800}
+/* v8: тёмная плашка — цвет редкости читается (раньше светло-оранжевый на пергаменте) */
+#qeq.dk{background:linear-gradient(180deg,#2a1f18,#16100c);color:#f3e6cc}
+#qeq.dk b{display:block;font-size:14px;line-height:1.15;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,.85);-webkit-text-stroke:.2px rgba(0,0,0,.5)}
+#qeq.dk small{color:#9ae07a;text-shadow:0 1px 0 #000}
 .ftq{font-family:var(--sc);font-size:.92em;color:#fff2c8;background:linear-gradient(90deg,#7c2418,#a8382a);margin:-5px -9px 5px;padding:3px 9px;border-radius:6px 6px 0 0}
 .wl.ft{pointer-events:none} .ftMark{display:inline-block;font-family:var(--sc);font-weight:800;color:#2b1606;background:linear-gradient(180deg,#ffe08a,#f2a634);padding:3px 10px;border-radius:12px;box-shadow:0 2px 0 #7d5a20,0 0 14px #ffb347;white-space:nowrap}
 #hPort.framed{box-shadow:0 0 0 3px var(--fr),0 0 14px var(--fr)}
@@ -4313,7 +4317,7 @@ function asFadeOcc(){
 }
 // ================= p3: hero, items, NPC, pet models =================
 const GEO={};
-function cgeo(key,fn,ol){ if(GEO[key]) return GEO[key]; const b=new GB(ol===undefined?0.035:ol); fn(b); return GEO[key]=b.geo(); }
+function cgeo(key,fn,ol){ if(GEO[key]) return GEO[key]; const b=new GB(ol===undefined?0.035:ol); if(typeof RAND0!=='undefined'&&RAND0) realRand(()=>fn(b)); else fn(b); return GEO[key]=b.geo(); }
 function pmesh(geo,parent,x=0,y=0,z=0){ const m=new THREE.Mesh(geo,MT); m.position.set(x,y,z); if(parent)parent.add(m); return m; }
 function piv(parent,x=0,y=0,z=0){ const g=new THREE.Group(); g.position.set(x,y,z); parent.add(g); return g; }
 const COL={skin:0xf2c39a,skin2:0xd9a27a,hair:0x8a3a18,leather:0x6a4426,leatherD:0x4a2e18,cloth:0x7a5a3a,banner:0x9e2b1c,bannerD:0x5e140c,steel:0xb4bec4,steelD:0x6c767e,brass:0xd2a04a,gold:0xf0c050,wood:0x7a4e2a,woodD:0x4e3018,bone:0xeae2c8,boneD:0xb8ab88};
@@ -4985,7 +4989,7 @@ const PROPS={
   sign:b=>{ b.cyl(.06,.07,1.4,0x6a4a2a,{p:[0,.7,0]}); b.box(.9,.4,.06,0x8a6a42,{p:[0,1.25,.05]}); b.box(.6,.05,.02,0x3a2410,{p:[0,1.3,.09],ol:0}); b.box(.4,.05,.02,0x3a2410,{p:[0,1.18,.09],ol:0}); }
 };
 const PROP_GEO={};
-function propGeo(k){ if(PROP_GEO[k]) return PROP_GEO[k]; const b=new GB(['grass','flowers','fern','reeds'].includes(k)?0:0.045); PROPS[k](b); return PROP_GEO[k]=b.geo(); }
+function propGeo(k){ if(PROP_GEO[k]) return PROP_GEO[k]; const b=new GB(['grass','flowers','fern','reeds'].includes(k)?0:0.045); if(typeof RAND0!=='undefined'&&RAND0) realRand(()=>PROPS[k](b)); else PROPS[k](b); return PROP_GEO[k]=b.geo(); }
 
 // ----- interactive objects -----
 const OBJ_GEO={
@@ -5759,20 +5763,23 @@ function buildGround(Z,b,opts={}){
   const nx=Math.max(8,Math.round(w/seg)), nz=Math.max(8,Math.round(h/seg));
   const g=new THREE.PlaneGeometry(w,h,nx,nz); g.rotateX(-PI/2); g.translate((b.minX+b.maxX)/2,0,(b.minZ+b.maxZ)/2);
   const pos=g.attributes.position, n=pos.count; const col=new Float32Array(n*3);
-  const cG=Z.ground.map(c=>C3(c)), cP=C3(Z.path), cE=C3(Z.edge), cC=C3(Z.cliff), tmp=new THREE.Color();
+  const cG=Z.ground.map(c=>C3(c)), cP=C3(Z.path), cE=C3(Z.edge), cC=C3(Z.cliff), tmp=new THREE.Color(), pc3=new THREE.Color();
+  const paints=(W.paint||[]).map(p=>Object.assign({},p,{col:C3(p.c)}));
+  const pw0=opts.pathW||W.pathW||1.8;
   for(let i=0;i<n;i++){
     const x=pos.getX(i), z=pos.getZ(i); const d=sdfW(x,z); const nn=fbm(x*.15,z*.15);
-    let y=0;
-    if(d>0){ y=smooth(clamp(d/7,0,1))*(2.2+nn*2.6); }
-    else y=(nn-.5)*.12;
-    for(const p of (W.pools||[])){ const pd=Math.hypot(x-p.x,z-p.z)/p.r; if(pd<1.15) y=Math.min(y,-0.45*(1-smooth(clamp((pd-.7)/.45,0,1)))+(pd>=1.15?y:0)); }
-    pos.setY(i,y);
+    pos.setY(i,groundH(x,z));
     const k=nn*2; const base=k<.85?cG[1]:k<1.15?cG[0]:cG[2];
     tmp.copy(cG[0]).lerp(base,.85); const fine=vnoise(x*.7,z*.7); tmp.multiplyScalar(.9+fine*.2); const cl=vnoise(x*.09+50,z*.09); if(cl>.62) tmp.lerp(cG[1],.5).multiplyScalar(.92);
     if(Z.tiles){ const tx=Math.floor(x/2.2),tz=Math.floor(z/2.2); if((tx+tz)&1) tmp.multiplyScalar(.9); const fx=Math.abs(x/2.2-Math.round(x/2.2)),fz=Math.abs(z/2.2-Math.round(z/2.2)); if(fx<.06||fz<.06) tmp.multiplyScalar(.75); }
-    if(d<=0){ const pc=opts.noPath?99:pathCenterDist(x,z); const pw=(opts.pathW||1.8)+vnoise(x*.4,z*.4)*.8; if(pc<pw){ tmp.lerp(cP,.85*smooth(clamp((pw-pc)/.9,0,1))); } if(opts.plaza&&Math.hypot(x,z)<opts.plaza){ tmp.lerp(cP,.8); const a=Math.atan2(z,x),r=Math.hypot(x,z); if(Math.abs(Math.sin(a*14))<.08||Math.abs(Math.sin(r*1.4))<.1) tmp.multiplyScalar(.85); } }
+    // splat-like blending: paints (trampled dirt, paving, mud, shore sand) with soft noisy borders
+    for(const p of paints){ const dd=Math.hypot(x-p.x,z-p.z); if(dd>p.r+1.2) continue; if(p.ring&&dd<p.ring*.92) continue; const e=dd+(vnoise(x*.6+3,z*.6)-.5)*1.6; let t=1-smooth(clamp((e-p.r*.72)/(p.r*.28+.6),0,1)); if(t<=0) continue;
+      pc3.copy(p.col); if(p.tiles){ const fx=Math.abs(x/1.6-Math.round(x/1.6)),fz=Math.abs(z/1.6-Math.round(z/1.6)); if(fx<.07||fz<.07) pc3.multiplyScalar(.72); else if((Math.floor(x/1.6)+Math.floor(z/1.6))&1) pc3.multiplyScalar(.9); }
+      tmp.lerp(pc3,t*p.k*(.85+fine*.3)); }
+    if(d<=0){ const pc=opts.noPath?99:pathCenterDist(x,z); const pw=pw0+vnoise(x*.4,z*.4)*.9; if(pc<pw+.9){ tmp.lerp(cP,.85*smooth(clamp((pw-pc)/.9+.5,0,1))); if(pc<pw*.55) tmp.multiplyScalar(.96+fine*.06); } if(opts.plaza&&Math.hypot(x,z)<opts.plaza){ tmp.lerp(cP,.8); const a=Math.atan2(z,x),r=Math.hypot(x,z); if(Math.abs(Math.sin(a*14))<.08||Math.abs(Math.sin(r*1.4))<.1) tmp.multiplyScalar(.85); } }
     if(d>-1.2&&d<=0) tmp.lerp(cE,.5*(1+d/1.2));
     if(d>0) tmp.copy(cE).lerp(cC,smooth(clamp(d/5,0,1))).multiplyScalar(.85+nn*.3);
+    for(const p of (W.pools||[])){ const pd=Math.hypot(x-p.x,z-p.z)-p.r; if(pd<1.4&&pd>-1){ tmp.multiplyScalar(.78+.22*smooth(clamp(pd/1.4,0,1))); break; } }
     const sp=hash2(x*3.1,z*7.7); if(sp>.97) tmp.multiplyScalar(1.12); else if(sp<.03) tmp.multiplyScalar(.85);
     col[i*3]=tmp.r; col[i*3+1]=tmp.g; col[i*3+2]=tmp.b;
   }
@@ -5796,7 +5803,7 @@ function addProp(type,x,z,s=1,ry){ W.props.push({type,x,z,s,ry:ry===undefined?ra
 function buildPropMeshes(){
   const byType={}; for(const p of W.props){ (byType[p.type]=byType[p.type]||[]).push(p); }
   W.propIM={};
-  for(const t in byType){ const list=byType[t]; const g=asPropIM(t,list); if(g){ worldRoot.add(g); W.propIM[t]={grp:g,list}; continue; } const im=new THREE.InstancedMesh(propGeo(t),MT,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
+  for(const t in byType){ const list=byType[t]; const g=asPropIM(t,list); if(g){ worldRoot.add(g); W.propIM[t]={grp:g,list}; continue; } const ft=propFallback(t); if(!ft) continue; const im=new THREE.InstancedMesh(propGeo(ft),MT,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
   W.propCullAt=null;
 }
 const _pm=new THREE.Matrix4(), _pq=new THREE.Quaternion(), _pv=new THREE.Vector3(), _ps=new THREE.Vector3(), _py=new THREE.Vector3(0,1,0);
@@ -5805,40 +5812,27 @@ function cullProps(cx,cz,force){
   if(!force&&W.propCullAt&&Math.abs(W.propCullAt[0]-cx)<1.5&&Math.abs(W.propCullAt[1]-cz)<1.5) return;
   W.propCullAt=[cx,cz];
   const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
-  const far=CAMR.override&&CAMR.override.dist?1.9:1; const XR=xr*far, Z0=z0*far, Z1=z1*far;
+  const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; const XR=xr*far, Z0=z0*far, Z1=z1*far;
   for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0;
-    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-XR||dx>XR||dz<Z0||dz>Z1) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s,p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
-    if(grp){ asPropCount(grp,n); continue; } im.count=n; im.instanceMatrix.needsUpdate=true; }
+    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-XR||dx>XR||dz<Z0||dz>Z1) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
+    if(grp){ asPropCount(grp,n); grp.visible=n>0; continue; } im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; }
 }
-function groundY(x,z){ const d=sdfW(x,z); if(d<=0) return 0; return smooth(clamp(d/7,0,1))*(2.2+fbm(x*.15,z*.15)*2.6); }
+function groundY(x,z){ return groundH(x,z); }
 function scatterWalls(Z,b,dens){
   const step=2.0/Math.sqrt(dens); const wall=Z.wall;
   for(let x=b.minX;x<=b.maxX;x+=step) for(let z=b.minZ;z<=b.maxZ;z+=step){
     const px=x+rand(-step*.45,step*.45), pz=z+rand(-step*.45,step*.45); const d=sdfW(px,pz);
-    if(d<.6) continue; if(d>14) { if(chance(.75)) continue; }
+    if(d<.6) continue; if(d>14) { if(chance(.75)) continue; } if(W.pools.some(q=>Math.hypot(px-q.x,pz-q.z)<q.r+1.2)) continue; if(W.fp&&fpHit(px,pz,.7,0)) continue;
     if(d>7&&chance(.35)) continue;
-    const t=pick(wall); const p={type:t,x:px,z:pz,s:rand(.8,1.3)*(d>5?1.15:1),ry:rand(TAU)}; p.y=groundY(px,pz)-.1; W.props.push(p);
+    const t=pick(wall); const p={type:t,x:px,z:pz,s:rand(.8,1.3)*(d>5?1.15:1),ry:rand(TAU)}; p.y=groundY(px,pz)-.1; W.props.push(p); if(W.fp) fpAdd(px,pz,.7,'b',p);
   }
 }
-function scatterDeco(Z,n){
-  for(let i=0;i<n;i++){
-    const node=pick(W.walk.nodes); const a=rand(TAU),r=Math.sqrt(Math.random())*node.r*.95; const x=node.x+Math.cos(a)*r, z=node.z+Math.sin(a)*r;
-    if(sdfW(x,z)>-1) continue; const t=pick(Z.deco);
-    const small=['flowers','grass','fern','reeds','candles','glowShroom','shrooms','bones','skulls'].includes(t);
-    if(!small){ if(pathCenterDist(x,z)<3.2) continue; if(W.obst.some(o=>Math.hypot(o.x-x,o.z-z)<o.r+1.6)) continue; if(Math.hypot(x-W.start.x,z-W.start.z)<4) continue; W.obst.push({x,z,r:t==='fence'?1.0:t==='log'?1.1:.7}); }
-    addProp(t,x,z,rand(.85,1.2));
-  }
-  // grass tufts everywhere (cheap, no outline)
-  const gt=Z.id===4?'candles':Z.id>=5?'skulls':Z.id===3?'reeds':'grass';
-  if(Z.id<=2){ for(let i=0;i<220*Q.grass;i++){ const node=pick(W.walk.nodes); const a=rand(TAU),r=Math.sqrt(Math.random())*node.r; const x=node.x+Math.cos(a)*r,z=node.z+Math.sin(a)*r; if(pathCenterDist(x,z)<1.6) continue; addProp(i%5===0&&Z.id===1?'flowers':'grass',x,z,rand(.8,1.3)); } }
-}
-
 // ---------- interactive objects ----------
 function objMesh(id,geoFn,g){ const a=asObj(id); if(a){ g.add(a); return a; } return pmesh(geoFn(),g); }
 function mkObj(kind,x,z,o={}){
   const ob=Object.assign({kind,x,z,r:.6,hp:1,alive:true,y:0},o); let mesh;
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=o.ry!==undefined?o.ry:rand(TAU); worldRoot.add(g); ob.mesh=g;
-  switch(kind){
+  realRand(()=>{ switch(kind){
     case 'barrel': objMesh('obj:barrel',OBJ_GEO.barrel,g); ob.r=.45; ob.hp=1; ob.brk=1; break;
     case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
     case 'crate': objMesh('obj:crate',OBJ_GEO.crate,g); ob.r=.55; ob.hp=1; ob.brk=1; break;
@@ -5852,7 +5846,8 @@ function mkObj(kind,x,z,o={}){
     case 'portal': { objMesh('obj:portal',OBJ_GEO.portal,g); const sw=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.2),new THREE.ShaderMaterial({uniforms:{uT:{value:0},uOn:{value:o.on?1:0}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
         vertexShader:DECAL_VS,fragmentShader:`varying vec2 vUv;uniform float uT;uniform float uOn;void main(){vec2 p=vUv*2.0-1.0;p.y*=0.8;float r=length(p);float a=atan(p.y,p.x);float s=sin(a*5.0+r*10.0-uT*4.0)*0.5+0.5;float m=smoothstep(1.0,0.6,r);vec3 c=mix(vec3(1.0,0.35,0.05),vec3(1.0,0.85,0.4),s);gl_FragColor=vec4(c*m*(0.35+0.65*s)*uOn,1.0);}`}));
       sw.position.set(0,1.75,0); g.add(sw); ob.swirl=sw; ob.r=0; ob.on=!!o.on; g.rotation.y=0; break; }
-    case 'secret': pmesh(OBJ_GEO.secretWall(),g); ob.r=1.2; ob.hp=3; g.rotation.y=o.ry||0; break;
+    case 'secret': pmesh(o.mode==='barricade'?OBJ_GEO.barricade():o.mode==='lever'?OBJ_GEO.runeDoor():o.mode==='crack'?OBJ_GEO.crackWall():OBJ_GEO.secretWall(),g); ob.r=1.2; ob.hp=3; g.rotation.y=o.ry||0; break;
+    case 'lever': pmesh(OBJ_GEO.lever(),g); ob.r=.6; ob.hp=1; ob.lever=1; g.rotation.y=o.ry||0; break;
     case 'scroll': objMesh('obj:scroll',OBJ_GEO.scroll,g); ob.r=0; ob.float=1; break;
     case 'egg': pmesh(OBJ_GEO.nest(),g); { const e=pmesh(eggGeo(o.egg),g,0,.35,0); ob.eggMesh=e; } ob.r=0; break;
     case 'stone': { pmesh(cgeo('o_rune',b=>{ b.dod(1.2,0x8a8478,{p:[0,1.2,0],s:[1,1.7,1],j:.06}); for(let i=0;i<4;i++) b.box(.1,.5,.05,0xff9a3a,{p:[Math.cos(i*1.57)*.75,1.3,Math.sin(i*1.57)*.75],r:[0,-i*1.57+PI/2,0],e:1,ol:0}); },.06),g); ob.r=1.4; break; }
@@ -5861,7 +5856,7 @@ function mkObj(kind,x,z,o={}){
     case 'abyssPit': { const m=new THREE.Mesh(new THREE.CircleGeometry(2.2,28),new THREE.ShaderMaterial({uniforms:{uT:{value:0},uOn:{value:1}},transparent:true,depthWrite:false,vertexShader:DECAL_VS,
         fragmentShader:`varying vec2 vUv;uniform float uT;void main(){vec2 p=vUv*2.0-1.0;float r=length(p);float a=atan(p.y,p.x);float s=sin(a*4.0-r*8.0+uT*2.0)*0.5+0.5;vec3 c=mix(vec3(0.05,0.0,0.1),vec3(0.55,0.2,0.9),s*(1.0-r));gl_FragColor=vec4(c,smoothstep(1.0,0.85,r));}`}));
       m.rotation.x=-PI/2; m.position.y=.06; g.add(m); ob.swirl=m; pmesh(cgeo('o_pitring',b=>{ for(let i=0;i<10;i++){const a=i/10*TAU; b.dod(.45,0x4a4250,{p:[Math.cos(a)*2.4,.2,Math.sin(a)*2.4],j:.1});} },.05),g); ob.r=2.5; break; }
-  }
+  } });
   W.objs.push(ob); return ob;
 }
 
@@ -5888,84 +5883,12 @@ function setZoneLook(Z){
   document.body.dataset.zone=Z.id; asZone(Z);
 }
 
-// ---------- path layout ----------
-function genPath(nNodes,o={}){
-  const nodes=[], segs=[]; let x=0,z=0;
-  nodes.push({x,z,r:o.r0||7});
-  for(let i=1;i<nNodes;i++){
-    z-=rand(o.dmin||17,o.dmax||23); x=clamp(x+rand(-11,11),-16,16);
-    nodes.push({x,z,r:o.big&&i===nNodes-1?o.big:rand(6,8.5)});
-    segs.push({ax:nodes[i-1].x,az:nodes[i-1].z,bx:x,bz:z,w:rand(5.5,7)});
-  }
-  return {nodes,segs};
-}
-function addSideRoom(walk,fromIdx){
-  const n=walk.nodes[fromIdx]; const side=n.x>0?-1:1; const x=n.x+side*rand(13,17), z=n.z+rand(-5,5);
-  const room={x,z,r:3.6,side:true}; walk.nodes.push(room); walk.segs.push({ax:n.x,az:n.z,bx:x,bz:z,w:3.0,side:true}); return room;
-}
+// ---------- path layout / stage builder: см. p6b.js (мир v8) ----------
 function boundsOf(walk,pad=20){ let a=1e9,b=-1e9,c=1e9,d=-1e9; for(const n of walk.nodes){ a=Math.min(a,n.x-n.r);b=Math.max(b,n.x+n.r);c=Math.min(c,n.z-n.r);d=Math.max(d,n.z+n.r);} return {minX:a-pad,maxX:b+pad,minZ:c-pad,maxZ:d+pad}; }
-
-// ---------- stage builder ----------
-function newW(kind,Z){ W={kind,zone:Z,walk:null,obst:[],props:[],objs:[],camps:[],pools:[],hazards:[],start:{x:0,z:0},lock:null,spawnQ:[],t:0}; return W; }
-function makeStage(info){
-  unloadWorld(); const Z=info.zone; newW('stage',Z); W.info=info; W.lvl=info.lvl; setZoneLook(Z);
-  const T=info.type;
-  let walk;
-  if(T==='boss'){ walk=genPath(3,{big:14,dmin:20,dmax:22}); }
-  else if(T==='survive'){ walk=genPath(3,{dmin:20,dmax:24}); walk.nodes[1].r=12.5; }
-  else if(T==='escort'){ walk=genPath(7,{dmin:15,dmax:19}); }
-  else walk=genPath(T==='clear'?6:6);
-  W.walk=walk;
-  // secrets/side rooms
-  if(T!=='boss'){ const si=randi(1,walk.nodes.length-2); W.secretRoom=addSideRoom(walk,si); if(chance(.5)&&walk.nodes.length>4){ W.sideRoom2=addSideRoom(walk,si===1?2:1); } }
-  const main=walk.nodes.filter(n=>!n.side); const last=main[main.length-1];
-  W.start={x:0,z:2}; W.exit={x:last.x,z:last.z-(T==='boss'?last.r-2.5:3)};
-  // liquids
-  if(Z.id!==4){ const np=Z.id===3?7:Z.id>=5?5:3; for(let i=0;i<np;i++){ const n=pick(main.slice(1)); const a=rand(TAU),d=n.r+rand(2,7); W.pools.push({x:n.x+Math.cos(a)*d,z:n.z+Math.sin(a)*d,r:rand(2.5,4.5)}); } }
-  if(Z.id===3||Z.id>=5){ for(let i=1;i<main.length-1;i++){ if(chance(.55)){ const n=main[i]; const a=rand(TAU),d=rand(2,n.r*.55); const p={x:n.x+Math.cos(a)*d,z:n.z+Math.sin(a)*d,r:rand(1.4,2.2),haz:Z.id===3?'slow':'burn'}; W.pools.push(p); W.hazards.push({x:p.x,z:p.z,r:p.r*.85,t:p.haz,perm:true}); } } }
-  synDressStage(info,main);
-  if(T!=='boss') puzzlePlan(info,walk);
-  const b=boundsOf(walk,22); W.bounds=b;
-  buildGround(Z,b); buildLiquid(Z);
-  scatterWalls(Z,b,Q.props*(Z.id===4?.8:1));
-  scatterDeco(Z,Math.round(26*Q.props));
-  // objects
-  const nodeIn=(n,m=1.5)=>{ for(let k=0;k<20;k++){ const a=rand(TAU),r=rand(1.5,n.r-m); const x=n.x+Math.cos(a)*r,z=n.z+Math.sin(a)*r; if(walkable(x,z,.8)&&pathCenterDist(x,z)>1.5) return [x,z]; } return [n.x,n.z]; };
-  for(let i=1;i<main.length;i++){ const n=main[i]; const nb=randi(1,3); for(let k=0;k<nb;k++){ const [x,z]=nodeIn(n); mkObj(pick(['barrel','crate','pot','barrel']),x,z); } }
-  for(let i=0;i<2;i++){ const n=main[randi(1,main.length-1)]; const [x,z]=nodeIn(n,2); mkObj(pick(Z.id<=2?['wood','ore','wood','ess']:Z.id<=4?['ore','ess','ore']:['ore','ess','ess']),x,z); }
-  if(T!=='boss'){ const n=main[randi(1,main.length-2)]; const [x,z]=nodeIn(n,2); mkObj('chest',x,z,{ry:rand(-.5,.5)}); }
-  for(let i=0;i<(W.oilBarrels||0);i++){ const n=main[randi(1,main.length-1)]; const [x,z]=nodeIn(n,2); mkObj('oilBarrel',x,z); }
-  if(W.puzzle) puzzleBuild();
-  if(W.secretRoom){ const r=W.secretRoom; const sg=W.walk.segs.find(q=>q.bx===r.x&&q.bz===r.z); const mn=W.walk.nodes.find(q=>q.x===sg.ax&&q.z===sg.az); const Ls=Math.hypot(sg.bx-sg.ax,sg.bz-sg.az); const t0=Math.min(.6,(mn.r+.9)/Ls);
-    sg.closed=true; const sw=mkObj('secret',sg.ax+(sg.bx-sg.ax)*t0,sg.az+(sg.bz-sg.az)*t0,{ry:Math.atan2(sg.bx-sg.ax,sg.bz-sg.az)}); sw.seg=sg; sw.r=1.0;
-    const loreLeft=LORE.map((l,i)=>i).filter(i=>!S.lore.includes(i)); const roll=Math.random();
-    if(roll<.45&&loreLeft.length) mkObj('scroll',r.x,r.z,{lore:pick(loreLeft)});
-    else if(roll<.75) mkObj('egg',r.x,r.z,{egg:randomEggKind(Z.id)});
-    else mkObj('vault',r.x,r.z,{ry:0});
-    mkObj('chest',r.x+1.6,r.z+.6,{ry:rand(-.4,.4)});
-  }
-  if(W.sideRoom2){ const r=W.sideRoom2; if(chance(.5)) mkObj('vault',r.x,r.z,{ry:0}); else mkObj('chest',r.x,r.z,{ry:0}); mkObj('barrel',r.x+1.5,r.z); spawnCamp(r.x,r.z,2,info.lvl,{tier:1}); }
-  // exit portal
-  W.portal=mkObj('portal',W.exit.x,W.exit.z,{on:false});
-  // objective-specific
-  const L=info.lvl; const midNodes=main.slice(1,main.length-(T==='boss'?1:0));
-  W.obj={type:T,done:false,prog:0,need:0,txt:''};
-  if(T==='clear'||T==='hunt'||T==='rescue'||T==='totems'){
-    midNodes.forEach((n,i)=>{ const isLast=i===midNodes.length-1; const cnt=randi(3,5)+Math.floor(info.z/2); spawnCamp(n.x,n.z,cnt,L,{elite:chance(.25+info.s*.05)?1:0,champion:T==='hunt'&&isLast}); });
-  }
-  if(T==='rescue'){ const n=midNodes[Math.floor(midNodes.length/2)]; const [x,z]=nodeIn(n,2.5); W.cage=mkObj('cage',x,z,{hp:Math.round(60*F(L))}); W.obstCage={x,z,r:1.0}; W.obst.push(W.obstCage); }
-  if(T==='totems'){ W.totems=[]; midNodes.slice(0,3).forEach(n=>{ const [x,z]=nodeIn(n,2); const t=mkObj('totem',x,z,{hp:Math.round(95*F(L)),ry:0}); W.totems.push(t); W.obst.push(t.col={x,z,r:.7}); }); }
-  if(T==='survive'){ const n=main[1]; W.stone=mkObj('stone',n.x,n.z,{ry:0}); W.obst.push({x:n.x,z:n.z,r:1.5}); W.survT=70+info.z*5; W.survMax=W.survT; W.waveT=2; W.arena=n; spawnCamp(main[2].x,main[2].z,3,L,{}); }
-  if(T==='escort'){ W.cart=mkObj('cartE',main[0].x+2,main[0].z-4,{ry:PI}); W.cart.hp=W.cart.maxHp=Math.round(280*F(L)); W.cart.wp=1; W.cart.path=main.map(n=>({x:n.x,z:n.z})); W.cart.path[W.cart.path.length-1]={x:W.exit.x,z:W.exit.z+3.5};
-    W.ambush=main.slice(1,-1).map(n=>({x:n.x,z:n.z,done:false})); W.obst.push(W.cart.col={x:W.cart.x,z:W.cart.z,r:1.1});
-    midNodes.forEach((n,i)=>{ if(i%2===0) spawnCamp(n.x+rand(-3,3),n.z,randi(2,3),L,{}); }); }
-  if(T==='boss'){ const n=main[main.length-1]; W.arenaNode=n; W.bossId=Z.id===6?'dragon':Z.boss; spawnCamp(main[1].x,main[1].z,4,L,{elite:1}); bossArenaDress(W.bossId,n); }
-  objText(); buildPropMeshes();
-  return W;
-}
+function newW(kind,Z){ W={kind,zone:Z,walk:null,obst:[],props:[],objs:[],camps:[],pools:[],hazards:[],start:{x:0,z:0},lock:null,spawnQ:[],t:0,paint:[],reserve:[]}; return W; }
 function spawnCamp(x,z,cnt,L,o={}){
   const Z=W.zone; const pool=W.kind==='abyss'?W.enemyPool:Z.enemies;
-  const camp={x,z,members:[],trig:false,r:9};
+  const camp={x,z,members:[],trig:false,r:9,opt:!!(o.patrol||o.tier)};
   for(let i=0;i<cnt;i++){ const a=i/cnt*TAU+rand(-.3,.3), r=rand(1.5,3.5); let kind=pick(pool);
     const e=spawnEnemy(kind,x+Math.cos(a)*r,z+Math.sin(a)*r,L,{camp,elite:o.elite&&i===0?1:0}); camp.members.push(e); }
   if(o.champion){ const e=spawnEnemy(pick(pool.filter(k=>!['mushroom','imp'].includes(k))),x,z-1,L+1,{camp,elite:2,champion:true}); camp.members.push(e); W.champion=e; }
@@ -5973,7 +5896,7 @@ function spawnCamp(x,z,cnt,L,o={}){
 }
 function objText(){
   const o=W.obj, T=o.type; if(!o) return;
-  if(T==='clear'){ const left=W.camps.filter(c=>c.members.some(e=>e.alive)).length; o.txt=left?`Лагерей: ${W.camps.length-left}/${W.camps.length}`:'Идите к вратам'; o.done=!left; }
+  if(T==='clear'){ const cs=W.camps.filter(c=>!c.opt); const left=cs.filter(c=>c.members.some(e=>e.alive)).length; o.txt=left?`Лагерей: ${cs.length-left}/${cs.length}`:'Идите к вратам'; o.done=!left; }
   if(T==='hunt'){ o.done=!W.champion||!W.champion.alive; o.txt=o.done?'Чемпион повержен! К вратам':'Найдите чемпиона'; }
   if(T==='rescue'){ o.done=W.freed; o.txt=W.freed?'Выведите пленника к вратам':'Освободите пленника'; }
   if(T==='totems'){ const n=W.totems.filter(t=>t.alive).length; o.done=!n; o.txt=n?`Тотемов: ${W.totems.length-n}/${W.totems.length}`:'Тотемы пали! К вратам'; }
@@ -5998,19 +5921,31 @@ function makeVillage(){
   W.pools=[{x:30,z:4,r:5},{x:33,z:-6,r:3.5},{x:-31,z:-10,r:4}];
   W.paths=[{ax:0,az:0,bx:-6,bz:-31}]; for(const id of ['hall','forge','alch','pen','tavern','temple','store','saw','mine','well']){ const p=VPOS[id]; W.paths.push({ax:0,az:0,bx:p[0]*.8,bz:p[1]*.8}); }
   raidCarveLanes();
-  buildGround(Z,b,{plaza:5.5,pathW:1.3,noPath:false});
+  // v8: аккуратная деревня — площадь вокруг Сердца, тропы к каждому зданию, декор у домов; всё через правила расстановки (без наложений)
+  fpReset(); W.reserve=[]; W.band=W.paths.map(q=>({ax:q.ax,az:q.az,bx:q.bx,bz:q.bz,hw:1.25}));
+  const BR={hall:3.6,forge:2.6,alch:2.5,pen:2.6,tavern:2.9,temple:3,store:2.6,saw:2.4,mine:2.6,well:1.4};
+  for(const id in BR){ const q=VPOS[id]; reserve(q[0],q[1],BR[id]+.9,'bld'); }
+  for(const h of HOUSE_POS) reserve(h[0],h[1],2.7,'house'); for(const t of TOWER_POS) reserve(t[0],t[1],1.8,'tower');
+  for(const sk of RAID_SOCKETS) reserve(sk.x,sk.z,sk.slot==='wall'?3:1.8,'sock'); for(const k in NPC_POS) reserve(NPC_POS[k][0],NPC_POS[k][1],1.1,'npc');
+  reserve(0,0,6,'plaza'); reserve(-15,-21,3.2,'pit'); reserve(-6,-31,3.4,'gate'); reserve(0,6,1.5,'start');
+  buildGround(Z,b,{plaza:6.5,pathW:1.5,noPath:false});
   buildLiquid(Z);
-  // dirt paths to buildings painted via segs (side) are skipped; add palisade ring
-  for(let i=0;i<36;i++){ const a=i/36*TAU; const x=Math.cos(a)*25.5, z=Math.sin(a)*25.5; if(Math.abs(angWrap(a-Math.atan2(-31,-6)))<.22||nearLane(x,z,3.6)) continue; W.props.push({type:'palisade',x,z,s:1,ry:-a+PI/2}); }
-  // forest around
-  const wallZ=Object.assign({},ZONES[0],{wall:['treeRound','treeBirch','pine','treeRound','rock','bush']});
-  for(let i=0;i<Math.round(260*Q.props);i++){ const a=rand(TAU),r=rand(28,46); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(Math.abs(x+6)<5&&z<-26) continue; if(nearLane(x,z,4.2)) continue; if(W.pools.some(p=>Math.hypot(x-p.x,z-p.z)<p.r+1)) continue; W.props.push({type:pick(wallZ.wall),x,z,s:rand(.9,1.4),ry:rand(TAU),y:groundY(x,z)-.1}); }
-  for(let i=0;i<Math.round(160*Q.grass);i++){ const a=rand(TAU),r=rand(6,23); const x=Math.cos(a)*r,z=Math.sin(a)*r; W.props.push({type:i%4?'grass':'flowers',x,z,s:rand(.8,1.2),ry:rand(TAU)}); }
-  // decor
-  const deco=[['lantern',-4,4],['lantern',4,-4.5],['lantern',-3.5,-5],['lantern',5,4],['cart',-6,12],['hay',8,12],['barrelP',-11,1],['barrelP',-11.6,1.8],['banner',-2.5,-9],['banner',2.5,-9],['sign',-4.5,-24],['fence',16,1],['fence',-16,-12]];
-  for(const [t,x,z] of deco){ W.props.push({type:t,x,z,s:1,ry:t==='banner'?0:rand(TAU)}); if(!['banner','lantern','sign'].includes(t)) W.obst.push({x,z,r:t==='cart'?1.2:.7}); else W.obst.push({x,z,r:.25}); }
+  // palisade ring (gaps at the gate and raid lanes, never in the ponds)
+  for(let i=0;i<36;i++){ const a=i/36*TAU; const x=Math.cos(a)*25.5, z=Math.sin(a)*25.5; if(Math.abs(angWrap(a-Math.atan2(-31,-6)))<.22||nearLane(x,z,3.6)) continue; putProp('palisade',x,z,{out:true,edge:.2,ry:-a+PI/2,poolGap:.8,gap:-.6}); }
+  // forest around: spaced trunks, no trees in ponds or lanes
+  const wallZ=['treeRound','treeBirch','pine','treeRound','rock','bush','n:tree_bloom','n:tree_wide'];
+  for(let i=0;i<Math.round(300*Q.props);i++){ const a=rand(TAU),r=rand(28,46); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(Math.abs(x+6)<5&&z<-26) continue; if(nearLane(x,z,4.2)) continue; putProp(pick(wallZ),x,z,{out:true,edge:2,s:rand(.9,1.4),poolGap:.8,gap:.1}); }
+  // pond shores
+  for(const q of W.pools){ const n=Math.round(q.r*3); for(let i=0;i<n;i++){ const a=i/n*TAU+rand(-.2,.2), rr=q.r+rand(.3,1.0); putProp(pick(['reeds','n:rock_small','reeds']),q.x+Math.cos(a)*rr,q.z+Math.sin(a)*rr,{out:true,edge:-30,s:rand(.8,1.1),poolGap:-.3,gap:0}); } }
+  // decor (fixed spots, checked) + small dressing around every building plot
+  const deco=[['lantern',-4.6,4.6],['lantern',4.6,-4.6],['lantern',-4.6,-4.6],['lantern',4.6,4.6],['cart',-6.5,12.5],['hay',8.5,12.5],['barrelP',-11.2,1.2],['barrelP',-12.7,2.3],['banner',-2.6,-9.4],['banner',2.6,-9.4],['sign',-4.4,-24.5],['fence',16.5,1.5],['fence',-16.5,-12.5]];
+  for(const [t,x,z] of deco){ putProp(t,x,z,{ry:t==='banner'?0:rand(TAU),noRes:1,band:false}); }
+  const around=['barrelP','v:crate_B_small','v:sack','lantern','v:barrel','hay'];
+  for(const id in BR){ const q=VPOS[id]; const fa=Math.atan2(-q[1],-q[0]); for(const sd of [-1,1]){ for(let k=0;k<3;k++){ const a=fa+sd*rand(1.0,1.9), rr=BR[id]+rand(1.1,1.8); const x=q[0]+Math.cos(a)*rr, z=q[1]+Math.sin(a)*rr; if(putProp(pick(around),x,z,{s:rand(.85,1.05),noRes:1})) break; } }
+    for(let k=0;k<4;k++){ const a=fa+rand(-.9,.9), rr=BR[id]+rand(.7,1.4); putProp(k%2?'flowers':'grass',q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr,{s:rand(.9,1.2)}); } }
+  for(let i=0;i<Math.round(170*Q.grass);i++){ const a=rand(TAU),r=rand(7,23); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(pathCenterDist(x,z)<1.9) continue; putProp(i%4?'grass':'flowers',x,z,{s:rand(.8,1.2)}); }
   // heart
-  const hg=new THREE.Group(); worldRoot.add(hg); pmesh(OBJ_GEO.heart(),hg); const core=pmesh(OBJ_GEO.heartCore(),hg,0,2.4,0); W.heartCore=core; W.obst.push({x:0,z:0,r:2.0});
+  const hg=new THREE.Group(); worldRoot.add(hg); pmesh(OBJ_GEO.heart(),hg); const core=pmesh(OBJ_GEO.heartCore(),hg,0,2.4,0); W.heartCore=core; W.obst.push({x:0,z:0,r:2.0,grp:'heart'});
   W.heartLight=null;
   // gate
   W.gate=mkObj('gate',-6,-31,{ry:Math.atan2(6,31)*0+0.19});
@@ -6030,16 +5965,16 @@ function buildVillageBuildings(){
   for(const k in W.bmesh){ worldRoot.remove(W.bmesh[k]); } W.bmesh={}; W.obst=W.obst.filter(o=>!o.bld);
   for(const id of BLD_ORDER){
     const lv=S.bld[id];
-    if(id==='houses'){ for(let i=0;i<lv*2&&i<HOUSE_POS.length;i++){ const [x,z,ry]=HOUSE_POS[i]; const m=bldMesh('houses',1+(i%4),()=>BUILD_GEO.houses(i)); m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh['h'+i]=m; W.obst.push({x,z,r:1.9,bld:1}); } continue; }
-    if(id==='walls'){ if(lv>0) for(let i=0;i<Math.min(4,lv+1);i++){ const [x,z]=TOWER_POS[i]; const m=bldMesh('walls',lv,()=>BUILD_GEO.walls(lv)); m.position.set(x,0,z); worldRoot.add(m); W.bmesh['t'+i]=m; W.obst.push({x,z,r:1.3,bld:1}); } continue; }
+    if(id==='houses'){ for(let i=0;i<lv*2&&i<HOUSE_POS.length;i++){ const [x,z,ry]=HOUSE_POS[i]; const m=bldMesh('houses',1+(i%4),()=>BUILD_GEO.houses(i)); m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh['h'+i]=m; W.obst.push({x,z,r:1.9,bld:1,grp:'h'+i}); } continue; }
+    if(id==='walls'){ if(lv>0) for(let i=0;i<Math.min(4,lv+1);i++){ const [x,z]=TOWER_POS[i]; const m=bldMesh('walls',lv,()=>BUILD_GEO.walls(lv)); m.position.set(x,0,z); worldRoot.add(m); W.bmesh['t'+i]=m; W.obst.push({x,z,r:1.3,bld:1,grp:'t'+i}); } continue; }
     const [x,z,ry]=VPOS[id];
     let m;
     if(lv>0){ m=bldMesh(id,lv,()=>BUILD_GEO[id](lv)); }
     else { if(bldUnlock(id)>S.bld.hall) continue; m=bldMesh(id,0,()=>OBJ_GEO.plot()); }
     m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh[id]=m;
     const rad={hall:3.6,forge:2.6,alch:2.5,pen:1.5,tavern:2.9,temple:3,store:2.6,saw:2.4,mine:2.6,well:1.4}[id]||2;
-    if(lv>0) W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1});
-    if(id==='pen'&&lv>0){ W.obst.push({x:x+Math.sin(ry)*-1.6*0,z:z-1.6,r:1.6,bld:1}); }
+    if(lv>0) W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1,grp:id});
+    if(id==='pen'&&lv>0){ W.obst.push({x:x+Math.sin(ry)*-1.6*0,z:z-1.6,r:1.6,bld:1,grp:id}); }
   }
   buildRaidStructs();
   W.abyssOpen=stageDone('1-5');
@@ -6051,27 +5986,591 @@ function refreshVillagers(){
   for(let i=0;i<n;i++){ const rig=buildNPC(['v0','v1','v2'][i%3]); rig.root.scale.setScalar(.92); const a=rand(TAU),r=rand(7,18); const v={x:Math.cos(a)*r,z:Math.sin(a)*r,rig,tx:0,tz:0,wait:rand(3),t:rand(5),face:0}; rig.root.position.set(v.x,0,v.z); worldRoot.add(rig.root); W.villagers.push(v); }
 }
 
-// ---------- abyss ----------
+// ---------- abyss: см. p6b.js (makeAbyss, арены-варианты) ----------
+// ================= p6b: мир v8 — многозонные уровни, правила расстановки, ландшафт =================
+// Этап = 3–7 «площадок» (поляны, руины, лагеря, арена), соединённых широкими коридорами (8,5–10 м), + 1–2 боковых отнорка
+// (сундук, элитный лагерь, святилище), комната загадки (p12) и настоящий тайник (замкнут скалами, вход — треснувшая стена,
+// баррикада или рычаг). Генерация детерминирована по ключу этапа (seed), все проверки — в p6c (validateWorld).
+// Правила расстановки: пропсы/объекты/спавны не пересекаются, не стоят в воде/лаве/трясине, вода и лава — у края площадок
+// и в низинах; там, где дорога пересекает ручей, — мост; главная тропа (полоса маршрута) всегда свободна.
+function rng32(seed){ let a=seed>>>0; return ()=>{ a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function strH(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+var RAND0=null;
+function withSeed(seed,fn){ const mr=Math.random, prev=RAND0; RAND0=RAND0||mr; Math.random=rng32(seed); try{ return fn(); } finally{ Math.random=mr; RAND0=prev; } }
+// model building (asset rigs, first-time procedural geometry) must not eat the level seed — otherwise layouts differ by cache state
+function realRand(fn){ if(!RAND0) return fn(); const cur=Math.random; Math.random=RAND0; try{ return fn(); } finally{ Math.random=cur; } }
+const angWrap2=a=>{ while(a>PI) a-=TAU; while(a<-PI) a+=TAU; return a; };
+
+// ---------- footprints: collision radius (c), spacing radius (v), class: b = blocker, s = soft (no collision, keeps spacing), t = tiny ----------
+const PFOOT={treeRound:[.5,1.5,'b'],treeBirch:[.45,1.2,'b'],pine:[.45,1.2,'b'],oakDark:[.55,1.5,'b'],deadTree:[.4,1.1,'b'],charTree:[.4,1.1,'b'],stump:[.4,.6,'b'],
+  rock:[.85,1.0,'b'],stone2:[.6,.75,'b'],bogRock:[.8,.95,'b'],lavaRock:[.8,.95,'b'],obsidian:[.7,.85,'b'],basalt:[.9,1.1,'b'],crystal:[.6,.8,'b'],
+  pillar:[.7,.8,'b'],pillarBroken:[.7,.8,'b'],tomb:[.7,.85,'b'],wallSeg:[1.0,1.2,'b'],coffin:[.6,.75,'b'],rib:[.5,1.3,'b'],
+  bush:[0,.9,'s'],fence:[.5,1.1,'b'],hay:[.7,.8,'b'],log:[.6,1.0,'b'],cart:[1.1,1.4,'b'],lantern:[.25,.4,'b'],banner:[.25,.4,'b'],barrelP:[.4,.5,'b'],sign:[.25,.4,'b'],palisade:[1.0,1.1,'b'],
+  goldPile:[.5,.6,'b'],vent:[0,.6,'s'],campfire:[.85,1.1,'b'],bridgeWood:[0,0,'x'],bridgeStone:[0,0,'x'],cwall:[1.2,1.5,'b'],
+  flowers:[0,.3,'t'],grass:[0,.25,'t'],fern:[0,.35,'t'],reeds:[0,.35,'t'],shrooms:[0,.3,'t'],glowShroom:[0,.3,'t'],candles:[0,.3,'t'],bones:[0,.4,'t'],skulls:[0,.3,'t'],
+  'n:tree_wide':[.6,1.7,'b'],'n:tree_bloom':[.5,1.4,'b'],'n:fir':[.45,1.2,'b'],'n:tree_block':[.45,1.2,'b'],'n:pine_dark':[.45,1.2,'b'],'n:fir_dark':[.45,1.2,'b'],'n:tree_wide_dark':[.6,1.7,'b'],
+  'n:tree_swamp':[.5,1.3,'b'],'n:dead_tree_thin':[.35,.9,'b'],'n:dead_tree_red':[.4,1.1,'b'],'n:tree_autumn':[.5,1.5,'b'],
+  'n:bush_box':[0,.8,'s'],'n:bush_tall':[0,.8,'s'],'n:bush_dark':[0,.9,'s'],'n:bush_swamp':[0,.9,'s'],'n:bush_berry':[0,.9,'s'],
+  'n:rock_small':[0,.45,'t'],'n:rock_pebble':[0,.3,'t'],'n:rock_block':[.8,1.0,'b'],'n:rock_bog_round':[.7,.9,'b'],'n:rock_red':[.8,1.0,'b'],'n:grass_blade':[0,.25,'t'],
+  'd:column':[.6,.7,'b'],'d:wall_half':[1.0,1.2,'b'],'d:rubble_half':[0,.7,'s'],'d:rubble_large':[.7,1.0,'b'],'d:barrel_large':[.55,.6,'b'],'d:crates_stacked':[.8,.9,'b'],'d:box_stacked':[.6,.7,'b'],
+  'd:torch_lit':[.2,.3,'b'],'d:banner_shield_red':[.25,.4,'b'],'d:rocks':[0,.6,'s'],'d:rocks_gold':[0,.6,'s'],'d:sword_shield_broken':[0,.5,'t'],'d:keg':[.45,.5,'b'],'d:floor_tile_large':[0,0,'x'],
+  'h:gravestone':[.5,.6,'b'],'h:grave_B':[.6,.7,'b'],'h:gravemarker_A':[.35,.45,'b'],'h:crypt':[2.6,3.0,'b'],'h:fence':[.4,.9,'b'],'h:fence_broken':[.4,.9,'b'],'h:lantern_standing':[.25,.4,'b'],
+  'h:post_skull':[.25,.4,'b'],'h:shrine_candles':[.6,.7,'b'],'h:scarecrow':[.35,.6,'b'],'h:haybale':[.7,.8,'b'],'h:pumpkin_orange_jackolantern':[0,.4,'t'],'h:tree_dead_large':[.6,1.6,'b'],'h:candle_triple':[0,.3,'t'],'h:bone_A':[0,.3,'t'],
+  'v:tent':[1.6,1.9,'b'],'v:sack':[.4,.5,'b'],'v:weaponrack':[.6,.8,'b'],'v:crate_B_small':[.45,.55,'b'],'v:barrel':[.45,.5,'b'],'v:wheelbarrow':[.6,.8,'b'],'v:resource_stone':[.6,.8,'b'],'v:target':[.4,.6,'b'],'v:flag_red':[.2,.3,'b'],'v:trough':[.6,.8,'b'],'v:pallet':[0,.7,'s']};
+function pfoot(t,s){ const f=PFOOT[t]||[.5,.8,'b']; return {c:f[0]*(s||1),v:f[1]*(s||1),k:f[2]}; }
+// asset-only prop types: procedural stand-in when the kit is not loaded / models are off (null = skip)
+const PROP_FB={'n:tree_wide':'treeRound','n:tree_bloom':'treeRound','n:fir':'pine','n:tree_block':'treeBirch','n:pine_dark':'pine','n:fir_dark':'pine','n:tree_wide_dark':'oakDark','n:tree_swamp':'deadTree',
+  'n:dead_tree_thin':'deadTree','n:dead_tree_red':'charTree','n:tree_autumn':'treeRound','n:bush_box':'bush','n:bush_tall':'bush','n:bush_dark':'bush','n:bush_swamp':'bush','n:bush_berry':'bush',
+  'n:rock_small':'stone2','n:rock_pebble':'stone2','n:rock_block':'rock','n:rock_bog_round':'bogRock','n:rock_red':'lavaRock','n:grass_blade':'grass',
+  'd:column':'pillar','d:wall_half':'wallSeg','d:rubble_half':'stone2','d:rubble_large':'rock','d:barrel_large':'barrelP','d:crates_stacked':'barrelP','d:box_stacked':'barrelP','d:torch_lit':'lantern',
+  'd:banner_shield_red':'banner','d:rocks':'stone2','d:rocks_gold':'goldPile','d:sword_shield_broken':'bones','d:keg':'barrelP',
+  'h:gravestone':'tomb','h:grave_B':'tomb','h:gravemarker_A':'tomb','h:crypt':'wallSeg','h:fence':'fence','h:fence_broken':'fence','h:lantern_standing':'lantern','h:post_skull':'skulls','h:shrine_candles':'candles',
+  'h:scarecrow':'sign','h:haybale':'hay','h:pumpkin_orange_jackolantern':'shrooms','h:tree_dead_large':'deadTree','h:candle_triple':'candles','h:bone_A':'bones',
+  'v:tent':'cwall','v:sack':'hay','v:weaponrack':'fence','v:crate_B_small':'barrelP','v:barrel':'barrelP','v:wheelbarrow':'cart','v:resource_stone':'stone2','v:target':'sign','v:flag_red':'banner','v:trough':'log','v:pallet':'log'};
+function propFallback(t){ if(PROPS[t]) return t; const f=PROP_FB[t]; return f&&PROPS[f]?f:null; }
+
+// ---------- new procedural props: campfire, bridges, cracked wall / barricade / rune door, tent stand-in ----------
+PROPS.campfire=b=>{ for(let i=0;i<8;i++){ const a=i/8*TAU; b.dod(.22,0x7a746a,{p:[Math.cos(a)*.62,.12,Math.sin(a)*.62],j:.1}); }
+  for(let i=0;i<3;i++){ const a=i/3*TAU; b.cyl(.08,.1,1.0,0x5a3a20,{p:[Math.cos(a)*.18,.25,Math.sin(a)*.18],r:[Math.sin(a)*1.1,0,-Math.cos(a)*1.1],seg:5}); }
+  b.cone(.3,.7,0xff8a2a,{p:[0,.45,0],e:1,ol:0,seg:6}); b.cone(.18,.5,0xffd060,{p:[0,.42,0],e:1,ol:0,seg:6}); };
+PROPS.bridgeWood=b=>{ // deck along local z (length 5.6), width 1 (scaled by s on x via sy trick is not available) — built 10 m wide
+  for(let i=0;i<9;i++) b.box(10.4,.12,.56,i%2?0x8a6238:0x7a5430,{p:[0,.1,-2.4+i*.6],j:.06,ol:0});
+  for(const sx of [-5.1,5.1]){ b.box(.16,.16,5.6,0x5a3a20,{p:[sx,.62,0]}); for(const sz of [-2.6,0,2.6]) b.cyl(.1,.12,1.1,0x5a3a20,{p:[sx,.35,sz],seg:6}); }
+  for(const sz of [-2.7,2.7]) b.box(10.6,.18,.22,0x5a3a20,{p:[0,.05,sz],ol:0}); };
+PROPS.bridgeStone=b=>{ for(let i=0;i<7;i++) b.box(10.4,.22,.8,i%2?0x5a524c:0x4a4440,{p:[0,.1,-2.4+i*.8],j:.05,ol:0});
+  for(const sx of [-5.1,5.1]){ b.box(.4,.55,5.8,0x3e3836,{p:[sx,.3,0],j:.05}); for(const sz of [-2.6,2.6]) b.box(.55,.95,.55,0x4a4440,{p:[sx,.45,sz]}); } };
+PROPS.cwall=b=>{ b.box(1.6,1.6,1.6,0x6a5a48,{p:[0,.8,0],j:.06}); b.cone(1.3,1.4,0x8a6a4a,{p:[0,2.2,0],seg:4}); };
+OBJ_GEO.crackWall=()=>cgeo('o_cwall',b=>{ b.box(3.9,2.6,1.0,0x8a8478,{p:[0,1.3,0],j:.07,seg:2}); b.dod(.9,0x7a746a,{p:[-2.1,.8,.1],s:[1,1.4,1],j:.08}); b.dod(.9,0x7a746a,{p:[2.1,.8,.1],s:[1,1.4,1],j:.08}); b.box(4.1,.3,1.1,0x6a6458,{p:[0,2.65,0]});
+  const C=[[-1.2,.5,.3],[-.9,1.1,-.2],[-.5,1.6,.4],[-.1,2.1,-.3],[.4,1.3,.5],[.9,.8,-.4],[1.3,1.6,.2]]; for(const [x,y,r] of C) b.box(.07,.5,.06,0xffc060,{p:[x,y,.52],r:[0,0,r],e:1,ol:0}); },.05);
+OBJ_GEO.barricade=()=>cgeo('o_barr',b=>{ for(let i=0;i<5;i++) b.box(.22,2.4,.18,0x7a5430,{p:[-1.6+i*.8,1.2,0],r:[0,0,(i%2?.08:-.06)],j:.08}); b.box(4.0,.26,.16,0x5a3a20,{p:[0,.8,.18],r:[0,0,.18]}); b.box(4.0,.26,.16,0x5a3a20,{p:[0,1.7,.18],r:[0,0,-.16]});
+  for(const x of [-2.1,2.1]) b.dod(.8,0x7a746a,{p:[x,.7,0],s:[1,1.3,1],j:.08}); b.box(.06,.5,.05,0xffd080,{p:[.3,1.2,.3],e:1,ol:0}); },.05);
+OBJ_GEO.runeDoor=()=>cgeo('o_rdoor',b=>{ b.box(3.9,2.8,.8,0x6a6670,{p:[0,1.4,0],j:.04}); b.box(4.3,.35,1.0,0x55525a,{p:[0,2.85,0]}); for(const x of [-2.1,2.1]) b.box(.6,3.0,1.0,0x55525a,{p:[x,1.5,0]});
+  b.tor(.5,.06,0x8ad8ff,{p:[0,1.5,.42],e:1,ol:0}); b.oct(.18,0x8ad8ff,{p:[0,1.5,.45],e:1,ol:0}); },.05);
+OBJ_GEO.lever=()=>cgeo('o_lever',b=>{ b.box(.8,.5,.6,0x5a5048,{p:[0,.25,0]}); b.cyl(.06,.06,1.1,0x6a4a2a,{p:[0,.8,0],r:[.5,0,0]}); b.sph(.12,0x3a3a3a,{p:[0,1.3,.27]}); b.oct(.12,0x8ad8ff,{p:[0,.55,.32],e:1,ol:0}); },.03);
+
+// ---------- zone kits: what grows/stands where (KayKit types with procedural fallbacks) ----------
+const ZKIT={
+  1:{trees:['n:tree_bloom','treeRound','n:tree_wide','treeBirch','n:tree_autumn'],shrub:['bush','n:bush_berry','n:bush_tall'],rock:['rock','n:rock_small','stone2'],tuft:['grass','flowers','grass','n:grass_blade','flowers'],
+     shore:['reeds','n:rock_small','grass'],ruin:['pillarBroken','wallSeg','d:column','d:rubble_half'],edge:['treeRound','n:tree_wide','treeBirch','n:tree_bloom','bush','rock','n:bush_tall'],
+     themes:['camp','clearing','ruins','farm','camp'],big:['n:tree_wide',1.7],bridge:'bridgeWood',small:['flowers','n:rock_pebble']},
+  2:{trees:['pine','n:fir','n:pine_dark','oakDark','n:fir_dark'],shrub:['n:bush_dark','bush','fern'],rock:['stone2','n:rock_block','n:rock_small'],tuft:['fern','grass','shrooms','fern','n:grass_blade'],
+     shore:['reeds','fern','n:rock_small'],ruin:['stone2','pillarBroken','log','d:rubble_half'],edge:['pine','n:fir','n:pine_dark','oakDark','n:fir_dark','pine','stone2'],
+     themes:['camp','grove','logging','ruins','camp'],big:['n:tree_wide_dark',1.9],bridge:'bridgeWood',small:['shrooms','n:rock_pebble']},
+  3:{trees:['deadTree','n:tree_swamp','n:dead_tree_thin','stump'],shrub:['n:bush_swamp','reeds'],rock:['bogRock','n:rock_bog_round'],tuft:['reeds','glowShroom','reeds','n:grass_blade'],
+     shore:['reeds','reeds','n:rock_bog_round'],ruin:['pillarBroken','bogRock','stump','d:rubble_half'],edge:['deadTree','n:tree_swamp','deadTree','reeds','bogRock','n:dead_tree_thin','stump'],
+     themes:['camp','deadgrove','ruins','totems','camp'],big:['n:tree_swamp',1.9],bridge:'bridgeWood',small:['glowShroom','n:rock_pebble']},
+  4:{trees:['pillar','d:column','pillarBroken'],shrub:['d:rubble_half','bones'],rock:['tomb','h:gravestone','h:grave_B'],tuft:['candles','bones','h:bone_A','d:sword_shield_broken'],
+     shore:['bones'],ruin:['pillarBroken','wallSeg','d:column','d:wall_half','d:rubble_half'],edge:['pillar','wallSeg','pillarBroken','tomb','pillar','d:column'],
+     themes:['hall','graveyard','ruins','shrine','hall'],big:['h:crypt',.9],bridge:null,small:['candles','bones']},
+  5:{trees:['charTree','n:dead_tree_red'],shrub:['vent','d:rocks'],rock:['obsidian','lavaRock','n:rock_red'],tuft:['skulls','d:rocks','n:rock_pebble'],
+     shore:['obsidian','n:rock_red','n:rock_pebble'],ruin:['pillarBroken','wallSeg','obsidian','d:rubble_half'],edge:['charTree','obsidian','lavaRock','charTree','obsidian','n:rock_red'],
+     themes:['camp','spires','ruins','camp','spires'],big:['basalt',1.7],bridge:'bridgeStone',small:['skulls','n:rock_pebble']},
+  6:{trees:['basalt','crystal','obsidian'],shrub:['vent','d:rocks_gold'],rock:['obsidian','basalt','crystal'],tuft:['skulls','d:rocks_gold','n:rock_pebble'],
+     shore:['obsidian','n:rock_pebble'],ruin:['pillarBroken','rib','basalt','d:rubble_half'],edge:['basalt','crystal','obsidian','basalt','rib'],
+     themes:['hoard','crystals','bones','camp','crystals'],big:['crystal',2.4],bridge:'bridgeStone',small:['skulls','d:rocks_gold']}
+};
+// ground materials per zone (dirt path / packed earth, stone, mud, sand/shore)
+const ZMAT={1:{dirt:0xb4925a,stone:0x9a9488,mud:0x6a5a3a,sand:0xd8c690},2:{dirt:0x8a6a42,stone:0x7a7a6a,mud:0x4a3e28,sand:0x9a8a5a},3:{dirt:0x5a5038,stone:0x6a6a5a,mud:0x3a3626,sand:0x5a5a3a},
+  4:{dirt:0x6a6676,stone:0x7a7684,mud:0x3a3844,sand:0x5a5664},5:{dirt:0x5a4a42,stone:0x5a524c,mud:0x2a2220,sand:0x3a2a24},6:{dirt:0x5a3a30,stone:0x4a3a38,mud:0x2a1414,sand:0x4a2a20},
+  0:{dirt:0xae8c56,stone:0xa49a88,mud:0x6a5a3a,sand:0xd8c690}};
+
+// ---------- spatial hash of footprints ----------
+const FPC=4, FPMAX=3.2;
+function fpReset(){ W.fp=new Map(); W.fpAll=[]; }
+function fpAdd(x,z,r,k,ref){ const e={x,z,r,k,ref}; const key=Math.floor(x/FPC)+','+Math.floor(z/FPC); let b=W.fp.get(key); if(!b) W.fp.set(key,b=[]); b.push(e); W.fpAll.push(e); return e; }
+function fpHit(x,z,r,gap,test){ const R=r+gap+FPMAX, i0=Math.floor((x-R)/FPC),i1=Math.floor((x+R)/FPC),j0=Math.floor((z-R)/FPC),j1=Math.floor((z+R)/FPC);
+  for(let i=i0;i<=i1;i++) for(let j=j0;j<=j1;j++){ const b=W.fp.get(i+','+j); if(!b) continue; for(const e of b){ if(test&&!test(e)) continue; if(Math.hypot(e.x-x,e.z-z)<e.r+r+gap) return e; } } return null; }
+// walk SDF without closed (secret) corridors — what the hero can actually reach right now
+function sdfOpen(x,z){ let d=1e9; for(const n of W.walk.nodes){ const v=Math.hypot(x-n.x,z-n.z)-n.r; if(v<d)d=v; } for(const s of W.walk.segs){ if(s.closed) continue; const v=segDist(x,z,s)[0]-s.w/2; if(v<d)d=v; } return d; }
+// distance to corridor centre lines (route band); every seg carries its own band half-width
+function bandDist(x,z){ let d=1e9; for(const s of (W.band||[])){ const v=segDist(x,z,s)[0]-s.hw; if(v<d) d=v; } return d; }
+function poolHit(x,z,r,gap){ for(const p of W.pools){ if(Math.hypot(x-p.x,z-p.z)<p.r+r+gap) return p; } return null; }
+function resHit(x,z,r){ for(const q of (W.reserve||[])){ if(Math.hypot(x-q.x,z-q.z)<q.r+r) return q; } return null; }
+function reserve(x,z,r,tag){ (W.reserve=W.reserve||[]).push({x,z,r,tag}); }
+// can a thing with footprint r stand here? o: {k:'b'|'s'|'t'|'o'(object), out, edge, band, gap, poolGap, noRes}
+function canStand(x,z,r,o={}){
+  const k=o.k||'b';
+  if(o.out){ if(sdfW(x,z)<(o.edge||.4)) return false; }
+  else if(sdfOpen(x,z)>-(r+(o.edge===undefined?.35:o.edge))) return false;
+  if(poolHit(x,z,r,o.poolGap===undefined?.35:o.poolGap)) return false;
+  if(!o.out&&k!=='t'&&o.band!==false&&bandDist(x,z)<r) return false;
+  if(!o.out&&k!=='t'&&!o.noRes&&resHit(x,z,r)) return false;
+  const gap=o.gap===undefined?.15:o.gap;
+  if(k==='t'){ if(fpHit(x,z,r,0,e=>e.k!=='t')) return false; }
+  else if(fpHit(x,z,r,gap,e=>e.k!=='t')||fpHit(x,z,r,0,e=>e.k==='t')) return false;
+  if(o.test&&!o.test(x,z)) return false;
+  return true;
+}
+// a prop with rules: returns the prop or null
+function putProp(type,x,z,o={}){
+  const s=o.s||1, f=pfoot(type,s), r=o.out?Math.max(f.c,f.v*.55):(f.k==='b'?Math.max(f.c,f.v*.8):f.v*.7);
+  if(!o.force&&!canStand(x,z,r,Object.assign({k:f.k},o))) return null;
+  const p={type,x,z,s,ry:o.ry===undefined?rand(TAU):o.ry}; if(o.sy) p.sy=o.sy; p.y=o.y!==undefined?o.y:groundH(x,z)-(o.out?.12:.02);
+  const k=o.k||f.k; W.props.push(p); fpAdd(x,z,r,k,p);
+  if(k==='b'&&!o.out&&f.c>0&&!o.noCol) W.obst.push({x,z,r:f.c,prop:type});
+  return p;
+}
+function tryProp(type,fn,n,o){ for(let i=0;i<(n||12);i++){ const [x,z]=fn(); const p=putProp(type,x,z,o); if(p) return p; } return null; }
+function ringPt(c,r0,r1,a0,a1){ const a=a0===undefined?rand(TAU):rand(a0,a1), r=rand(r0,r1); return [c.x+Math.cos(a)*r,c.z+Math.sin(a)*r]; }
+// free spot for an object (chest, totem…): inside area c, off the route band, away from everything
+function spotIn(c,r0,r1,r,o={}){ for(let i=0;i<40;i++){ const [x,z]=ringPt(c,r0,r1,o.a0,o.a1); if(canStand(x,z,r,Object.assign({k:'o',gap:.4},o))) return [x,z]; } return null; }
+function objAt(kind,x,z,o={}){ const ob=mkObj(kind,x,z,o); fpAdd(x,z,Math.max(ob.r||.5,.5),'o',ob); return ob; }
+
+// ---------- ground height (shared by the mesh, props and the validator) ----------
+function groundH(x,z){ const d=sdfW(x,z); const nn=fbm(x*.15,z*.15); let y=d>0?(W&&(W.kind==='stage'||W.kind==='abyss')?smooth(clamp(d/2.6,0,1))*(1.3+nn*.5)+smooth(clamp((d-2)/6,0,1))*(1.4+nn*2.4):smooth(clamp(d/7,0,1))*(2.2+nn*2.6)):(nn-.5)*.12;
+  for(const p of (W.pools||[])){ const pd=Math.hypot(x-p.x,z-p.z)/p.r; if(pd<1.15){ const c=-0.45*(1-smooth(clamp((pd-.7)/.45,0,1))); if(c<y) y=c; } }
+  return y; }
+
+// ---------- layout ----------
+const STAGE_SHAPE={ clear:{n:7}, rescue:{n:7}, totems:{n:7}, hunt:{n:7}, survive:{n:4,arena:2,ar:14}, escort:{n:7,straight:1}, boss:{n:4,arena:3,ar:15} };
+function layNode(walk,x,z,r,o){ const n=Object.assign({x,z,r},o||{}); walk.nodes.push(n); return n; }
+function stageLayout(info){
+  const T=info.type, sh=STAGE_SHAPE[T]||STAGE_SHAPE.clear, N=sh.n;
+  const walk={nodes:[],segs:[]}; const areas=[]; const route=[]; const band=[];
+  W.walk=walk; W.areas=areas; W.route=route; W.band=band; W.puzzle=null; W.secret=null; W.secretRoom=null; W.nooks=[]; W.links=[];
+  let x=0,z=0,h=0;
+  const a0=layNode(walk,0,0,9.5,{area:0}); areas.push(Object.assign(a0,{i:0,role:'start',links:[]}));
+  const shapes=()=>walk.nodes.map(n=>({n})).concat(walk.segs.map(s=>({s})));
+  const clearOf=(px,pz,pr,skip)=>{ for(const n of walk.nodes){ if(skip&&skip.includes(n)) continue; if(Math.hypot(px-n.x,pz-n.z)<n.r+pr) return false; } for(const s of walk.segs){ if(skip&&skip.includes(s)) continue; if(segDist(px,pz,s)[0]<s.w/2+pr) return false; } return true; };
+  const segClear=(s,pad,skip)=>{ const L=Math.hypot(s.bx-s.ax,s.bz-s.az), n=Math.ceil(L/1.5); for(let i=0;i<=n;i++){ const t=i/n, px=lerp(s.ax,s.bx,t), pz=lerp(s.az,s.bz,t); if(!clearOf(px,pz,s.w/2+pad,skip)) return false; } return true; };
+  for(let i=1;i<N;i++){
+    const prev=areas[i-1]; const role=i===N-1?(T==='boss'?'arena':'gate'):(sh.arena===i?'arena':'mid');
+    const r=role==='arena'?sh.ar:role==='gate'?9.5:rand(10.5,12.5);
+    let placed=false;
+    for(let k=0;k<40&&!placed;k++){
+      let hh=h+rand(-.75,.75); if(x>22) hh-=.45; if(x<-22) hh+=.45; hh=clamp(hh,-.95,.95);
+      const gap=sh.straight?rand(9,13):rand(9,16), D=prev.r+r+gap; const nx=prev.x+Math.sin(hh)*D, nz=prev.z-Math.cos(hh)*D;
+      // bend: corridor via a lateral offset point (2 segments + small joint)
+      const bend=!sh.straight&&gap>11&&chance(.55); const w=sh.straight?rand(9.5,10.5):rand(8.6,10);
+      let pts=[[prev.x,prev.z]]; if(bend){ const mx=(prev.x+nx)/2, mz=(prev.z+nz)/2, ux=(nx-prev.x)/D, uz=(nz-prev.z)/D, off=rand(.18,.3)*D*(chance(.5)?1:-1); pts.push([mx-uz*off,mz+ux*off]); } pts.push([nx,nz]);
+      // checks: new area away from all but prev; corridors away from all but endpoints
+      if(!clearOf(nx,nz,r+7,[prev])) continue;
+      const segs=[]; for(let j=0;j<pts.length-1;j++) segs.push({ax:pts[j][0],az:pts[j][1],bx:pts[j+1][0],bz:pts[j+1][1],w});
+      const prevSeg=walk.segs.filter(s=>!s.side&&(Math.hypot(s.bx-prev.x,s.bz-prev.z)<.1)); const prevJoint=walk.nodes.filter(n=>n.joint&&prevSeg.some(s=>Math.hypot(s.ax-n.x,s.az-n.z)<.1||Math.hypot(s.bx-n.x,s.bz-n.z)<.1));
+      let ok=true; for(const s of segs){ if(!segClear(s,3.5,[prev].concat(prevSeg,prevJoint))){ ok=false; break; } const tmp={x:nx,z:nz,r}; if(segDist(tmp.x,tmp.z,s)[0]<0){} }
+      if(!ok) continue;
+      // also the new area must not touch the previous corridors except through prev
+      for(const s of segs) walk.segs.push(s);
+      if(bend) layNode(walk,pts[1][0],pts[1][1],w/2,{joint:true});
+      const a=layNode(walk,nx,nz,r,{area:i}); areas.push(Object.assign(a,{i,role,links:[]}));
+      prev.links.push([pts[1][0],pts[1][1]]); a.links.push([pts[pts.length-2][0],pts[pts.length-2][1]]);
+      for(const s of segs) band.push({ax:s.ax,az:s.az,bx:s.bx,bz:s.bz,hw:sh.straight?2.6:2.3});
+      W.links.push({a:prev,b:a,segs,w,pts});
+      x=nx; z=nz; h=hh; placed=true;
+    }
+    if(!placed) return false;
+  }
+  // route: start → area centres (through bends) → exit
+  const last=areas[N-1]; const lh=Math.atan2(last.x-areas[N-2].x,-(last.z-areas[N-2].z));
+  W.start={x:0,z:2.5};
+  W.exit=T==='boss'?{x:last.x+Math.sin(lh)*(last.r-2.6),z:last.z-Math.cos(lh)*(last.r-2.6)}:{x:last.x+Math.sin(lh)*last.r*.42,z:last.z-Math.cos(lh)*last.r*.42};
+  route.push({x:W.start.x,z:W.start.z}); for(const L of W.links){ for(let j=1;j<L.pts.length;j++) route.push({x:L.pts[j][0],z:L.pts[j][1]}); } route.push({x:W.exit.x,z:W.exit.z});
+  band.push({ax:last.x,az:last.z,bx:W.exit.x,bz:W.exit.z,hw:2.2},{ax:0,az:0,bx:W.start.x,bz:W.start.z,hw:2.2});
+  W.paths=[]; for(let j=0;j<route.length-1;j++) W.paths.push({ax:route[j].x,az:route[j].z,bx:route[j+1].x,bz:route[j+1].z});
+  // side features: puzzle room (p12) → secret → 1–2 nooks
+  const mids=areas.filter(a=>a.role==='mid');
+  if(T!=='boss'){ puzzlePlan(info,walk); }
+  if(T!=='boss'){ const sec=layoutSide({R:4.4,len:rand(6,8),w:3.1,pad:5.5,secret:true}); if(!sec) return false; W.secret=sec; W.secretRoom=sec.room; sec.seg.closed=true; }
+  const nk=T==='boss'?1:(chance(.5)?2:1); const kinds=['cache','elite','shrine'].sort(()=>Math.random()-.5);
+  for(let i=0;i<nk;i++){ const s=layoutSide({R:rand(5.5,6.5),len:rand(7,11),w:6,pad:4}); if(s){ s.kind=i===0?'cache':kinds[i]; s.room.nook=s.kind; W.nooks.push(s); } }
+  if(!W.nooks.length) return false;
+  return true;
+}
+// find a side room hanging off some mid area (or a corridor joint): clear of every other shape by pad
+function layoutSide(o){
+  const walk=W.walk; const cands=W.areas.filter(a=>a.role==='mid'||(o.allowStart&&a.role==='start')).sort(()=>Math.random()-.5);
+  for(const a of cands){
+    const dirs=a.links.map(([lx,lz])=>Math.atan2(lx-a.x,lz-a.z)).concat((a.sides||[]).map(s=>s));
+    for(let k=0;k<14;k++){
+      const ang=rand(TAU); if(dirs.some(d=>Math.abs(angWrap2(d-ang))<1.0)) continue;
+      const D=a.r+o.len+o.R; const x=a.x+Math.sin(ang)*D, z=a.z+Math.cos(ang)*D;
+      let ok=true;
+      for(const n of walk.nodes){ if(n===a) continue; if(Math.hypot(x-n.x,z-n.z)<n.r+o.R+o.pad){ ok=false; break; } }
+      if(ok) for(const s of walk.segs){ if(segDist(x,z,s)[0]<s.w/2+o.R+o.pad){ ok=false; break; } }
+      if(!ok) continue;
+      // corridor from the area rim to the room must stay clear of everything else
+      const sx=a.x+Math.sin(ang)*(a.r-.5), sz=a.z+Math.cos(ang)*(a.r-.5); const L=Math.hypot(x-sx,z-sz), n=Math.ceil(L/1.2);
+      for(let i=0;i<=n&&ok;i++){ const px=lerp(sx,x,i/n), pz=lerp(sz,z,i/n);
+        for(const m of walk.nodes){ if(m===a) continue; if(Math.hypot(px-m.x,pz-m.z)<m.r+o.w/2+o.pad*.7){ ok=false; break; } }
+        if(ok) for(const s of walk.segs){ if(segDist(px,pz,s)[0]<s.w/2+o.w/2+o.pad*.7){ ok=false; break; } } }
+      if(!ok) continue;
+      const room=layNode(walk,x,z,o.R,{side:true,secret:!!o.secret}); const seg={ax:a.x,az:a.z,bx:x,bz:z,w:o.w,side:true,secret:!!o.secret}; walk.segs.push(seg);
+      (a.sides=a.sides||[]).push(ang);
+      if(!o.secret) W.band.push({ax:a.x,az:a.z,bx:x,bz:z,hw:1.4});
+      return {room,seg,from:a,ang,ux:Math.sin(ang),uz:Math.cos(ang)};
+    }
+  }
+  return null;
+}
+function stageLayoutFallback(info){ // straight, always valid (never seen in the validator, kept as a safety net)
+  const T=info.type, sh=STAGE_SHAPE[T]||STAGE_SHAPE.clear, N=sh.n; const walk={nodes:[],segs:[]}; W.walk=walk; W.areas=[]; W.band=[]; W.links=[]; W.nooks=[]; W.secret=null; W.secretRoom=null; W.puzzle=null;
+  let z=0; for(let i=0;i<N;i++){ const role=i===0?'start':i===N-1?(T==='boss'?'arena':'gate'):(sh.arena===i?'arena':'mid'); const r=role==='arena'?sh.ar:i===0||role==='gate'?9.5:11; if(i) z-=W.areas[i-1].r+r+11;
+    const a=layNode(walk,0,z,r,{area:i}); W.areas.push(Object.assign(a,{i,role,links:[]})); if(i){ const p=W.areas[i-1]; const s={ax:0,az:p.z,bx:0,bz:z,w:9}; walk.segs.push(s); W.band.push({ax:0,az:p.z,bx:0,bz:z,hw:2.3}); p.links.push([0,z]); a.links.push([0,p.z]); W.links.push({a:p,b:a,segs:[s],w:9,pts:[[0,p.z],[0,z]]}); } }
+  const last=W.areas[N-1]; W.start={x:0,z:2.5}; W.exit={x:0,z:last.z-(T==='boss'?last.r-2.6:last.r*.42)}; W.route=[{x:0,z:2.5}].concat(W.areas.slice(1).map(a=>({x:a.x,z:a.z})),[{x:W.exit.x,z:W.exit.z}]);
+  W.band.push({ax:0,az:last.z,bx:0,bz:W.exit.z,hw:2.2}); W.paths=[]; for(let j=0;j<W.route.length-1;j++) W.paths.push({ax:W.route[j].x,az:W.route[j].z,bx:W.route[j+1].x,bz:W.route[j+1].z});
+  const s=layoutSide({R:6,len:8,w:6,pad:4}); if(s){ s.kind='cache'; W.nooks.push(s); }
+}
+
+// ---------- water / lava / bog ----------
+function placeLiquids(info){
+  const Z=info.zone, zid=Z.id; const mids=W.areas.filter(a=>a.role==='mid'&&!a.noLake);
+  const linkDirs=a=>a.links.map(([lx,lz])=>Math.atan2(lx-a.x,lz-a.z)).concat(a.sides||[]);
+  // lakes: bite into the rim of an area, away from every link direction; never on the route band
+  const nLake=zid===4?0:zid===3?3:2; const pool=mids.slice().sort(()=>Math.random()-.5);
+  for(let i=0,made=0;i<pool.length&&made<nLake;i++){ const a=pool[i]; const dirs=linkDirs(a);
+    for(let k=0;k<16;k++){ const ang=rand(TAU); if(dirs.some(d=>Math.abs(angWrap2(d-ang))<.95)) continue; const r=rand(3.4,5.2); const D=a.r-r*.25+rand(0,1); const x=a.x+Math.sin(ang)*D, z=a.z+Math.cos(ang)*D;
+      if(bandDist(x,z)<r+2.6) continue; if(resHit(x,z,r+.6)) continue; if(W.pools.some(p=>Math.hypot(p.x-x,p.z-z)<p.r+r+2)) continue;
+      let other=false; for(const n of W.walk.nodes){ if(n===a) continue; if(Math.hypot(x-n.x,z-n.z)<n.r+r+1.5) other=true; } for(const s of W.walk.segs){ if(Math.hypot(s.ax-a.x,s.az-a.z)<.1&&s.side) { if(segDist(x,z,s)[0]<s.w/2+r+1) other=true; continue; } if(segDist(x,z,s)[0]<s.w/2+r+1.5&&!(Math.hypot(s.ax-a.x,s.az-a.z)<.1||Math.hypot(s.bx-a.x,s.bz-a.z)<.1)) other=true; }
+      if(other) continue;
+      if(fpHit(x,z,r,.5)) continue;
+      const p={x,z,r,kind:'lake',lava:zid>=5}; W.pools.push(p); W.obst.push(p.col={x,z,r:r*.9,water:1}); made++; a.lake=p; break; } }
+  // stream with a bridge across one straight corridor (not in the crypt)
+  if(ZKIT[zid].bridge){ let best=null; for(const L of W.links){ if(L.segs.length!==1) continue; const s=L.segs[0]; const len=Math.hypot(s.bx-s.ax,s.bz-s.az)-L.a.r-L.b.r; if(len>=9&&(!best||len>best.len)) best={L,s,len}; }
+    if(best){ const {L,s}=best; const len0=Math.hypot(s.bx-s.ax,s.bz-s.az); const ux=(s.bx-s.ax)/len0, uz=(s.bz-s.az)/len0, vx=-uz, vz=ux; const t=(L.a.r+(len0-L.a.r-L.b.r)/2)/len0; const mx=lerp(s.ax,s.bx,t), mz=lerp(s.az,s.bz,t);
+      const pts=[]; let okAll=true; for(let o=-(s.w/2+9);o<=s.w/2+9;o+=1.35){ const wob=Math.sin(o*.33)*1.1; const px=mx+vx*o+ux*wob, pz=mz+vz*o+uz*wob; const inCorr=Math.abs(o)<s.w/2+2.2;
+        if(!inCorr){ let near=false; for(const n of W.walk.nodes) if(Math.hypot(px-n.x,pz-n.z)<n.r+3) near=true; for(const q of W.walk.segs) if(q!==s&&segDist(px,pz,q)[0]<q.w/2+3) near=true; if(near){ if(o<0){ pts.length=0; continue; } else break; } }
+        pts.push({x:px,z:pz,r:1.65,kind:'stream',bridged:inCorr,lava:zid>=5}); }
+      if(pts.filter(p=>p.bridged).length>=3){ for(const p of pts) W.pools.push(p); const br=ZKIT[zid].bridge; const ry=Math.atan2(ux,uz);
+        W.props.push({type:br,x:mx,z:mz,s:1,ry,y:-.04,sx:(s.w+.6)/10.4}); fpAdd(mx,mz,3.0,'x'); W.bridge={x:mx,z:mz,ux,uz,w:s.w}; } } }
+  // hazard pools inside areas (bog slows, lava burns): off the route band, away from reserved spots
+  if(zid===3||zid>=5){ for(const a of mids){ const n=randi(0,2); for(let k=0;k<n;k++){ const r=rand(1.4,2.2); const sp=spotIn(a,3,a.r-r-1,r,{k:'o',test:(x,z)=>bandDist(x,z)>r+1.2&&!W.pools.some(p=>Math.hypot(p.x-x,p.z-z)<p.r+r+1.5),poolGap:1.5});
+        if(!sp) continue; const p={x:sp[0],z:sp[1],r,kind:'haz',haz:zid===3?'slow':'burn'}; W.pools.push(p); W.hazards.push({x:p.x,z:p.z,r:p.r*.85,t:p.haz,perm:true}); } } }
+  // walkable rain puddles (zones 1–3) — off the beaten path
+  if(zid<=3){ const n=zid===3?1:randi(2,3); for(let i=0;i<n;i++){ const a=pick(mids); if(!a) break; const r=rand(1.4,2.1); const sp=spotIn(a,2,a.r-r-1,r,{k:'o',test:(x,z)=>bandDist(x,z)>r+.6,poolGap:1.2}); if(sp) W.pools.push({x:sp[0],z:sp[1],r,kind:'wet',wet:true}); } }
+}
+
+// ---------- dressing ----------
+function kitOf(Z){ return ZKIT[Z.id]||ZKIT[1]; }
+function themeAreas(info){ const K=kitOf(info.zone); const th=K.themes.slice().sort(()=>Math.random()-.5); const mids=W.areas.filter(a=>a.role==='mid');
+  mids.forEach((a,i)=>{ a.theme=th[i%th.length]; }); }
+// rim: a dense row of rocks/trees right outside the walkable edge — the level reads as framed by cliffs, not by invisible walls
+function rimWalls(Z){ const K=kitOf(Z); const keep=.55+.45*Q.props; const pts=[];
+  for(const n of W.walk.nodes){ if(n.joint) continue; const C=TAU*(n.r+1.2), m=Math.ceil(C/2.1); for(let i=0;i<m;i++){ const a=i/m*TAU+rand(-.08,.08), rr=n.r+rand(.8,1.6); pts.push([n.x+Math.cos(a)*rr,n.z+Math.sin(a)*rr]); } }
+  for(const s of W.walk.segs){ const L=Math.hypot(s.bx-s.ax,s.bz-s.az), ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L; for(let t=0;t<L;t+=2.2) for(const sd of [-1,1]){ const o=s.w/2+rand(.8,1.6); pts.push([s.ax+ux*t-uz*o*sd,s.az+uz*t+ux*o*sd]); } }
+  for(const [x,z] of pts){ if(Math.random()>keep) continue; if(sdfW(x,z)<.55) continue; putProp(chance(.5)?pick(K.rock):pick(K.edge),x,z,{out:true,edge:.55,s:rand(.9,1.35),poolGap:.4,gap:0}); } }
+function dressArea(a,Z){
+  const K=kitOf(Z), M=ZMAT[Z.id]||ZMAT[1], th=a.theme;
+  const ringFn=(f0,f1)=>()=>ringPt(a,a.r*f0,a.r*f1);
+  if(th==='camp'){ // enemy camp: tents at the rim, campfire, crates, banner; trampled dirt
+    W.paint.push({x:a.x,z:a.z,r:a.r*.62,c:M.dirt,k:.55});
+    const nt=randi(1,2); for(let i=0;i<nt;i++) tryProp(Z.id>=4?'cwall':'v:tent',ringFn(.68,.86),16,{s:Z.id>=4?.9:1});
+    tryProp('campfire',ringFn(.25,.42),20,{s:1});
+    for(let i=0;i<2;i++) tryProp(pick(['v:sack','v:crate_B_small','d:barrel_large','v:weaponrack']),ringFn(.55,.85),10);
+    tryProp(Z.id>=4?'d:banner_shield_red':'banner',ringFn(.5,.8),10,{ry:rand(TAU)});
+    if(Z.id<=2) tryProp('palisade',ringFn(.82,.95),8,{ry:rand(TAU)});
+  }
+  else if(th==='ruins'||th==='hall'){ // a ring of broken pillars / wall bits around a paved patch
+    W.paint.push({x:a.x,z:a.z,r:a.r*.66,c:M.stone,k:.6,tiles:1});
+    const n=randi(5,7), a0=rand(TAU); for(let i=0;i<n;i++){ const ang=a0+i/n*TAU+rand(-.15,.15), rr=a.r*rand(.62,.8); putProp(i%3===2?pick(K.ruin):K.ruin[i%2],a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,{s:rand(.85,1.1)}); }
+    for(let i=0;i<5;i++) tryProp(pick(['d:rubble_half','n:rock_small','n:rock_pebble']),ringFn(.3,.9),6,{s:rand(.7,1)});
+    if(th==='hall') for(let i=0;i<4;i++) tryProp('candles',ringFn(.4,.8),6);
+  }
+  else if(th==='clearing'||th==='grove'||th==='deadgrove'||th==='crystals'||th==='spires'){ // landmark + flower/mushroom ring
+    const [bt,bs]=K.big; tryProp(bt,ringFn(.62,.8),20,{s:bs});
+    if(th==='grove'||th==='deadgrove'){ const c=spotIn(a,a.r*.35,a.r*.55,1.6,{k:'t'}); if(c){ for(let i=0;i<9;i++){ const ang=i/9*TAU; putProp(th==='grove'?'shrooms':'glowShroom',c[0]+Math.cos(ang)*1.6,c[1]+Math.sin(ang)*1.6,{s:rand(.9,1.3)}); } } }
+    if(th==='crystals') for(let i=0;i<5;i++) tryProp('crystal',ringFn(.55,.9),8,{s:rand(.8,1.5)});
+    if(th==='spires') for(let i=0;i<4;i++) tryProp(pick(['basalt','obsidian','vent']),ringFn(.55,.9),8,{s:rand(.9,1.4)});
+    W.paint.push({x:a.x,z:a.z,r:a.r*.5,c:M.dirt,k:.18});
+  }
+  else if(th==='farm'){ for(let i=0;i<3;i++) tryProp(pick(['hay','h:haybale']),ringFn(.55,.85),10); tryProp('h:scarecrow',ringFn(.45,.75),10); tryProp('cart',ringFn(.6,.85),10);
+    const ang=rand(TAU); for(let i=0;i<4;i++){ const aa=ang+i*.2; putProp('fence',a.x+Math.cos(aa)*a.r*.86,a.z+Math.sin(aa)*a.r*.86,{ry:-aa}); } W.paint.push({x:a.x,z:a.z,r:a.r*.5,c:M.dirt,k:.3}); }
+  else if(th==='logging'){ for(let i=0;i<4;i++) tryProp('stump',ringFn(.45,.85),10,{s:rand(1.6,2.2)}); for(let i=0;i<2;i++) tryProp('log',ringFn(.5,.85),10); W.paint.push({x:a.x,z:a.z,r:a.r*.55,c:M.dirt,k:.35}); }
+  else if(th==='graveyard'){ const a0=rand(TAU); for(let i=0;i<9;i++){ const ang=a0+i*.55, rr=a.r*(.58+(i%3)*.12); putProp(pick(['tomb','h:gravestone','h:grave_B','h:gravemarker_A']),a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,{ry:-ang+PI/2}); }
+    tryProp('h:lantern_standing',ringFn(.5,.7),8); }
+  else if(th==='shrine'){ tryProp('h:shrine_candles',ringFn(.55,.7),12); for(let i=0;i<3;i++) tryProp(pick(['coffin','h:coffin_decorated'].filter(t=>PFOOT[t])),ringFn(.6,.85),8); W.paint.push({x:a.x,z:a.z,r:a.r*.6,c:M.stone,k:.5,tiles:1}); }
+  else if(th==='totems'){ for(let i=0;i<4;i++) tryProp('h:post_skull',ringFn(.6,.85),8); tryProp('campfire',ringFn(.3,.45),12); }
+  else if(th==='hoard'){ for(let i=0;i<5;i++) tryProp(pick(['goldPile','d:rocks_gold']),ringFn(.5,.85),8,{s:rand(1,1.6)}); tryProp('rib',ringFn(.7,.85),8,{s:1.6}); }
+  else if(th==='bones'){ for(let i=0;i<3;i++) tryProp('rib',ringFn(.6,.85),8,{s:rand(1.4,2)}); for(let i=0;i<6;i++) tryProp('skulls',ringFn(.3,.9),5); }
+  // soft frame: trees/rocks in the outer ring of every area (keeps the middle open for combat)
+  const nb=Math.round(a.r*.55*(Q.props*.5+.5)); for(let i=0;i<nb;i++) tryProp(chance(.62)?pick(K.trees):pick(K.rock),ringFn(.74,.97),6,{s:rand(.85,1.2)});
+  for(let i=0;i<Math.round(4*Q.props);i++) tryProp(pick(K.shrub),ringFn(.6,.98),5,{s:rand(.8,1.2)});
+}
+function dressCorridors(Z){ const K=kitOf(Z);
+  for(const L of W.links) for(const s of L.segs){ const len=Math.hypot(s.bx-s.ax,s.bz-s.az), ux=(s.bx-s.ax)/len, uz=(s.bz-s.az)/len;
+    for(let t=0;t<len;t+=rand(3.5,5.5)){ for(const side of [-1,1]){ if(!chance(.45)) continue; const o=s.w/2-rand(.7,1.4); const x=s.ax+ux*t-uz*o*side, z=s.az+uz*t+ux*o*side; putProp(chance(.55)?pick(K.rock):pick(K.trees.concat(K.shrub)),x,z,{s:rand(.7,1)}); } } }
+}
+// path edges: pebbles and tufts along the trodden path; shorelines around lakes
+function dressEdges(Z){ const K=kitOf(Z); const pw=W.pathW||2.6;
+  for(const s of W.paths){ const len=Math.hypot(s.bx-s.ax,s.bz-s.az); if(len<.5) continue; const ux=(s.bx-s.ax)/len, uz=(s.bz-s.az)/len;
+    for(let t=0;t<len;t+=rand(1.1,1.9)) for(const side of [-1,1]){ const o=pw+rand(.1,.7); const x=s.ax+ux*t-uz*o*side, z=s.az+uz*t+ux*o*side; const r=Math.random();
+      if(r<.22*Q.grass+.08) putProp(K.small[1],x,z,{s:rand(.6,1.1)}); else if(r<.6*Q.grass+.1) putProp(K.tuft[0],x,z,{s:rand(.8,1.2)}); } }
+  for(const p of W.pools){ if(p.kind!=='lake') continue; const n=Math.round(p.r*3.2); for(let i=0;i<n;i++){ const ang=i/n*TAU+rand(-.2,.2), rr=p.r+rand(.3,1.0); putProp(pick(K.shore),p.x+Math.cos(ang)*rr,p.z+Math.sin(ang)*rr,{s:rand(.7,1.1),poolGap:-.2,band:false}); }
+    W.paint.push({x:p.x,z:p.z,r:p.r+1.9,c:(ZMAT[Z.id]||ZMAT[1]).sand,k:.55,ring:p.r}); }
+}
+function scatterTufts(Z,n){ const K=kitOf(Z); const areas=(W.areas&&W.areas.length?W.areas:W.walk.nodes).concat((W.nooks||[]).map(s=>s.room));
+  for(let i=0;i<n;i++){ const a=pick(areas); const [x,z]=ringPt(a,0,a.r); if(pathCenterDist(x,z)<(W.pathW||2.6)) continue; putProp(pick(K.tuft),x,z,{s:rand(.8,1.25)}); } }
+// cliffs & forest outside the walkable space: no overlaps (trunk spacing), not in streams/lakes
+function scatterWallsV8(Z,b,dens){ const K=kitOf(Z); const step=2.1/Math.sqrt(dens);
+  for(let x=b.minX;x<=b.maxX;x+=step) for(let z=b.minZ;z<=b.maxZ;z+=step){
+    const px=x+rand(-step*.45,step*.45), pz=z+rand(-step*.45,step*.45); const d=sdfW(px,pz);
+    if(d<.7) continue; if(d>16&&chance(.8)) continue; if(d>8&&chance(.35)) continue;
+    const t=d<2.2&&chance(.3)?pick(K.rock):pick(K.edge); putProp(t,px,pz,{out:true,s:rand(.85,1.3)*(d>5?1.15:1),edge:.7,poolGap:.6,gap:.05});
+  }
+}
+
+// ---------- secret areas: closed corridor + wall / barricade / rune door (lever) ----------
+function buildSecret(info){
+  const S0=W.secret; if(!S0) return; const {room,seg,from:a,ux,uz}=S0; const zid=info.zone.id;
+  const mode=zid===2||zid===1&&chance(.4)?'barricade':(zid===4||zid===6)&&chance(.6)?'lever':chance(.3)?'lever':'crack'; S0.mode=mode;
+  const wx=a.x+ux*(a.r+.9), wz=a.z+uz*(a.r+.9); const ry=Math.atan2(ux,uz);
+  const sw=mkObj('secret',wx,wz,{ry,mode}); sw.seg=seg; sw.r=1.1; sw.secretMode=mode; S0.wall=sw; reserve(wx,wz,2.4,'secret');
+  if(mode==='barricade') sw.hp=2; if(mode==='lever'){ sw.locked=true; sw.hp=1;
+    const sp=spotIn(a,a.r*.45,a.r*.8,.8,{k:'o',test:(x,z)=>Math.hypot(x-wx,z-wz)>4&&Math.hypot(x-wx,z-wz)<a.r*1.5}); const [lx,lz]=sp||[a.x+ux*a.r*.55+uz*3,a.z+uz*a.r*.55-ux*3];
+    const lv=mkObj('lever',lx,lz,{ry:Math.atan2(wx-lx,wz-lz)}); S0.lever=lv; fpAdd(lx,lz,.8,'o',lv); W.obst.push({x:lx,z:lz,r:.45}); }
+  // the room: reward + dressing; paved floor
+  const M=ZMAT[zid]||ZMAT[1]; W.paint.push({x:room.x,z:room.z,r:room.r*.85,c:M.stone,k:.6,tiles:1});
+  reserve(room.x,room.z,1.3,'secretReward');
+  const loreLeft=LORE.map((l,i)=>i).filter(i=>!S.lore.includes(i)); const roll=Math.random(); let rew;
+  if(roll<.45&&loreLeft.length) rew=mkObj('scroll',room.x,room.z,{lore:pick(loreLeft)}); else if(roll<.75) rew=mkObj('egg',room.x,room.z,{egg:randomEggKind(zid)}); else rew=mkObj('vault',room.x,room.z,{ry:ry+PI});
+  S0.reward=rew; fpAdd(room.x,room.z,.9,'o',rew);
+  const cx=room.x+uz*1.8, cz=room.z-ux*1.8; const ch=mkObj('chest',cx,cz,{ry:ry+PI+rand(-.3,.3)}); S0.chest=ch; fpAdd(cx,cz,.8,'o',ch);
+  for(const sg of [-1,1]) putProp(zid>=4?'candles':'lantern',room.x-ux*1.6+uz*2.6*sg,room.z-uz*1.6-ux*2.6*sg,{s:1,noRes:1});
+}
+function secretOpen(o,how){ if(!o||!o.alive) return; o.alive=false; if(o.seg) o.seg.closed=false; const S0=W.secret;
+  if(o.secretMode==='lever'){ const g=o.mesh; for(let i=0;i<12;i++) later(i*.06,()=>{ g.position.y=-i*.26; }); later(.8,()=>worldRoot.remove(g)); fx('dust',o.x,.6,o.z,{k:14,col:0x8a8478}); AU.sfx('tele'); }
+  else { worldRoot.remove(o.mesh); fx('boom',o.x,1,o.z,{r:2,col:o.secretMode==='barricade'?0xa07040:0xd8c8a0,smoke:0x8a8478}); AU.sfx('boom'); }
+  banner('Тайник!',how||'Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; if(o.secretMode==='lever'&&typeof spirit==='function') try{ spirit('secret'); }catch(e){}
+}
+
+// ---------- stage builder ----------
+function makeStage(info){
+  unloadWorld(); const Z=info.zone; newW('stage',Z); W.info=info; W.lvl=info.lvl; setZoneLook(Z);
+  const seed=strH('ev8:'+info.key)+((window.__EV_SEED|0)>>>0);
+  let ok=false; for(let att=0;att<30&&!ok;att++){ newW('stage',Z); W.info=info; W.lvl=info.lvl; W.seedTry=att; ok=withSeed(seed+att*7919,()=>stageLayout(info)); }
+  if(!ok){ newW('stage',Z); W.info=info; W.lvl=info.lvl; withSeed(seed,()=>stageLayoutFallback(info)); W.fallback=1; }
+  withSeed(seed^0x5bd1e995,()=>stageBuild(info));
+  return W;
+}
+function stageBuild(info){
+  const Z=info.zone, T=info.type, L=info.lvl; W.paint=[]; W.reserve=[]; fpReset(); W.pathW=2.4+(T==='escort'?.4:0);
+  const A=W.areas, mids=A.filter(a=>a.role==='mid'), last=A[A.length-1];
+  // reserved: start, exit, camp centres, corridor patrol spots, objective spots
+  reserve(W.start.x,W.start.z,3.5,'start'); reserve(W.exit.x,W.exit.z,3.2,'exit');
+  for(const a of A){ if(a.role==='mid'||a.role==='arena') reserve(a.x,a.z,a.role==='arena'?a.r*.97:4.4,'camp'); }
+  for(const n of W.nooks) reserve(n.room.x,n.room.z,n.kind==='elite'?4.1:2.6,'nook');
+  if(W.puzzle) reserve(W.puzzle.room.x,W.puzzle.room.z,W.puzzle.room.r+.5,'puzzle');
+  if(W.secret) reserve(W.secret.room.x,W.secret.room.z,W.secret.room.r+.5,'secretRoom');
+  synDressStage(info,A);
+  // objective spots before anything else is placed
+  const L0=Math.floor(mids.length/2); const objA=T==='totems'?mids.slice(0,3):T==='rescue'?[mids[Math.min(mids.length-1,2)]]:[];
+  W.objSpots=[]; for(const a of objA){ const sp=spotIn(a,5,a.r-2.4,1.2,{k:'o'})||[a.x+a.r*.5,a.z]; W.objSpots.push(sp); reserve(sp[0],sp[1],1.6,'obj'); }
+  // camps on mid areas; theme the areas
+  mids.forEach((a,i)=>{ a.camp=true; }); themeAreas(info);
+  placeLiquids(info);
+  // patrols: a small pack in each long corridor (keeps walking short and tense)
+  W.patrols=[]; for(const Lk of W.links){ const s=Lk.segs[Math.floor(Lk.segs.length/2)]; const len=Math.hypot(s.bx-s.ax,s.bz-s.az); if(Lk.b.role==='arena'&&T==='boss') continue; const tot=Lk.segs.reduce((q,g)=>q+Math.hypot(g.bx-g.ax,g.bz-g.az),0)-Lk.a.r-Lk.b.r;
+    if(tot<12) continue; const t=Lk.segs.length>1?1:clamp((Lk.a.r+tot/2)/len,.3,.7); const px=lerp(s.ax,s.bx,t), pz=lerp(s.az,s.bz,t); if(W.bridge&&Math.hypot(px-W.bridge.x,pz-W.bridge.z)<6) continue; W.patrols.push([px,pz]); reserve(px,pz,4.2,'patrol'); }
+  // puzzle room (p12) and secret area
+  if(W.puzzle){ puzzleBuild(); for(const o of W.obst) fpAdd(o.x,o.z,o.r,'b',o); for(const o of W.objs) if(o.r>0) fpAdd(o.x,o.z,o.r,'o',o); }
+  buildSecret(info);
+  // exit portal
+  W.portal=mkObj('portal',W.exit.x,W.exit.z,{on:false});
+  // objectives
+  W.obj={type:T,done:false,prog:0,need:0,txt:''};
+  const campMids=T==='survive'?mids:mids; const ARENA=A.find(a=>a.role==='arena');
+  if(T==='clear'||T==='hunt'||T==='rescue'||T==='totems'){ campMids.forEach((a,i)=>{ const isLast=i===campMids.length-1; const cnt=randi(3,5)+Math.floor(info.z/2); spawnCamp(a.x,a.z,cnt,L,{elite:chance(.25+info.s*.05)?1:0,champion:T==='hunt'&&isLast}); }); }
+  if(T==='rescue'){ const [x,z]=W.objSpots[0]; W.cage=mkObj('cage',x,z,{hp:Math.round(60*F(L))}); W.obstCage={x,z,r:1.0}; W.obst.push(W.obstCage); fpAdd(x,z,1.1,'o',W.cage); }
+  if(T==='totems'){ W.totems=[]; W.objSpots.forEach(([x,z])=>{ const t=mkObj('totem',x,z,{hp:Math.round(95*F(L)),ry:0}); W.totems.push(t); W.obst.push(t.col={x,z,r:.7}); fpAdd(x,z,.8,'o',t); }); }
+  if(T==='survive'){ const n=ARENA; W.stone=mkObj('stone',n.x,n.z,{ry:0}); W.obst.push({x:n.x,z:n.z,r:1.5,obj:1}); fpAdd(n.x,n.z,1.5,'o',W.stone); W.survT=70+info.z*5; W.survMax=W.survT; W.waveT=2; W.arena=n;
+    mids.filter(a=>a.role==='mid').forEach(a=>spawnCamp(a.x,a.z,randi(3,4)+Math.floor(info.z/3),L,{elite:chance(.2)?1:0})); }
+  if(T==='escort'){ const r0=W.route; const fx0=r0[1].x-r0[0].x, fz0=r0[1].z-r0[0].z, fl=Math.hypot(fx0,fz0)||1; const cx=r0[0].x+fx0/fl*3.5, cz=r0[0].z+fz0/fl*3.5;
+    W.cart=mkObj('cartE',cx,cz,{ry:Math.atan2(fx0,fz0)}); W.cart.hp=W.cart.maxHp=Math.round(280*F(L)); W.cart.wp=1; W.cart.path=r0.slice(1).map(p=>({x:p.x,z:p.z})); W.cart.path[W.cart.path.length-1]={x:W.exit.x-(W.exit.x-last.x)*.35,z:W.exit.z-(W.exit.z-last.z)*.35};
+    W.ambush=mids.map(n=>({x:n.x,z:n.z,done:false})); W.obst.push(W.cart.col={x:W.cart.x,z:W.cart.z,r:1.1}); reserve(cx,cz,2,'cart');
+    mids.forEach((n,i)=>{ if(i%2===0) spawnCamp(n.x+rand(-2,2),n.z,randi(2,3),L,{}); }); }
+  if(T==='boss'){ const n=ARENA; W.arenaNode=n; W.bossId=Z.id===6?'dragon':Z.boss; mids.forEach((a,i)=>spawnCamp(a.x,a.z,i===mids.length-1?4:randi(3,4),L,{elite:i===mids.length-1?1:0})); bossArenaDress(W.bossId,n);
+    for(const o of W.obst) fpAdd(o.x,o.z,o.r,'b',o); }
+  for(const [px,pz] of W.patrols) spawnCamp(px,pz,randi(2,3),L,{patrol:1});
+  // nooks: cache chest / elite camp / shrine
+  for(const nk of W.nooks){ const r=nk.room; const ry=Math.atan2(-nk.ux,-nk.uz);
+    if(nk.kind==='cache'){ const c=objAt('chest',r.x-nk.ux*1.2,r.z-nk.uz*1.2,{ry:ry+PI}); for(let i=0;i<2;i++){ const sp=spotIn(r,1.8,r.r-1.2,.6,{k:'o',noRes:1}); if(sp) objAt(pick(['barrel','crate','pot']),sp[0],sp[1]); } putProp(Z.id>=4?'candles':'lantern',r.x+nk.uz*2.4,r.z-nk.ux*2.4,{noRes:1}); }
+    else if(nk.kind==='elite'){ objAt(chance(.5)?'vault':'chest',r.x-nk.ux*1.6,r.z-nk.uz*1.6,{ry:ry+PI}); spawnCamp(r.x,r.z,2,L,{tier:1,elite:1}); }
+    else { const k=Z.id<=2?'wood':Z.id<=4?'ess':'ess'; objAt(Z.id>=3?'ess':'ore',r.x-nk.ux*1.4,r.z-nk.uz*1.4); objAt('chest',r.x+nk.uz*1.6,r.z-nk.ux*1.6,{ry:ry+PI}); putProp(Z.id>=4?'h:shrine_candles':'candles',r.x-nk.uz*1.8,r.z+nk.ux*1.8,{noRes:1}); }
+    W.paint.push({x:r.x,z:r.z,r:r.r*.7,c:(ZMAT[Z.id]||ZMAT[1]).dirt,k:.35}); }
+  // dressing (areas → corridors) before small objects so breakables cluster around tents/ruins
+  for(const a of A){ if(a.role==='mid') dressArea(a,Z); else if(a.role!=='arena'){ const K=kitOf(Z); for(let i=0;i<Math.round(a.r*.5);i++) tryProp(chance(.6)?pick(K.trees):pick(K.rock),()=>ringPt(a,a.r*.75,a.r*.97),6,{s:rand(.85,1.2)}); } }
+  if(ARENA){ const K=kitOf(Z); const n=10; for(let i=0;i<n;i++){ const ang=i/n*TAU+rand(-.1,.1); const rr=ARENA.r+1.2; putProp(pick(K.rock),ARENA.x+Math.cos(ang)*rr,ARENA.z+Math.sin(ang)*rr,{out:true,edge:.3,s:rand(1.1,1.5)}); } W.paint.push({x:ARENA.x,z:ARENA.z,r:ARENA.r*.8,c:(ZMAT[Z.id]||ZMAT[1]).stone,k:.35,tiles:Z.id>=4?1:0}); }
+  dressCorridors(Z);
+  // breakables cluster near camp props; resources in context (wood by camps/stumps, ore by rocks/ruins, essence by crystals/shrines)
+  for(const a of mids){ const nb=randi(1,3); for(let k=0;k<nb;k++){ const sp=spotIn(a,a.r*.45,a.r*.85,.6,{k:'o'}); if(sp) objAt(pick(['barrel','crate','pot','barrel']),sp[0],sp[1]); } }
+  const resA=mids.slice().sort(()=>Math.random()-.5).slice(0,2);
+  for(const a of resA){ const kind=a.theme==='camp'||a.theme==='logging'||a.theme==='farm'?(Z.id<=2?'wood':'ore'):a.theme==='crystals'||a.theme==='shrine'||a.theme==='hoard'||a.theme==='totems'?'ess':(Z.id<=4?'ore':'ess'); const sp=spotIn(a,a.r*.55,a.r*.88,.9,{k:'o'}); if(sp) objAt(kind,sp[0],sp[1]); }
+  for(let i=0;i<(W.oilBarrels||0);i++){ const a=pick(mids); const sp=spotIn(a,a.r*.4,a.r*.85,.6,{k:'o'}); if(sp) objAt('oilBarrel',sp[0],sp[1]); }
+  if(!W.nooks.some(n=>n.kind==='cache')&&T!=='boss'){ const a=pick(mids); const sp=spotIn(a,a.r*.55,a.r*.85,.8,{k:'o'}); if(sp) objAt('chest',sp[0],sp[1],{ry:rand(TAU)}); }
+  dressEdges(Z); scatterTufts(Z,Math.round(170*Q.grass+30));
+  const b=boundsOf(W.walk,22); W.bounds=b;
+  rimWalls(Z); scatterWallsV8(Z,b,Q.props*(Z.id===4?.85:1));
+  buildGround(Z,b); buildLiquid(Z);
+  objText(); buildPropMeshes();
+}
+
+// ---------- Бездна: арены-варианты (круг, «восьмёрка», крест, кольцо с колоннами) по тем же правилам ----------
 function makeAbyss(floor,run){
   unloadWorld(); const zi=((floor-1)%6); const Z=Object.assign({},ZONES[zi]); Z.fog=new THREE.Color(Z.fog).lerp(new THREE.Color(0x1a0a24),.55).getHex(); Z.fogN=20; Z.fogF=60; Z.hemi=[Z.hemi[0],0x1a0a24,Z.hemi[2]*.85]; Z.rim=0xc890ff;
   if(run.mods.includes('dark')){ Z.fogN=12; Z.fogF=38; }
   newW('abyss',Z); W.floor=floor; W.lvl=3+Math.round(floor*1.05); W.enemyPool=ZONES[zi].enemies.concat(floor>8?pick(ZONES).enemies.slice(0,2):[]);
   setZoneLook(Z);
-  const R0=13.5; W.walk={nodes:[{x:0,z:0,r:R0},{x:0,z:16.5,r:3.5}],segs:[{ax:0,az:0,bx:0,bz:16.5,w:5}]};
-  W.start={x:0,z:15}; W.exit={x:0,z:-11};
-  if(Z.id!==4) for(let i=0;i<3;i++){ const a=rand(TAU); W.pools.push({x:Math.cos(a)*(R0+5),z:Math.sin(a)*(R0+5),r:rand(3,5)}); }
+  withSeed(strH('abyss:'+floor)+((run.seed|0)>>>0)+((window.__EV_SEED|0)>>>0),()=>abyssBuild(floor,Z));
+  return W;
+}
+function abyssBuild(floor,Z){
+  fpReset(); W.paint=[]; W.reserve=[]; const K=kitOf(Z), M=ZMAT[Z.id]||ZMAT[1];
+  const variant=['round','twin','cross','pillars'][floor%4]; W.variant=variant;
+  const nodes=[], segs=[{ax:0,az:0,bx:0,bz:16.5,w:5.5}];
+  if(variant==='round'||variant==='pillars') nodes.push({x:0,z:0,r:13.5});
+  else if(variant==='twin') nodes.push({x:-5,z:0,r:11},{x:5,z:0,r:11});
+  else { nodes.push({x:0,z:0,r:9.5}); for(const [x,z] of [[11.5,0],[-11.5,0],[0,-11.5]]) nodes.push({x,z,r:5.2}); segs.push({ax:-11.5,az:0,bx:11.5,bz:0,w:7},{ax:0,az:0,bx:0,bz:-11.5,w:7}); }
+  nodes.push({x:0,z:16.5,r:3.5}); W.walk={nodes,segs}; W.areas=[]; W.band=[{ax:0,az:15,bx:0,bz:-11,hw:1.6}];
+  W.start={x:0,z:15}; W.exit={x:0,z:variant==='twin'?-8.5:-11}; W.route=[{x:0,z:15},{x:0,z:W.exit.z}];
+  W.paths=[]; reserve(0,15,2.5,'start'); reserve(0,W.exit.z-1.5,2.6,'exit'); reserve(0,-4,3.2,'boss');
+  // liquid only outside the arena rim (hollows), never inside
+  if(Z.id!==4) for(let i=0;i<3;i++){ for(let k=0;k<10;k++){ const a=rand(TAU), r=rand(3,5); const d=(variant==='round'||variant==='pillars'?13.5:15)+r+1.5; const x=Math.cos(a)*d, z=Math.sin(a)*d; if(sdfW(x,z)<r+1.2||W.pools.some(p=>Math.hypot(p.x-x,p.z-z)<p.r+r+2)) continue; W.pools.push({x,z,r,kind:'lake',lava:Z.id>=5}); break; } }
   const b={minX:-36,maxX:36,minZ:-36,maxZ:36}; W.bounds=b;
-  buildGround(Z,b,{noPath:true}); buildLiquid(Z); scatterWalls(Z,b,Q.props*.8);
-  for(let i=0;i<5;i++){ const a=i/5*TAU+rand(-.3,.3), r=rand(5,9); const x=Math.cos(a)*r,z=Math.sin(a)*r; const t=pick(Z.wall.filter(w=>!['bush','reeds'].includes(w))); W.props.push({type:t,x,z,s:.9,ry:rand(TAU)}); W.obst.push({x,z,r:.8}); }
-  for(let i=0;i<4;i++){ const a=rand(TAU),r=rand(4,11); mkObj(pick(['barrel','pot','crate']),Math.cos(a)*r,Math.sin(a)*r); }
-  if(floor%3===0) mkObj('chest',rand(-4,4),-6,{ry:0});
+  // cover: columns ring (pillars variant) or a few rocks/trees, spaced and off the start→portal lane
+  const cover=variant==='pillars'?6:variant==='cross'?3:5;
+  for(let i=0;i<cover;i++){ const a=i/cover*TAU+(variant==='pillars'?PI/6:rand(-.3,.3)); const r=variant==='pillars'?7.5:rand(5,9); const t=variant==='pillars'?(Z.id>=4?'pillar':'d:column'):pick(Z.wall.filter(w=>!['bush','reeds'].includes(w)));
+    putProp(t,Math.cos(a)*r,Math.sin(a)*r,{s:variant==='pillars'?1.1:.9}); }
+  for(let i=0;i<4;i++){ const sp=spotIn({x:0,z:-1},3,10,.6,{k:'o'}); if(sp) objAt(pick(['barrel','pot','crate']),sp[0],sp[1]); }
+  if(floor%3===0){ const sp=spotIn({x:0,z:-3},3,7,.8,{k:'o'})||[3,-6]; objAt('chest',sp[0],sp[1],{ry:0}); }
+  W.paint.push({x:0,z:0,r:12,c:M.stone,k:.35,tiles:1});
+  rimWalls(Z); scatterWallsV8(Z,b,Q.props*.8); scatterTufts(Z,Math.round(40*Q.grass));
+  buildGround(Z,b,{noPath:true}); buildLiquid(Z);
   W.portal=mkObj('portal',W.exit.x,W.exit.z-1.5,{on:false});
   W.obj={type:'abyss',done:false,txt:''};
   W.waves=floor%5===0?1:Math.min(2+Math.floor(floor/4),5); W.waveN=0; W.wavesLeft=W.waves; W.waveDelay=1.5;
   W.miniBoss=floor%5===0;
   buildPropMeshes();
-  return W;
 }
+// ================= p6c: навигация по сетке (BFS), валидатор мира, обзорная камера =================
+// navGrid — сетка проходимости с радиусом героя (и повозки); validateWorld — жёсткие правила расстановки (см. README «Генерация уровней»).
+function navGrid(o={}){
+  const b=W.bounds, c=o.cell||.5, rad=o.rad===undefined?.45:o.rad; const nx=Math.ceil((b.maxX-b.minX)/c), nz=Math.ceil((b.maxZ-b.minZ)/c);
+  const g=new Uint8Array(nx*nz); const nodes=W.walk.nodes, segs=W.walk.segs.filter(s=>o.open||!s.closed);
+  for(let j=0;j<nz;j++){ const z=b.minZ+(j+.5)*c; for(let i=0;i<nx;i++){ const x=b.minX+(i+.5)*c; let d=1e9;
+      for(const n of nodes){ const v=Math.hypot(x-n.x,z-n.z)-n.r; if(v<d) d=v; } if(d>-rad) for(const s of segs){ const v=segDist(x,z,s)[0]-s.w/2; if(v<d){ d=v; if(d<=-rad) break; } }
+      if(d>-rad) g[j*nx+i]=1; } }
+  const stamp=(x,z,r)=>{ const i0=Math.max(0,Math.floor((x-r-b.minX)/c)),i1=Math.min(nx-1,Math.floor((x+r-b.minX)/c)),j0=Math.max(0,Math.floor((z-r-b.minZ)/c)),j1=Math.min(nz-1,Math.floor((z+r-b.minZ)/c));
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ const cx=b.minX+(i+.5)*c, cz=b.minZ+(j+.5)*c; if(Math.hypot(cx-x,cz-z)<r) g[j*nx+i]=1; } };
+  for(const ob of W.obst){ if(ob.dead) continue; if(o.ignore&&o.ignore(ob)) continue; stamp(ob.x,ob.z,ob.r+rad); }
+  if(o.hazBlock) for(const p of W.pools){ if(p.bridged||p.kind==='wet') continue; stamp(p.x,p.z,p.r+rad*.5); }
+  if(o.extra) for(const e of o.extra) stamp(e.x,e.z,e.r+rad);
+  return {g,nx,nz,c,b,rad};
+}
+function navCell(N,x,z){ const i=Math.floor((x-N.b.minX)/N.c), j=Math.floor((z-N.b.minZ)/N.c); if(i<0||j<0||i>=N.nx||j>=N.nz) return -1; return j*N.nx+i; }
+function navBFS(N,seeds){ const D=new Int32Array(N.nx*N.nz).fill(-1); const q=new Int32Array(N.nx*N.nz); let h=0,t=0;
+  for(const s of seeds){ if(s>=0&&!N.g[s]&&D[s]<0){ D[s]=0; q[t++]=s; } }
+  while(h<t){ const k=q[h++], i=k%N.nx, j=(k/N.nx)|0, d=D[k]+1;
+    if(i>0&&!N.g[k-1]&&D[k-1]<0){ D[k-1]=d; q[t++]=k-1; } if(i<N.nx-1&&!N.g[k+1]&&D[k+1]<0){ D[k+1]=d; q[t++]=k+1; }
+    if(j>0&&!N.g[k-N.nx]&&D[k-N.nx]<0){ D[k-N.nx]=d; q[t++]=k-N.nx; } if(j<N.nz-1&&!N.g[k+N.nx]&&D[k+N.nx]<0){ D[k+N.nx]=d; q[t++]=k+N.nx; } }
+  return D; }
+// cells near (x,z) within tol (targets inside obstacles — totem, cage, stone — are reached from around them)
+function navNear(N,x,z,tol){ const out=[]; const r=Math.ceil(tol/N.c); const k0=navCell(N,x,z); if(k0<0) return out; const i0=k0%N.nx, j0=(k0/N.nx)|0;
+  for(let j=j0-r;j<=j0+r;j++) for(let i=i0-r;i<=i0+r;i++){ if(i<0||j<0||i>=N.nx||j>=N.nz) continue; const cx=N.b.minX+(i+.5)*N.c, cz=N.b.minZ+(j+.5)*N.c; if(Math.hypot(cx-x,cz-z)<=tol) out.push(j*N.nx+i); } return out; }
+function navReach(N,D,x,z,tol){ for(const k of navNear(N,x,z,tol||.8)) if(D[k]>=0) return true; return false; }
+// bot steering: BFS flow field towards the target (rebuilt when the target moves)
+function navDir(px,pz,tx,tz){
+  if(!W||!W.bounds||!W.walk) return null;
+  if(!W._nav||W._navAt!==W.obst.length+'/'+W.walk.segs.filter(s=>s.closed).length){ W._nav=navGrid({cell:.75,rad:.55,ignore:o=>o===(W.cart&&W.cart.col)||o.keg}); W._navAt=W.obst.length+'/'+W.walk.segs.filter(s=>s.closed).length; W._navD=null; }
+  const N=W._nav; const tk=navCell(N,tx,tz); if(tk<0) return null;
+  if(!W._navD||W._navTk!==tk){ let seeds=navNear(N,tx,tz,.8).filter(k=>!N.g[k]); if(!seeds.length) seeds=navNear(N,tx,tz,3).filter(k=>!N.g[k]); W._navD=navBFS(N,seeds); W._navTk=tk; }
+  const D=W._navD; let k=navCell(N,px,pz); if(k<0) return null;
+  if(D[k]<0){ let best=-1,bd=1e9; for(const q of navNear(N,px,pz,2.5)) if(D[q]>=0&&D[q]<bd){ bd=D[q]; best=q; } if(best<0) return null; k=best; }
+  for(let s=0;s<4;s++){ const i=k%N.nx, j=(k/N.nx)|0; let nk=k, nd=D[k];
+    for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){ const ii=i+di, jj=j+dj; if(ii<0||jj<0||ii>=N.nx||jj>=N.nz) continue; const q=jj*N.nx+ii; if(D[q]>=0&&D[q]<nd){ nd=D[q]; nk=q; } }
+    if(nk===k) break; k=nk; }
+  const cx=N.b.minX+(k%N.nx+.5)*N.c, cz=N.b.minZ+(((k/N.nx)|0)+.5)*N.c; const dx=cx-px, dz=cz-pz, d=Math.hypot(dx,dz); if(d<.05) return null; return [dx/d,dz/d];
+}
+
+// ---------- validator ----------
+const OBJ_KINDS_SOLID=['chest','vault','barrel','crate','pot','oilBarrel','ore','wood','ess','totem','cage','stone','lever','scroll','egg','cartE'];
+function validateWorld(opt={}){
+  const V=[]; const add=(rule,msg,x,z)=>{ V.push({rule,msg,x:x!==undefined?+x.toFixed(1):undefined,z:z!==undefined?+z.toFixed(1):undefined}); };
+  if(!W||!W.walk) return {ok:false,violations:[{rule:'world',msg:'нет мира'}]};
+  const kind=W.kind, pools=W.pools||[];
+  const live=W.obst.filter(o=>!o.dead);
+  const solidObjs=W.objs.filter(o=>o.alive!==false&&OBJ_KINDS_SOLID.includes(o.kind));
+  const inPool=(x,z,r,g)=>pools.find(p=>!p.bridged&&Math.hypot(x-p.x,z-p.z)<p.r+r+(g||0));
+  // 1. blockers must not overlap (trees/rocks/pillars/buildings); same building / raid socket parts are one thing
+  const blk=live.filter(o=>!o.water&&!o.raid);
+  for(let i=0;i<blk.length;i++) for(let j=i+1;j<blk.length;j++){ const a=blk[i], b=blk[j]; if(a.grp&&a.grp===b.grp) continue; if(a.rs&&a.rs===b.rs) continue;
+    const d=Math.hypot(a.x-b.x,a.z-b.z); if(d<a.r+b.r-.06) add('overlap',`коллайдеры пересекаются (${a.prop||a.grp||'obst'} / ${b.prop||b.grp||'obst'}) на ${(a.r+b.r-d).toFixed(2)} м`,a.x,a.z); }
+  // 2. objects: not inside colliders, not inside each other, not in water, inside the walkable space
+  for(const o of solidObjs){ const r=Math.max(.35,Math.min(o.r||.5,1.1)*.8);
+    for(const b of blk){ if(b===o.col||b===W.obstCage&&o.kind==='cage'||b.keg) continue; if(o.kind==='stone'&&Math.hypot(b.x-o.x,b.z-o.z)<.01) continue; if(o.kind==='cartE'&&b===o.col) continue; if(o.kind==='lever'&&Math.hypot(b.x-o.x,b.z-o.z)<.01) continue;
+      const d=Math.hypot(o.x-b.x,o.z-b.z); if(d<r+b.r-.05) add('objInCollider',`${o.kind} внутри коллайдера ${b.prop||'obst'}`,o.x,o.z); }
+    if(inPool(o.x,o.z,r*.7)) add('objInWater',`${o.kind} стоит в воде/лаве`,o.x,o.z);
+    const sd=o.kind==='scroll'||o.kind==='egg'||o.kind==='vault'||o.kind==='chest'?sdfW(o.x,o.z):sdfOpen(o.x,o.z); if(sd>-.2) add('objOutside',`${o.kind} вне проходимой зоны`,o.x,o.z); }
+  for(let i=0;i<solidObjs.length;i++) for(let j=i+1;j<solidObjs.length;j++){ const a=solidObjs[i], b=solidObjs[j]; const d=Math.hypot(a.x-b.x,a.z-b.z); if(d<.75) add('objOverlap',`${a.kind} в ${b.kind}`,a.x,a.z); }
+  // 3. props: spacing (trunks), tiny not on top of blockers, nothing in water (shore plants may stand at the rim), grounded (no floating/sinking)
+  const P=W.props, bp=[], tp=[];
+  for(const p of P){ const f=pfoot(p.type,p.s); if(f.k==='x') continue; if(f.k==='b') bp.push([p,f]); else if(f.k==='t') tp.push([p,f]);
+    const shore=['reeds','n:rock_small','n:rock_pebble','n:rock_bog_round','obsidian','n:rock_red','bones','fern','grass'].includes(p.type);
+    const pp=inPool(p.x,p.z,shore?-.6:Math.max(.2,f.c*.8)); if(pp) add('propInWater',`${p.type} в воде (${pp.kind})`,p.x,p.z);
+    if(p.y!==undefined&&kind!=='village'){ const gy=groundH(p.x,p.z); if(Math.abs(p.y-gy)>.4) add('float',`${p.type}: y=${p.y.toFixed(2)} а земля ${gy.toFixed(2)}`,p.x,p.z); } }
+  const gridB=new Map(); for(const e of bp){ const k=Math.floor(e[0].x/4)+','+Math.floor(e[0].z/4); (gridB.get(k)||gridB.set(k,[]).get(k)).push(e); }
+  const near=(x,z)=>{ const out=[]; const i=Math.floor(x/4), j=Math.floor(z/4); for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const q=gridB.get(a+','+b); if(q) for(const e of q) out.push(e); } return out; };
+  let nSp=0; for(const [p,f] of bp){ for(const [q,g] of near(p.x,p.z)){ if(q===p||q.x<p.x||(q.x===p.x&&q.z<=p.z)) continue; const d=Math.hypot(p.x-q.x,p.z-q.z); if(d<f.c+g.c-.05&&f.c>0&&g.c>0){ nSp++; if(nSp<40) add('spacing',`${p.type} и ${q.type} перекрываются`,p.x,p.z); } } }
+  let nT=0; for(const [p] of tp){ for(const [q,g] of near(p.x,p.z)){ if(g.c>0&&Math.hypot(p.x-q.x,p.z-q.z)<g.c+.05){ nT++; if(nT<20) add('tinyOnBlocker',`${p.type} на ${q.type}`,p.x,p.z); break; } } }
+  // planks / lumber only where it makes sense (camps, logging, farms, ruins, village)
+  if(kind==='stage') for(const o of W.objs.filter(o=>o.kind==='wood')){ const a=(W.areas||[]).find(a=>Math.hypot(a.x-o.x,a.z-o.z)<a.r+1); if(!a||!['camp','logging','farm','ruins'].includes(a.theme)) add('context','брёвна/доски вне лагеря',o.x,o.z); }
+  for(const p of P.filter(p=>p.type==='log'||p.type==='v:pallet')){ if(kind!=='stage') continue; const a=(W.areas||[]).find(a=>Math.hypot(a.x-p.x,a.z-p.z)<a.r+1); if(a&&!['camp','logging','farm','ruins','grove'].includes(a.theme)) add('context','доски на поляне',p.x,p.z); }
+  // 4. water / lava never on the route; blockers off the trodden path
+  const route=W.route||[];
+  for(let i=0;i<route.length-1;i++){ const a=route[i], b=route[i+1]; const L=Math.hypot(b.x-a.x,b.z-a.z), n=Math.ceil(L/.5);
+    for(let k=0;k<=n;k++){ const x=lerp(a.x,b.x,k/n), z=lerp(a.z,b.z,k/n); const p=inPool(x,z,1.0); if(p){ add('waterOnRoute',`${p.kind} на главной тропе`,x,z); break; }
+      const ob=blk.find(o=>!o.obj&&!o.keg&&!o.pillar&&o!==(W.cart&&W.cart.col)&&Math.hypot(o.x-x,o.z-z)<o.r+.9); if(ob&&kind==='stage'){ add('blockOnRoute',`${ob.prop||'препятствие'} на тропе`,x,z); break; } } }
+  // 5. enemy spawns
+  if(opt.spawns!==false) for(const e of G.enemies){ if(!e.alive) continue; if(sdfOpen(e.x,e.z)>-.1) add('spawn',`${e.kind} вне зоны`,e.x,e.z); const ob=blk.find(o=>Math.hypot(o.x-e.x,o.z-e.z)<o.r*.9); if(ob) add('spawn',`${e.kind} в коллайдере ${ob.prop||(ob.water?'вода':ob.obj?'объект':'obst')} r=${ob.r.toFixed(1)} @${ob.x.toFixed(1)},${ob.z.toFixed(1)}`,e.x,e.z); if(inPool(e.x,e.z,-.3)) add('spawn',`${e.kind} в воде`,e.x,e.z); }
+  // 6. reachability (hero radius), dry route (hazards blocked)
+  const stats={};
+  if(kind==='stage'||kind==='abyss'){
+    const N=navGrid({rad:.45,cell:.5,hazBlock:true,ignore:o=>o===(W.cart&&W.cart.col)}); const D=navBFS(N,navNear(N,W.start.x,W.start.z,1.2));
+    const req=[]; const optl=[];
+    req.push(['exit',W.portal?W.portal.x:W.exit.x,W.portal?W.portal.z:W.exit.z,1.5]);
+    if(W.camps) for(const c of W.camps) (c.opt?optl:req).push([c.opt?'опц. лагерь':'лагерь',c.x,c.z,3]);
+    if(W.cage) req.push(['клетка',W.cage.x,W.cage.z,2]); if(W.totems) for(const t of W.totems) req.push(['тотем',t.x,t.z,1.8]); if(W.stone) req.push(['камень',W.stone.x,W.stone.z,2.4]);
+    if(W.arenaNode) req.push(['арена',W.arenaNode.x,W.arenaNode.z,3]);
+    for(const o of W.objs){ if(o.alive===false) continue; if(['chest','vault','ore','wood','ess','barrel','crate','pot','oilBarrel','lever'].includes(o.kind)&&!(W.secret&&(o===W.secret.chest||o===W.secret.reward))) optl.push([o.kind,o.x,o.z,(o.r||.6)+1.4]); }
+    if(W.puzzle&&W.puzzle.vault) optl.push(['загадка',W.puzzle.vault.x,W.puzzle.vault.z,2.6]);
+    for(const n of (W.nooks||[])) optl.push(['отнорок '+n.kind,n.room.x,n.room.z,1.5]);
+    for(const [n,x,z,t] of req) if(!navReach(N,D,x,z,t)) add('unreachable',`недостижимо: ${n}`,x,z);
+    for(const [n,x,z,t] of optl) if(!navReach(N,D,x,z,t)) add('unreachableOpt',`недостижима награда: ${n}`,x,z);
+    let cells=0; for(let k=0;k<D.length;k++) if(D[k]>=0) cells++; stats.walkM2=Math.round(cells*N.c*N.c);
+    const ek=navNear(N,W.exit.x,W.exit.z,1.5).filter(k=>D[k]>=0).map(k=>D[k]); stats.routeM=ek.length?Math.round(Math.min(...ek)*N.c):-1;
+    // 7. secret integrity: reward unreachable before, reachable after the reveal
+    if(W.secret){ const Sc=W.secret, rx=Sc.room.x, rz=Sc.room.z; if(navReach(N,D,rx,rz,2)) add('secretLeak','тайник достижим без открытия стены',rx,rz);
+      const N2=navGrid({rad:.45,cell:.5,open:true,hazBlock:true,ignore:o=>o===(W.cart&&W.cart.col)}); const D2=navBFS(N2,navNear(N2,W.start.x,W.start.z,1.2)); if(!navReach(N2,D2,rx,rz,2)) add('secretSealed','тайник недостижим даже после открытия',rx,rz);
+      if(Sc.mode==='lever'&&Sc.lever&&!navReach(N,D,Sc.lever.x,Sc.lever.z,1.6)) add('secretLever','рычаг недостижим',Sc.lever.x,Sc.lever.z);
+      stats.secret=Sc.mode; }
+    // 8. escort: cart path clearance with the cart radius
+    if(W.cart&&W.cart.path){ const pts=[{x:W.cart.x,z:W.cart.z}].concat(W.cart.path); const cr=1.1;
+      for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1]; const L=Math.hypot(b.x-a.x,b.z-a.z), n=Math.ceil(L/.5); for(let k=0;k<=n;k++){ const x=lerp(a.x,b.x,k/n), z=lerp(a.z,b.z,k/n);
+          if(sdfOpen(x,z)>-cr){ add('cartPath','повозка задевает край',x,z); break; } const ob=blk.find(o=>o!==W.cart.col&&Math.hypot(o.x-x,o.z-z)<o.r+cr); if(ob){ add('cartPath',`повозка упирается в ${ob.prop||'препятствие'}`,x,z); break; } if(inPool(x,z,cr*.5)){ add('cartPath','повозка в воде',x,z); break; } } } }
+  }
+  if(kind==='village'&&opt.village!==false){ // every building front reachable from the Heart square
+    const N=navGrid({rad:.45,cell:.5}); const D=navBFS(N,navNear(N,W.start.x,W.start.z,1.2));
+    for(const id in (W.bmesh||{})){ const m=W.bmesh[id]; const ex=m.position.x, ez=m.position.z; const tol=/^t\d/.test(id)?2.6:/^h\d/.test(id)?3.2:({hall:5.4,temple:4.6,tavern:4.4,forge:4.2,store:4.2,alch:4.2,mine:4.2,saw:4.2,well:3,pen:4.2}[id]||4.2); if(!navReach(N,D,ex,ez,tol)) add('unreachable',`к зданию ${id} не пройти`,ex,ez); }
+    for(const n of (W.npcs||[])) if(!navReach(N,D,n.x,n.z,1.5)) add('unreachable',`NPC ${n.kind} недостижим`,n.x,n.z);
+    if(W.gate&&!navReach(N,D,W.gate.x,W.gate.z,2)) add('unreachable','ворота недостижимы',W.gate.x,W.gate.z);
+  }
+  stats.props=P.length; stats.obst=live.length; stats.objs=W.objs.length; stats.pools=pools.length; stats.areas=(W.areas||[]).length; stats.nooks=(W.nooks||[]).length; stats.seedTry=W.seedTry;
+  if(W.route){ let L=0; for(let i=0;i<W.route.length-1;i++) L+=Math.hypot(W.route[i+1].x-W.route[i].x,W.route[i+1].z-W.route[i].z); stats.routeLen=Math.round(L); }
+  const by={}; for(const v of V) by[v.rule]=(by[v.rule]||0)+1;
+  return {ok:V.length===0,n:V.length,by,violations:V.slice(0,opt.max||30),stats};
+}
+
+// ---------- debug hooks: validator + overview camera ----------
+const P6C_HOOKS={
+  validate:(o)=>validateWorld(o||{}),
+  // build a stage without playing it (validator pass); call __game.village() afterwards
+  genCheck:(z,s,o)=>{ G.mode='check'; clearEntities(); const info=stageInfo(z,s); makeStage(info); const r=validateWorld(o||{}); r.key=info.key; r.type=info.type; return r; },
+  genAbyss:(f,o)=>{ G.mode='check'; clearEntities(); G.abyss=G.abyss||{mods:[],floor:f}; makeAbyss(f,{mods:[]}); const r=validateWorld(o||{}); r.key='abyss'+f; return r; },
+  genVillage:()=>{ G.mode='check'; clearEntities(); makeVillage(); return validateWorld({spawns:false}); },
+  overview:(o={})=>{ const b=W.bounds; const cx=(b.minX+b.maxX)/2, cz=(b.minZ+b.maxZ)/2; const tf=Math.tan(cam.fov*PI/360); const h=(b.maxZ-b.minZ)-(o.pad||30), w=(b.maxX-b.minX)-(o.pad||30);
+    const dist=Math.max(h/(2*tf), w/(2*tf*cam.aspect))*1.04; CAMR.override={x:cx,z:cz-dist*Math.cos(1.53)*.0,dist,pitch:o.pitch||1.53}; CAMR.x=cx; CAMR.z=cz; cam.far=Math.max(220,dist*1.6); cam.updateProjectionMatrix();
+    scene.fog.near=dist*2; scene.fog.far=dist*3; if(W.liquid){ W.liquid.material.uniforms.fogNear.value=dist*2; W.liquid.material.uniforms.fogFar.value=dist*3; } W.cullAll=true; if(!document.getElementById('ovwCss')){ const st=document.createElement('style'); st.id='ovwCss'; st.textContent='body.ovw > *:not(#cv):not(script){visibility:hidden!important}'; document.head.appendChild(st); } document.body.classList.add('ovw'); cullProps(cx,cz,true); return {cx,cz,dist}; },
+  overviewOff:()=>{ document.body.classList.remove('ovw'); CAMR.override=null; cam.far=220; cam.updateProjectionMatrix(); if(W){ W.cullAll=false; setZoneLook(W.zone); if(W.liquid){ W.liquid.material.uniforms.fogNear.value=scene.fog.near; W.liquid.material.uniforms.fogFar.value=scene.fog.far; } } },
+  layout:()=>W&&{areas:(W.areas||[]).map(a=>({x:+a.x.toFixed(1),z:+a.z.toFixed(1),r:+a.r.toFixed(1),role:a.role,theme:a.theme})),nooks:(W.nooks||[]).map(n=>({x:+n.room.x.toFixed(1),z:+n.room.z.toFixed(1),kind:n.kind})),secret:W.secret&&{x:W.secret.room.x,z:W.secret.room.z,mode:W.secret.mode,wx:W.secret.wall.x,wz:W.secret.wall.z,lever:W.secret.lever&&{x:W.secret.lever.x,z:W.secret.lever.z}},bridge:W.bridge,puzzle:W.puzzle&&{x:W.puzzle.room.x,z:W.puzzle.room.z,type:W.puzzle.type},start:W.start,exit:W.exit},
+};
 // ================= p7: entities, combat, AI =================
 const G={mode:'boot',time:0,ts:1,hitstop:0,slowmo:0,P:null,enemies:[],pets:[],projs:[],drops:[],timers:[],waves:[],run:null,abyss:null,input:{mx:0,mz:0,atk:false},paused:false,god:false,bot:false,boss:null};
 const later=(t,fn)=>G.timers.push({t,fn});
@@ -6099,7 +6598,7 @@ function refreshPlayer(full){
 function attachTip(){ const P=G.P, rig=P.rig; if(rig.actor){ asTipTo(rig); const w=rig.meshes.weapon; if(w&&rig.tip.parent!==w) w.add(rig.tip); return; } const w=rig.meshes.weapon; if(!w) return; if(rig.tip.parent) rig.tip.parent.remove(rig.tip); const cls=rig.cls; rig.tip.position.set(0,cls==='staff'?1.35:cls==='bow'?0:cls==='axe'?.85:.85,0); w.add(rig.tip); }
 function onGearChanged(){ refreshPlayer(false); if(typeof hudRefresh==='function') hudRefresh(); }
 function nearestEnemy(x,z,maxD,filter){ let best=null,bd=maxD; for(const e of G.enemies){ if(!e.alive||e.burrowed||e.untarget) continue; if(filter&&!filter(e)) continue; const d=Math.hypot(e.x-x,e.z-z)-e.r; if(d<bd){bd=d;best=e;} } return best; }
-function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
+function targetableObj(x,z,maxD){ let best=null,bd=maxD; for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; if(o.kind==='cage'&&W.freed) continue; const d=Math.hypot(o.x-x,o.z-z)-o.r; if(d<bd){bd=d;best=o;} } return best; }
 
 function playerAttack(){
   const P=G.P; if(P.dead||P.state==='roll'||P.state==='skill'||G.mode==='village') return;
@@ -6119,7 +6618,7 @@ function doMeleeHit(P,mv){
   for(const e of G.enemies){ if(!e.alive||e.burrowed) continue; const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz); if(d>mv.rng+e.r) continue;
     const ang=Math.abs(angWrap(Math.atan2(dx,dz)-P.face)); if(ang>mv.arc/2&&d>e.r+.6) continue;
     const h=heroDmg(mv.m); dmgEnemy(e,h.amt,{crit:h.crit,els:h.els,kb:mv.kb||1.5,dir:Math.atan2(dx,dz),stun:mv.stun,src:P,heavy:mv.m>=1.7}); hits++; }
-  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
+  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
   if(mv.aoe){ const cx=P.x+fx0*1.8, cz=P.z+fz0*1.8; fx('dust',cx,0,cz,{k:8}); fx('ring',cx,0,cz,{r:mv.aoe,col:0xffd27a}); for(const e of G.enemies){ if(e.alive&&!e.burrowed&&Math.hypot(e.x-cx,e.z-cz)<mv.aoe+e.r&&!e._hitThis){ } } }
   if(PS.uniq.quake&&mv.aoe){ later(.12,()=>{ const cx=P.x+fx0*2.2, cz=P.z+fz0*2.2; fx('boom',cx,0,cz,{r:2.4,col:0xd8a050,smoke:0x6a5a40}); aoeDamage(cx,cz,2.6,.6,{}); }); }
   if(PS.uniq.blaze&&P.combo%3===0){ spawnProj('wave',P.x+fx0,P.z+fz0,P.face,{dmg:heroDmg(.9).amt,team:'p',pierce:99,life:.6,spd:16,el:'fire'}); }
@@ -6237,7 +6736,7 @@ function playerDie(){ const P=G.P; P.dead=true; P.state='dead'; P.st=0; AU.sfx('
 // ---------- enemies ----------
 let EID=1;
 function spawnEnemy(kind,x,z,L,o={}){
-  const D=ENEMIES[kind]; const rig=ENEMY_MODELS[kind](); worldRoot.add(rig.root);
+  const D=ENEMIES[kind]; const rig=typeof realRand==='function'?realRand(()=>ENEMY_MODELS[kind]()):ENEMY_MODELS[kind](); worldRoot.add(rig.root);
   const e={id:EID++,type:'enemy',kind,D,lvl:L,x,z,y:0,face:rand(TAU),vx:0,vz:0,kx:0,kz:0,r:rig.r||.5,rig,state:o.aggro?'chase':'idle',st:0,cd:rand(.5,1.5),
     alive:true,camp:o.camp,mods:[],flashT:0,stat:{},t:rand(10),summon:o.summon,meshes:[]};
   const hpM=F(L)*(1+.06*(L-1))*diffHp(L)*(W.kind==='abyss'?(G.abyss&&G.abyss.mods.includes('thick')?1.5:1):1);
@@ -6478,7 +6977,7 @@ function updateProjs(dt){
             if(PS.uniq.ricochet&&p.kind.startsWith('arrow')&&!p.ric){ const n=nearestEnemy(e.x,e.z,8,x=>x!==e&&!p.hit.has(x)); if(n){ const q=spawnProj('arrow',e.x,e.z,Math.atan2(n.x-e.x,n.z-e.z),{dmg:amt*.6,team:'p',ric:1}); q.hit.add(e); } }
             if(PS.uniq.burst&&p.kind==='bolt'){ fx('boom',p.x,1,p.z,{r:1.6,col:p.col||0xc8a0ff}); aoeDamage(p.x,p.z,1.8,.5,{}); }
             if(p.pierce-->0) continue; dead=true; break; } }
-        if(!dead) for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.hitme)) continue; if(Math.hypot(o.x-p.x,o.z-p.z)<o.r+p.r){ hitObj(o,p.dmg!==undefined?p.dmg:heroDmg(1).amt); dead=true; break; } }
+        if(!dead) for(const o of W.objs){ if(!o.alive||!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; if(Math.hypot(o.x-p.x,o.z-p.z)<o.r+p.r){ hitObj(o,p.dmg!==undefined?p.dmg:heroDmg(1).amt); dead=true; break; } }
       } else {
         if(!P.dead&&Math.hypot(P.x-p.x,P.z-p.z)<P.r+p.r){ hurtPlayer(p.dmg,{src:p.src,lvl:p.lvl,el:p.el,kb:2,dir:Math.atan2(p.vx,p.vz)}); dead=true; }
         if(W.cart&&Math.hypot(W.cart.x-p.x,W.cart.z-p.z)<1.2){ cartHurt(p.dmg*.6); dead=true; }
@@ -6501,7 +7000,9 @@ function hitObj(o,amt){
   if(!o.alive) return;
   if(o.pvp){ pvpHit(o,amt); return; }
   if(o.hitme){ puzzleHit(o); return; }
-  if(o.kind==='secret'){ o.hp--; fx('dust',o.x,1,o.z,{k:6,col:0x8a8478}); AU.sfx('hit'); shake(.15); if(o.hp<=0){ o.alive=false; worldRoot.remove(o.mesh); if(o.seg) o.seg.closed=false; fx('boom',o.x,1,o.z,{r:2,col:0xd8c8a0,smoke:0x8a8478}); AU.sfx('boom'); banner('Тайник!','Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; } return; }
+  if(o.kind==='lever'){ if(o.cd>G.time) return; o.cd=G.time+.6; o.mesh.rotation.x=-.25; AU.sfx('hit',.7,1.3); const S0=W.secret; if(S0&&S0.wall&&S0.wall.alive){ fx('magic',o.x,1,o.z,{col:0x8ad8ff,k:10}); later(.3,()=>secretOpen(S0.wall,'Рычаг открыл тайный ход')); } o.alive=false; return; }
+  if(o.kind==='secret'){ if(o.locked){ if(!o.lockMsg||G.time-o.lockMsg>3){ o.lockMsg=G.time; dmgNum(o.x,2.6,o.z,'Заперто. Где-то рядом рычаг','txt'); AU.sfx('deny'); } return; }
+    o.hp--; fx('dust',o.x,1,o.z,{k:6,col:o.secretMode==='barricade'?0xa07040:0x8a8478}); AU.sfx('hit'); shake(.15); if(o.hp<=0){ if(typeof secretOpen==='function'&&W.secret) secretOpen(o,o.secretMode==='barricade'?'Баррикада разбита — проход открыт':null); else { o.alive=false; worldRoot.remove(o.mesh); if(o.seg) o.seg.closed=false; banner('Тайник!','Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; } } return; }
   if(o.brk){ o.alive=false; worldRoot.remove(o.mesh); if(o.oil){ spawnOil(o.x,o.z,2.2,18); fx('dust',o.x,.4,o.z,{k:8,col:0x2a1a10}); AU.sfx('hit',.8,.5); return; } fx('dust',o.x,.5,o.z,{k:8,col:0xa07040}); for(let i=0;i<5;i++) fx('hit',o.x,.5,o.z,{col:0xc89a6a}); AU.sfx('hit',.8,.7);
     if(chance(.55)) spawnDrop('gold',o.x,o.z,{v:Math.round(rand(2,6)*F(W.lvl||1)*(1+PS.gold/100))}); if(chance(.12)) spawnDrop('potion',o.x,o.z); if(chance(.06)) spawnDrop('item',o.x,o.z,{item:genItem(W.lvl,{mf:PS.mf})}); if(chance(.1)) spawnDrop('mat',o.x,o.z,{res:pick(['wood','ore']),v:randi(2,5)}); return; }
   if(o.res){ o.hp--; fx('hit',o.x,.8,o.z,{col:o.res==='ess'?0x6fe0d6:0xd8d0c0}); AU.sfx('hit',.8,o.res==='wood'?.6:1.3); shake(.08);
@@ -6587,7 +7088,7 @@ function updateCart(dt){
     if(!threat&&c.hp<c.maxHp){ c.hp=Math.min(c.maxHp,c.hp+c.maxHp*.02*dt); if(Math.random()<dt) objText(); }
     if(near&&!threat&&d>.3){ const sp=2.3*dt; c.x+=dx/d*sp; c.z+=dz/d*sp; c.mesh.rotation.y=angTo(c.mesh.rotation.y,Math.atan2(dx,dz),dt*3); c.moving=true; if(Math.random()<dt*4) fx('dust',c.x,0,c.z,{k:1}); } else c.moving=false;
     if(d<.6){ c.wp++; if(c.wp>=c.path.length){ c.arrived=true; objText(); AU.sfx('quest'); banner('Повозка доставлена',''); } }
-    for(const a of W.ambush){ if(!a.done&&Math.hypot(c.x-a.x,c.z-a.z)<5){ a.done=true; for(let i=0;i<randi(3,5);i++){ const ang=rand(TAU); const e=spawnEnemy(pick(W.zone.enemies),a.x+Math.cos(ang)*10,a.z+Math.sin(ang)*10,W.lvl,{aggro:1}); e.cartFocus=chance(.5); fx('magic',e.x,.5,e.z,{col:0x5a2a2a}); } banner('Засада!',''); AU.sfx('sting',.5); } }
+    for(const a of W.ambush){ if(!a.done&&Math.hypot(c.x-a.x,c.z-a.z)<5){ a.done=true; for(let i=0;i<randi(3,5);i++){ let ang=rand(TAU), rr=9; for(let t=0;t<10&&!walkable(a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,.6);t++){ ang=rand(TAU); rr=rand(5,9); } const e=spawnEnemy(pick(W.zone.enemies),a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,W.lvl,{aggro:1}); e.cartFocus=chance(.5); fx('magic',e.x,.5,e.z,{col:0x5a2a2a}); } banner('Засада!',''); AU.sfx('sting',.5); } }
   }
   c.mesh.position.set(c.x,0,c.z); if(c.col){ c.col.x=c.x; c.col.z=c.z; }
   if(Math.random()<dt*6) fx('ember',c.x+rand(-.3,.3),1.6,c.z+rand(-.3,.3));
@@ -8013,7 +8514,7 @@ function synTick(dt){
 // stage dressing: puddles (zones 1–3), oil barrels (zones 1,5,6), rain (zones 2–3)
 function synDressStage(info,main){
   const Z=info.zone;
-  if(Z.id<=3){ const n=Z.id===3?1:randi(2,3); for(let i=0;i<n;i++){ const nd=pick(main.slice(1,-1)); if(!nd) break; const a=rand(TAU),d=rand(1.5,nd.r*.55); W.pools.push({x:nd.x+Math.cos(a)*d,z:nd.z+Math.sin(a)*d,r:rand(1.5,2.3),wet:true}); } }
+  // v8: лужи ставит placeLiquids (p6b) — с проверкой, что они не на тропе и не под пропсами
   W.rain=(Z.id===2||Z.id===3)&&info.type!=='boss'&&chance(.4);
   W.oilBarrels=(Z.id===1||Z.id>=5)?randi(2,4):Z.id===4?1:0;
 }
@@ -8050,14 +8551,11 @@ const PZ_COL=[0xff5a3a,0x4ab8ff,0x8ae03a,0xffd040,0xc47cff];
 const PZ_CSS=['#ff5a3a','#4ab8ff','#8ae03a','#ffd040','#c47cff'];
 const PZ_GLOW={}; function pzGlowMat(c){ if(!PZ_GLOW[c]) PZ_GLOW[c]=toonMat(c,.75); return PZ_GLOW[c]; }
 function puzzlePlan(info,walk){
-  const type=PUZ_PLAN[info.key]; if(!type) return; const corr=type==='corridor'; const R=corr?3.6:7.2, D=corr?24:18.5;
-  const main=walk.nodes.filter(n=>!n.side);
-  const okAt=(x,z)=>walk.nodes.every(n=>Math.hypot(n.x-x,n.z-z)>n.r+R+3)&&walk.segs.every(s=>segDist(x,z,s)[0]>s.w/2+R+2);
-  const segOk=(n,x,z)=>walk.nodes.every(m=>m===n||segDist(m.x,m.z,{ax:n.x,az:n.z,bx:x,bz:z})[0]>m.r+2);
-  for(const idx of [2,3,1,4]){ const n=main[idx]; if(!n||idx>=main.length-1) continue;
-    for(const side of [n.x>0?-1:1,n.x>0?1:-1]){ for(const dz of [0,-4,4]){ const x=n.x+side*D, z=n.z+dz; if(!okAt(x,z)||!segOk(n,x,z)) continue;
-        const room={x,z,r:R,side:true,puz:true}; walk.nodes.push(room); walk.segs.push({ax:n.x,az:n.z,bx:x,bz:z,w:corr?3.2:3.6,side:true});
-        const L=Math.hypot(x-n.x,z-n.z); W.puzzle={type,room,from:n,ux:(n.x-x)/L,uz:(n.z-z)/L,els:[],st:{},solved:false,first:!(S.puz&&S.puz[info.key]),key:info.key,seen:false}; return; } } }
+  const type=PUZ_PLAN[info.key]; if(!type) return; const corr=type==='corridor'; const R=corr?3.6:7.2;
+  // v8: комната загадки — боковой отнорок от площадки, отделённый скалами от остального уровня (layoutSide, p6b)
+  const sd=layoutSide({R,len:corr?20:6.5,w:corr?3.4:4.4,pad:4}); if(!sd) return;
+  const room=sd.room; room.puz=true; const n=sd.from;
+  W.puzzle={type,room,from:n,ux:-sd.ux,uz:-sd.uz,els:[],st:{},solved:false,first:!(S.puz&&S.puz[info.key]),key:info.key,seen:false};
 }
 function pzMesh(geo,x,z,y=0,ry=0){ const m=new THREE.Mesh(geo,MT); m.position.set(x,y,z); m.rotation.y=ry; worldRoot.add(m); return m; }
 const PZG={
@@ -8079,7 +8577,9 @@ function pzObj(kind,x,z,o={}){ const ob=Object.assign({kind:'pz',pk:kind,x,z,r:o
 function puzzleBuild(){
   const Z=W.puzzle, R=Z.room, c={x:R.x,z:R.z}, ux=Z.ux, uz=Z.uz, vx=-uz, vz=ux; const at=(f,s)=>[c.x+ux*f+vx*s,c.z+uz*f+vz*s];
   // reward vault at the far wall
-  const [vx0,vz0]=Z.type==='corridor'?[c.x,c.z]:at(-R.r+2.2,0); Z.vault=mkObj('chest',vx0,vz0,{ry:Math.atan2(ux,uz)}); Z.vault.puz=true; Z.vault.r=.8;
+  let [vx0,vz0]=Z.type==='corridor'?[c.x,c.z]:at(-R.r+2.2,0);
+  if(Z.type==='mirrors'){ Z.d1pre=chance(.5)?1:-1; // the mirror grid is world-aligned: put the chest on a free diagonal, far from the entrance
+    let best=null,bv=-1e9; for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]]){ if(dx===1&&dz===Z.d1pre) continue; const x=c.x+dx*3.7, z=c.z+dz*3.7; const v=-(dx*-ux+dz*-uz)*0-(dx*ux+dz*uz); if(v>bv){ bv=v; best=[x,z]; } } [vx0,vz0]=best; } Z.vault=mkObj('chest',vx0,vz0,{ry:Math.atan2(ux,uz)}); Z.vault.puz=true; Z.vault.r=.8;
   if(Z.type!=='corridor'){ Z.vault.sealed=true; Z.vault.sealTxt='Сундук за решёткой. '+PUZ_TYPES[Z.type].hint; Z.bars=pzMesh(PZG.bars(),vx0,vz0); }
   for(const sgn of [-1,1]){ const [px,pz]=at(-R.r+1.4,sgn*3.4); if(Z.type!=='corridor'){ addProp(W.zone.id>=4?'candles':'lantern',px,pz,1); } }
   const T=Z.type;
@@ -8089,7 +8589,7 @@ function puzzleBuild(){
   if(T==='plates'){ Z.plates=[at(2.8,-3.6),at(-2.8,-3.2),at(.4,4)].map(([x,z])=>({x,z,m:pzMesh(PZG.plate(),x,z),t:0})); }
   if(T==='levers'){ const n=W.zone.id>=3?4:3; const order=[...Array(n).keys()].sort(()=>Math.random()-.5); Z.order=order; Z.prog=0; Z.levers=[];
     for(let i=0;i<n;i++){ const a=-1.2+i/(n-1)*2.4; const [x,z]=at(Math.cos(a)*3.2+.6,Math.sin(a)*4.6); const o=pzObj('lever',x,z,{idx:i,r:.7}); o.m=pzMesh(PZG.lever(),x,z,0,Math.atan2(c.x-x,c.z-z)); o.cr=pzMesh(PZG.crystal(),x,z,1.9); o.cr.material=pzGlowMat(PZ_COL[i]); Z.levers.push(o); } }
-  if(T==='mirrors'){ const g=2.3; const d1=chance(.5)?1:-1; const cell=(gx,gz)=>[c.x+gx*g,c.z+gz*g];
+  if(T==='mirrors'){ const g=2.3; const d1=Z.d1pre; const cell=(gx,gz)=>[c.x+gx*g,c.z+gz*g];
     Z.grid={g,d1}; const [ex,ez]=cell(-2,0); Z.emit={gx:-2,gz:0,m:pzMesh(PZG.emitter(),ex,ez)}; const [tx,tz]=cell(2,2*d1); Z.tgt={gx:2,gz:2*d1,m:pzMesh(PZG.target(),tx,tz)}; W.obst.push({x:ex,z:ez,r:.7},{x:tx,z:tz,r:.7});
     Z.mirrors=[[0,0],[0,2*d1],[0,-2*d1]].map(([gx,gz],i)=>{ const [x,z]=cell(gx,gz); const o=pzObj('mirror',x,z,{gx,gz,r:.7,ori:Math.random()<.5?0:1}); if(i<2&&o.ori===(d1>0?0:1)) o.ori^=1; o.m=pzMesh(PZG.mirror(),x,z); o.m.rotation.y=o.ori?-PI/4:PI/4; W.obst.push({x,z,r:.6}); return o; });
     Z.beams=[]; for(let i=0;i<6;i++){ const m=new THREE.Mesh(new THREE.BoxGeometry(1,.14,.14),BEAM_MAT); m.visible=false; worldRoot.add(m); Z.beams.push(m); } pzBeam(); }
@@ -8769,7 +9269,7 @@ function placePlayer(x,z,face){ const P=G.P; P.x=x; P.z=z; P.face=face===undefin
 // ---------- village ----------
 function enterVillage(after){
   show('res',false); show('boons',false); clearEntities(); RUNBUF={}; G.run=null; G.abyss=null; computeStats();
-  makeVillage(); G.mode='village'; refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI);
+  makeVillage(); G.mode='village'; heroRebuildRig(); refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI);
   W.npcs=W.npcs.filter(n=>{ const need={smith:'forge',alch:'alch',beast:'pen'}[n.kind]; const ok=n.kind==='elder'||(n.kind==='stranger'?stageDone('1-5'):S.bld[need]>0); if(!ok) worldRoot.remove(n.rig.root); return ok; });
   show('hud'); hudBuild(); AU.music('village'); cullProps(0,0,true);
   const got=collectProduction(); const keys=Object.keys(got).filter(k=>got[k]>0);
@@ -8823,7 +9323,7 @@ function startStage2(z,s){
     clearEntities(); const info=stageInfo(z,s);
     RUNBUF={}; for(const k of ['elixir_str','elixir_def','elixir_spd']) if(CARD_ELIX[k]&&S.cons[k]>0){ S.cons[k]--; RUNBUF[k.split('_')[1]]=1; } CARD_ELIX={};
     makeStage(info); G.mode='stage'; G.run={info,t:0,kills:0,gold:0,items:[],mats:{},dmgTaken:0,minHp:1,pots:0,chests:0,startXp:S.hero.xp,startLvl:S.hero.lvl};
-    refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI); G.P.ember=0;
+    heroRebuildRig(); refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI); G.P.ember=0;
     show('hud'); hudBuild(); AU.music(info.zone.mus); cullProps(W.start.x,W.start.z,true);
     banner(info.name,`${info.zone.n} · ${STAGE_TYPES[info.type].n}`); track('stage_start',info.key);
     if(Object.keys(RUNBUF).length) toast('Эликсир выпит — сила разливается по жилам');
@@ -8957,7 +9457,7 @@ function abyssTick(dt){
   if(W.wavesLeft>0&&G.enemies.filter(e=>e.alive).length===0){ W.waveDelay-=dt; if(W.waveDelay<=0){ W.waveDelay=2.5; W.waveN++; W.wavesLeft--;
       if(W.miniBoss){ const ids=['gobKing','rotroot','bogMother','morven','colossus','ashKing']; const sb=evStr('seasonBoss'); const echo=sb&&BOSSES[sb]&&A.floor<=10; const id=echo?sb:ids[(Math.floor(A.floor/5)-1)%ids.length]; const e=spawnBoss(id,0,-4,W.lvl,{hpMul:echo?1.5:1,dmgMul:.85}); e.echo=echo; if(echo){ e.bossD=Object.assign({},e.bossD,{n:'Эхо Колосса',t:'сезонный босс'}); } e.intro=true; CAMR.override={x:0,z:-2,zoom:.6}; AU.sfx('roar'); later(.3,()=>banner(echo?'Событие':'Страж Бездны',e.bossD.n)); later(1.8,()=>{ CAMR.override=null; e.intro=false; }); }
       else { const n=Math.min(16,4+Math.floor(A.floor*.7)); const elC=(.06+A.floor*.012)*(A.mods.includes('elite')?2:1);
-        for(let i=0;i<n;i++){ const a=rand(TAU),r=rand(6,12); const x=Math.cos(a)*r,z=Math.sin(a)*r-2; const e=spawnEnemy(pick(W.enemyPool),x,z,W.lvl,{aggro:1,elite:chance(elC)?(A.floor>12&&chance(.3)?2:1):0}); fx('magic',x,.5,z,{col:0xb04aff,k:10}); } AU.sfx('tele',.6); }
+        for(let i=0;i<n;i++){ let a=rand(TAU),r=rand(6,12); for(let t=0;t<10&&!walkable(Math.cos(a)*r,Math.sin(a)*r-2,.6);t++){ a=rand(TAU); r=rand(4,10); } const x=Math.cos(a)*r,z=Math.sin(a)*r-2; const e=spawnEnemy(pick(W.enemyPool),x,z,W.lvl,{aggro:1,elite:chance(elC)?(A.floor>12&&chance(.3)?2:1):0}); fx('magic',x,.5,z,{col:0xb04aff,k:10}); } AU.sfx('tele',.6); }
       objText(); } }
   if(W._ot===undefined||(W._ot-=dt)<0){ W._ot=.4; objText(); }
 }
@@ -9070,7 +9570,8 @@ function botInput(){
   // dodge out of decals targeted at me
   let mx=0,mz=0; if(tx!==null){ const dx=tx-P.x,dz=tz-P.z,d=Math.hypot(dx,dz); if(d>.6){ mx=dx/d; mz=dz/d; } }
   // navigate path: if far along path, follow segment centerline direction
-  if(tx!==null&&W.walk&&!walkable(P.x+mx*1.5,P.z+mz*1.5,.2)){ let best=null,bd=1e9; for(const n of W.walk.nodes){ if(n.side) continue; const d=Math.hypot(n.x-tx,n.z-tz)+Math.hypot(n.x-P.x,n.z-P.z)*.2; if(Math.hypot(n.x-P.x,n.z-P.z)>2&&d<bd){bd=d;best=n;} } if(best){ const dx=best.x-P.x,dz=best.z-P.z,d=Math.hypot(dx,dz); mx=dx/d; mz=dz/d; } }
+  if(tx!==null&&W.walk&&W.kind!=='village'&&typeof navDir==='function'&&Math.hypot(tx-P.x,tz-P.z)>1.2){ const nd=navDir(P.x,P.z,tx,tz); if(nd){ mx=nd[0]; mz=nd[1]; } }
+  else if(tx!==null&&W.walk&&!walkable(P.x+mx*1.5,P.z+mz*1.5,.2)){ let best=null,bd=1e9; for(const n of W.walk.nodes){ if(n.side) continue; const d=Math.hypot(n.x-tx,n.z-tz)+Math.hypot(n.x-P.x,n.z-P.z)*.2; if(Math.hypot(n.x-P.x,n.z-P.z)>2&&d<bd){bd=d;best=n;} } if(best){ const dx=best.x-P.x,dz=best.z-P.z,d=Math.hypot(dx,dz); mx=dx/d; mz=dz/d; } }
   G.input.atk=atk; return {mx,mz,atk};
 }
 
@@ -9107,6 +9608,15 @@ window.__game={
     const d=document.createElement('div'); d.id='gal'; d.style.cssText='position:fixed;inset:0;z-index:999;background:#222;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start'; d.innerHTML=out.map(([l,u])=>`<div style="width:160px;text-align:center;color:#fff;font:11px sans-serif;margin:2px"><img src="${u}" style="width:160px;height:160px;display:block">${l}</div>`).join(''); document.body.appendChild(d); return out.length; }
 };
 
+// ---------- hero rig: makePlayer() runs before asBoot(), so the first rig is procedural — swap in the KayKit actor once models are ready ----------
+function heroRebuildRig(){
+  const P=G.P; if(!P||P.rig.actor||!asCan('hero')) return false;
+  let rig; try{ rig=buildHero(); }catch(e){ console.warn('heroRebuildRig',e); return false; } if(!rig||!rig.actor) return false;
+  const old=P.rig; const par=old.root.parent||scene; rig.root.position.copy(old.root.position); rig.root.rotation.copy(old.root.rotation); rig.root.visible=old.root.visible;
+  par.remove(old.root); old.root.traverse(o=>{ if(o.isMesh&&o.geometry&&!o.geometry.userData.shared){} });
+  if(old.tip&&old.tip.parent) old.tip.parent.remove(old.tip); rig.tip=old.tip||new THREE.Object3D(); P.rig=rig; par.add(rig.root);
+  refreshPlayer(false); if(typeof cosApply==='function') try{ cosApply(); }catch(e){} return true;
+}
 // ---------- boot ----------
 function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
@@ -9115,7 +9625,7 @@ function boot(){
     ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; PR=prCap(); R.setPixelRatio(PR); emberLight.visible=Q.point!==false; try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){} perfInit(); computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
-    ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
+    ['Разжигаем очаг…',()=>{ heroRebuildRig(); R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
     ['Готовим мир…',()=>{ for(const k of ['goblin','wolf','skelShield']) { const r=ENEMY_MODELS[k](); } }],
     ['',()=>{ showTitle(); requestAnimationFrame(loop); }]
   ];
@@ -9160,6 +9670,7 @@ Object.assign(window.__game,{
   puzBlocks:()=>{ const Z=W.puzzle; Z.blocks.forEach((b,i)=>{ b.x=Z.plates[i].x; b.z=Z.plates[i].z; }); },
   puzVault:()=>{ const Z=W.puzzle; G.P.x=Z.vault.x+Z.ux*1.2; G.P.z=Z.vault.z+Z.uz*1.2; },
 });
+Object.assign(window.__game,P6C_HOOKS);
 window.__game.spawnE=(k,x,z,o)=>spawnEnemy(k,x,z,W.lvl||1,Object.assign({aggro:1},o||{}));
 window.__game.x=function(code){ return eval(code); }; // debug: evaluate inside the game scope (tests/balance tools)
 // balance probe: player power vs enemy/boss at a stage level (analytic, averaged over several gear rolls)
@@ -9807,8 +10318,8 @@ const ECHOES={
   '6-2':{who:'dragon',lines:['…я лягу на Сердце. Пусть думают, что я его пожираю. Так безопаснее — для них…']},
   '6-4':{who:'king',lines:['…Искроносец придёт. Они всегда приходят убивать змея. Я лишь подожду за его спиной…']},
 };
-function echoBuild(info){ const E=ECHOES[info.key]; if(!E||!W||!W.walk) return; const nodes=W.walk.nodes.filter(n=>!n.side); const node=nodes[Math.min(nodes.length-1,Math.max(1,Math.floor(nodes.length*.45)))]; if(!node) return;
-  const x=node.x+node.r*.35, z=node.z; let rig=null; try{ rig=E.who==='knight'?buildCompanion('vela',compGearObj('vela')):E.who==='dragon'?null:buildNPC(E.who==='bogMother'?'elder':E.who); }catch(e){ rig=null; }
+function echoBuild(info){ const E=ECHOES[info.key]; if(!E||!W||!W.walk) return; const nodes=W.areas?W.areas:W.walk.nodes.filter(n=>!n.side&&!n.joint); const node=nodes[Math.min(nodes.length-1,Math.max(1,Math.floor(nodes.length*.45)))]; if(!node) return;
+  let x=node.x+node.r*.35, z=node.z; if(typeof spotIn==='function'&&W.fp){ const sp=spotIn(node,node.r*.3,node.r*.6,.8,{k:'o',noRes:1}); if(sp){ x=sp[0]; z=sp[1]; } } let rig=null; try{ rig=E.who==='knight'?buildCompanion('vela',compGearObj('vela')):E.who==='dragon'?null:buildNPC(E.who==='bogMother'?'elder':E.who); }catch(e){ rig=null; }
   const g=new THREE.Group(); g.position.set(x,0,z); worldRoot.add(g);
   if(rig){ g.add(rig.root); rig.root.position.set(0,0,0); if(rig.actor){ try{ rig.actor.setOpacity(.62); rig.actor.setTint(0x9ad8ff,.75); rig.actor.setGlow('#9ad8ff',.5); rig.actor.play('idle'); }catch(e){} } else rig.root.traverse(o=>{ if(o.isMesh) o.material=MTghost; }); }
   else { const m=pmesh(cgeo('echo_wisp',b=>{ b.oct(.5,0x9ad8ff,{s:[1,1.8,1],e:1}); b.oct(.3,0xffffff,{s:[1,1.6,1],e:1,ol:0}); }),g,0,1.4,0); m.material=MTghost; }
@@ -10050,7 +10561,7 @@ const _hudQuest=hudQuest; hudQuest=function(){ _hudQuest(); const el=$('hQuest')
 const QEQ={it:null,t:0};
 function qeqOffer(it){ if(!it||!S.inv.includes(it)||compareTo(it)<=0) return; if(!canEquip(it,ITEM_BASES[it.base].slot==='ring'?'ring1':ITEM_BASES[it.base].slot)) return; const B=ITEM_BASES[it.base]; if(B.cls&&B.cls!==PS.cls&&B.slot==='weapon'&&S.gear.weapon) return;
   QEQ.it=it; let el=$('qeq'); if(!el){ el=document.createElement('div'); el.id='qeq'; document.body.appendChild(el); }
-  el.className='parch on bg-r'+it.rar; el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
+  el.className='dk on bg-r'+it.rar; el.innerHTML=`<img src="${iconFor(it)}" alt=""><div class="grow"><b class="r${it.rar}">${esc(it.name)}</b><small>▲ ${compareTo(it)} к силе</small></div><button class="btn leather small" id="qeqB">Надеть</button>`;
   $('qeqB').onclick=ev=>{ ev.stopPropagation(); if(QEQ.it&&S.inv.includes(QEQ.it)){ equip(QEQ.it); hudPortrait(); toast(`Надето: <b class="r${QEQ.it.rar}">${esc(QEQ.it.name)}</b>`); track('quick_equip',''+QEQ.it.rar); } el.classList.remove('on'); };
   clearTimeout(QEQ.t); QEQ.t=setTimeout(()=>el.classList.remove('on'),7000); }
 // ---------- revive once per stage for a rewarded ad ----------
