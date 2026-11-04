@@ -165,13 +165,13 @@ function portraitFor(sp){
   }catch(e){}
   return '';
 }
-function playDialog(key,cb){
-  const lines=DLG[key]; if(!lines){ cb&&cb(); return; }
-  S.seen[key]=1; saveGame();
-  DLGS.q=lines; DLGS.i=0; DLGS.cb=cb; G.dialog=true;
+function playDialog(key,cb,custom){
+  const lines=custom||DLG[key]; if(!lines){ cb&&cb(); return; }
+  if(key){ S.seen[key]=1; saveGame(); }
+  DLGS.q=lines.slice(); DLGS.i=0; DLGS.cb=cb; G.dialog=true; DLGS.choice=null;
   show('dlg'); show('dlgBack');
   $('dlg').innerHTML=`<button class="btn woodb small" id="dlgSkip">Пропустить</button><div id="dlgBox">${frame('<div id="dlgText"></div><div id="dlgNext">коснитесь ▸</div>')}<div id="dlgPort"><img id="dlgImg" alt=""></div><div id="dlgName"></div></div>`;
-  $('dlgSkip').onclick=ev=>{ ev.stopPropagation(); dlgEnd(); };
+  $('dlgSkip').onclick=ev=>{ ev.stopPropagation(); if(DLGS.choice) return; const ci=DLGS.q.findIndex((l,i)=>i>DLGS.i&&l[0]==='choice'); if(ci>=0){ clearInterval(DLGS.timer); DLGS.typing=false; DLGS.i=ci; dlgShow(); } else dlgEnd(); };
   $('dlg').onclick=()=>dlgNext(); $('dlgBack').onclick=()=>dlgNext();
   dlgShow();
 }

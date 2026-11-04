@@ -254,7 +254,7 @@ function storyVillageSeq(seq){ const c=STS().ch;
 // Morven, Bog Mother, Dragon: choice moments during the boss stage
 const _onBossDeath=onBossDeath;
 onBossDeath=function(e){ if(e.kind==='bogMother'&&!G.abyss&&!STS().ch.bog){ _onBossDeath(e); later(1.8,()=>playDialog('ch_bog',()=>{ if(STS().ch.bog==='spare'){ S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='boss3_post'); S.q.flags.pend.push('boss3_post_spare'); } })); return; }
-  if(e.kind==='ashKing'&&!G.abyss){ _onBossDeath(e); S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='ending'); if(!S.seen.ending||!STS().end) S.q.flags.endPending=1; return; }
+  if(e.kind==='ashKing'&&!G.abyss){ _onBossDeath(e); S.q.flags.pend=(S.q.flags.pend||[]).filter(k=>k!=='ending'); if(!S.seen.ending||!STS().end||S.q.flags.replayEnd) S.q.flags.endPending=1; return; }
   _onBossDeath(e); };
 DLG.boss3_post_spare=[['alch','Ты… отпустил её? Она лечила детей, а потом… Ладно. Может, она снова научится лечить. Я помогу.']];
 const _dlgQuick=dlgQuick; dlgQuick=function(key){ if(key==='boss6_mid'&&!G.abyss&&!STS().ch.dragon&&(STS().ch.trust==='doubt'||S.lore.length>=8)&&G.boss&&G.boss.kind==='dragon'){ S.seen[key]=1; const e=G.boss; e.invuln=true; playDialog('ch_dragon',()=>{ if(STS().ch.dragon==='spare') dragonSpare(e); else e.invuln=false; }); return; } _dlgQuick(key); };
@@ -263,7 +263,7 @@ function dragonSpare(e){ e.invuln=true; e.untarget=true; e.intro=true; const A=W
 // ending: choice dialog + engine-driven ending scene in the village
 function storyEndingSeq(seq){ if(!S.q.flags.endPending) return; seq.unshift(cb=>{ S.q.flags.endPending=0; playDialog('ending',()=>{ const k=STS().ch.heart||'ember'; endingScene(k,cb); }); }); }
 const _ftueSeqHook=typeof ftueVillageSeq;
-function endingScene(k,cb){ const E=ENDINGS[k]; const S0=STS(); S0.end=k; S0.ends[k]=1; S.seen.ending=1; cosGrant({ember:'troph_dawn',guard:'troph_guard',dragon:'troph_twofire'}[k],true); track('ending',k); saveGame(true);
+function endingScene(k,cb){ S.q.flags.replayEnd=0; const E=ENDINGS[k]; const S0=STS(); S0.end=k; S0.ends[k]=1; S.seen.ending=1; cosGrant({ember:'troph_dawn',guard:'troph_guard',dragon:'troph_twofire'}[k],true); track('ending',k); saveGame(true);
   G.dialog=false; cineBars(true); heartUpdate(true); AU.music('title'); AU.sfx('legend');
   const t0=performance.now(); const orbit=()=>{ if(!CINE.scene) return; const u=(performance.now()-t0)/1000; CAMR.override={x:Math.sin(u*.25)*3,z:Math.cos(u*.25)*3-1,zoom:.42+u*.012,pitch:.55}; requestAnimationFrame(orbit); }; CINE.scene=true; orbit();
   for(let i=0;i<10;i++) setTimeout(()=>{ fx('boom',rand(-3,3),rand(1,4),rand(-3,3),{r:1.5,col:pick([0xffd27a,0xff8a3a,0xfff0c0])}); if(i%3===0) AU.sfx('gold',.6); },400+i*450);
@@ -280,6 +280,7 @@ PANEL_EXT.chron=()=>{ const c=STS().ch; let body=`<div class="muted" style="marg
   body+=row('ember','Впереди: после победы над Брюханом, когда в Броде есть кузница.')+row('bog','Впереди: Гнилые Топи, этап 5.')+row('trust','Впереди: после Склепов Остена.')+row('dragon',STS().end?'Вы не усомнились — дракон пал.':'Впереди: Логово Игнара. Сомнение откроет другой путь.')+row('heart','Финал первой главы.');
   body+=`<div class="sect">Концовки</div><div class="endGrid">${Object.keys(ENDINGS).map(k=>{ const E=ENDINGS[k], got=STS().ends[k]; return `<div class="endCard ${got?'got':''}" style="--c:${E.col}"><b>${got?esc(E.n):'???'}</b><small>${got?esc(E.d):k==='dragon'?'Пощадите того, кого велят убить.':k==='secret'?'Вся летопись, 10-й этаж Бездны и любой финал.':'Откроется в финале.'}</small></div>`; }).join('')}</div>`;
   body+=`<div class="sect">Личные истории</div>`+Object.keys(ARCS).filter(arcAvail).map(n=>{ const A=ARCS[n], s=arcS(n); return `<div class="row" style="padding:2px 0"><b class="grow">${esc(NPC_INFO[n].n)} — «${esc(A.n)}»</b><span class="pill">${Math.min(s.st,A.steps.length)}/${A.steps.length}</span></div>`; }).join('');
+  if(STS().end) body+=`<div class="row" style="margin:6px 0"><button class="btn woodb small" ${act(()=>{ delete STS().ch.dragon; delete STS().ch.heart; S.q.flags.replayEnd=1; saveGame(); closePanel(); if(G.mode==='village') startStage(6,5); })}>${ico('flame')} Переиграть финал (Логово, 6-5)</button></div>`;
   const ne=Object.keys(STS().echo).length; body+=`<div class="sect">Эхо прошлого ${ne}/${Object.keys(ECHOES).length}</div>`+Object.keys(ECHOES).map(k=>STS().echo[k]?`<div class="card" style="font-style:italic">${ico('eye')} ${k}: ${ECHOES[k].lines[0]}</div>`:`<div class="card muted">${ico('lock')} Этап ${k}: здесь бродит чей-то голос.</div>`).join('');
   return {title:'Летопись выборов',sub:`${Object.keys(c).length}/${Object.keys(CHOICES).length} решений · ${Object.keys(STS().ends).length} ${plural(Object.keys(STS().ends).length,'концовка','концовки','концовок')}`,body}; };
 

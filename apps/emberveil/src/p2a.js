@@ -77,7 +77,8 @@ function asHeroGear(V){
   const oh=V.oh, cls=V.cls;
   if(oh){ const sh=oh.startsWith('sh'); if(!(sh&&cls!=='sword')&&!(cls==='bow'&&oh!=='qv1')) g.offhand=oh; }
   else if(cls==='bow') g.offhand='qv1';
-  if(V.wpe) g.wpGlow=V.wpe; else if(V.wpr>=4) g.wpGlow='fire';
+  const ck=typeof cosGlowKey==='function'?cosGlowKey():null;
+  if(V.wpe) g.wpGlow=V.wpe; else if(ck) g.wpGlow=ck; else if(V.wpr>=4) g.wpGlow='fire';
   // weapon/offhand model in a pack that is still streaming: show a same-class stand-in and re-dress once it arrives
   const H=asInfo('hero'); const node=k=>{ const w=H&&(H.weapons[k]||H.offhand[k]); return w&&(w.r||w.l); };
   if(H&&!asNodeOk(node(g.weapon))){ g.weapon={sword:'sw1',axe:'ax1',bow:'bw1',staff:'st1'}[cls]||'sw1'; if(!asNodeOk(node(g.weapon))) g.weapon='sw0'; asLoad('kit_weapons2').then(()=>{ if(G.P) refreshPlayer(false); }); }
@@ -218,7 +219,10 @@ function asZone(Z){
   const M=window.EV_MANIFEST; let g=M&&M.zones[key]&&M.zones[key].grade;
   if(g&&W&&W.kind==='abyss') g=Object.assign({},g,{lift:[.03,0,.05],gain:[1.0,.94,1.08],sat:.92,vignette:.6,bloom:(g.bloom||.4)+.15});
   if(g&&key==='village'&&G.mode!=='title') g=Object.assign({},g,{bloom:.16,bloomTh:.97});
-  if(g&&G.mode==='title') g=Object.assign({},g,{gain:[1.06,.96,.92],vignette:.55,bloom:.55,bloomTh:.75});
+  // title grade only for the title's own dusk look (Z.title). Before: enterVillage() builds the village while G.mode is still 'title',
+  // so the title grade (bloom .55 / threshold .75) leaked into the bright village — with the old high preset it washed out to white.
+  if(g&&Z.title&&G.mode==='title') g=Object.assign({},g,{gain:[1.06,.96,.92],vignette:.55,bloom:.45,bloomTh:.8});
+  else if(g&&key==='village') g=Object.assign({},g,{bloom:.16,bloomTh:.97});
   if(AS.FX&&g) AS.FX.setZone(g);
   // ambient particles
   if(window.EVFX){ let kind=W&&W.kind==='village'?(G.mode==='title'?'firefly':'pollen'):AMB_OF[Z.amb]||null; if(W&&W.kind==='abyss') kind='wisp';
@@ -258,6 +262,24 @@ function asTick(dt,rdt){
 }
 function asRender(dt){
   if(AS.FX&&AS.post!=='low'){ AS.FX.render(dt); } else { R.setRenderTarget(null); R.render(scene,cam); }
+  lumaGuard(dt);
+}
+// safety net against washed-out frames on real GPUs: about once a second read three thin rows of the final frame
+// (right after drawing, before the browser composites) and if the average luminance stays > 0.85 for ~3 s,
+// first drop bloom, then switch post-effects off, and log it. The prologue's white flash is a DOM overlay and is not read.
+const LUMA={t:0,hot:0,buf:null,step:0,last:0,acts:[]};
+function lumaGuard(dt){
+  LUMA.t+=dt||0; if(LUMA.t<1.1||!AS.FX||AS.post==='low'||!G.P||G.mode==='title'||document.hidden) return; LUMA.t=0;
+  try{ const gl=R.getContext(); const w=gl.drawingBufferWidth, h=gl.drawingBufferHeight; if(!w||!h) return;
+    if(!LUMA.buf||LUMA.buf.length!==w*4) LUMA.buf=new Uint8Array(w*4); let sum=0,n=0;
+    for(const fy of [.3,.55,.8]){ gl.readPixels(0,Math.floor(h*fy),w,1,gl.RGBA,gl.UNSIGNED_BYTE,LUMA.buf); const b=LUMA.buf; for(let i=0;i<w;i+=6){ const k=i*4; sum+=(.2126*b[k]+.7152*b[k+1]+.0722*b[k+2])/255; n++; } }
+    const L=n?sum/n:0; LUMA.last=L;
+    if(L>.85){ LUMA.hot++; if(LUMA.hot>=3){ LUMA.hot=0; LUMA.step++;
+        if(LUMA.step===1){ AS.FX.limitBloom&&AS.FX.limitBloom(0); LUMA.acts.push('bloom_off'); console.info('[Эмбервейл] кадр пересвечен (яркость '+L.toFixed(2)+') — свечение выключено'); }
+        else if(LUMA.step===2){ S.set.post='off'; AS.post='low'; asSetQuality(); LUMA.acts.push('post_off'); console.info('[Эмбервейл] кадр всё ещё пересвечен ('+L.toFixed(2)+') — постэффекты выключены (Настройки → Постэффекты)'); try{ toast('Картинка была слишком яркой — постэффекты выключены. Вернуть: Настройки → Постэффекты.'); }catch(e){} saveGame(); }
+        if(typeof track==='function') track('luma_guard','s'+LUMA.step); } }
+    else LUMA.hot=0;
+  }catch(e){ LUMA.t=-1e9; }
 }
 // adaptive quality: fps < 40 for ~4 s → step down (only in «Авто»)
 const AQ={low:0,t:0};

@@ -223,7 +223,7 @@ function abyssEnd(reason){
 
 // ---------- title ----------
 function showTitle(){
-  G.mode='title'; makeVillage(); setZoneLook(Object.assign({},ZONES[0],{id:0,fog:0x2a1c2a,fogN:20,fogF:62,hemi:[0x9a88c8,0x2a1a2a,.75],sun:[0xff8a5a,.6],rim:0xffa070})); refreshPlayer(true); placePlayer(2.6,4.2,.35); spawnPets(); show('hud',false);
+  G.mode='title'; makeVillage(); setZoneLook(Object.assign({},ZONES[0],{id:0,title:1,fog:0x2a1c2a,fogN:20,fogF:62,hemi:[0x9a88c8,0x2a1a2a,.75],sun:[0xff8a5a,.6],rim:0xffa070})); refreshPlayer(true); placePlayer(2.6,4.2,.35); spawnPets(); show('hud',false);
   W.npcs.forEach(n=>{ if(n.kind!=='elder') worldRoot.remove(n.rig.root); }); W.npcs=W.npcs.filter(n=>n.kind==='elder');
   CAMR.override={x:0,z:3,zoom:.62}; AU.music('title');
   const has=S.started;

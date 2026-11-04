@@ -49,7 +49,7 @@ function heroRelease(P,mv){
 
 // ---------- animation ----------
 function b3(w,s,u,h){ const k1=clamp(u/h,0,1), k2=clamp((u-h)/.18,0,1), k3=clamp((u-h-.18)/Math.max(.01,1-h-.18),0,1); return k3>0?lerp(s,0,smooth(k3)):k2>0?lerp(w,s,easeOut(k2)):lerp(0,w,smooth(k1)); }
-function heroMat(P){ const m=P.flashT>0?MTF:((P.buff.guard>0||P.buff.wall>0)?MTgold:MT); if(P.rig.actor){ actorMat(P.rig.actor,m); return; } for(const x of P.meshes) x.material=m; }
+function heroMat(P){ const m=P.flashT>0?MTF:((P.buff.guard>0||P.buff.wall>0)?MTgold:(P.skinMat||MT)); if(P.rig.actor){ actorMat(P.rig.actor,m); return; } for(const x of P.meshes) x.material=m; }
 function animHero(P,dt){
   if(P.rig.actor){ animHeroActor(P,dt); return; }
   const R=P.rig, t=G.time;

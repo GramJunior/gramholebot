@@ -11,6 +11,8 @@ function deviceTier(){
   if(/SwiftShader|llvmpipe|Software|Mali-[4T][0-9]{1,2}\b|Mali-G(31|51|52|57)|Adreno \(TM\) ?[2-5][0-9]{2}|PowerVR|SGX|Intel\(R\) HD Graphics [2-5]/i.test(gpu)||mem<=2||cores<=2) t='low';
   else if(IS_MOBILE&&(mem>=6&&cores>=8&&/Apple|Adreno \(TM\) ?(6[4-9]|7)\d\d|Mali-G(7[1-9]|71[0-9])|Xclipse/i.test(gpu))) t='high';
   else if(!IS_MOBILE&&(/Intel/i.test(gpu)&&px>4e6)) t='med';
+  // «Авто» никогда не выбирает «Выс.» сам: высокое качество — только вручную в настройках (тяжёлые проходы и блум на реальных GPU)
+  if(t==='high') t='med';
   if(got) DEVICE_TIER=t; DEVICE_GPU=gpu; return t;
 }
 let QL='med';

@@ -483,6 +483,21 @@
       cancel: function (kind) { return call('POST', '/notify/schedule', { kind: kind, cancel: true }); },
     },
 
+    profile: {
+      /** Display name for leaderboards/clans/raids (2–20 chars); null = back to the Telegram name. -> { me, customName } */
+      setName: function (name) {
+        return call('POST', '/me/settings', { name: name === null ? null : String(name) }).then(function (r) {
+          if (r.ok && r.me) { meta.me = withFlag(meta.me || {}, { name: r.me.name, customName: !!r.customName }); saveMeta(); }
+          return r;
+        });
+      },
+    },
+
+    events: {
+      /** Analytics batch: [{e:'ftue', k:'first_kill'}, ...] (max 50; the server keeps daily counters only). Not queued offline. */
+      send: function (list) { return call('POST', '/events', { events: (list || []).slice(0, 50) }); },
+    },
+
     /** Low-level escape hatch: authenticated request. */
     request: call,
     /** Exposed for tests / custom conflict UIs. */

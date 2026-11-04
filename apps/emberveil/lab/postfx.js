@@ -17,7 +17,10 @@
   const PRESETS = {
     low:  { post: false, bloom: 'none',   fxaa: false, dof: false, scale: 1 },
     med:  { post: true,  bloom: 'cheap',  fxaa: false, dof: false, scale: 1 },
-    high: { post: true,  bloom: 'unreal', fxaa: true,  dof: true,  scale: 1 },
+    // high used to run THREE.UnrealBloomPass: its r128 high-pass keeps the WHOLE texel colour above the threshold (not the excess)
+    // and the 5-mip composite sums to ~3x strength, added straight onto the frame — bright sunny scenes (the village) blew out to white
+    // on real GPUs. Now every preset uses the bounded soft-knee bloom below (excess-only, clamped, shoulder tone-map); high = 1/2-res.
+    high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2 },
   };
 
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -53,7 +56,9 @@ uniform vec3 uLift; uniform vec3 uGamma; uniform vec3 uGain; uniform float uSat;
 uniform float uVig; uniform vec3 uVigColor; uniform float uAspect; uniform float uFade; uniform vec3 uFadeColor; varying vec2 vUv;
 void main(){
   vec3 c = texture2D(tDiffuse, vUv).rgb;
-  if (uHasBloom > 0.5) c += texture2D(tBloom, vUv).rgb * uBloom;
+  if (uHasBloom > 0.5) c += min(texture2D(tBloom, vUv).rgb * uBloom, vec3(0.35));
+  // soft shoulder above 0.8: highlights roll off towards 1.0 instead of clipping to flat white
+  vec3 hi = max(c - 0.8, vec3(0.0)); c = min(c, vec3(0.8)) + hi / (1.0 + hi * 5.0);
   c = uGain * (c + uLift * (1.0 - c));
   c = pow(max(c, vec3(0.0)), 1.0 / uGamma);
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -83,7 +88,7 @@ void main(){
       if (!P.preset.post) return;
       const W = Math.max(1, Math.floor(P.w * P.pr)), H = Math.max(1, Math.floor(P.h * P.pr));
       P.rts.a = rt(W, H, true); P.rts.b = rt(W, H, false);
-      if (P.preset.bloom === 'cheap') { const q = 4; P.rts.q1 = rt(Math.ceil(W / q), Math.ceil(H / q)); P.rts.q2 = rt(Math.ceil(W / q), Math.ceil(H / q)); }
+      if (P.preset.bloom === 'cheap') { const q = P.preset.bq || 4; P.rts.q1 = rt(Math.ceil(W / q), Math.ceil(H / q)); P.rts.q2 = rt(Math.ceil(W / q), Math.ceil(H / q)); }
       if (P.preset.bloom === 'unreal' && T.UnrealBloomPass) {
         if (!unreal) unreal = new T.UnrealBloomPass(new T.Vector2(W, H), target.bloom, 0.55, target.th); else unreal.setSize(W, H);
       }
@@ -105,8 +110,11 @@ void main(){
         if (g.sat !== undefined) GU.uSat.value = g.sat; if (g.contrast !== undefined) GU.uContrast.value = g.contrast;
         if (g.vignette !== undefined) GU.uVig.value = g.vignette; if (g.vigColor) GU.uVigColor.value.set(g.vigColor);
         if (g.bloom !== undefined) fx.setBloom(g.bloom, g.bloomTh); return fx; },
-      setBloom(strength, threshold) { target.bloom = strength; if (threshold !== undefined) target.th = threshold;
+      setBloom(strength, threshold) { P.lastBloom = Math.max(0, Math.min(0.6, +strength || 0)); target.bloom = P.lastBloom * (P.limit === undefined ? 1 : P.limit); if (threshold !== undefined) target.th = Math.max(0.7, Math.min(0.99, +threshold)); strength = target.bloom;
         GU.uBloom.value = strength * 1.4; mBright.uniforms.uTh.value = target.th; if (unreal) { unreal.strength = strength; unreal.threshold = target.th; } return fx; },
+      /** safety valve: 0..1 multiplier on bloom (the game lowers it if the frame gets too bright) */
+      limitBloom(k) { P.limit = Math.max(0, Math.min(1, k)); fx.setBloom(P.lastBloom === undefined ? target.bloom : P.lastBloom, target.th); return fx; },
+      get bloomStrength() { return target.bloom; },
       setFade(a, color) { GU.uFade.value = a; if (color !== undefined) GU.uFadeColor.value.set(color); return fx; },
       /** depth of field for dialogue close-ups (high preset only; re-renders depth, so enable only while needed) */
       setDOF(on, o = {}) { P.dof.on = !!on; Object.assign(P.dof, o); if (bokeh) { const u = bokeh.uniforms; u.focus.value = P.dof.focus; u.aperture.value = P.dof.aperture; u.maxblur.value = P.dof.maxblur; } return fx; },

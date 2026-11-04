@@ -61,7 +61,7 @@ async function open(opts = {}) {
   const wait = ms => page.waitForTimeout(ms);
   const ready = async (ms = 30000) => { await page.waitForFunction(() => window.__booted && window.__game && window.__game.G.mode === 'title', null, { timeout: ms }); };
   // быстрый старт: новая игра, пропуск слайдов/диалога
-  const quick = async () => { await ready(); await wait(300); await ev(() => { __game.start(true); }); await wait(400); for (let i = 0; i < 6; i++) await ev(() => { const s = document.getElementById('story'); if (s && !s.classList.contains('hidden')) s.click(); }); await wait(900); await ev(() => __game.skipDialog()); await wait(300); };
+  const quick = async () => { await ready(); await wait(300); await ev(() => { window.__noPrologue = 1; __game.start(true); }); await wait(400); for (let i = 0; i < 6; i++) await ev(() => { const s = document.getElementById('story'); if (s && !s.classList.contains('hidden')) s.click(); }); await wait(900); await ev(() => __game.skipDialog()); await wait(300); };
   const close = async () => { if (!opts.browser) await browser.close(); else if (!opts.ctx) await ctx.close(); else await page.close(); };
   return { browser, ctx, page, errs, shot, ev, wait, quick, ready, close, D, base };
 }
