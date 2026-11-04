@@ -20,7 +20,7 @@ function puzzlePlan(info,walk){
   const room=sd.room; room.puz=true; const n=sd.from;
   W.puzzle={type,room,from:n,ux:-sd.ux,uz:-sd.uz,els:[],st:{},solved:false,first:!(S.puz&&S.puz[info.key]),key:info.key,seen:false};
 }
-function pzMesh(geo,x,z,y=0,ry=0){ const m=new THREE.Mesh(geo,MT); m.position.set(x,y,z); m.rotation.y=ry; worldRoot.add(m); return m; }
+function pzMesh(geo,x,z,y=0,ry=0){ const m=new THREE.Mesh(geo,MTP); m.position.set(x,y,z); m.rotation.y=ry; worldRoot.add(m); return m; }
 const PZG={
   plate:()=>cgeo('pz_plate',b=>{ b.cyl(.95,1.05,.14,0x6a6458,{seg:12}); b.cyl(.7,.75,.06,0x8a8478,{p:[0,.1,0],seg:12}); for(let i=0;i<4;i++) b.box(.5,.03,.06,0x3a3630,{p:[Math.cos(i*PI/2)*.42,.14,Math.sin(i*PI/2)*.42],r:[0,i*PI/2,0],ol:0}); },.03),
   plateOn:()=>cgeo('pz_plateOn',b=>{ b.cyl(.95,1.05,.14,0x6a6458,{seg:12}); b.cyl(.7,.75,.06,0xffc860,{p:[0,.08,0],seg:12,e:1}); },.03),

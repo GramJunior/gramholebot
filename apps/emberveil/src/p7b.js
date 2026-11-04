@@ -53,7 +53,7 @@ function heroMat(P){ const m=P.flashT>0?MTF:((P.buff.guard>0||P.buff.wall>0)?MTg
 function animHero(P,dt){
   if(P.rig.actor){ animHeroActor(P,dt); return; }
   const R=P.rig, t=G.time;
-  R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,P.face,0);
+  R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,heroYaw(P,R,dt),0);
   R.body.position.set(0,.86,0); R.body.rotation.set(0,0,0); R.torso.rotation.set(0,0,0); R.head.rotation.set(0,0,0);
   R.armL.rotation.set(0,0,.08); R.armR.rotation.set(0,0,-.08); R.legL.rotation.set(0,0,0); R.legR.rotation.set(0,0,0); R.cape.rotation.set(.12,0,0);
   const mv=P.move; P.phase+=dt*mv*11.5; const ph=P.phase, cls=R.cls;
@@ -93,7 +93,8 @@ function animHero(P,dt){
     else if(k.cls==='bow'){ R.armL.rotation.x=-1.55; R.armR.rotation.set(-1.3,0,.6); if(key==='bow_s2'){ R.body.rotation.x=-u*TAU*.8; } }
     else if(k.cls==='staff'){ R.armR.rotation.x=-2.2+Math.sin(G.time*20)*.1; R.armL.rotation.x=-1.6; R.torso.rotation.x=-.1; if(key==='staff_ult'){ R.armL.rotation.x=-2.8; R.armR.rotation.x=-2.8; } }
   }
-  if(P.state==='roll'){ const u=clamp(P.st/.4,0,1); R.body.rotation.x=u*TAU; R.body.position.y=.86-Math.sin(u*PI)*.38; R.legL.rotation.x=-1.3; R.legR.rotation.x=-1.1; R.armL.rotation.x=-1; R.armR.rotation.x=-1; R.cape.rotation.x=.3; }
+  if(P.state==='roll'){ const u=clamp(P.st/.4,0,1); R.body.rotation.x=u*TAU; R.body.position.y=.86-Math.sin(u*PI)*.38; const k=1-smooth(clamp((u-.72)/.28,0,1)); R.legL.rotation.x=lerp(R.legL.rotation.x,-1.3,k); R.legR.rotation.x=lerp(R.legR.rotation.x,-1.1,k); R.armL.rotation.x=lerp(R.armL.rotation.x,-1,k); R.armR.rotation.x=lerp(R.armR.rotation.x,-1,k); R.cape.rotation.x=lerp(R.cape.rotation.x,.3,k); R._rollOut=.22; }
+  else if(R._rollOut>0){ R._rollOut-=dt; const k=smooth(clamp(R._rollOut/.22,0,1))*.5; R.legL.rotation.x=lerp(R.legL.rotation.x,-.4,k); R.legR.rotation.x=lerp(R.legR.rotation.x,-.3,k); R.body.position.y-=k*.12; }
   if(P.hitT>0){ R.torso.rotation.x-=P.hitT*1.2; R.head.rotation.x-=P.hitT; }
   if(P.dead){ const u=clamp(P.st*2.2,0,1); R.body.rotation.x=-u*PI/2; R.body.position.y=.86-u*.6; R.armL.rotation.x=-u*2.5; R.armR.rotation.x=-u*2.6; }
   // orbiting offhand

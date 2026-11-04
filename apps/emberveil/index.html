@@ -1757,7 +1757,8 @@ html.qlow #hud *,html.qlow #hud *::before,html.qlow #hud *::after,html.qlow #hEv
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
-    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '');
+    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '');
+    if (o.paint && S.paint) { const base = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { base(sh, r); S.paint(sh); }; m.userData.paint = 1; }
     return m;
   }
   // Inverted-hull outline: constant screen-space width, works for SkinnedMesh and InstancedMesh.
@@ -1840,10 +1841,25 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     });
     S.files[key] = rec; return rec.promise;
   }
+  const PAINT_FILES = /^kit_(nature|village|village2|dungeon|crypt)$/;
+  // In-place clips: some KayKit clips (Dodge_*, jumps, lunges) carry root motion on the hips (≈0.25 m forward). The game moves the
+  // actor itself, so the travel was doubled and, at the end of the clip, the body snapped back to the root. Flatten the horizontal
+  // drift of the hips position track (keep the vertical bob and the sway around the start point).
+  function stripRootMotion(c) {
+    for (const t of c.tracks) {
+      if (!/hips\.position$/i.test(t.name) || t.getValueSize() !== 3) continue;
+      const v = t.values, n = v.length / 3; if (n < 2) continue;
+      const dx = v[(n - 1) * 3] - v[0], dz = v[(n - 1) * 3 + 2] - v[2];
+      let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, Math.hypot(v[i * 3] - v[0], v[i * 3 + 2] - v[2]));
+      if (mx < 0.12 && Math.hypot(dx, dz) < 0.08) continue;
+      for (let i = 0; i < n; i++) { v[i * 3] = v[0]; v[i * 3 + 2] = v[2]; }
+      c.userData = c.userData || {}; c.userData.rootStripped = +mx.toFixed(3);
+    }
+  }
   function prepFile(key, g) {
     if (key.indexOf('anim_') === 0) {
       const rig = key.indexOf('large') >= 0 ? 'large' : 'medium';
-      for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); S.clips[rig][c.name] = c; }
+      for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); stripRootMotion(c); S.clips[rig][c.name] = c; }
       return;
     }
     const skinnedFile = key.indexOf('kit_') !== 0;
@@ -1853,15 +1869,23 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (!o.isMesh) return;
       const src = o.material; let map = canonTex(src.map); if (rec && map) map = recolorTex(map, rec);
       const hasGlow = src.emissive && (src.emissive.r + src.emissive.g + src.emissive.b) > 0.3;
-      const mk = 'tm' + (map ? map.uuid : 'none') + (o.isSkinnedMesh ? 's' : '') + (src.transparent ? 't' : '') + (hasGlow ? 'g' + src.emissive.getHexString() : '');
+      // v10: static scenery kits (nature, village, dungeon, crypt) get the painted treatment (game-provided shader patch); weapons, items, characters do not
+      const paint = !o.isSkinnedMesh && !hasGlow && !!S.paint && PAINT_FILES.test(key);
+      const mk = 'tm' + (map ? map.uuid : 'none') + (o.isSkinnedMesh ? 's' : '') + (src.transparent ? 't' : '') + (hasGlow ? 'g' + src.emissive.getHexString() : '') + (paint ? 'p' : '');
       let tm = S.mats[mk];
       if (!tm) {
-        tm = S.mats[mk] = toonMat(map, { skinning: !!o.isSkinnedMesh, transparent: src.transparent, opacity: src.opacity });
+        tm = S.mats[mk] = toonMat(map, { skinning: !!o.isSkinnedMesh, transparent: src.transparent, opacity: src.opacity, paint });
         if (hasGlow) { tm.userData.U.uGlow.value.set(src.emissive.r, src.emissive.g, src.emissive.b, 0); tm.userData.emissive = src.emissive.clone(); tm.emissive.copy(src.emissive); }
       }
       o.material = tm; src.dispose();
       if (o.isSkinnedMesh) o.frustumCulled = false; // quantized skinned geometry: bounds live in bone space
     });
+    if (!skinnedFile && PAINT_FILES.test(key)) { // painted scenery: per-geometry offset from the mesh centre to the model's base (shader: height above ground)
+      g.scene.updateMatrixWorld(true); const inv = new T.Matrix4();
+      for (const root of g.scene.children) { inv.copy(root.matrixWorld).invert(); root.traverse((o) => { if (!o.isMesh || o.isSkinnedMesh || o.geometry.attributes.aOff) return;
+        const m = new T.Matrix4().multiplyMatrices(inv, o.matrixWorld); const sy = new T.Vector3().setFromMatrixColumn(m, 1).length() || 1;
+        const n = o.geometry.attributes.position.count; o.geometry.setAttribute('aOff', new T.BufferAttribute(new Float32Array(n).fill(m.elements[13] / sy), 1)); }); }
+    }
     if (skinnedFile) g.scene.userData.evRest = measureSkinned(g.scene);
   }
   // accurate bind-pose bounds of skinned meshes (quantized positions => geometry bbox is meaningless)
@@ -1985,7 +2009,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this.mixer = new T.AnimationMixer(this.model);
       this.actions = {}; this.current = null; this.currentName = null; this.combo = 0; this._t = 0; this._acc = 0;
       this.setClipset(def.clips || this.rig);
-      this.mixer.addEventListener('finished', (e) => { const a = e.action; if (a._evOnEnd) { const f = a._evOnEnd; a._evOnEnd = null; f(this); } if (a._evReturn && this.current === a) this.play(a._evReturn, { fade: 0.18 }); });
+      this.mixer.addEventListener('finished', (e) => { const a = e.action; if (a._evOnEnd) { const f = a._evOnEnd; a._evOnEnd = null; f(this); } if (a._evReturn && this.current === a) this.play(a._evReturn, { fade: a._evRetFade || 0.22 }); });
       // weapons
       if (def.r) this.attach('r', def.r); if (def.l) this.attach('l', def.l);
       if (this.opts.outline !== false && S.Q.outline !== 'none') this.setOutline(true);
@@ -2074,9 +2098,12 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const a = this.action(clip);
       if (this.current === a && !once && !o.restart) { a.timeScale = o.speed || 1; return a; }
       a.reset(); a.enabled = true;
-      a.setLoop(once ? T.LoopOnce : T.LoopRepeat, Infinity); a.clampWhenFinished = !!(once && (o.clamp || name.indexOf('death') === 0));
+      // one-shots always hold their last frame when they finish: a finished, un-clamped action drops to weight 0 at once, so the
+      // following cross-fade had nothing to fade from and the pose snapped (end of rolls, dashes, attacks). Return-to-idle fades from the held pose.
+      const hold = !!(once && (o.clamp || name.indexOf('death') === 0));
+      a.setLoop(once ? T.LoopOnce : T.LoopRepeat, Infinity); a.clampWhenFinished = !!once;
       a.timeScale = o.duration ? clip.duration / o.duration : (o.speed || 1);
-      a._evOnEnd = o.onEnd || null; a._evReturn = once && !a.clampWhenFinished ? (o.returnTo === undefined ? 'idle' : o.returnTo) : null;
+      a._evOnEnd = o.onEnd || null; a._evReturn = once && !hold ? (o.returnTo === undefined ? 'idle' : o.returnTo) : null; a._evRetFade = o.returnFade || 0.22;
       const fade = o.fade === undefined ? 0.15 : o.fade;
       if (this.current && this.current !== a && fade > 0) a.crossFadeFrom(this.current, fade, false); else if (this.current && this.current !== a) this.current.stop();
       a.play(); this.current = a; this.currentName = name; return a;
@@ -2280,7 +2307,8 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const prevRT = R.getRenderTarget(), prevC = R.getClearColor(new T.Color()), prevA = R.getClearAlpha();
     const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size);
     const pexp = R.toneMappingExposure; R.toneMappingExposure = S.iconExpo || 1.15; // icons stay vivid under the game's ACES tone mapping
-    R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp;
+    const pu = S.paintU && S.paintU.value, pw = pu ? pu.x : 0; if (pu) pu.x = 0; // icons/portraits: no world-space painting
+    R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp; if (pu) pu.x = pw;
     const px = new Uint8Array(size * size * 4); R.readRenderTargetPixels(ICON.rt, 0, 0, size, size, px);
     R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res);
     ICON.scene.remove(holder); if (actor) actor.dispose();
@@ -2317,7 +2345,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return { files: Object.keys(S.files).length, textures: seen.size, textureMB: +(texBytes / 1048576).toFixed(2), actors: S.actors.size, clips: Object.keys(S.clips.medium).length + Object.keys(S.clips.large).length };
   }
   function init(o = {}) {
-    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 };
+    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.paint = o.paint || null; S.paintU = o.paintU || null;
     S.linear = !S.renderer || S.renderer.outputEncoding === T.LinearEncoding;
     S.loader = new T.GLTFLoader();
     const mo = global.MeshoptDecoder; if (mo) S.loader.setMeshoptDecoder(mo);
@@ -3661,6 +3689,75 @@ const MTfire=toonMat(0xff7a3a,0.35);
 const MTgold=toonMat(0xffd27a,0.5);
 const MTghost=toonMat(); MTghost.transparent=true; MTghost.opacity=.72; MTghost.depthWrite=false;
 
+// ---------- v10 «рисованное окружение»: та же кисть, что у земли, для деревьев, кустов, камней, заборов, стен и пропсов ----------
+// Одна общая текстура-кисть 128 px (R — мазки-«листья» со светом сверху-слева, G — волокна/доски, B — крупные пятна, A — крапины камня)
+// и одна вставка в шейдер toon-материала (альбедо до освещения → дальше та же тун-рампа, rim, насыщенность и тонмаппинг):
+// листва — клочья мазков, низ кроны темнее, оттенок тянется к цвету мха зоны; дерево — волокна; камень — пятна и крапины;
+// у всего — затенение у земли (AO по высоте над основанием экземпляра) и вариация тона на экземпляр. Без новых вызовов отрисовки.
+const PAINT_U={tBrush:{value:null},uPaint:{value:new THREE.Vector4(1,.28,0,0)},uLeafTint:{value:new THREE.Color(0x557a2a)}};
+function paintBrushTex(){ const N=128, d=new Uint8Array(N*N*4); let sd=7; const rn=()=>{ sd=(sd*16807)%2147483647; return (sd-1)/2147483646; };
+  const lat=(P,s)=>{ const a=new Float32Array(P*P); let q=s*7919+13; for(let i=0;i<P*P;i++){ q=(q*16807)%2147483647; a[i]=q/2147483647; } return a; };
+  const vn=(x,y,P,L)=>{ const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi, u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf), i0=((xi%P)+P)%P, j0=((yi%P)+P)%P, i1=(i0+1)%P, j1=(j0+1)%P;
+    const a=L[j0*P+i0], b=L[j0*P+i1], c=L[j1*P+i0], e=L[j1*P+i1]; return (a+(b-a)*u)+((c+(e-c)*u)-(a+(b-a)*u))*v; };
+  const L4=lat(4,1), L8=lat(8,2), L16=lat(16,3), L32=lat(32,4), G64=lat(64,5);
+  const R=new Float32Array(N*N).fill(.5);
+  // R: перекрывающиеся мазки-листья (эллипсы, освещены сверху-слева, тёмная кромка)
+  for(let k=0;k<230;k++){ const cx=rn()*N, cy=rn()*N, rx=4+rn()*7, ry=rx*(.55+rn()*.35), an=rn()*Math.PI, ca=Math.cos(an), sa=Math.sin(an), tone=.42+rn()*.3;
+    for(let y=-12;y<=12;y++) for(let x=-12;x<=12;x++){ const lx=(x*ca+y*sa)/rx, ly=(-x*sa+y*ca)/ry, r2=lx*lx+ly*ly; if(r2>1) continue;
+      const px=((Math.floor(cx+x)%N)+N)%N, py=((Math.floor(cy+y)%N)+N)%N; const lit=(-x*.6-y*.8)/(rx+1); R[py*N+px]=clamp(tone+lit*.32-(r2>.72?.2:0),0,1); } }
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const i=y*N+x, u=x/N, v=y/N;
+    const g=.5+.42*(vn(u*64+vn(u*4,v*4,4,L4)*3,v*4,64,G64)-.5)*2*.8+.12*(vn(u*16,v*16,16,L16)-.5); // волокна: частые по x, вытянутые по y
+    const b=.2*vn(u*4,v*4,4,L4)+.45*vn(u*8,v*8,8,L8)+.35*vn(u*16,v*16,16,L16);
+    const s=vn(u*32,v*32,32,L32); const a=s>.82?1:s<.16?0:.5;
+    d[i*4]=R[i]*255; d[i*4+1]=clamp(g,0,1)*255; d[i*4+2]=clamp((b-.5)*1.8+.5,0,1)*255; d[i*4+3]=a*255; }
+  const t=new THREE.DataTexture(d,N,N,THREE.RGBAFormat); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.generateMipmaps=true; t.needsUpdate=true; return t; }
+PAINT_U.tBrush.value=paintBrushTex();
+// высота над землёй: (y + aOff) × масштаб по y. aOff — сдвиг сетки от основания модели (у квантованных сеток KayKit центр сетки
+// поднят над основанием; EVAssets пишет его при загрузке), у процедурных сеток 0 (их начало и есть основание).
+const PAINT_VS=`
+  #ifdef USE_INSTANCING
+  mat4 mP=modelMatrix*instanceMatrix;
+  #else
+  mat4 mP=modelMatrix;
+  #endif
+  vPW=(mP*vec4(transformed,1.0)).xyz; vPB=(mP*vec4(0.0,0.0,0.0,1.0)).xyz; vPH=(transformed.y+aOff)*length(mP[1].xyz);`;
+const PAINT_FS=`
+  if(uPaint.x>0.5){
+    vec3 c=diffuseColor.rgb; float mxC=max(c.r,max(c.g,c.b)), mnC=min(c.r,min(c.g,c.b)), satC=mxC-mnC, lumC=dot(c,vec3(0.299,0.587,0.114));
+    float leaf=clamp((c.g-max(c.r,c.b*0.9))*7.0,0.0,1.0);
+    float wood=clamp((c.r-c.b)*3.2-0.12,0.0,1.0)*(1.0-leaf)*smoothstep(0.66,0.3,lumC);
+    float stone=(1.0-clamp(satC*5.0,0.0,1.0))*(1.0-leaf);
+    vec3 nW=normalize((vec4(normal,0.0)*viewMatrix).xyz);
+    vec3 rel=vPW-vPB; float hP=vPH;
+    float iv=fract(sin(dot(floor(vPB.xz*2.7)+0.5,vec2(12.9898,78.233)))*43758.5453);
+    vec2 tg=normalize(vec2(-nW.z,nW.x)+vec2(1e-4));
+    vec2 uvP=mix(vec2(dot(rel.xz,tg),rel.y),rel.xz,smoothstep(0.5,0.8,abs(nW.y)))*0.32+iv*7.31;
+    vec4 bP=texture2D(tBrush,uvP);
+    float mP=0.9+0.2*bP.b;
+    mP*=mix(1.0,0.68+0.64*bP.r,leaf);
+    mP*=mix(1.0,0.74+0.52*bP.g,wood);
+    mP*=mix(1.0,0.82+0.34*bP.b+(bP.a-0.5)*0.26,stone);
+    mP*=mix(1.0,0.78+0.44*bP.r,clamp(1.0-leaf-wood-stone,0.0,1.0)*0.75); // прочее (красные кусты, осенние кроны, ткань, черепица) — те же мазки, слабее
+    mP*=0.9+0.2*iv;
+    c*=mP;
+    c+=(iv-0.5)*vec3(0.05,0.03,-0.04)*leaf;
+    c=mix(c,uLeafTint*(lumC*1.9),leaf*uPaint.y);
+    c*=mix(1.0,mix(0.7,1.12,smoothstep(0.5,3.4,hP)),leaf);
+    c=mix(c,uLeafTint*(0.55+0.5*bP.b),stone*smoothstep(0.62,0.92,nW.y)*smoothstep(0.35,0.75,bP.b)*uPaint.y*2.2); // мох на верхних гранях камня (как на скальном слое земли)
+    c*=mix(0.5,1.0,smoothstep(-0.05,0.8,hP));
+    diffuseColor.rgb=c;
+  }
+`;
+// вставка в любой toon-материал (игровой или EVAssets): только для статики, не для скин-моделей
+function paintPatch(sh){
+  Object.assign(sh.uniforms,PAINT_U);
+  sh.vertexShader='attribute float aOff;\nvarying vec3 vPW;\nvarying vec3 vPB;\nvarying float vPH;\n'+sh.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\n'+PAINT_VS);
+  sh.fragmentShader='uniform sampler2D tBrush;\nuniform vec4 uPaint;\nuniform vec3 uLeafTint;\nvarying vec3 vPW;\nvarying vec3 vPB;\nvarying float vPH;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',PAINT_FS+'#include <emissivemap_fragment>');
+}
+function paintMat(m){ const base=m.onBeforeCompile; m.onBeforeCompile=(sh,r)=>{ base(sh,r); paintPatch(sh); }; const k=m.customProgramCacheKey&&m.customProgramCacheKey!==THREE.Material.prototype.customProgramCacheKey?m.customProgramCacheKey.bind(m):null; m.customProgramCacheKey=()=>(k?k():'evg')+'paint'; m.userData.paint=1; return m; }
+const MTP=paintMat(toonMat()); // процедурные пропсы и объекты мира (деревья-запаска, частокол, мосты, баррикады, сундуки…)
+function paintZone(Z){ const T=typeof ZTER!=='undefined'&&Z&&ZTER[Z.id]; PAINT_U.uLeafTint.value.set(T?T.moss:0x557a2a); PAINT_U.uPaint.value.y=T?.28:.12; }
+
 // ---------- geometry builder (merged parts + baked inverted-hull outline) ----------
 const _m4=new THREE.Matrix4(), _q=new THREE.Quaternion(), _e=new THREE.Euler(), _v3=new THREE.Vector3(), _s3=new THREE.Vector3(), _c=new THREE.Color(), _c2=new THREE.Color();
 const OLC=new THREE.Color(0x1b0e07);
@@ -3952,7 +4049,7 @@ const RTT=(()=>{
       c.position.set(...camPos); c.lookAt(...look); c.updateProjectionMatrix();
       const prevRT=R.getRenderTarget(); const prevCol=R.getClearColor(new THREE.Color()); const prevA=R.getClearAlpha();
       const prevFog=sc.fog;
-      const pexp=R.toneMappingExposure; R.toneMappingExposure=1.15; R.setRenderTarget(rt); R.setClearColor(bg===undefined?0x000000:bg, bg===undefined?0:1); R.clear(); R.render(sc,c); R.toneMappingExposure=pexp;
+      const pexp=R.toneMappingExposure, pw=PAINT_U.uPaint.value.x; PAINT_U.uPaint.value.x=0; R.toneMappingExposure=1.15; R.setRenderTarget(rt); R.setClearColor(bg===undefined?0x000000:bg, bg===undefined?0:1); R.clear(); R.render(sc,c); R.toneMappingExposure=pexp; PAINT_U.uPaint.value.x=pw;
       const px=new Uint8Array(sz*sz*4); R.readRenderTargetPixels(rt,0,0,sz,sz,px);
       R.setRenderTarget(prevRT); R.setClearColor(prevCol,prevA);
       sc.remove(obj);
@@ -4033,7 +4130,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
@@ -4089,7 +4186,7 @@ function asTipTo(rig){
 function asPlay(a,name,o){ if(!o&&a.currentName===name) return; a.play(name,o||{}); }
 const HERO_ATK={slashR:0,slashL:1,overhead:1,sweep:0,shoot:0,cast:0,cast2:0};
 function animHeroActor(P,dt){
-  const R=P.rig, a=R.actor; R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,P.face,0);
+  const R=P.rig, a=R.actor; R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,heroYaw(P,R,dt),0);
   const cls=R.cls||P.cls||'sword', st=P.state;
   if(P.dead||st==='dead'){ if(a.currentName!=='death') a.play('death',{once:true,clamp:true,fade:.12}); R._st=st; SHADOW.add(P.x,P.z,.75); return; }
   if(st==='atk'&&P.mv){
@@ -4102,10 +4199,12 @@ function animHeroActor(P,dt){
   } else if(st==='skill'&&P.sk){
     if(R._st!=='skill'||R._sk!==P.sk){ const k=P.sk, key=k.cls+'_'+k.id, d=Math.max(.3,P.skDur||.6);
       const clip={sword_s1:'skill',sword_s2:'dash',sword_s3:'block',sword_ult:'heavy',axe_s1:'leap',axe_s2:'heavy',axe_s3:'skill',axe_ult:'skill',bow_s1:'attack',bow_s2:'roll',bow_s3:'aim',bow_ult:'heavy',staff_s1:'attack',staff_s2:'cast',staff_s3:'skill',staff_ult:'cast'}[key]||'skill';
-      a.play(clip,{once:true,duration:clip==='block'||clip==='aim'?undefined:d,fade:.08,returnTo:'idle'}); R._sk=P.sk; }
-    if(P.sk.cls==='sword'&&P.sk.id==='s1') R.root.rotation.y=P.face+P.st*22;
-  } else if(st==='roll'){ if(R._st!=='roll') a.play('roll',{once:true,duration:.42,fade:.05}); }
+      a.play(clip,{once:true,duration:clip==='block'||clip==='aim'?undefined:d,fade:.08,returnTo:'idle',returnFade:.24}); R._sk=P.sk; }
+    if(P.sk.cls==='sword'&&P.sk.id==='s1'){ R.root.rotation.y=P.face+P.st*22; R._yaw=P.face; }
+  } else if(st==='roll'){ if(R._st!=='roll') a.play('roll',{once:true,duration:.5,fade:.07,returnFade:.26}); }
   else {
+    // v10: выход из кувырка/рывка-умения — всегда мягкий переход (поза кувырка удерживается, бег/покой наплывают за 0,26 с)
+    if((R._st==='roll'||R._st==='skill')&&DASH_CLIPS[a.currentName]){ const run=P.move>.15||Math.hypot(G.input.mx,G.input.mz)>.2; a.play(run?'run':'idle',{fade:.26}); }
     const busy=a.current&&a.current.loop===THREE.LoopOnce&&a.current.isRunning()&&['attack','heavy','dash','skill','leap','cast','hit','roll','cheer'].includes(a.currentName);
     if(P.hitT>0&&R._hit!==P._hitId&&!busy&&P.move<.3){ a.play('hit',{once:true,fade:.06}); }
     else if(!busy||(P.move>.35&&a.currentName!=='attack'&&a.currentName!=='heavy')){ const run=P.move>.15; asPlay(a,run?'run':'idle'); if(run&&a.current) a.current.timeScale=clamp(.55+P.move*.6,.6,1.25); }
@@ -4214,6 +4313,7 @@ function asResize(w,h){ if(AS.FX) AS.FX.setSize(w,h,CPR); }
 const AMB_OF={pollen:'pollen',firefly:'firefly',bubble:'bubble',wisp:'wisp',ash:'ash',ember:'ember'};
 function asAmbCount(){ return QL==='perf'?24:QL==='low'?60:QL==='med'?160:280; }
 function asZone(Z){
+  paintZone(Z);
   const key=Z.id===0?'village':ZONE_KEY[Z.id]||'meadow'; AS.zoneKey=key;
   const M=window.EV_MANIFEST; let g=M&&M.zones[key]&&M.zones[key].grade;
   if(g&&W&&W.kind==='abyss') g=Object.assign({},g,{lift:[.03,0,.05],gain:[1.0,.94,1.08],sat:.92,vignette:.6,bloom:(g.bloom||.4)+.15});
@@ -4356,7 +4456,7 @@ function asFadeOcc(){
   if(!asOn()||!W||W.kind!=='village'||!G.P||G.mode==='title') return; const P=G.P;
   const list=[]; for(const k in W.bmesh) list.push(W.bmesh[k]); for(const k in (W.rsMesh||{})) list.push(W.rsMesh[k]);
   for(const g of list){ if(!g||!g.visible||!g.isGroup) continue;
-    const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
+    const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=!CINE.on&&dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
     if(!!g.userData.faded===occ) continue; g.userData.faded=occ;
     g.traverse(o=>{ if(!o.isMesh) return; if(o.userData.isOutline){ o.visible=!occ; return; } if(occ){ o.userData.solid=o.material; o.material=ghostOf(o.material); } else if(o.userData.solid){ o.material=o.userData.solid; } }); }
 }
@@ -5851,7 +5951,7 @@ function addProp(type,x,z,s=1,ry){ W.props.push({type,x,z,s,ry:ry===undefined?ra
 function buildPropMeshes(){
   const byType={}; for(const p of W.props){ (byType[p.type]=byType[p.type]||[]).push(p); }
   W.propIM={};
-  for(const t in byType){ const list=byType[t]; const g=asPropIM(t,list); if(g){ worldRoot.add(g); W.propIM[t]={grp:g,list}; continue; } const ft=propFallback(t); if(!ft) continue; const im=new THREE.InstancedMesh(propGeo(ft),MT,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
+  for(const t in byType){ const list=byType[t]; const g=asPropIM(t,list); if(g){ worldRoot.add(g); W.propIM[t]={grp:g,list}; continue; } const ft=propFallback(t); if(!ft) continue; const im=new THREE.InstancedMesh(propGeo(ft),MTP,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
   W.propCullAt=null;
 }
 const _pm=new THREE.Matrix4(), _pq=new THREE.Quaternion(), _pv=new THREE.Vector3(), _ps=new THREE.Vector3(), _py=new THREE.Vector3(0,1,0);
@@ -5859,10 +5959,11 @@ function cullProps(cx,cz,force){
   if(!W.propIM) return;
   if(!force&&W.propCullAt&&Math.abs(W.propCullAt[0]-cx)<1.5&&Math.abs(W.propCullAt[1]-cz)<1.5) return;
   W.propCullAt=[cx,cz];
+  const CT=cineTarget(), CC=CT&&cineCamPos();
   const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
   const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; const XR=xr*far, Z0=z0*far, Z1=z1*far;
   for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0;
-    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-XR||dx>XR||dz<Z0||dz>Z1) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
+    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-XR||dx>XR||dz<Z0||dz>Z1) continue; if(CT&&cineSkipProp(p,CT,CC)) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
     if(grp){ asPropCount(grp,n); grp.visible=n>0; continue; } im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; }
 }
 function groundY(x,z){ return groundH(x,z); }
@@ -5877,6 +5978,7 @@ function scatterWalls(Z,b,dens){
 }
 // ---------- interactive objects ----------
 function objMesh(id,geoFn,g){ const a=asObj(id); if(a){ g.add(a); return a; } return pmesh(geoFn(),g); }
+const OBJ_NOPAINT={cage:1,egg:1,scroll:1,portal:1,gate:1,abyssPit:1};
 function mkObj(kind,x,z,o={}){
   const ob=Object.assign({kind,x,z,r:.6,hp:1,alive:true,y:0},o); let mesh;
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=o.ry!==undefined?o.ry:rand(TAU); worldRoot.add(g); ob.mesh=g;
@@ -5885,7 +5987,7 @@ function mkObj(kind,x,z,o={}){
     case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
     case 'crate': objMesh('obj:crate',OBJ_GEO.crate,g); ob.r=.55; ob.hp=1; ob.brk=1; break;
     case 'pot': { const u=W.zone&&W.zone.id>=4; objMesh(u?'obj:urn':'obj:pot',u?OBJ_GEO.urn:OBJ_GEO.pot,g); ob.r=.35; ob.hp=1; ob.brk=1; break; }
-    case 'chest': case 'vault': { const ap=asObj('obj:'+kind); if(ap){ const pop=new THREE.Group(); pop.add(ap); g.add(pop); ob.evPop=pop; ob.lid=new THREE.Object3D(); ob.r=.7; ob.opened=false; g.rotation.y=(o.ry||0)+PI; break; } pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=o.ry||0; break; }
+    case 'chest': case 'vault': { const ap=asObj('obj:'+kind); if(ap){ const pop=new THREE.Group(); pop.add(ap); g.add(pop); ob.evPop=pop; ob.lid=chestRig(ap)||new THREE.Object3D(); ob.r=.7; ob.opened=false; g.rotation.y=(o.ry||0)+PI; break; } pmesh(kind==='vault'?OBJ_GEO.vaultBase():OBJ_GEO.chestBase(),g); const lid=pmesh(kind==='vault'?OBJ_GEO.vaultLid():OBJ_GEO.chestLid(),g,0,kind==='vault'?.6:.5,kind==='vault'?-.4:-.33); ob.lid=lid; ob.r=.7; ob.opened=false; g.rotation.y=o.ry||0; break; }
     case 'ore': objMesh('obj:ore',OBJ_GEO.ore,g); ob.r=.8; ob.hp=4; ob.res='ore'; break;
     case 'wood': objMesh('obj:wood',OBJ_GEO.woodPile,g); ob.r=.8; ob.hp=3; ob.res='wood'; break;
     case 'ess': objMesh('obj:essNode',OBJ_GEO.essNode,g); ob.r=.7; ob.hp=4; ob.res='ess'; break;
@@ -5905,6 +6007,7 @@ function mkObj(kind,x,z,o={}){
         fragmentShader:`varying vec2 vUv;uniform float uT;void main(){vec2 p=vUv*2.0-1.0;float r=length(p);float a=atan(p.y,p.x);float s=sin(a*4.0-r*8.0+uT*2.0)*0.5+0.5;vec3 c=mix(vec3(0.05,0.0,0.1),vec3(0.55,0.2,0.9),s*(1.0-r));gl_FragColor=vec4(c,smoothstep(1.0,0.85,r));}`}));
       m.rotation.x=-PI/2; m.position.y=.06; g.add(m); ob.swirl=m; pmesh(cgeo('o_pitring',b=>{ for(let i=0;i<10;i++){const a=i/10*TAU; b.dod(.45,0x4a4250,{p:[Math.cos(a)*2.4,.2,Math.sin(a)*2.4],j:.1});} },.05),g); ob.r=2.5; break; }
   } });
+  if(!OBJ_NOPAINT[kind]) g.traverse(o=>{ if(o.isMesh&&o.material===MT) o.material=MTP; });
   W.objs.push(ob); return ob;
 }
 
@@ -5959,7 +6062,8 @@ function objText(){
 const VPOS={hall:[0,-15,0],forge:[-13,-6,.7],alch:[13,-7,-.7],pen:[14,8,-1.3],tavern:[-14,8,1.3],temple:[10,-19,-.35],store:[-10,17,2.6],saw:[-20,-1,1.5],mine:[20,-1,-1.5],well:[7,16,3.1],walls:null,houses:null};
 const HOUSE_POS=[[-6,-22,.3],[-19,-13,.9],[19,-14,-.9],[0,21,PI],[17,17,-2.3],[-17,18,2.3],[-21,8,1.6],[21,8,-1.6]];
 const TOWER_POS=[[-22,-20],[22,-20],[-23,20],[23,20]];
-const NPC_POS={elder:[3,-10.2],smith:[-10,-3.5],alch:[10,-4.2],beast:[11.2,5.3],stranger:[-11,5.5]};
+const NPC_POS={elder:[4.3,-10.4],smith:[-10,-3.5],alch:[10,-4.2],beast:[8.6,4.0],stranger:[-9.8,4.3]};
+function npcClear(x,z){ for(const k in NPC_POS){ const [nx,nz]=NPC_POS[k]; const dz=z-nz; if(dz>.3&&dz<6.2&&Math.abs(x-nx)<1.1+dz*.12) return true; } return false; }
 function makeVillage(){
   unloadWorld(); const Z=Object.assign({},ZONES[0],{id:0,fog:0xe8d8b8,fogN:50,fogF:120,hemi:[0xfff0d0,0x8a7a4a,.9],sun:[0xffe0b0,1.0],ground:[0x74a646,0x62943a,0x84b250],path:0xae8c56,rim:0xffe8c0});
   newW('village',Z); setZoneLook(Z);
@@ -5974,7 +6078,7 @@ function makeVillage(){
   const BR={hall:3.6,forge:2.6,alch:2.5,pen:2.6,tavern:2.9,temple:3,store:2.6,saw:2.4,mine:2.6,well:1.4};
   for(const id in BR){ const q=VPOS[id]; reserve(q[0],q[1],BR[id]+.9,'bld'); }
   for(const h of HOUSE_POS) reserve(h[0],h[1],2.7,'house'); for(const t of TOWER_POS) reserve(t[0],t[1],1.8,'tower');
-  for(const sk of RAID_SOCKETS) reserve(sk.x,sk.z,sk.slot==='wall'?3:1.8,'sock'); for(const k in NPC_POS) reserve(NPC_POS[k][0],NPC_POS[k][1],1.1,'npc');
+  for(const sk of RAID_SOCKETS) reserve(sk.x,sk.z,sk.slot==='wall'?3:1.8,'sock'); for(const k in NPC_POS){ const [nx,nz]=NPC_POS[k]; reserve(nx,nz,1.1,'npc'); for(const [dz,r] of [[1.5,1.0],[3.0,1.2],[4.6,1.4]]) reserve(nx,nz+dz,r,'npcView'); } // v10: «коридор» камеры перед жителем — без декора (крупный план в диалогах)
   reserve(0,0,6,'plaza'); reserve(-15,-21,3.2,'pit'); reserve(-6,-31,3.4,'gate'); reserve(0,6,1.5,'start');
   buildGround(Z,b,{plaza:6.5,pathW:1.5,noPath:false});
   buildLiquid(Z);
@@ -5986,9 +6090,9 @@ function makeVillage(){
   // pond shores
   for(const q of W.pools){ const n=Math.round(q.r*3); for(let i=0;i<n;i++){ const a=i/n*TAU+rand(-.2,.2), rr=q.r+rand(.3,1.0); putProp(pick(['reeds','n:rock_small','reeds']),q.x+Math.cos(a)*rr,q.z+Math.sin(a)*rr,{out:true,edge:-30,s:rand(.8,1.1),poolGap:-.3,gap:0}); } }
   // decor (fixed spots, checked) + small dressing around every building plot
-  const deco=[['lantern',-4.6,4.6],['lantern',4.6,-4.6],['lantern',-4.6,-4.6],['lantern',4.6,4.6],['cart',-6.5,12.5],['hay',8.5,12.5],['barrelP',-11.2,1.2],['barrelP',-12.7,2.3],['banner',-2.6,-9.4],['banner',2.6,-9.4],['sign',-4.4,-24.5],['fence',16.5,1.5],['fence',-16.5,-12.5]];
-  for(const [t,x,z] of deco){ putProp(t,x,z,{ry:t==='banner'?0:rand(TAU),noRes:1,band:false}); }
-  const around=['barrelP','v:crate_B_small','v:sack','lantern','v:barrel','hay'];
+  const deco=[['lantern',-4.6,4.6],['lantern',4.6,-4.6],['lantern',-4.6,-4.6],['lantern',4.6,4.6],['cart',-6.5,12.5],['hay',8.5,12.5],['kegStand',-11.2,1.2],['crateStack',-12.9,2.6],['banner',-2.6,-9.4],['banner',2.6,-9.4],['sign',-4.4,-24.5],['fence',16.5,1.5],['fence',-16.5,-12.5]];
+  for(const [t,x,z] of deco){ if(npcClear(x,z)) continue; putProp(t,x,z,{ry:t==='banner'?0:rand(TAU),noRes:1,band:false}); }
+  const around=['kegStand','crateStack','v:sack','lantern','hay','v:weaponrack']; // v10: без бочек/ящиков-двойников разбиваемых
   for(const id in BR){ const q=VPOS[id]; const fa=Math.atan2(-q[1],-q[0]); for(const sd of [-1,1]){ for(let k=0;k<3;k++){ const a=fa+sd*rand(1.0,1.9), rr=BR[id]+rand(1.1,1.8); const x=q[0]+Math.cos(a)*rr, z=q[1]+Math.sin(a)*rr; if(putProp(pick(around),x,z,{s:rand(.85,1.05),noRes:1})) break; } }
     for(let k=0;k<4;k++){ const a=fa+rand(-.9,.9), rr=BR[id]+rand(.7,1.4); putProp(k%2?'flowers':'grass',q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr,{s:rand(.9,1.2)}); } }
   for(let i=0;i<Math.round(170*Q.grass);i++){ const a=rand(TAU),r=rand(7,23); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(pathCenterDist(x,z)<1.9) continue; putProp(i%4?'grass':'flowers',x,z,{s:rand(.8,1.2)}); }
@@ -6008,7 +6112,7 @@ function makeVillage(){
   buildPropMeshes();
   return W;
 }
-function bldMesh(id,lv,geoFn){ const g=asBuilding(id,lv); if(g){ g.userData.ev=1; return g; } return new THREE.Mesh(geoFn(),MT); }
+function bldMesh(id,lv,geoFn){ const g=asBuilding(id,lv); if(g){ g.userData.ev=1; return g; } return new THREE.Mesh(geoFn(),MTP); }
 function buildVillageBuildings(){
   for(const k in W.bmesh){ worldRoot.remove(W.bmesh[k]); } W.bmesh={}; W.obst=W.obst.filter(o=>!o.bld);
   for(const id of BLD_ORDER){
@@ -6053,7 +6157,7 @@ const angWrap2=a=>{ while(a>PI) a-=TAU; while(a<-PI) a+=TAU; return a; };
 const PFOOT={treeRound:[.5,1.5,'b'],treeBirch:[.45,1.2,'b'],pine:[.45,1.2,'b'],oakDark:[.55,1.5,'b'],deadTree:[.4,1.1,'b'],charTree:[.4,1.1,'b'],stump:[.4,.6,'b'],
   rock:[.85,1.0,'b'],stone2:[.6,.75,'b'],bogRock:[.8,.95,'b'],lavaRock:[.8,.95,'b'],obsidian:[.7,.85,'b'],basalt:[.9,1.1,'b'],crystal:[.6,.8,'b'],
   pillar:[.7,.8,'b'],pillarBroken:[.7,.8,'b'],tomb:[.7,.85,'b'],wallSeg:[1.0,1.2,'b'],coffin:[.6,.75,'b'],rib:[.5,1.3,'b'],
-  bush:[0,.9,'s'],fence:[.5,1.1,'b'],hay:[.7,.8,'b'],log:[.6,1.0,'b'],cart:[1.1,1.4,'b'],lantern:[.25,.4,'b'],banner:[.25,.4,'b'],barrelP:[.4,.5,'b'],sign:[.25,.4,'b'],palisade:[1.0,1.1,'b'],
+  bush:[0,.9,'s'],fence:[.5,1.1,'b'],hay:[.7,.8,'b'],log:[.6,1.0,'b'],cart:[1.1,1.4,'b'],lantern:[.25,.4,'b'],banner:[.25,.4,'b'],barrelP:[.4,.5,'b'],kegStand:[.55,.65,'b'],crateStack:[.6,.75,'b'],sign:[.25,.4,'b'],palisade:[1.0,1.1,'b'],
   goldPile:[.5,.6,'b'],vent:[0,.6,'s'],campfire:[.85,1.1,'b'],bridgeWood:[0,0,'x'],bridgeStone:[0,0,'x'],cwall:[1.2,1.5,'b'],
   flowers:[0,.3,'t'],grass:[0,.25,'t'],fern:[0,.35,'t'],reeds:[0,.35,'t'],shrooms:[0,.3,'t'],glowShroom:[0,.3,'t'],candles:[0,.3,'t'],bones:[0,.4,'t'],skulls:[0,.3,'t'],
   'n:tree_wide':[.6,1.7,'b'],'n:tree_bloom':[.5,1.4,'b'],'n:fir':[.45,1.2,'b'],'n:tree_block':[.45,1.2,'b'],'n:pine_dark':[.45,1.2,'b'],'n:fir_dark':[.45,1.2,'b'],'n:tree_wide_dark':[.6,1.7,'b'],
@@ -6070,11 +6174,11 @@ function pfoot(t,s){ const f=PFOOT[t]||[.5,.8,'b']; return {c:f[0]*(s||1),v:f[1]
 const PROP_FB={'n:tree_wide':'treeRound','n:tree_bloom':'treeRound','n:fir':'pine','n:tree_block':'treeBirch','n:pine_dark':'pine','n:fir_dark':'pine','n:tree_wide_dark':'oakDark','n:tree_swamp':'deadTree',
   'n:dead_tree_thin':'deadTree','n:dead_tree_red':'charTree','n:tree_autumn':'treeRound','n:bush_box':'bush','n:bush_tall':'bush','n:bush_dark':'bush','n:bush_swamp':'bush','n:bush_berry':'bush',
   'n:rock_small':'stone2','n:rock_pebble':'stone2','n:rock_block':'rock','n:rock_bog_round':'bogRock','n:rock_red':'lavaRock','n:grass_blade':'grass',
-  'd:column':'pillar','d:wall_half':'wallSeg','d:rubble_half':'stone2','d:rubble_large':'rock','d:barrel_large':'barrelP','d:crates_stacked':'barrelP','d:box_stacked':'barrelP','d:torch_lit':'lantern',
-  'd:banner_shield_red':'banner','d:rocks':'stone2','d:rocks_gold':'goldPile','d:sword_shield_broken':'bones','d:keg':'barrelP',
+  'd:column':'pillar','d:wall_half':'wallSeg','d:rubble_half':'stone2','d:rubble_large':'rock','d:barrel_large':'kegStand','d:crates_stacked':'crateStack','d:box_stacked':'crateStack','d:torch_lit':'lantern',
+  'd:banner_shield_red':'banner','d:rocks':'stone2','d:rocks_gold':'goldPile','d:sword_shield_broken':'bones','d:keg':'kegStand',
   'h:gravestone':'tomb','h:grave_B':'tomb','h:gravemarker_A':'tomb','h:crypt':'wallSeg','h:fence':'fence','h:fence_broken':'fence','h:lantern_standing':'lantern','h:post_skull':'skulls','h:shrine_candles':'candles',
   'h:scarecrow':'sign','h:haybale':'hay','h:pumpkin_orange_jackolantern':'shrooms','h:tree_dead_large':'deadTree','h:candle_triple':'candles','h:bone_A':'bones',
-  'v:tent':'cwall','v:sack':'hay','v:weaponrack':'fence','v:crate_B_small':'barrelP','v:barrel':'barrelP','v:wheelbarrow':'cart','v:resource_stone':'stone2','v:target':'sign','v:flag_red':'banner','v:trough':'log','v:pallet':'log'};
+  'v:tent':'cwall','v:sack':'hay','v:weaponrack':'fence','v:crate_B_small':'crateStack','v:barrel':'kegStand','v:wheelbarrow':'cart','v:resource_stone':'stone2','v:target':'sign','v:flag_red':'banner','v:trough':'log','v:pallet':'log'};
 function propFallback(t){ if(PROPS[t]) return t; const f=PROP_FB[t]; return f&&PROPS[f]?f:null; }
 
 // ---------- new procedural props: campfire, bridges, cracked wall / barricade / rune door, tent stand-in ----------
@@ -6313,7 +6417,8 @@ function dressArea(a,Z){
     W.paint.push({x:a.x,z:a.z,r:a.r*.62,c:M.dirt,k:.55});
     const nt=randi(1,2); for(let i=0;i<nt;i++) tryProp(Z.id>=4?'cwall':'v:tent',ringFn(.68,.86),16,{s:Z.id>=4?.9:1});
     tryProp('campfire',ringFn(.25,.42),20,{s:1});
-    for(let i=0;i<2;i++) tryProp(pick(['v:sack','v:crate_B_small','d:barrel_large','v:weaponrack']),ringFn(.55,.85),10);
+    for(let i=0;i<2;i++) tryProp(pick(['v:sack','v:weaponrack','crateStack']),ringFn(.55,.85),10);
+    for(let i=0;i<2;i++){ const sp=spotIn(a,a.r*.5,a.r*.8,.6,{k:'o'}); if(sp) objAt(i?'crate':'barrel',sp[0],sp[1]); } // v10: бочки и ящики в лагере — всегда разбиваемые
     tryProp(Z.id>=4?'d:banner_shield_red':'banner',ringFn(.5,.8),10,{ry:rand(TAU)});
     if(Z.id<=2) tryProp('palisade',ringFn(.82,.95),8,{ry:rand(TAU)});
   }
@@ -6547,6 +6652,7 @@ function navDir(px,pz,tx,tz){
 }
 
 // ---------- validator ----------
+const BRK_LOOKALIKE=['barrelP','v:barrel','v:crate_B_small','d:barrel_large','r:Food_Barrel_Empty','r:Containers_Crate_Medium_Wood'];
 const OBJ_KINDS_SOLID=['chest','vault','barrel','crate','pot','oilBarrel','ore','wood','ess','totem','cage','stone','lever','scroll','egg','cartE'];
 function validateWorld(opt={}){
   const V=[]; const add=(rule,msg,x,z)=>{ V.push({rule,msg,x:x!==undefined?+x.toFixed(1):undefined,z:z!==undefined?+z.toFixed(1):undefined}); };
@@ -6576,6 +6682,8 @@ function validateWorld(opt={}){
   const near=(x,z)=>{ const out=[]; const i=Math.floor(x/4), j=Math.floor(z/4); for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const q=gridB.get(a+','+b); if(q) for(const e of q) out.push(e); } return out; };
   let nSp=0; for(const [p,f] of bp){ for(const [q,g] of near(p.x,p.z)){ if(q===p||q.x<p.x||(q.x===p.x&&q.z<=p.z)) continue; const d=Math.hypot(p.x-q.x,p.z-q.z); if(d<f.c+g.c-.05&&f.c>0&&g.c>0){ nSp++; if(nSp<40) add('spacing',`${p.type} и ${q.type} перекрываются`,p.x,p.z); } } }
   let nT=0; for(const [p] of tp){ for(const [q,g] of near(p.x,p.z)){ if(g.c>0&&Math.hypot(p.x-q.x,p.z-q.z)<g.c+.05){ nT++; if(nT<20) add('tinyOnBlocker',`${p.type} на ${q.type}`,p.x,p.z); break; } } }
+  // v10: no decor that looks like a breakable barrel/crate/pot (players must be able to tell what breaks)
+  for(const p of P){ if(BRK_LOOKALIKE.includes(p.type)) add('brkLookalike',`декор «${p.type}» выглядит как разбиваемый объект`,p.x,p.z); }
   // planks / lumber only where it makes sense (camps, logging, farms, ruins, village)
   if(kind==='stage') for(const o of W.objs.filter(o=>o.kind==='wood')){ const a=(W.areas||[]).find(a=>Math.hypot(a.x-o.x,a.z-o.z)<a.r+1); if(!a||!['camp','logging','farm','ruins'].includes(a.theme)) add('context','брёвна/доски вне лагеря',o.x,o.z); }
   for(const p of P.filter(p=>p.type==='log'||p.type==='v:pallet')){ if(kind!=='stage') continue; const a=(W.areas||[]).find(a=>Math.hypot(a.x-p.x,a.z-p.z)<a.r+1); if(a&&!['camp','logging','farm','ruins','grove'].includes(a.theme)) add('context','доски на поляне',p.x,p.z); }
@@ -7602,7 +7710,7 @@ function hitObj(o,amt){
   if(o.kind==='lever'){ if(o.cd>G.time) return; o.cd=G.time+.6; o.mesh.rotation.x=-.25; AU.sfx('hit',.7,1.3); const S0=W.secret; if(S0&&S0.wall&&S0.wall.alive){ fx('magic',o.x,1,o.z,{col:0x8ad8ff,k:10}); later(.3,()=>secretOpen(S0.wall,'Рычаг открыл тайный ход')); } o.alive=false; return; }
   if(o.kind==='secret'){ if(o.locked){ if(!o.lockMsg||G.time-o.lockMsg>3){ o.lockMsg=G.time; dmgNum(o.x,2.6,o.z,'Заперто. Где-то рядом рычаг','txt'); AU.sfx('deny'); } return; }
     o.hp--; fx('dust',o.x,1,o.z,{k:6,col:o.secretMode==='barricade'?0xa07040:0x8a8478}); AU.sfx('hit'); shake(.15); if(o.hp<=0){ if(typeof secretOpen==='function'&&W.secret) secretOpen(o,o.secretMode==='barricade'?'Баррикада разбита — проход открыт':null); else { o.alive=false; worldRoot.remove(o.mesh); if(o.seg) o.seg.closed=false; banner('Тайник!','Вы нашли скрытый проход'); S.st.secrets++; if(G.run) G.run.secret=1; } } return; }
-  if(o.brk){ o.alive=false; worldRoot.remove(o.mesh); if(o.oil){ spawnOil(o.x,o.z,2.2,18); fx('dust',o.x,.4,o.z,{k:8,col:0x2a1a10}); AU.sfx('hit',.8,.5); return; } fx('dust',o.x,.5,o.z,{k:8,col:0xa07040}); for(let i=0;i<5;i++) fx('hit',o.x,.5,o.z,{col:0xc89a6a}); AU.sfx('hit',.8,.7);
+  if(o.brk){ o.alive=false; worldRoot.remove(o.mesh); if(o.oil){ spawnOil(o.x,o.z,2.2,18); fx('dust',o.x,.4,o.z,{k:8,col:0x2a1a10}); AU.sfx('hit',.8,.5); return; } brkFx(o); AU.sfx('hit',.8,.7); AU.sfx('chest',.35,1.6);
     if(chance(.55)) spawnDrop('gold',o.x,o.z,{v:Math.round(rand(2,6)*F(W.lvl||1)*(1+PS.gold/100))}); if(chance(.12)) spawnDrop('potion',o.x,o.z); if(chance(.06)) spawnDrop('item',o.x,o.z,{item:genItem(W.lvl,{mf:PS.mf})}); if(chance(.1)) spawnDrop('mat',o.x,o.z,{res:pick(['wood','ore']),v:randi(2,5)}); return; }
   if(o.res){ o.hp--; fx('hit',o.x,.8,o.z,{col:o.res==='ess'?0x6fe0d6:0xd8d0c0}); AU.sfx('hit',.8,o.res==='wood'?.6:1.3); shake(.08);
     const n=o.res==='ess'?randi(1,2):randi(3,6); spawnDrop('mat',o.x,o.z,{res:o.res,v:Math.round(n*(1+(W.lvl||1)*.08))}); if(o.res==='ore') S.st.oreMined=(S.st.oreMined||0)+n;
@@ -7787,7 +7895,7 @@ function heroMat(P){ const m=P.flashT>0?MTF:((P.buff.guard>0||P.buff.wall>0)?MTg
 function animHero(P,dt){
   if(P.rig.actor){ animHeroActor(P,dt); return; }
   const R=P.rig, t=G.time;
-  R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,P.face,0);
+  R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,heroYaw(P,R,dt),0);
   R.body.position.set(0,.86,0); R.body.rotation.set(0,0,0); R.torso.rotation.set(0,0,0); R.head.rotation.set(0,0,0);
   R.armL.rotation.set(0,0,.08); R.armR.rotation.set(0,0,-.08); R.legL.rotation.set(0,0,0); R.legR.rotation.set(0,0,0); R.cape.rotation.set(.12,0,0);
   const mv=P.move; P.phase+=dt*mv*11.5; const ph=P.phase, cls=R.cls;
@@ -7827,7 +7935,8 @@ function animHero(P,dt){
     else if(k.cls==='bow'){ R.armL.rotation.x=-1.55; R.armR.rotation.set(-1.3,0,.6); if(key==='bow_s2'){ R.body.rotation.x=-u*TAU*.8; } }
     else if(k.cls==='staff'){ R.armR.rotation.x=-2.2+Math.sin(G.time*20)*.1; R.armL.rotation.x=-1.6; R.torso.rotation.x=-.1; if(key==='staff_ult'){ R.armL.rotation.x=-2.8; R.armR.rotation.x=-2.8; } }
   }
-  if(P.state==='roll'){ const u=clamp(P.st/.4,0,1); R.body.rotation.x=u*TAU; R.body.position.y=.86-Math.sin(u*PI)*.38; R.legL.rotation.x=-1.3; R.legR.rotation.x=-1.1; R.armL.rotation.x=-1; R.armR.rotation.x=-1; R.cape.rotation.x=.3; }
+  if(P.state==='roll'){ const u=clamp(P.st/.4,0,1); R.body.rotation.x=u*TAU; R.body.position.y=.86-Math.sin(u*PI)*.38; const k=1-smooth(clamp((u-.72)/.28,0,1)); R.legL.rotation.x=lerp(R.legL.rotation.x,-1.3,k); R.legR.rotation.x=lerp(R.legR.rotation.x,-1.1,k); R.armL.rotation.x=lerp(R.armL.rotation.x,-1,k); R.armR.rotation.x=lerp(R.armR.rotation.x,-1,k); R.cape.rotation.x=lerp(R.cape.rotation.x,.3,k); R._rollOut=.22; }
+  else if(R._rollOut>0){ R._rollOut-=dt; const k=smooth(clamp(R._rollOut/.22,0,1))*.5; R.legL.rotation.x=lerp(R.legL.rotation.x,-.4,k); R.legR.rotation.x=lerp(R.legR.rotation.x,-.3,k); R.body.position.y-=k*.12; }
   if(P.hitT>0){ R.torso.rotation.x-=P.hitT*1.2; R.head.rotation.x-=P.hitT; }
   if(P.dead){ const u=clamp(P.st*2.2,0,1); R.body.rotation.x=-u*PI/2; R.body.position.y=.86-u*.6; R.armL.rotation.x=-u*2.5; R.armR.rotation.x=-u*2.6; }
   // orbiting offhand
@@ -9156,7 +9265,7 @@ function puzzlePlan(info,walk){
   const room=sd.room; room.puz=true; const n=sd.from;
   W.puzzle={type,room,from:n,ux:-sd.ux,uz:-sd.uz,els:[],st:{},solved:false,first:!(S.puz&&S.puz[info.key]),key:info.key,seen:false};
 }
-function pzMesh(geo,x,z,y=0,ry=0){ const m=new THREE.Mesh(geo,MT); m.position.set(x,y,z); m.rotation.y=ry; worldRoot.add(m); return m; }
+function pzMesh(geo,x,z,y=0,ry=0){ const m=new THREE.Mesh(geo,MTP); m.position.set(x,y,z); m.rotation.y=ry; worldRoot.add(m); return m; }
 const PZG={
   plate:()=>cgeo('pz_plate',b=>{ b.cyl(.95,1.05,.14,0x6a6458,{seg:12}); b.cyl(.7,.75,.06,0x8a8478,{p:[0,.1,0],seg:12}); for(let i=0;i<4;i++) b.box(.5,.03,.06,0x3a3630,{p:[Math.cos(i*PI/2)*.42,.14,Math.sin(i*PI/2)*.42],r:[0,i*PI/2,0],ol:0}); },.03),
   plateOn:()=>cgeo('pz_plateOn',b=>{ b.cyl(.95,1.05,.14,0x6a6458,{seg:12}); b.cyl(.7,.75,.06,0xffc860,{p:[0,.08,0],seg:12,e:1}); },.03),
@@ -9653,7 +9762,7 @@ function raidStructMesh(st){
     if(g){ const w=new THREE.Group(); g.scale.multiplyScalar(st.t==='archer'?.62:.5); g.rotation.y=PI; w.add(g);
       if(st.t==='mage'&&window.EVAssets){ const orb=EVAssets.makeOrb('#'+new THREE.Color(ELC[st.el||'fire']||0xb07cff).getHexString()); orb.scale.setScalar(2.2); const b=new THREE.Box3().setFromObject(g); orb.position.y=b.max.y+.2; w.add(orb); w.userData.orb=orb; }
       return w; } }
-  return new THREE.Mesh(raidStructGeo(st.t,st.lv),MT);
+  return new THREE.Mesh(raidStructGeo(st.t,st.lv),MTP);
 }
 function buildRaidStructs(){
   if(!W||W.kind!=='village') return; for(const k in (W.rsMesh||{})) worldRoot.remove(W.rsMesh[k]); W.rsMesh={}; W.obst=W.obst.filter(o=>!o.rs); if(W.oils) { for(const o of W.oils) worldRoot.remove(o.m); W.oils=[]; }
@@ -9951,7 +10060,7 @@ function updateStage(dt){
   if(T==='hunt'||T==='clear'||T==='rescue') { if(W._ot===undefined||(W._ot-=dt)<0){ W._ot=.5; objText(); } }
   if(T==='boss') bossStageTick(dt);
   // portal anim
-  for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid&&o.openT<1){ o.openT+=dt*3; o.lid.rotation.x=-Math.min(1,o.openT)*1.9; if(o.evPop){ const u=Math.min(1,o.openT); o.evPop.scale.set(1+Math.sin(u*PI)*.28,1-Math.sin(u*PI)*.18+u*.0,1+Math.sin(u*PI)*.28); if(u>=1) asBurst(o.x,.2,o.z,0xffd27a,1.6,.5); } } if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
+  debrisTick(dt); for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid) chestTick(o,dt); if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
     if(o.kind==='portal'&&o.on&&Math.random()<dt*12) fx('ember',o.x+rand(-1.2,1.2),rand(.3,3),o.z); if(o.kind==='secret'&&o.alive&&Math.random()<dt*2) fx('ember',o.x+rand(-1,1),rand(.3,1.8),o.z,{col:o.locked?0x8ad8ff:0xffd080}); if(o.kind==='lever'&&o.alive&&Math.random()<dt*1.5) fx('ember',o.x+rand(-.3,.3),rand(.5,1.4),o.z,{col:0x8ad8ff}); }
   ambient(dt);
 }
@@ -10127,7 +10236,7 @@ function loop(now){
   }catch(e){ console.error(e); }
   PA.update(Math.max(dt,frozen?0:rdt*.2)); PN.update(Math.max(dt,frozen?0:rdt*.2)); DECALS.update(dt,G.time);
   SHADOW.end();
-  const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z);
+  const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z); try{ cineOccTick(); }catch(e){}
   if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; }
     else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;
@@ -10775,9 +10884,9 @@ function spiritPortrait(){ if(_spPort) return _spPort; try{ const c=document.cre
 const CINE={on:false,prev:null};
 function cineBars(on){ document.body.classList.toggle('cine',!!on); }
 function cineFocus(sp){ if(!W||!G.P) return; let t=null; if(sp==='hero'||sp==='spirit'||sp==='choice') t=G.P; else if(W.npcs){ const n=W.npcs.find(n=>n.kind===sp); if(n) t=n; } if(!t&&G.boss&&G.boss.alive&&(sp===G.boss.kind||sp==='king'&&G.boss.kind==='ashKing'||sp==='dragon'&&G.boss.kind==='dragon'||sp==='bogMother'||sp==='morven')) t=G.boss;
-  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const far=Math.hypot(t.x-P.x,t.z-P.z)>4.5||t===P; const k=far?1:.85; const mx=t.x*k+P.x*(1-k), mz=t.z*k+P.z*(1-k); /* speaker framed in the visible band between the letterbox and the dialogue box: aim slightly toward the camera so the model sits just above centre */ CAMR.override={x:mx,z:mz+(t.boss?.9:.35),zoom:t.boss?.5:.36,pitch:.62}; cineBars(true);
+  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const far=Math.hypot(t.x-P.x,t.z-P.z)>4.5||t===P; const k=far?1:.85; const mx=t.x*k+P.x*(1-k), mz=t.z*k+P.z*(1-k); /* speaker framed in the visible band between the letterbox and the dialogue box: aim slightly toward the camera so the model sits just above centre */ CAMR.override={x:mx,z:mz+(t.boss?.9:.35),zoom:t.boss?.5:.36,pitch:.62}; cineBars(true); CINEO.t=t; CINEO.head=t.boss?Math.max(1.8,(t.rig&&t.rig.root?t.rig.root.scale.y:1)*1.6):1.4; cullProps(CAMR.x,CAMR.z,true);
   try{ if(AS.FX&&AS.post==='high'){ const d=Math.hypot(cam.position.x-t.x,cam.position.y-1.5,cam.position.z-t.z); AS.FX.setDOF(true,{focus:d,aperture:.012,maxblur:.008}); } }catch(e){} }
-function cineEnd(){ if(!CINE.on) return; CINE.on=false; CAMR.override=CINE.prev||null; CINE.prev=null; cineBars(false); try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} }
+function cineEnd(){ if(!CINE.on) return; CINE.on=false; CAMR.override=CINE.prev||null; CINE.prev=null; CINEO.t=null; try{ cineOccTick(); cullProps(CAMR.x,CAMR.z,true); }catch(e){} cineBars(false); try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} }
 const _dlgShow=dlgShow;
 dlgShow=function(){ const [sp,txt]=DLGS.q[DLGS.i];
   if(G.mode==='village'||G.mode==='stage') cineFocus(sp);
@@ -11945,7 +12054,7 @@ let SCAF={};
 function scaffoldGeo(){ return cgeo('scaf',b=>{ const P=0x8a6a42, K=0xb08a5a; for(const [x,z] of [[-1.6,-1.6],[1.6,-1.6],[-1.6,1.6],[1.6,1.6]]) b.box(.12,3.2,.12,P,{p:[x,1.6,z]}); for(const y of [1.1,2.2]){ b.box(3.4,.08,.35,K,{p:[0,y,1.6]}); b.box(3.4,.08,.35,K,{p:[0,y,-1.6]}); b.box(.35,.08,3.4,K,{p:[1.6,y,0]}); b.box(.35,.08,3.4,K,{p:[-1.6,y,0]}); } b.box(.08,2.6,.08,P,{p:[0,1.3,1.62],r:[0,0,.9]}); b.box(.08,2.6,.08,P,{p:[0,1.3,-1.62],r:[0,0,-.9]}); },.03); }
 function scaffoldSync(){ if(!W||W.kind!=='village') { SCAF={}; return; } const want={}; for(const j of BQ().list) want[j.id]=j;
   for(const id in SCAF) if(!want[id]){ worldRoot.remove(SCAF[id]); delete SCAF[id]; }
-  for(const id in want){ if(SCAF[id]&&SCAF[id].parent) continue; const p=bldPos(id); if(!p) continue; const m=new THREE.Mesh(scaffoldGeo(),MT); const s=id==='hall'?1.35:id==='houses'||id==='walls'?.8:1.05; m.scale.setScalar(s); m.position.set(p[0],0,p[1]); worldRoot.add(m); SCAF[id]=m; } }
+  for(const id in want){ if(SCAF[id]&&SCAF[id].parent) continue; const p=bldPos(id); if(!p) continue; const m=new THREE.Mesh(scaffoldGeo(),MTP); const s=id==='hall'?1.35:id==='houses'||id==='walls'?.8:1.05; m.scale.setScalar(s); m.position.set(p[0],0,p[1]); worldRoot.add(m); SCAF[id]=m; } }
 function scaffoldLabels(){ if(!W||W.kind!=='village'||PANEL.kind) return; for(const j of BQ().list){ const p=bldPos(j.id); if(!p) continue; const tot=Math.max(1,j.end-j.start), left=bqLeft(j);
     wlAdd(p[0],j.id==='hall'?3.4:2.6,p[1]+1.2,`<div class="bt"><b>${ico('hammer')} ${BUILDINGS[j.id].n} → ${j.lv}</b><div class="tbar sm"><i style="width:${Math.round((1-left/tot)*100)}%"></i><b>${fmtTimer(left)}</b></div></div>`,'bwl'); } }
 const _buildVillageBuildings=buildVillageBuildings; buildVillageBuildings=function(){ _buildVillageBuildings(); for(const id in SCAF){ worldRoot.remove(SCAF[id]); } SCAF={}; try{ scaffoldSync(); }catch(e){ console.error(e); } };
@@ -12396,7 +12505,7 @@ Object.assign(window.__game,{
 function villageBatch(){
   if(!W||!W.bmesh) return;
   if(W.vbatch){ worldRoot.remove(W.vbatch); W.vbatch.geometry.dispose(); W.vbatch=null; }
-  const list=[]; for(const k in W.bmesh){ const m=W.bmesh[k]; if(/^t\d/.test(k)||!m||!m.isMesh||m.isInstancedMesh||m.material!==MT||m.parent!==worldRoot) continue; const g=m.geometry; if(g.index||!g.attributes.aE||!g.attributes.color||!g.attributes.normal) continue; list.push(m); }
+  const list=[]; for(const k in W.bmesh){ const m=W.bmesh[k]; if(/^t\d/.test(k)||!m||!m.isMesh||m.isInstancedMesh||m.material!==MTP||m.parent!==worldRoot) continue; const g=m.geometry; if(g.index||!g.attributes.aE||!g.attributes.color||!g.attributes.normal) continue; list.push(m); }
   if(list.length<2) return;
   let n=0; for(const m of list) n+=m.geometry.attributes.position.count;
   const P=new Float32Array(n*3), N=new Float32Array(n*3), C=new Float32Array(n*3), E=new Float32Array(n), nm=new THREE.Matrix3(), v=new THREE.Vector3();
@@ -12405,7 +12514,7 @@ function villageBatch(){
     for(let i=0;i<cnt;i++){ const k=(o+i)*3; v.fromBufferAttribute(pa,i).applyMatrix4(mw); P[k]=v.x; P[k+1]=v.y; P[k+2]=v.z; v.fromBufferAttribute(na,i).applyMatrix3(nm).normalize(); N[k]=v.x; N[k+1]=v.y; N[k+2]=v.z; C[k]=ca.getX(i); C[k+1]=ca.getY(i); C[k+2]=ca.getZ(i); E[o+i]=ea.getX(i); }
     o+=cnt; m.visible=false; m.userData.batched=1; }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(P,3)); g.setAttribute('normal',new THREE.BufferAttribute(N,3)); g.setAttribute('color',new THREE.BufferAttribute(C,3)); g.setAttribute('aE',new THREE.BufferAttribute(E,1)); g.computeBoundingSphere();
-  const mesh=new THREE.Mesh(g,MT); mesh.name='village_batch'; mesh.matrixAutoUpdate=false; worldRoot.add(mesh); W.vbatch=mesh;
+  const mesh=new THREE.Mesh(g,MTP); mesh.name='village_batch'; mesh.matrixAutoUpdate=false; worldRoot.add(mesh); W.vbatch=mesh;
 }
 const _bvbP25=buildVillageBuildings; buildVillageBuildings=function(){ _bvbP25(); try{ villageBatch(); }catch(e){ console.error(e); } };
 
@@ -12428,7 +12537,7 @@ function villageBakeProps(){
   const push=(mat,geo,M)=>{ let L=byMat.get(mat); if(!L) byMat.set(mat,L=[]); L.push({geo,M}); };
   const done=[];
   for(const t in W.propIM){ const e=W.propIM[t]; if(!e.list.length) continue;
-    if(e.im){ if(e.im.material!==MT) continue; for(const p of e.list) push(MT,e.im.geometry,place(p)); done.push([t,e.im]); }
+    if(e.im){ if(e.im.material!==MTP) continue; for(const p of e.list) push(MTP,e.im.geometry,place(p)); done.push([t,e.im]); }
     else if(e.grp){ const g=e.grp, L=g.userData.local, S4=g.userData.scale; let ok=true;
       g.children.forEach((im,k)=>{ if(!im.isInstancedMesh) return; if(im.material.transparent) ok=false; });
       if(!ok) continue;
@@ -12461,6 +12570,117 @@ function villageBakeProps(){
   for(const m of byMat.keys()) delete m.userData.bakedOk;
 }
 const _bpmP25=buildPropMeshes; buildPropMeshes=function(){ _bpmP25(); try{ villageBakeProps(); }catch(e){ console.error(e); } };
+// ================= p26: полировка v10 — сундуки открываются, разбиваемое читается, диалоги без загораживания, плавный кувырок =================
+
+// ---------- сундуки в мире: настоящая крышка на шарнире, вспышка, луч, крышка остаётся открытой ----------
+// У KayKit-сундуков крышка — отдельная сетка (chest_lid / chest_large_gold_lid) с центром в середине крышки. Переносим её на шарнир
+// у задней кромки (низ крышки), тогда крышку можно откинуть так же, как у процедурного сундука.
+const _cb=new THREE.Box3(), _cv=new THREE.Vector3();
+function chestRig(ap){
+  let lid=null; ap.traverse(o=>{ if(!lid&&o.isMesh&&/lid/i.test(o.name)) lid=o; }); if(!lid) return null;
+  const geo=lid.geometry; let k=1; if(!geo.boundingBox){ geo.computeBoundingBox(); k=nk(geo.attributes.position); }
+  _cb.copy(geo.boundingBox); _cb.min.multiplyScalar(k); _cb.max.multiplyScalar(k); _cb.applyMatrix4(lid.matrix);
+  // KayKit: лицо сундука смотрит в +z модели → шарнир сзади (min z), крышка откидывается назад (rotation.x < 0)
+  const piv=new THREE.Group(); piv.position.set((_cb.min.x+_cb.max.x)/2,_cb.min.y+(_cb.max.y-_cb.min.y)*.18,_cb.min.z);
+  piv.updateMatrix(); lid.matrix.premultiply(new THREE.Matrix4().makeTranslation(-piv.position.x,-piv.position.y,-piv.position.z));
+  lid.parent.remove(lid); piv.add(lid); ap.add(piv); return piv;
+}
+const backOut=u=>{ const c=1.9; return 1+(c+1)*Math.pow(u-1,3)+c*Math.pow(u-1,2); };
+function chestOpenFx(o){
+  const big=o.kind==='vault', col=o.puz?0xd890ff:big?0xffc04a:0xffe2a0; const gy=groundY(o.x,o.z);
+  asBurst(o.x,gy+.5,o.z,col,big?2.2:1.6,.6);
+  fx('ring',o.x,gy+.1,o.z,{col,r:big?2.2:1.6}); fx('magic',o.x,gy+.9,o.z,{col,k:big?18:12}); fx('lvl',o.x,gy+.4,o.z,{});
+  // луч из сундука (общий материал редкости, гаснет сужением)
+  if(typeof beamGeo!=='undefined'){ const bm=new THREE.Mesh(beamGeo,BEAM_MATS[o.puz?4:big?3:0]); bm.position.set(0,.35,0); bm.scale.set(.01,big?4.2:3,.01); o.mesh.add(bm); o.beam=bm; }
+  shake(big?.18:.1); vib&&vib('light');
+}
+function chestTick(o,dt){
+  if(!o.opened||!o.lid) return;
+  if(o.openT===undefined) o.openT=0;
+  if(o.openT>=2.2&&!o.beam) return;
+  o.openT+=dt; const t=o.openT;
+  // 0–0,14 с: «вздох» сундука; 0,14–0,6 с: крышка с перехлёстом; на 0,3 с — вспышка, луч и добыча (добыча — worldChestLoot/puzzleLoot)
+  const u=clamp((t-.14)/.46,0,1); o.lid.rotation.x=-(o.lidA||1.95)*(u<=0?0:backOut(u));
+  if(o.evPop||o.popG){ const p=o.evPop||o.popG; const s1=t<.14?Math.sin(t/.14*PI)*.1:0, s2=t>=.14&&t<.5?Math.sin((t-.14)/.36*PI)*.14:0; p.scale.set(1+s2*.9-s1*.4,1-s2*.6+s1,1+s2*.9-s1*.4); p.rotation.z=t<.14?Math.sin(t*90)*.04:0; }
+  if(t>=.3&&!o.fxDone){ o.fxDone=1; chestOpenFx(o); }
+  if(o.beam){ const b=o.beam, k=t<.5?clamp((t-.3)/.2,0,1):clamp(1-(t-.5)/1.6,0,1); b.scale.x=b.scale.z=Math.max(.01,k*(o.kind==='vault'?1.3:1)); if(t>=2.1){ o.mesh.remove(b); o.beam=null; } }
+  if(t>.6&&Math.random()<dt*6) fx('trail',o.x+rand(-.3,.3),groundY(o.x,o.z)+.7,o.z+rand(-.3,.3),{col:0xffe0a0,l:.5,s:.25});
+}
+
+// ---------- разбиваемое: щепки, обломки, «вылет» добычи ----------
+// Правило (v10): бочки, ящики, горшки и урны у тропы и в лагерях — ВСЕГДА разбиваемые объекты (`mkObj`); декоративные версии этих моделей
+// не ставятся (их заменяют стопки ящиков, мешки, бочонок на козлах и т. п. — см. BRK_DECOR в p6b), валидатор проверяет это правило.
+const BRK_COL={barrel:[0x8a5a32,0x5a3a20,0x4a4a4a],oilBarrel:[0x3a2a1a,0x2a1a10,0x4a4a4a],crate:[0xb08850,0x8a6638,0x6a4a28],pot:[0xb8754a,0x8a5030,0xd8a070]};
+function brkFx(o){
+  const gy=groundY(o.x,o.z), C=BRK_COL[o.kind]||BRK_COL.barrel; const n=Math.max(4,Math.round(14*Q.parts));
+  for(let i=0;i<n;i++){ const a=rand(TAU), s=rand(2.2,5.5); PN.emit(o.x+Math.cos(a)*.2,gy+rand(.3,.8),o.z+Math.sin(a)*.2,Math.cos(a)*s,rand(3,7),Math.sin(a)*s,rand(.5,.9),rand(.16,.3),rand(.1,.2),_pc.set(pick(C)),1,16,1.2); }
+  fx('dust',o.x,gy+.3,o.z,{k:8,col:o.kind==='pot'?0xc8a080:0xa07040}); fx('hit',o.x,gy+.6,o.z,{col:0xffe0b0});
+  // короткие обломки на земле (без нового материала: общий MTP, геометрия из кэша)
+  if(!qLow()){ const g=new THREE.Group(); g.position.set(o.x,gy,o.z); const m=o.kind==='pot'?shardGeo():plankGeo(); for(let i=0;i<4;i++){ const p=new THREE.Mesh(m,MTP); p.position.set(rand(-.45,.45),.04,rand(-.45,.45)); p.rotation.set(rand(-.3,.3),rand(TAU),rand(-.3,.3)); p.scale.setScalar(rand(.7,1.15)); g.add(p); }
+    worldRoot.add(g); (W.debris=W.debris||[]).push({g,t:0}); if(W.debris.length>14){ const d=W.debris.shift(); worldRoot.remove(d.g); } }
+  shake(.06);
+}
+let _plankG=null,_shardG=null;
+function plankGeo(){ return _plankG||(_plankG=cgeo('o_plank',b=>{ b.box(.42,.05,.11,0x7a5430,{p:[0,0,0],j:.1}); b.box(.22,.05,.09,0x5a3a20,{p:[.12,.04,.08],r:[0,.6,0],j:.1}); },.02)); }
+function shardGeo(){ return _shardG||(_shardG=cgeo('o_shard',b=>{ b.box(.2,.04,.14,0xb8754a,{p:[0,0,0],r:[0,.3,.2],j:.1}); b.box(.12,.04,.1,0x8a5030,{p:[.1,.03,.06],r:[.2,.9,0],j:.1}); },.02)); }
+function debrisTick(dt){ if(!W||!W.debris) return; for(let i=W.debris.length-1;i>=0;i--){ const d=W.debris[i]; d.t+=dt; if(d.t>6){ const k=clamp(1-(d.t-6)/1.2,0,1); d.g.scale.set(1,k,1); if(k<=0){ worldRoot.remove(d.g); W.debris.splice(i,1); } } } }
+
+// ---------- диалоги: говорящий всегда виден ----------
+// Камера крупного плана (cineFocus) смотрит на говорящего. Всё, что стоит на отрезке «камера → голова говорящего» (здания, пропсы,
+// герой, жители), прячется: здания и жители — полупрозрачные (как при «здание между камерой и героем»), инстансы пропсов — не
+// выставляются в отсечении (cullProps), запечённые пропсы деревни не попадают в «коридоры» перед жителями (см. NPC_CLEAR в p6).
+const CINEO={t:null,cam:null,head:1.4};
+function cineTarget(){ if(!CINE.on||!CAMR.override||!W) return null; return CINEO.t; }
+function cineCamPos(){ const o=CAMR.override; if(!o) return null; const d=o.dist||CAMR.dist*(o.zoom||.6), p=o.pitch||CAMR.pitch; return {x:o.x,y:Math.sin(p)*d+.6,z:o.z+Math.cos(p)*d}; }
+// true, если вертикальный цилиндр (x,z,r,h) пересекает отрезок от камеры до головы говорящего (с запасом)
+function cineBlocks(x,z,r,h,t,c){
+  const hx=t.x, hz=t.z, hy=CINEO.head; const dx=c.x-hx, dz=c.z-hz, L2=dx*dx+dz*dz||1;
+  const s=clamp(((x-hx)*dx+(z-hz)*dz)/L2,0,1); if(s<=.02) return false; // за спиной говорящего не мешает
+  const px=hx+dx*s, pz=hz+dz*s, d=Math.hypot(x-px,z-pz); const ly=hy+(c.y-hy)*s - .9; // нижний край кадра лица ~0,9 м ниже линии
+  return d<r+.55 && h>ly;
+}
+function cineOccTick(){
+  const t=cineTarget(); const on=!!t; if(!on&&!CINEO.was) return; CINEO.was=on; const c=on?cineCamPos():null;
+  // здания и сооружения деревни/набега
+  if(W&&W.bmesh){ for(const k in W.bmesh){ const g=W.bmesh[k]; if(!g||!g.isObject3D) continue; const occ=on&&cineBoxBlocks(g,t,c); cineGhost(g,occ); } }
+  for(const k in (W&&W.rsMesh)||{}){ const g=W.rsMesh[k]; if(!g||!g.isObject3D) continue; cineGhost(g,on&&cineBoxBlocks(g,t,c)); }
+  if(W&&W.vbatch&&on){ /* процедурные здания слиты в один меш — их закрывает правило коридоров (NPC_CLEAR) */ }
+  // люди: герой, жители, другие NPC
+  const P=G.P; const peeps=[]; if(P&&P.rig&&t!==P) peeps.push(P); for(const n of (W&&W.npcs)||[]) if(n!==t) peeps.push(n); for(const v of (W&&W.villagers)||[]) if(v!==t) peeps.push(v);
+  for(const p of peeps){ const rig=p.rig; if(!rig) continue; const x=p.x!==undefined?p.x:rig.root.position.x, z=p.z!==undefined?p.z:rig.root.position.z; const occ=on&&cineBlocks(x,z,.45,2.0,t,c); cinePeep(rig,occ); }
+}
+// точная проверка для зданий: отрезок «голова → камера» против их рамки (крыши-навесы шире «радиуса» здания)
+const _ray=new THREE.Ray(), _rv=new THREE.Vector3(), _rb=new THREE.Box3(), _rc=new THREE.Vector3();
+function nk(a){ return !a.normalized?1:a.array instanceof Int16Array?1/32767:a.array instanceof Int8Array?1/127:a.array instanceof Uint16Array?1/65535:a.array instanceof Uint8Array?1/255:1; }
+function cineBox(g){ if(g.userData.cineBox) return g.userData.cineBox; const B=new THREE.Box3(); g.updateMatrixWorld(true);
+  g.traverse(o=>{ if(!o.isMesh||o.userData.isOutline) return; const ge=o.geometry; let k=1; if(!ge.boundingBox){ ge.computeBoundingBox(); k=nk(ge.attributes.position); } /* GLTFLoader ставит рамку из min/max аксессора уже с нормализацией */ _rb.copy(ge.boundingBox); _rb.min.multiplyScalar(k); _rb.max.multiplyScalar(k); _rb.applyMatrix4(o.matrixWorld); B.union(_rb); });
+  B.expandByScalar(.25); return g.userData.cineBox=B; }
+function cineBoxBlocks(g,t,c){ const B=cineBox(g); if(B.isEmpty()) return false; _ray.origin.set(t.x,CINEO.head,t.z); _rv.set(c.x-t.x,c.y-CINEO.head,c.z-t.z); const L=_rv.length(); _ray.direction.copy(_rv).divideScalar(L||1);
+  if(B.containsPoint(_ray.origin)) return B.max.y>CINEO.head+.4; const hit=_ray.intersectBox(B,_rc); return !!hit&&_rc.distanceTo(_ray.origin)<L; }
+function cineGhost(g,occ){ if(!!g.userData.cineFaded===occ) return; g.userData.cineFaded=occ;
+  g.traverse(o=>{ if(!o.isMesh) return; if(o.userData.isOutline){ o.visible=!occ; return; } if(occ){ if(!o.userData.cineSolid) o.userData.cineSolid=o.material; o.material=ghostOf(o.userData.cineSolid); } else if(o.userData.cineSolid){ o.material=o.userData.cineSolid; o.userData.cineSolid=null; } }); }
+function cinePeep(rig,occ){ if(!!rig._cineOcc===occ) return; rig._cineOcc=occ; const a=rig.actor; if(a&&a.setOpacity){ a.setOpacity(occ?.22:1); } else if(rig.root){ rig.root.visible=!occ; } }
+// пропсы-инстансы: при крупном плане исключаются из отсечения, если стоят между камерой и говорящим
+const PROP_H={};
+function propH(t){ if(PROP_H[t]!==undefined) return PROP_H[t]; const f=PFOOT[t]; let h=f&&f[2]==='t'?.4:f&&f[2]==='x'?0:2.2;
+  if(/tree|pine|fir|oak|crypt|tent|banner|lantern|pillar|column|post|palisade|torch|scarecrow|flag|wall|rib|crystal|basalt|obsidian|cwall|sign/i.test(t)) h=4.5; return PROP_H[t]=h; }
+function cineSkipProp(p,t,c){ const h=propH(p.type)*(p.s||1); if(h<1) return false; return cineBlocks(p.x,p.z,.6*(p.s||1),h,t,c); }
+
+// ---------- плавный выход из кувырка/рывков ----------
+// Причина рывка: клип кувырка (KayKit Dodge_Forward) сжат до 0,42 с, а состояние героя заканчивается в 0,4 с; если в этот момент
+// держали стик — сразу включался бег с переходом 0,15 с от позы «в группировке» (а без стика — «покой» после конца клипа
+// с переходом 0,18 с из последнего кадра кувырка), и корпус «щёлкал» в стойку. Теперь: кувырок проигрывается чуть длиннее состояния
+// (хвост клипа — вставание), выход — всегда через перекрёстный переход 0,24–0,3 с в бег/покой, а поворот модели к направлению
+// движения после рывка доводится плавно (без мгновенного поворота). То же — для умений-рывков (щит-рывок, прыжок секиры, отскок лука).
+const DASH_CLIPS={roll:1,dash:1,leap:1};
+
+// ---------- декор, который НЕ похож на разбиваемое: бочонок на козлах и стопка ящиков под верёвкой ----------
+PROPS.kegStand=b=>{ for(const x of [-.38,.38]){ b.box(.1,.42,.1,0x5a3a20,{p:[x,.21,-.22],r:[.25,0,0]}); b.box(.1,.42,.1,0x5a3a20,{p:[x,.21,.22],r:[-.25,0,0]}); } b.box(.95,.08,.12,0x4a2e18,{p:[0,.36,0]});
+  b.cyl(.3,.3,.82,0x6a4224,{p:[0,.68,0],r:[0,0,PI/2],seg:10}); for(const x of [-.3,.3]) b.tor(.305,.025,0x3a3a3a,{p:[x,.68,0],r:[0,PI/2,0],ol:0}); b.cyl(.05,.05,.12,0x8a7a5a,{p:[.47,.62,0],r:[0,0,PI/2],seg:6}); };
+PROPS.crateStack=b=>{ b.box(.9,.6,.8,0x7a5a34,{p:[0,.3,0],j:.05}); b.box(.62,.5,.6,0x6a4a2a,{p:[.08,.85,.04],r:[0,.35,0],j:.05}); b.box(.42,.36,.4,0x8a6a40,{p:[-.12,1.28,0],r:[0,-.25,0],j:.05});
+  b.box(.92,.05,.06,0xc8b080,{p:[0,.42,.41],ol:0}); b.box(.06,.62,.06,0xc8b080,{p:[0,.3,.41],ol:0}); b.box(.64,.05,.62,0xc8b080,{p:[.08,.9,.04],r:[0,.35,0],ol:0}); };
+// поворот модели героя доводится к направлению (без мгновенного разворота в начале/конце кувырка и рывков)
+function heroYaw(P,R,dt){ if(R._yaw===undefined||P.dead||!isFinite(R._yaw)) R._yaw=P.face; else R._yaw=angTo(R._yaw,P.face,1-Math.exp(-dt*(P.state==='roll'?30:22))); return R._yaw; }
 // ================= pz: boot =================
 boot();
 })();

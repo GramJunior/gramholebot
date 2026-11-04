@@ -40,7 +40,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
@@ -96,7 +96,7 @@ function asTipTo(rig){
 function asPlay(a,name,o){ if(!o&&a.currentName===name) return; a.play(name,o||{}); }
 const HERO_ATK={slashR:0,slashL:1,overhead:1,sweep:0,shoot:0,cast:0,cast2:0};
 function animHeroActor(P,dt){
-  const R=P.rig, a=R.actor; R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,P.face,0);
+  const R=P.rig, a=R.actor; R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,heroYaw(P,R,dt),0);
   const cls=R.cls||P.cls||'sword', st=P.state;
   if(P.dead||st==='dead'){ if(a.currentName!=='death') a.play('death',{once:true,clamp:true,fade:.12}); R._st=st; SHADOW.add(P.x,P.z,.75); return; }
   if(st==='atk'&&P.mv){
@@ -109,10 +109,12 @@ function animHeroActor(P,dt){
   } else if(st==='skill'&&P.sk){
     if(R._st!=='skill'||R._sk!==P.sk){ const k=P.sk, key=k.cls+'_'+k.id, d=Math.max(.3,P.skDur||.6);
       const clip={sword_s1:'skill',sword_s2:'dash',sword_s3:'block',sword_ult:'heavy',axe_s1:'leap',axe_s2:'heavy',axe_s3:'skill',axe_ult:'skill',bow_s1:'attack',bow_s2:'roll',bow_s3:'aim',bow_ult:'heavy',staff_s1:'attack',staff_s2:'cast',staff_s3:'skill',staff_ult:'cast'}[key]||'skill';
-      a.play(clip,{once:true,duration:clip==='block'||clip==='aim'?undefined:d,fade:.08,returnTo:'idle'}); R._sk=P.sk; }
-    if(P.sk.cls==='sword'&&P.sk.id==='s1') R.root.rotation.y=P.face+P.st*22;
-  } else if(st==='roll'){ if(R._st!=='roll') a.play('roll',{once:true,duration:.42,fade:.05}); }
+      a.play(clip,{once:true,duration:clip==='block'||clip==='aim'?undefined:d,fade:.08,returnTo:'idle',returnFade:.24}); R._sk=P.sk; }
+    if(P.sk.cls==='sword'&&P.sk.id==='s1'){ R.root.rotation.y=P.face+P.st*22; R._yaw=P.face; }
+  } else if(st==='roll'){ if(R._st!=='roll') a.play('roll',{once:true,duration:.5,fade:.07,returnFade:.26}); }
   else {
+    // v10: выход из кувырка/рывка-умения — всегда мягкий переход (поза кувырка удерживается, бег/покой наплывают за 0,26 с)
+    if((R._st==='roll'||R._st==='skill')&&DASH_CLIPS[a.currentName]){ const run=P.move>.15||Math.hypot(G.input.mx,G.input.mz)>.2; a.play(run?'run':'idle',{fade:.26}); }
     const busy=a.current&&a.current.loop===THREE.LoopOnce&&a.current.isRunning()&&['attack','heavy','dash','skill','leap','cast','hit','roll','cheer'].includes(a.currentName);
     if(P.hitT>0&&R._hit!==P._hitId&&!busy&&P.move<.3){ a.play('hit',{once:true,fade:.06}); }
     else if(!busy||(P.move>.35&&a.currentName!=='attack'&&a.currentName!=='heavy')){ const run=P.move>.15; asPlay(a,run?'run':'idle'); if(run&&a.current) a.current.timeScale=clamp(.55+P.move*.6,.6,1.25); }
@@ -221,6 +223,7 @@ function asResize(w,h){ if(AS.FX) AS.FX.setSize(w,h,CPR); }
 const AMB_OF={pollen:'pollen',firefly:'firefly',bubble:'bubble',wisp:'wisp',ash:'ash',ember:'ember'};
 function asAmbCount(){ return QL==='perf'?24:QL==='low'?60:QL==='med'?160:280; }
 function asZone(Z){
+  paintZone(Z);
   const key=Z.id===0?'village':ZONE_KEY[Z.id]||'meadow'; AS.zoneKey=key;
   const M=window.EV_MANIFEST; let g=M&&M.zones[key]&&M.zones[key].grade;
   if(g&&W&&W.kind==='abyss') g=Object.assign({},g,{lift:[.03,0,.05],gain:[1.0,.94,1.08],sat:.92,vignette:.6,bloom:(g.bloom||.4)+.15});
@@ -363,7 +366,7 @@ function asFadeOcc(){
   if(!asOn()||!W||W.kind!=='village'||!G.P||G.mode==='title') return; const P=G.P;
   const list=[]; for(const k in W.bmesh) list.push(W.bmesh[k]); for(const k in (W.rsMesh||{})) list.push(W.rsMesh[k]);
   for(const g of list){ if(!g||!g.visible||!g.isGroup) continue;
-    const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
+    const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=!CINE.on&&dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
     if(!!g.userData.faded===occ) continue; g.userData.faded=occ;
     g.traverse(o=>{ if(!o.isMesh) return; if(o.userData.isOutline){ o.visible=!occ; return; } if(occ){ o.userData.solid=o.material; o.material=ghostOf(o.material); } else if(o.userData.solid){ o.material=o.userData.solid; } }); }
 }

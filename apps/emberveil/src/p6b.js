@@ -16,7 +16,7 @@ const angWrap2=a=>{ while(a>PI) a-=TAU; while(a<-PI) a+=TAU; return a; };
 const PFOOT={treeRound:[.5,1.5,'b'],treeBirch:[.45,1.2,'b'],pine:[.45,1.2,'b'],oakDark:[.55,1.5,'b'],deadTree:[.4,1.1,'b'],charTree:[.4,1.1,'b'],stump:[.4,.6,'b'],
   rock:[.85,1.0,'b'],stone2:[.6,.75,'b'],bogRock:[.8,.95,'b'],lavaRock:[.8,.95,'b'],obsidian:[.7,.85,'b'],basalt:[.9,1.1,'b'],crystal:[.6,.8,'b'],
   pillar:[.7,.8,'b'],pillarBroken:[.7,.8,'b'],tomb:[.7,.85,'b'],wallSeg:[1.0,1.2,'b'],coffin:[.6,.75,'b'],rib:[.5,1.3,'b'],
-  bush:[0,.9,'s'],fence:[.5,1.1,'b'],hay:[.7,.8,'b'],log:[.6,1.0,'b'],cart:[1.1,1.4,'b'],lantern:[.25,.4,'b'],banner:[.25,.4,'b'],barrelP:[.4,.5,'b'],sign:[.25,.4,'b'],palisade:[1.0,1.1,'b'],
+  bush:[0,.9,'s'],fence:[.5,1.1,'b'],hay:[.7,.8,'b'],log:[.6,1.0,'b'],cart:[1.1,1.4,'b'],lantern:[.25,.4,'b'],banner:[.25,.4,'b'],barrelP:[.4,.5,'b'],kegStand:[.55,.65,'b'],crateStack:[.6,.75,'b'],sign:[.25,.4,'b'],palisade:[1.0,1.1,'b'],
   goldPile:[.5,.6,'b'],vent:[0,.6,'s'],campfire:[.85,1.1,'b'],bridgeWood:[0,0,'x'],bridgeStone:[0,0,'x'],cwall:[1.2,1.5,'b'],
   flowers:[0,.3,'t'],grass:[0,.25,'t'],fern:[0,.35,'t'],reeds:[0,.35,'t'],shrooms:[0,.3,'t'],glowShroom:[0,.3,'t'],candles:[0,.3,'t'],bones:[0,.4,'t'],skulls:[0,.3,'t'],
   'n:tree_wide':[.6,1.7,'b'],'n:tree_bloom':[.5,1.4,'b'],'n:fir':[.45,1.2,'b'],'n:tree_block':[.45,1.2,'b'],'n:pine_dark':[.45,1.2,'b'],'n:fir_dark':[.45,1.2,'b'],'n:tree_wide_dark':[.6,1.7,'b'],
@@ -33,11 +33,11 @@ function pfoot(t,s){ const f=PFOOT[t]||[.5,.8,'b']; return {c:f[0]*(s||1),v:f[1]
 const PROP_FB={'n:tree_wide':'treeRound','n:tree_bloom':'treeRound','n:fir':'pine','n:tree_block':'treeBirch','n:pine_dark':'pine','n:fir_dark':'pine','n:tree_wide_dark':'oakDark','n:tree_swamp':'deadTree',
   'n:dead_tree_thin':'deadTree','n:dead_tree_red':'charTree','n:tree_autumn':'treeRound','n:bush_box':'bush','n:bush_tall':'bush','n:bush_dark':'bush','n:bush_swamp':'bush','n:bush_berry':'bush',
   'n:rock_small':'stone2','n:rock_pebble':'stone2','n:rock_block':'rock','n:rock_bog_round':'bogRock','n:rock_red':'lavaRock','n:grass_blade':'grass',
-  'd:column':'pillar','d:wall_half':'wallSeg','d:rubble_half':'stone2','d:rubble_large':'rock','d:barrel_large':'barrelP','d:crates_stacked':'barrelP','d:box_stacked':'barrelP','d:torch_lit':'lantern',
-  'd:banner_shield_red':'banner','d:rocks':'stone2','d:rocks_gold':'goldPile','d:sword_shield_broken':'bones','d:keg':'barrelP',
+  'd:column':'pillar','d:wall_half':'wallSeg','d:rubble_half':'stone2','d:rubble_large':'rock','d:barrel_large':'kegStand','d:crates_stacked':'crateStack','d:box_stacked':'crateStack','d:torch_lit':'lantern',
+  'd:banner_shield_red':'banner','d:rocks':'stone2','d:rocks_gold':'goldPile','d:sword_shield_broken':'bones','d:keg':'kegStand',
   'h:gravestone':'tomb','h:grave_B':'tomb','h:gravemarker_A':'tomb','h:crypt':'wallSeg','h:fence':'fence','h:fence_broken':'fence','h:lantern_standing':'lantern','h:post_skull':'skulls','h:shrine_candles':'candles',
   'h:scarecrow':'sign','h:haybale':'hay','h:pumpkin_orange_jackolantern':'shrooms','h:tree_dead_large':'deadTree','h:candle_triple':'candles','h:bone_A':'bones',
-  'v:tent':'cwall','v:sack':'hay','v:weaponrack':'fence','v:crate_B_small':'barrelP','v:barrel':'barrelP','v:wheelbarrow':'cart','v:resource_stone':'stone2','v:target':'sign','v:flag_red':'banner','v:trough':'log','v:pallet':'log'};
+  'v:tent':'cwall','v:sack':'hay','v:weaponrack':'fence','v:crate_B_small':'crateStack','v:barrel':'kegStand','v:wheelbarrow':'cart','v:resource_stone':'stone2','v:target':'sign','v:flag_red':'banner','v:trough':'log','v:pallet':'log'};
 function propFallback(t){ if(PROPS[t]) return t; const f=PROP_FB[t]; return f&&PROPS[f]?f:null; }
 
 // ---------- new procedural props: campfire, bridges, cracked wall / barricade / rune door, tent stand-in ----------
@@ -276,7 +276,8 @@ function dressArea(a,Z){
     W.paint.push({x:a.x,z:a.z,r:a.r*.62,c:M.dirt,k:.55});
     const nt=randi(1,2); for(let i=0;i<nt;i++) tryProp(Z.id>=4?'cwall':'v:tent',ringFn(.68,.86),16,{s:Z.id>=4?.9:1});
     tryProp('campfire',ringFn(.25,.42),20,{s:1});
-    for(let i=0;i<2;i++) tryProp(pick(['v:sack','v:crate_B_small','d:barrel_large','v:weaponrack']),ringFn(.55,.85),10);
+    for(let i=0;i<2;i++) tryProp(pick(['v:sack','v:weaponrack','crateStack']),ringFn(.55,.85),10);
+    for(let i=0;i<2;i++){ const sp=spotIn(a,a.r*.5,a.r*.8,.6,{k:'o'}); if(sp) objAt(i?'crate':'barrel',sp[0],sp[1]); } // v10: бочки и ящики в лагере — всегда разбиваемые
     tryProp(Z.id>=4?'d:banner_shield_red':'banner',ringFn(.5,.8),10,{ry:rand(TAU)});
     if(Z.id<=2) tryProp('palisade',ringFn(.82,.95),8,{ry:rand(TAU)});
   }

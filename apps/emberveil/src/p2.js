@@ -105,6 +105,75 @@ const MTfire=toonMat(0xff7a3a,0.35);
 const MTgold=toonMat(0xffd27a,0.5);
 const MTghost=toonMat(); MTghost.transparent=true; MTghost.opacity=.72; MTghost.depthWrite=false;
 
+// ---------- v10 «рисованное окружение»: та же кисть, что у земли, для деревьев, кустов, камней, заборов, стен и пропсов ----------
+// Одна общая текстура-кисть 128 px (R — мазки-«листья» со светом сверху-слева, G — волокна/доски, B — крупные пятна, A — крапины камня)
+// и одна вставка в шейдер toon-материала (альбедо до освещения → дальше та же тун-рампа, rim, насыщенность и тонмаппинг):
+// листва — клочья мазков, низ кроны темнее, оттенок тянется к цвету мха зоны; дерево — волокна; камень — пятна и крапины;
+// у всего — затенение у земли (AO по высоте над основанием экземпляра) и вариация тона на экземпляр. Без новых вызовов отрисовки.
+const PAINT_U={tBrush:{value:null},uPaint:{value:new THREE.Vector4(1,.28,0,0)},uLeafTint:{value:new THREE.Color(0x557a2a)}};
+function paintBrushTex(){ const N=128, d=new Uint8Array(N*N*4); let sd=7; const rn=()=>{ sd=(sd*16807)%2147483647; return (sd-1)/2147483646; };
+  const lat=(P,s)=>{ const a=new Float32Array(P*P); let q=s*7919+13; for(let i=0;i<P*P;i++){ q=(q*16807)%2147483647; a[i]=q/2147483647; } return a; };
+  const vn=(x,y,P,L)=>{ const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi, u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf), i0=((xi%P)+P)%P, j0=((yi%P)+P)%P, i1=(i0+1)%P, j1=(j0+1)%P;
+    const a=L[j0*P+i0], b=L[j0*P+i1], c=L[j1*P+i0], e=L[j1*P+i1]; return (a+(b-a)*u)+((c+(e-c)*u)-(a+(b-a)*u))*v; };
+  const L4=lat(4,1), L8=lat(8,2), L16=lat(16,3), L32=lat(32,4), G64=lat(64,5);
+  const R=new Float32Array(N*N).fill(.5);
+  // R: перекрывающиеся мазки-листья (эллипсы, освещены сверху-слева, тёмная кромка)
+  for(let k=0;k<230;k++){ const cx=rn()*N, cy=rn()*N, rx=4+rn()*7, ry=rx*(.55+rn()*.35), an=rn()*Math.PI, ca=Math.cos(an), sa=Math.sin(an), tone=.42+rn()*.3;
+    for(let y=-12;y<=12;y++) for(let x=-12;x<=12;x++){ const lx=(x*ca+y*sa)/rx, ly=(-x*sa+y*ca)/ry, r2=lx*lx+ly*ly; if(r2>1) continue;
+      const px=((Math.floor(cx+x)%N)+N)%N, py=((Math.floor(cy+y)%N)+N)%N; const lit=(-x*.6-y*.8)/(rx+1); R[py*N+px]=clamp(tone+lit*.32-(r2>.72?.2:0),0,1); } }
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const i=y*N+x, u=x/N, v=y/N;
+    const g=.5+.42*(vn(u*64+vn(u*4,v*4,4,L4)*3,v*4,64,G64)-.5)*2*.8+.12*(vn(u*16,v*16,16,L16)-.5); // волокна: частые по x, вытянутые по y
+    const b=.2*vn(u*4,v*4,4,L4)+.45*vn(u*8,v*8,8,L8)+.35*vn(u*16,v*16,16,L16);
+    const s=vn(u*32,v*32,32,L32); const a=s>.82?1:s<.16?0:.5;
+    d[i*4]=R[i]*255; d[i*4+1]=clamp(g,0,1)*255; d[i*4+2]=clamp((b-.5)*1.8+.5,0,1)*255; d[i*4+3]=a*255; }
+  const t=new THREE.DataTexture(d,N,N,THREE.RGBAFormat); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.generateMipmaps=true; t.needsUpdate=true; return t; }
+PAINT_U.tBrush.value=paintBrushTex();
+// высота над землёй: (y + aOff) × масштаб по y. aOff — сдвиг сетки от основания модели (у квантованных сеток KayKit центр сетки
+// поднят над основанием; EVAssets пишет его при загрузке), у процедурных сеток 0 (их начало и есть основание).
+const PAINT_VS=`
+  #ifdef USE_INSTANCING
+  mat4 mP=modelMatrix*instanceMatrix;
+  #else
+  mat4 mP=modelMatrix;
+  #endif
+  vPW=(mP*vec4(transformed,1.0)).xyz; vPB=(mP*vec4(0.0,0.0,0.0,1.0)).xyz; vPH=(transformed.y+aOff)*length(mP[1].xyz);`;
+const PAINT_FS=`
+  if(uPaint.x>0.5){
+    vec3 c=diffuseColor.rgb; float mxC=max(c.r,max(c.g,c.b)), mnC=min(c.r,min(c.g,c.b)), satC=mxC-mnC, lumC=dot(c,vec3(0.299,0.587,0.114));
+    float leaf=clamp((c.g-max(c.r,c.b*0.9))*7.0,0.0,1.0);
+    float wood=clamp((c.r-c.b)*3.2-0.12,0.0,1.0)*(1.0-leaf)*smoothstep(0.66,0.3,lumC);
+    float stone=(1.0-clamp(satC*5.0,0.0,1.0))*(1.0-leaf);
+    vec3 nW=normalize((vec4(normal,0.0)*viewMatrix).xyz);
+    vec3 rel=vPW-vPB; float hP=vPH;
+    float iv=fract(sin(dot(floor(vPB.xz*2.7)+0.5,vec2(12.9898,78.233)))*43758.5453);
+    vec2 tg=normalize(vec2(-nW.z,nW.x)+vec2(1e-4));
+    vec2 uvP=mix(vec2(dot(rel.xz,tg),rel.y),rel.xz,smoothstep(0.5,0.8,abs(nW.y)))*0.32+iv*7.31;
+    vec4 bP=texture2D(tBrush,uvP);
+    float mP=0.9+0.2*bP.b;
+    mP*=mix(1.0,0.68+0.64*bP.r,leaf);
+    mP*=mix(1.0,0.74+0.52*bP.g,wood);
+    mP*=mix(1.0,0.82+0.34*bP.b+(bP.a-0.5)*0.26,stone);
+    mP*=mix(1.0,0.78+0.44*bP.r,clamp(1.0-leaf-wood-stone,0.0,1.0)*0.75); // прочее (красные кусты, осенние кроны, ткань, черепица) — те же мазки, слабее
+    mP*=0.9+0.2*iv;
+    c*=mP;
+    c+=(iv-0.5)*vec3(0.05,0.03,-0.04)*leaf;
+    c=mix(c,uLeafTint*(lumC*1.9),leaf*uPaint.y);
+    c*=mix(1.0,mix(0.7,1.12,smoothstep(0.5,3.4,hP)),leaf);
+    c=mix(c,uLeafTint*(0.55+0.5*bP.b),stone*smoothstep(0.62,0.92,nW.y)*smoothstep(0.35,0.75,bP.b)*uPaint.y*2.2); // мох на верхних гранях камня (как на скальном слое земли)
+    c*=mix(0.5,1.0,smoothstep(-0.05,0.8,hP));
+    diffuseColor.rgb=c;
+  }
+`;
+// вставка в любой toon-материал (игровой или EVAssets): только для статики, не для скин-моделей
+function paintPatch(sh){
+  Object.assign(sh.uniforms,PAINT_U);
+  sh.vertexShader='attribute float aOff;\nvarying vec3 vPW;\nvarying vec3 vPB;\nvarying float vPH;\n'+sh.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\n'+PAINT_VS);
+  sh.fragmentShader='uniform sampler2D tBrush;\nuniform vec4 uPaint;\nuniform vec3 uLeafTint;\nvarying vec3 vPW;\nvarying vec3 vPB;\nvarying float vPH;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',PAINT_FS+'#include <emissivemap_fragment>');
+}
+function paintMat(m){ const base=m.onBeforeCompile; m.onBeforeCompile=(sh,r)=>{ base(sh,r); paintPatch(sh); }; const k=m.customProgramCacheKey&&m.customProgramCacheKey!==THREE.Material.prototype.customProgramCacheKey?m.customProgramCacheKey.bind(m):null; m.customProgramCacheKey=()=>(k?k():'evg')+'paint'; m.userData.paint=1; return m; }
+const MTP=paintMat(toonMat()); // процедурные пропсы и объекты мира (деревья-запаска, частокол, мосты, баррикады, сундуки…)
+function paintZone(Z){ const T=typeof ZTER!=='undefined'&&Z&&ZTER[Z.id]; PAINT_U.uLeafTint.value.set(T?T.moss:0x557a2a); PAINT_U.uPaint.value.y=T?.28:.12; }
+
 // ---------- geometry builder (merged parts + baked inverted-hull outline) ----------
 const _m4=new THREE.Matrix4(), _q=new THREE.Quaternion(), _e=new THREE.Euler(), _v3=new THREE.Vector3(), _s3=new THREE.Vector3(), _c=new THREE.Color(), _c2=new THREE.Color();
 const OLC=new THREE.Color(0x1b0e07);
@@ -396,7 +465,7 @@ const RTT=(()=>{
       c.position.set(...camPos); c.lookAt(...look); c.updateProjectionMatrix();
       const prevRT=R.getRenderTarget(); const prevCol=R.getClearColor(new THREE.Color()); const prevA=R.getClearAlpha();
       const prevFog=sc.fog;
-      const pexp=R.toneMappingExposure; R.toneMappingExposure=1.15; R.setRenderTarget(rt); R.setClearColor(bg===undefined?0x000000:bg, bg===undefined?0:1); R.clear(); R.render(sc,c); R.toneMappingExposure=pexp;
+      const pexp=R.toneMappingExposure, pw=PAINT_U.uPaint.value.x; PAINT_U.uPaint.value.x=0; R.toneMappingExposure=1.15; R.setRenderTarget(rt); R.setClearColor(bg===undefined?0x000000:bg, bg===undefined?0:1); R.clear(); R.render(sc,c); R.toneMappingExposure=pexp; PAINT_U.uPaint.value.x=pw;
       const px=new Uint8Array(sz*sz*4); R.readRenderTargetPixels(rt,0,0,sz,sz,px);
       R.setRenderTarget(prevRT); R.setClearColor(prevCol,prevA);
       sc.remove(obj);

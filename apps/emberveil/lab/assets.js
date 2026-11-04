@@ -161,7 +161,8 @@
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
-    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '');
+    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '');
+    if (o.paint && S.paint) { const base = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { base(sh, r); S.paint(sh); }; m.userData.paint = 1; }
     return m;
   }
   // Inverted-hull outline: constant screen-space width, works for SkinnedMesh and InstancedMesh.
@@ -244,10 +245,25 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     });
     S.files[key] = rec; return rec.promise;
   }
+  const PAINT_FILES = /^kit_(nature|village|village2|dungeon|crypt)$/;
+  // In-place clips: some KayKit clips (Dodge_*, jumps, lunges) carry root motion on the hips (≈0.25 m forward). The game moves the
+  // actor itself, so the travel was doubled and, at the end of the clip, the body snapped back to the root. Flatten the horizontal
+  // drift of the hips position track (keep the vertical bob and the sway around the start point).
+  function stripRootMotion(c) {
+    for (const t of c.tracks) {
+      if (!/hips\.position$/i.test(t.name) || t.getValueSize() !== 3) continue;
+      const v = t.values, n = v.length / 3; if (n < 2) continue;
+      const dx = v[(n - 1) * 3] - v[0], dz = v[(n - 1) * 3 + 2] - v[2];
+      let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, Math.hypot(v[i * 3] - v[0], v[i * 3 + 2] - v[2]));
+      if (mx < 0.12 && Math.hypot(dx, dz) < 0.08) continue;
+      for (let i = 0; i < n; i++) { v[i * 3] = v[0]; v[i * 3 + 2] = v[2]; }
+      c.userData = c.userData || {}; c.userData.rootStripped = +mx.toFixed(3);
+    }
+  }
   function prepFile(key, g) {
     if (key.indexOf('anim_') === 0) {
       const rig = key.indexOf('large') >= 0 ? 'large' : 'medium';
-      for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); S.clips[rig][c.name] = c; }
+      for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); stripRootMotion(c); S.clips[rig][c.name] = c; }
       return;
     }
     const skinnedFile = key.indexOf('kit_') !== 0;
@@ -257,15 +273,23 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (!o.isMesh) return;
       const src = o.material; let map = canonTex(src.map); if (rec && map) map = recolorTex(map, rec);
       const hasGlow = src.emissive && (src.emissive.r + src.emissive.g + src.emissive.b) > 0.3;
-      const mk = 'tm' + (map ? map.uuid : 'none') + (o.isSkinnedMesh ? 's' : '') + (src.transparent ? 't' : '') + (hasGlow ? 'g' + src.emissive.getHexString() : '');
+      // v10: static scenery kits (nature, village, dungeon, crypt) get the painted treatment (game-provided shader patch); weapons, items, characters do not
+      const paint = !o.isSkinnedMesh && !hasGlow && !!S.paint && PAINT_FILES.test(key);
+      const mk = 'tm' + (map ? map.uuid : 'none') + (o.isSkinnedMesh ? 's' : '') + (src.transparent ? 't' : '') + (hasGlow ? 'g' + src.emissive.getHexString() : '') + (paint ? 'p' : '');
       let tm = S.mats[mk];
       if (!tm) {
-        tm = S.mats[mk] = toonMat(map, { skinning: !!o.isSkinnedMesh, transparent: src.transparent, opacity: src.opacity });
+        tm = S.mats[mk] = toonMat(map, { skinning: !!o.isSkinnedMesh, transparent: src.transparent, opacity: src.opacity, paint });
         if (hasGlow) { tm.userData.U.uGlow.value.set(src.emissive.r, src.emissive.g, src.emissive.b, 0); tm.userData.emissive = src.emissive.clone(); tm.emissive.copy(src.emissive); }
       }
       o.material = tm; src.dispose();
       if (o.isSkinnedMesh) o.frustumCulled = false; // quantized skinned geometry: bounds live in bone space
     });
+    if (!skinnedFile && PAINT_FILES.test(key)) { // painted scenery: per-geometry offset from the mesh centre to the model's base (shader: height above ground)
+      g.scene.updateMatrixWorld(true); const inv = new T.Matrix4();
+      for (const root of g.scene.children) { inv.copy(root.matrixWorld).invert(); root.traverse((o) => { if (!o.isMesh || o.isSkinnedMesh || o.geometry.attributes.aOff) return;
+        const m = new T.Matrix4().multiplyMatrices(inv, o.matrixWorld); const sy = new T.Vector3().setFromMatrixColumn(m, 1).length() || 1;
+        const n = o.geometry.attributes.position.count; o.geometry.setAttribute('aOff', new T.BufferAttribute(new Float32Array(n).fill(m.elements[13] / sy), 1)); }); }
+    }
     if (skinnedFile) g.scene.userData.evRest = measureSkinned(g.scene);
   }
   // accurate bind-pose bounds of skinned meshes (quantized positions => geometry bbox is meaningless)
@@ -389,7 +413,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this.mixer = new T.AnimationMixer(this.model);
       this.actions = {}; this.current = null; this.currentName = null; this.combo = 0; this._t = 0; this._acc = 0;
       this.setClipset(def.clips || this.rig);
-      this.mixer.addEventListener('finished', (e) => { const a = e.action; if (a._evOnEnd) { const f = a._evOnEnd; a._evOnEnd = null; f(this); } if (a._evReturn && this.current === a) this.play(a._evReturn, { fade: 0.18 }); });
+      this.mixer.addEventListener('finished', (e) => { const a = e.action; if (a._evOnEnd) { const f = a._evOnEnd; a._evOnEnd = null; f(this); } if (a._evReturn && this.current === a) this.play(a._evReturn, { fade: a._evRetFade || 0.22 }); });
       // weapons
       if (def.r) this.attach('r', def.r); if (def.l) this.attach('l', def.l);
       if (this.opts.outline !== false && S.Q.outline !== 'none') this.setOutline(true);
@@ -478,9 +502,12 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const a = this.action(clip);
       if (this.current === a && !once && !o.restart) { a.timeScale = o.speed || 1; return a; }
       a.reset(); a.enabled = true;
-      a.setLoop(once ? T.LoopOnce : T.LoopRepeat, Infinity); a.clampWhenFinished = !!(once && (o.clamp || name.indexOf('death') === 0));
+      // one-shots always hold their last frame when they finish: a finished, un-clamped action drops to weight 0 at once, so the
+      // following cross-fade had nothing to fade from and the pose snapped (end of rolls, dashes, attacks). Return-to-idle fades from the held pose.
+      const hold = !!(once && (o.clamp || name.indexOf('death') === 0));
+      a.setLoop(once ? T.LoopOnce : T.LoopRepeat, Infinity); a.clampWhenFinished = !!once;
       a.timeScale = o.duration ? clip.duration / o.duration : (o.speed || 1);
-      a._evOnEnd = o.onEnd || null; a._evReturn = once && !a.clampWhenFinished ? (o.returnTo === undefined ? 'idle' : o.returnTo) : null;
+      a._evOnEnd = o.onEnd || null; a._evReturn = once && !hold ? (o.returnTo === undefined ? 'idle' : o.returnTo) : null; a._evRetFade = o.returnFade || 0.22;
       const fade = o.fade === undefined ? 0.15 : o.fade;
       if (this.current && this.current !== a && fade > 0) a.crossFadeFrom(this.current, fade, false); else if (this.current && this.current !== a) this.current.stop();
       a.play(); this.current = a; this.currentName = name; return a;
@@ -684,7 +711,8 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const prevRT = R.getRenderTarget(), prevC = R.getClearColor(new T.Color()), prevA = R.getClearAlpha();
     const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size);
     const pexp = R.toneMappingExposure; R.toneMappingExposure = S.iconExpo || 1.15; // icons stay vivid under the game's ACES tone mapping
-    R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp;
+    const pu = S.paintU && S.paintU.value, pw = pu ? pu.x : 0; if (pu) pu.x = 0; // icons/portraits: no world-space painting
+    R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp; if (pu) pu.x = pw;
     const px = new Uint8Array(size * size * 4); R.readRenderTargetPixels(ICON.rt, 0, 0, size, size, px);
     R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res);
     ICON.scene.remove(holder); if (actor) actor.dispose();
@@ -721,7 +749,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return { files: Object.keys(S.files).length, textures: seen.size, textureMB: +(texBytes / 1048576).toFixed(2), actors: S.actors.size, clips: Object.keys(S.clips.medium).length + Object.keys(S.clips.large).length };
   }
   function init(o = {}) {
-    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 };
+    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.paint = o.paint || null; S.paintU = o.paintU || null;
     S.linear = !S.renderer || S.renderer.outputEncoding === T.LinearEncoding;
     S.loader = new T.GLTFLoader();
     const mo = global.MeshoptDecoder; if (mo) S.loader.setMeshoptDecoder(mo);

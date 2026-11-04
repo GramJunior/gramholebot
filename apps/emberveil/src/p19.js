@@ -85,9 +85,9 @@ function spiritPortrait(){ if(_spPort) return _spPort; try{ const c=document.cre
 const CINE={on:false,prev:null};
 function cineBars(on){ document.body.classList.toggle('cine',!!on); }
 function cineFocus(sp){ if(!W||!G.P) return; let t=null; if(sp==='hero'||sp==='spirit'||sp==='choice') t=G.P; else if(W.npcs){ const n=W.npcs.find(n=>n.kind===sp); if(n) t=n; } if(!t&&G.boss&&G.boss.alive&&(sp===G.boss.kind||sp==='king'&&G.boss.kind==='ashKing'||sp==='dragon'&&G.boss.kind==='dragon'||sp==='bogMother'||sp==='morven')) t=G.boss;
-  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const far=Math.hypot(t.x-P.x,t.z-P.z)>4.5||t===P; const k=far?1:.85; const mx=t.x*k+P.x*(1-k), mz=t.z*k+P.z*(1-k); /* speaker framed in the visible band between the letterbox and the dialogue box: aim slightly toward the camera so the model sits just above centre */ CAMR.override={x:mx,z:mz+(t.boss?.9:.35),zoom:t.boss?.5:.36,pitch:.62}; cineBars(true);
+  if(!t){ return; } if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; } const P=G.P; const far=Math.hypot(t.x-P.x,t.z-P.z)>4.5||t===P; const k=far?1:.85; const mx=t.x*k+P.x*(1-k), mz=t.z*k+P.z*(1-k); /* speaker framed in the visible band between the letterbox and the dialogue box: aim slightly toward the camera so the model sits just above centre */ CAMR.override={x:mx,z:mz+(t.boss?.9:.35),zoom:t.boss?.5:.36,pitch:.62}; cineBars(true); CINEO.t=t; CINEO.head=t.boss?Math.max(1.8,(t.rig&&t.rig.root?t.rig.root.scale.y:1)*1.6):1.4; cullProps(CAMR.x,CAMR.z,true);
   try{ if(AS.FX&&AS.post==='high'){ const d=Math.hypot(cam.position.x-t.x,cam.position.y-1.5,cam.position.z-t.z); AS.FX.setDOF(true,{focus:d,aperture:.012,maxblur:.008}); } }catch(e){} }
-function cineEnd(){ if(!CINE.on) return; CINE.on=false; CAMR.override=CINE.prev||null; CINE.prev=null; cineBars(false); try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} }
+function cineEnd(){ if(!CINE.on) return; CINE.on=false; CAMR.override=CINE.prev||null; CINE.prev=null; CINEO.t=null; try{ cineOccTick(); cullProps(CAMR.x,CAMR.z,true); }catch(e){} cineBars(false); try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} }
 const _dlgShow=dlgShow;
 dlgShow=function(){ const [sp,txt]=DLGS.q[DLGS.i];
   if(G.mode==='village'||G.mode==='stage') cineFocus(sp);

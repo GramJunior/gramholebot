@@ -162,7 +162,7 @@ Object.assign(window.__game,{
 function villageBatch(){
   if(!W||!W.bmesh) return;
   if(W.vbatch){ worldRoot.remove(W.vbatch); W.vbatch.geometry.dispose(); W.vbatch=null; }
-  const list=[]; for(const k in W.bmesh){ const m=W.bmesh[k]; if(/^t\d/.test(k)||!m||!m.isMesh||m.isInstancedMesh||m.material!==MT||m.parent!==worldRoot) continue; const g=m.geometry; if(g.index||!g.attributes.aE||!g.attributes.color||!g.attributes.normal) continue; list.push(m); }
+  const list=[]; for(const k in W.bmesh){ const m=W.bmesh[k]; if(/^t\d/.test(k)||!m||!m.isMesh||m.isInstancedMesh||m.material!==MTP||m.parent!==worldRoot) continue; const g=m.geometry; if(g.index||!g.attributes.aE||!g.attributes.color||!g.attributes.normal) continue; list.push(m); }
   if(list.length<2) return;
   let n=0; for(const m of list) n+=m.geometry.attributes.position.count;
   const P=new Float32Array(n*3), N=new Float32Array(n*3), C=new Float32Array(n*3), E=new Float32Array(n), nm=new THREE.Matrix3(), v=new THREE.Vector3();
@@ -171,7 +171,7 @@ function villageBatch(){
     for(let i=0;i<cnt;i++){ const k=(o+i)*3; v.fromBufferAttribute(pa,i).applyMatrix4(mw); P[k]=v.x; P[k+1]=v.y; P[k+2]=v.z; v.fromBufferAttribute(na,i).applyMatrix3(nm).normalize(); N[k]=v.x; N[k+1]=v.y; N[k+2]=v.z; C[k]=ca.getX(i); C[k+1]=ca.getY(i); C[k+2]=ca.getZ(i); E[o+i]=ea.getX(i); }
     o+=cnt; m.visible=false; m.userData.batched=1; }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(P,3)); g.setAttribute('normal',new THREE.BufferAttribute(N,3)); g.setAttribute('color',new THREE.BufferAttribute(C,3)); g.setAttribute('aE',new THREE.BufferAttribute(E,1)); g.computeBoundingSphere();
-  const mesh=new THREE.Mesh(g,MT); mesh.name='village_batch'; mesh.matrixAutoUpdate=false; worldRoot.add(mesh); W.vbatch=mesh;
+  const mesh=new THREE.Mesh(g,MTP); mesh.name='village_batch'; mesh.matrixAutoUpdate=false; worldRoot.add(mesh); W.vbatch=mesh;
 }
 const _bvbP25=buildVillageBuildings; buildVillageBuildings=function(){ _bvbP25(); try{ villageBatch(); }catch(e){ console.error(e); } };
 
@@ -194,7 +194,7 @@ function villageBakeProps(){
   const push=(mat,geo,M)=>{ let L=byMat.get(mat); if(!L) byMat.set(mat,L=[]); L.push({geo,M}); };
   const done=[];
   for(const t in W.propIM){ const e=W.propIM[t]; if(!e.list.length) continue;
-    if(e.im){ if(e.im.material!==MT) continue; for(const p of e.list) push(MT,e.im.geometry,place(p)); done.push([t,e.im]); }
+    if(e.im){ if(e.im.material!==MTP) continue; for(const p of e.list) push(MTP,e.im.geometry,place(p)); done.push([t,e.im]); }
     else if(e.grp){ const g=e.grp, L=g.userData.local, S4=g.userData.scale; let ok=true;
       g.children.forEach((im,k)=>{ if(!im.isInstancedMesh) return; if(im.material.transparent) ok=false; });
       if(!ok) continue;

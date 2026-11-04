@@ -62,7 +62,7 @@ function raidStructMesh(st){
     if(g){ const w=new THREE.Group(); g.scale.multiplyScalar(st.t==='archer'?.62:.5); g.rotation.y=PI; w.add(g);
       if(st.t==='mage'&&window.EVAssets){ const orb=EVAssets.makeOrb('#'+new THREE.Color(ELC[st.el||'fire']||0xb07cff).getHexString()); orb.scale.setScalar(2.2); const b=new THREE.Box3().setFromObject(g); orb.position.y=b.max.y+.2; w.add(orb); w.userData.orb=orb; }
       return w; } }
-  return new THREE.Mesh(raidStructGeo(st.t,st.lv),MT);
+  return new THREE.Mesh(raidStructGeo(st.t,st.lv),MTP);
 }
 function buildRaidStructs(){
   if(!W||W.kind!=='village') return; for(const k in (W.rsMesh||{})) worldRoot.remove(W.rsMesh[k]); W.rsMesh={}; W.obst=W.obst.filter(o=>!o.rs); if(W.oils) { for(const o of W.oils) worldRoot.remove(o.m); W.oils=[]; }

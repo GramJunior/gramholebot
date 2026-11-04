@@ -97,7 +97,7 @@ function updateStage(dt){
   if(T==='hunt'||T==='clear'||T==='rescue') { if(W._ot===undefined||(W._ot-=dt)<0){ W._ot=.5; objText(); } }
   if(T==='boss') bossStageTick(dt);
   // portal anim
-  for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid&&o.openT<1){ o.openT+=dt*3; o.lid.rotation.x=-Math.min(1,o.openT)*1.9; if(o.evPop){ const u=Math.min(1,o.openT); o.evPop.scale.set(1+Math.sin(u*PI)*.28,1-Math.sin(u*PI)*.18+u*.0,1+Math.sin(u*PI)*.28); if(u>=1) asBurst(o.x,.2,o.z,0xffd27a,1.6,.5); } } if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
+  debrisTick(dt); for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid) chestTick(o,dt); if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
     if(o.kind==='portal'&&o.on&&Math.random()<dt*12) fx('ember',o.x+rand(-1.2,1.2),rand(.3,3),o.z); if(o.kind==='secret'&&o.alive&&Math.random()<dt*2) fx('ember',o.x+rand(-1,1),rand(.3,1.8),o.z,{col:o.locked?0x8ad8ff:0xffd080}); if(o.kind==='lever'&&o.alive&&Math.random()<dt*1.5) fx('ember',o.x+rand(-.3,.3),rand(.5,1.4),o.z,{col:0x8ad8ff}); }
   ambient(dt);
 }
@@ -273,7 +273,7 @@ function loop(now){
   }catch(e){ console.error(e); }
   PA.update(Math.max(dt,frozen?0:rdt*.2)); PN.update(Math.max(dt,frozen?0:rdt*.2)); DECALS.update(dt,G.time);
   SHADOW.end();
-  const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z);
+  const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z); try{ cineOccTick(); }catch(e){}
   if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; }
     else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;

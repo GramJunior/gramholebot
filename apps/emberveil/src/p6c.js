@@ -39,6 +39,7 @@ function navDir(px,pz,tx,tz){
 }
 
 // ---------- validator ----------
+const BRK_LOOKALIKE=['barrelP','v:barrel','v:crate_B_small','d:barrel_large','r:Food_Barrel_Empty','r:Containers_Crate_Medium_Wood'];
 const OBJ_KINDS_SOLID=['chest','vault','barrel','crate','pot','oilBarrel','ore','wood','ess','totem','cage','stone','lever','scroll','egg','cartE'];
 function validateWorld(opt={}){
   const V=[]; const add=(rule,msg,x,z)=>{ V.push({rule,msg,x:x!==undefined?+x.toFixed(1):undefined,z:z!==undefined?+z.toFixed(1):undefined}); };
@@ -68,6 +69,8 @@ function validateWorld(opt={}){
   const near=(x,z)=>{ const out=[]; const i=Math.floor(x/4), j=Math.floor(z/4); for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const q=gridB.get(a+','+b); if(q) for(const e of q) out.push(e); } return out; };
   let nSp=0; for(const [p,f] of bp){ for(const [q,g] of near(p.x,p.z)){ if(q===p||q.x<p.x||(q.x===p.x&&q.z<=p.z)) continue; const d=Math.hypot(p.x-q.x,p.z-q.z); if(d<f.c+g.c-.05&&f.c>0&&g.c>0){ nSp++; if(nSp<40) add('spacing',`${p.type} и ${q.type} перекрываются`,p.x,p.z); } } }
   let nT=0; for(const [p] of tp){ for(const [q,g] of near(p.x,p.z)){ if(g.c>0&&Math.hypot(p.x-q.x,p.z-q.z)<g.c+.05){ nT++; if(nT<20) add('tinyOnBlocker',`${p.type} на ${q.type}`,p.x,p.z); break; } } }
+  // v10: no decor that looks like a breakable barrel/crate/pot (players must be able to tell what breaks)
+  for(const p of P){ if(BRK_LOOKALIKE.includes(p.type)) add('brkLookalike',`декор «${p.type}» выглядит как разбиваемый объект`,p.x,p.z); }
   // planks / lumber only where it makes sense (camps, logging, farms, ruins, village)
   if(kind==='stage') for(const o of W.objs.filter(o=>o.kind==='wood')){ const a=(W.areas||[]).find(a=>Math.hypot(a.x-o.x,a.z-o.z)<a.r+1); if(!a||!['camp','logging','farm','ruins'].includes(a.theme)) add('context','брёвна/доски вне лагеря',o.x,o.z); }
   for(const p of P.filter(p=>p.type==='log'||p.type==='v:pallet')){ if(kind!=='stage') continue; const a=(W.areas||[]).find(a=>Math.hypot(a.x-p.x,a.z-p.z)<a.r+1); if(a&&!['camp','logging','farm','ruins','grove'].includes(a.theme)) add('context','доски на поляне',p.x,p.z); }
