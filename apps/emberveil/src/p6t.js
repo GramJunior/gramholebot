@@ -11,7 +11,7 @@
 // Всё детерминировано (seed уровня), правила проверяет валидатор (p6c + clutterCheck ниже).
 
 // ---------- процедурные текстуры слоёв ----------
-const TG={cache:new Map()};
+const TGX={cache:new Map()};
 function tgH(i,j,s){ let h=(Math.imul(i,374761393)+Math.imul(j,668265263)+Math.imul(s,1442695041))|0; h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296; }
 function tgN(x,y,P,s){ const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi, u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
   const i0=((xi%P)+P)%P, j0=((yi%P)+P)%P, i1=(i0+1)%P, j1=(j0+1)%P;
@@ -63,10 +63,12 @@ const TGP={
 const TGK={};
 // grass: base clumps + thousands of blade strokes (light tips) — reads as hand-painted grass from the gameplay camera
 TGK.grass=(B,p,s)=>{ const N=B.N, k=N/512, d=tgCol(p.d), m=tgCol(p.m), l=tgCol(p.l), x=tgCol(p.x);
-  B.fill((u,v,c)=>{ const n=tgF(u*6,v*6,6,s), f=tgF(u*24,v*24,24,s+5,3); const t=Math.min(1,Math.max(0,n*1.35-.2)); const q=tgMix(d,m,t); const b=.82+f*.3; c[0]=q[0]*b; c[1]=q[1]*b; c[2]=q[2]*b; return .25+n*.25; });
-  const nb=Math.round(N*N/(p.sparse?40:15));
-  for(let i=0;i<nb;i++){ const px=tgH(i,1,s)*N, py=tgH(i,2,s)*N; const cl=tgF(px/N*6,py/N*6,6,s); const ang=-PI/2+(tgH(i,3,s)-.5)*2.4; const len=(5+tgH(i,4,s)*9)*k*(p.len||1); const t=tgH(i,5,s);
-    const base=tgMix(d,m,cl*.8), tip=t>.93?x:tgMix(m,l,.35+t*.65); B.stroke(px,py,ang,len,(1.1+tgH(i,6,s)*.9)*k,base,tip,.3+cl*.2,.75+t*.25); } };
+  B.fill((u,v,c)=>{ const n=tgF(u*5,v*5,5,s), f=tgF(u*20,v*20,20,s+5,3); const t=Math.min(1,Math.max(0,n*1.5-.3)); const q=tgMix(d,m,t*.85); const b=.7+f*.32; c[0]=q[0]*b; c[1]=q[1]*b; c[2]=q[2]*b; return .2+n*.25; });
+  // two passes: long dark-to-mid clump strokes, then short bright tips on top (painted look, readable at gameplay distance)
+  for(const pass of [0,1]){ const nb=Math.round(N*N/(p.sparse?(pass?260:180):(pass?110:70)));
+    for(let i=0;i<nb;i++){ const px=tgH(i,1+pass*20,s)*N, py=tgH(i,2+pass*20,s)*N; const cl=tgF(px/N*5,py/N*5,5,s); if(p.sparse&&cl<.42) continue; const ang=-PI/2+(tgH(i,3+pass*20,s)-.5)*2.2; const t=tgH(i,5+pass*20,s);
+      const len=(pass?8+t*10:14+t*16)*k*(p.len||1); const base=pass?tgMix(d,m,.4+cl*.5):tgMix(d,d,1); const tip=pass?(t>.95?x:tgMix(m,l,.45+t*.55)):tgMix(d,m,.55+cl*.4);
+      B.stroke(px,py,ang,len,(pass?1.6:2.4)*k*(1+tgH(i,6,s)*.5),base,tip,.25+cl*.2,pass?.95:.7); } } };
 // forest floor / soil: earth + pebbles + needles/twigs + cracks
 TGK.soil=(B,p,s,o={})=>{ const N=B.N, k=N/512, d=tgCol(p.d), m=tgCol(p.m), l=tgCol(p.l), x=tgCol(p.x);
   B.fill((u,v,c)=>{ const n=tgF(u*5,v*5,5,s), f=tgF(u*30,v*30,30,s+3,3), cr=Math.abs(tgF(u*9,v*9,9,s+9,3)-.5); const q=tgMix(d,l,Math.min(1,Math.max(0,n*1.2-.1))); let b=.85+f*.28; if(o.cracks&&cr<.025) b*=.62; c[0]=q[0]*b; c[1]=q[1]*b; c[2]=q[2]*b; return .3+n*.2-(cr<.025&&o.cracks?.15:0); });
@@ -77,10 +79,10 @@ TGK.soil=(B,p,s,o={})=>{ const N=B.N, k=N/512, d=tgCol(p.d), m=tgCol(p.m), l=tgC
   if(o.algae){ for(let y=0;y<N;y++) for(let xx=0;xx<N;xx++){ const u=xx/N, v=y/N; const a=tgF(u*7,v*7,7,s+40); if(a>.56){ const kk=y*N+xx; B.put(kk,tgMix(tgCol(0x3a5a1a),tgCol(0x6a8a2a),tgF(u*40,v*40,40,s+41,2)),Math.min(1,(a-.56)*8)*.85); } } } };
 // packed path earth: smooth, worn, footprint dents, a few embedded stones
 TGK.path=(B,p,s,o={})=>{ const N=B.N, k=N/512, d=tgCol(p.d), m=tgCol(p.m), l=tgCol(p.l), x=tgCol(p.x);
-  B.fill((u,v,c)=>{ const n=tgF(u*4,v*4,4,s), f=tgF(u*40,v*40,40,s+3,2); const q=tgMix(m,l,Math.min(1,Math.max(0,n*1.3-.25))); const b=.9+f*.16; c[0]=q[0]*b; c[1]=q[1]*b; c[2]=q[2]*b; return .3+n*.15; });
-  const nf=Math.round(N*N/9000); for(let i=0;i<nf;i++){ const cx=tgH(i,1,s)*N, cy=tgH(i,2,s)*N, a=tgH(i,3,s)*TAU, r=(6+tgH(i,4,s)*4)*k; // dents (footprints/hooves)
-    for(let dy=-r*1.6;dy<=r*1.6;dy++) for(let dx=-r*1.6;dx<=r*1.6;dx++){ const ex=(dx*Math.cos(a)+dy*Math.sin(a))/r, ey=(-dx*Math.sin(a)+dy*Math.cos(a))/(r*.6), dd=ex*ex+ey*ey; if(dd>1) continue; const kk=((((cy+dy)|0)%N+N)%N)*N+((((cx+dx)|0)%N+N)%N); B.mul(kk,.9+dd*.08); B.H[kk]*=.85; } }
-  const np=Math.round(N*N/(o.peb||2600)); for(let i=0;i<np;i++){ B.disc((tgH(i,7,s)*N)|0,(tgH(i,8,s)*N)|0,(1.5+tgH(i,9,s)**2*5)*k,tgMix(x,l,tgH(i,10,s)*.5),.7,.8); }
+  B.fill((u,v,c)=>{ const n=tgF(u*4,v*4,4,s), f=tgF(u*36,v*36,36,s+3,2), w=tgF(u*10,v*10,10,s+6,3); let q=tgMix(m,l,Math.min(1,Math.max(0,n*1.4-.3))); if(w<.4) q=tgMix(q,d,(.4-w)*1.6); const b=.86+f*.2; c[0]=q[0]*b; c[1]=q[1]*b; c[2]=q[2]*b; return .3+n*.15+w*.1; });
+  const nf=Math.round(N*N/7000); for(let i=0;i<nf;i++){ const cx=tgH(i,1,s)*N, cy=tgH(i,2,s)*N, a=tgH(i,3,s)*TAU, r=(9+tgH(i,4,s)*6)*k; // dents (footprints/hooves)
+    for(let dy=-r*1.6;dy<=r*1.6;dy++) for(let dx=-r*1.6;dx<=r*1.6;dx++){ const ex=(dx*Math.cos(a)+dy*Math.sin(a))/r, ey=(-dx*Math.sin(a)+dy*Math.cos(a))/(r*.6), dd=ex*ex+ey*ey; if(dd>1) continue; const kk=((((cy+dy)|0)%N+N)%N)*N+((((cx+dx)|0)%N+N)%N); B.mul(kk,.86+dd*.1); B.H[kk]*=.8; } }
+  const np=Math.round(N*N/(o.peb||1500)); for(let i=0;i<np;i++){ B.disc((tgH(i,7,s)*N)|0,(tgH(i,8,s)*N)|0,(2+tgH(i,9,s)**2*8)*k,tgMix(x,l,tgH(i,10,s)*.5),.75,.75+tgH(i,11,s)*.3); }
   if(o.glow){ const ng=Math.round(N*N/1600); for(let i=0;i<ng;i++) B.disc((tgH(i,40,s)*N)|0,(tgH(i,41,s)*N)|0,(1+tgH(i,42,s)*1.6)*k,tgCol(p.x),.6,1); } };
 // cobble / flagstones / tiles: Voronoi (or brick grid) stones with bevel, per-stone tint, dirt (or moss) in the joints
 TGK.stones=(B,p,s,o={})=>{ const N=B.N, d=tgCol(p.d), m=tgCol(p.m), l=tgCol(p.l), x=tgCol(p.x), G=o.G||7, V=tgVor(G,s,o.jit===undefined?.85:o.jit), gap=o.gap||.035, joint=tgCol(o.joint||0x3a2e22);
@@ -126,10 +128,76 @@ const TGL={ // layer recipes (shared between zones through the cache)
   sand:(B,s)=>TGK.sand(B,TGP.sand,s), mud:(B,s)=>TGK.mud(B,TGP.mud,s), mudBog:(B,s)=>TGK.mud(B,TGP.mudBog,s), gravel:(B,s)=>TGK.gravel(B,TGP.gravel,s),
   rock:(B,s)=>TGK.rock(B,TGP.rock,s), rockDark:(B,s)=>TGK.rock(B,TGP.rockDark,s), rockBog:(B,s)=>TGK.rock(B,TGP.rockBog,s), rockCrypt:(B,s)=>TGK.rock(B,TGP.rockCrypt,s,{moss:false}),
   rockAsh:(B,s)=>TGK.rock(B,TGP.rockAsh,s,{moss:false}), rockLair:(B,s)=>TGK.rock(B,TGP.rockLair,s,{moss:false}),
-  ash:(B,s)=>TGK.ash(B,TGP.ash,s), lavaCrust:(B,s)=>TGK.stones(B,TGP.lavaCrust,s,{G:6,gap:.03,bev:.04,glowJoints:1,joint:0xff5a10}),
+  ash:(B,s)=>TGK.ash(B,TGP.ash,s), lavaCrust:(B,s)=>TGK.stones(B,TGP.lavaCrust,s,{G:6,gap:.016,bev:.05,glowJoints:1,joint:0xc83a0a}),
   lairGround:(B,s)=>TGK.gravel(B,TGP.lairGround,s,{G:14}), cinders:(B,s)=>TGK.gravel(B,TGP.cinders,s,{G:26,glow:1})
 };
-function tgLayer(key,N){ const ck=key+N; let t=TG.cache.get(ck); if(t) return t; const t0=performance.now();
+function tgLayer(key,N){ const ck=key+N; let t=TGX.cache.get(ck); if(t) return t; const t0=performance.now();
   const B=tgBuf(N); TGL[key](B,strH(key)%9973+1);
   t=new THREE.DataTexture(B.out(),N,N,THREE.RGBAFormat); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.generateMipmaps=true;
-  t.anisotropy=QL==='high'?Math.min(4,R.capabilities.getMaxAnisotropy()):1; t.needsUpdate=true; t.userData.ms=performance.now()-t0; TG.cache.set(ck,t); TG.ms=(TG.ms||0)+t.userData.ms; return t; }
+  t.anisotropy=QL==='high'?Math.min(4,R.capabilities.getMaxAnisotropy()):1; t.needsUpdate=true; t.userData.ms=performance.now()-t0; TGX.cache.set(ck,t); TGX.ms=(TGX.ms||0)+t.userData.ms; return t; }
+
+// ---------- слои по зонам: 0 основа, 1 почва, 2 тропа, 3 мощение, 4 акцент (песок/ил/корка), 5 скала; S — метров на повтор ----------
+const ZTER={
+  0:{L:['grassVil','soil','path','cobble','sand','rock'],S:[3.4,3,3.2,3.2,3,5],moss:0x557a2a,wet:0x8aa8b8,ink:.8},
+  1:{L:['grassLush','soil','path','cobble','sand','rock'],S:[3.4,3,3.2,3.2,3,5],moss:0x557a2a,wet:0x8aa8b8,ink:.8},
+  2:{L:['grassDark','floor','pathDark','cobbleMoss','mud','rockDark'],S:[3.2,3,3.2,3.2,3,5],moss:0x3e6a22,wet:0x5a7a7a,ink:.78},
+  3:{L:['grassBog','muck','pathBog','cobbleMoss','mudBog','rockBog'],S:[3.2,3.2,3.2,3.2,3,5],moss:0x4a6a24,wet:0x5a6a5a,ink:.8},
+  4:{L:['flagCrypt','boneDust','flagWorn','tiles','gravel','rockCrypt'],S:[3.6,3,4.2,2.6,2.2,5],moss:0x3a4a3a,wet:0x5a6a8a,ink:.75},
+  5:{L:['ash','ashEarth','cinderPath','basaltFlag','lavaCrust','rockAsh'],S:[4,3,3.2,3.6,4.5,5],moss:0x3a3432,wet:0x6a5a5a,ink:.78},
+  6:{L:['lairGround','cinders','cinderPath','basaltFlag','lavaCrust','rockLair'],S:[3,2.6,3.2,3.6,4.5,5],moss:0x3a2422,wet:0x6a4a4a,ink:.78}
+};
+const TER={on:true,err:null};
+function terOn(){ return TER.on&&!TER.err&&!/[?&]ter=0\b/.test(location.search); }
+function terRes(){ return QL==='med'||QL==='high'?512:256; }
+function terLite(){ return QL==='perf'||(R.capabilities.maxTextures||16)<12; }
+const TER_U={uTime:{value:0}};
+// MeshToonMaterial (same toon ramp / rim / ACES / saturation as everything else) + splat terrain in the fragment shader
+function terMat(Z,ctl){
+  const T=ZTER[Z.id]||ZTER[1], N=terRes(), lite=terLite();
+  const tex=T.L.map((k,i)=>lite&&i===4?null:tgLayer(k,N));
+  const m=toonMat(); m.vertexColors=true; const base=m.onBeforeCompile;
+  const U={tL0:{value:tex[0]},tL1:{value:tex[1]},tL2:{value:tex[2]},tL3:{value:tex[3]},tL4:{value:tex[4]||tex[1]},tL5:{value:tex[5]},tC1:{value:ctl.t1},tC2:{value:ctl.t2},
+    uS0:{value:new THREE.Vector4(1/T.S[0],1/T.S[1],1/T.S[2],1/T.S[3])},uS1:{value:new THREE.Vector2(1/T.S[4],1/T.S[5])},uCR:{value:new THREE.Vector4(ctl.x0,ctl.z0,1/ctl.w,1/ctl.h)},
+    uMoss:{value:C3(T.moss)},uWet:{value:C3(T.wet)},uInk:{value:T.ink}};
+  m.userData.TU=U;
+  m.onBeforeCompile=(sh,r)=>{ base(sh,r); Object.assign(sh.uniforms,U);
+    sh.vertexShader='attribute float aRock;\nvarying float vRock;\nvarying vec3 vTw;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vRock=aRock; vTw=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.fragmentShader=(lite?'#define EV_LITE\n':'')+TER_FS+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n diffuseColor.rgb*=evTerrain();'); };
+  m.customProgramCacheKey=()=>'evter'+(lite?1:0);
+  return m;
+}
+const TER_FS=`
+uniform sampler2D tL0; uniform sampler2D tL1; uniform sampler2D tL2; uniform sampler2D tL3; uniform sampler2D tL4; uniform sampler2D tL5; uniform sampler2D tC1; uniform sampler2D tC2;
+uniform vec4 uS0; uniform vec2 uS1; uniform vec4 uCR; uniform vec3 uMoss; uniform vec3 uWet; uniform float uInk;
+varying float vRock; varying vec3 vTw;
+vec3 evTerrain(){
+  vec2 p=vTw.xz; vec2 cu=(p-uCR.xy)*uCR.zw;
+  vec4 c1=texture2D(tC1,cu); vec4 c2=texture2D(tC2,cu);
+  vec4 l0=texture2D(tL0,p*uS0.x);
+#ifndef EV_LITE
+  vec4 l0b=texture2D(tL0,p*uS0.x*0.37+vec2(0.31,0.73)); l0=mix(l0,l0b,smoothstep(0.3,0.7,c2.a)*0.6);
+#endif
+  vec4 l1=texture2D(tL1,p*uS0.y); vec4 l2=texture2D(tL2,p*uS0.z); vec4 l3=texture2D(tL3,p*uS0.w); vec4 l5=texture2D(tL5,p*uS1.y);
+#ifndef EV_LITE
+  vec4 l4=texture2D(tL4,p*uS1.x);
+#else
+  vec4 l4=vec4(l1.rgb*vec3(1.05,1.0,0.9),l1.a);
+#endif
+  float w1=c1.g, w2=c1.r, w3=c1.b, w4=c1.a, w5=clamp(vRock,0.0,1.0);
+  float w0=clamp(1.0-max(max(w1,w2),max(max(w3,w4),w5)),0.0,1.0);
+  const float D=0.42;
+  float b0=w0+l0.a*D, b1=w1+l1.a*D, b2=w2+l2.a*D, b3=w3+l3.a*D, b4=w4+l4.a*D, b5=w5+l5.a*D;
+  float mx=max(max(max(b0,b1),max(b2,b3)),max(b4,b5)); float m=mx-D*0.55;
+  b0=max(b0-m,0.0); b1=max(b1-m,0.0); b2=max(b2-m,0.0); b3=max(b3-m,0.0); b4=max(b4-m,0.0); b5=max(b5-m,0.0);
+  float s=b0+b1+b2+b3+b4+b5+1e-4;
+  vec3 col=(l0.rgb*b0+l1.rgb*b1+l2.rgb*b2+l3.rgb*b3+l4.rgb*b4+l5.rgb*b5)/s;
+  // painted "ink" seam where two layers meet (reads as a slight step between grass and earth / stone)
+  float top=max(max(max(b0,b1),max(b2,b3)),max(b4,b5))/s; col*=mix(uInk,1.0,smoothstep(0.55,0.85,top));
+  col*=1.0-c2.r*0.42;                                                        // wheel ruts / worn grooves
+  float mo=c2.b*(0.35+0.65*l0.a); col=mix(col,uMoss*(0.7+0.6*l0.a),clamp(mo,0.0,1.0)*0.8);   // moss, follows the grass height map
+  col=mix(col,col*vec3(0.5,0.52,0.56),c2.g);                                // wet ground / puddles: darker
+  col+=uWet*c2.g*c2.g*smoothstep(0.35,0.1,abs(fract((p.x+p.y)*0.6+l2.a)-0.5))*0.18; // a glint on puddles
+  col*=mix(vec3(0.88,0.92,0.84),vec3(1.07,1.05,0.98),c2.a);                // large-scale tint (kills tiling)
+  return col;
+}
+`;
