@@ -54,6 +54,7 @@ function buildGround(Z,b,opts={}){
 }
 function buildLiquid(Z){
   if(!W.pools||!W.pools.length) return;
+  if(!/[?&]wat=0/.test(location.search)) try{ buildWater(Z); if(W.liquid) return; }catch(e){ console.warn('water',e); } // v14: стилизованная вода (src/p28.js); ниже — прежние круги (запасной вариант)
   const geos=[]; for(const p of W.pools){ const c=new THREE.CircleGeometry(p.r,20); c.rotateX(-PI/2); c.translate(p.x,-.12,p.z); geos.push(c); }
   // merge circles
   let total=0; for(const g of geos) total+=g.index?g.index.count:g.attributes.position.count;
@@ -100,10 +101,10 @@ function mkObj(kind,x,z,o={}){
   const ob=Object.assign({kind,x,z,r:.6,hp:1,alive:true,y:0},o); let mesh;
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=o.ry!==undefined?o.ry:rand(TAU); worldRoot.add(g); ob.mesh=g;
   realRand(()=>{ switch(kind){
-    case 'barrel': objMesh('obj:barrel',OBJ_GEO.barrel,g); ob.r=.45; ob.hp=1; ob.brk=1; break;
+    case 'barrel': pmesh(OBJ_GEO.barrel(),g); ob.r=.45; ob.hp=1; ob.brk=1; break;
     case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
-    case 'crate': objMesh('obj:crate',OBJ_GEO.crate,g); ob.r=.55; ob.hp=1; ob.brk=1; break;
-    case 'pot': { const u=W.zone&&W.zone.id>=4; objMesh(u?'obj:urn':'obj:pot',u?OBJ_GEO.urn:OBJ_GEO.pot,g); ob.r=.35; ob.hp=1; ob.brk=1; break; }
+    case 'crate': pmesh(OBJ_GEO.crate(),g); ob.r=.55; ob.hp=1; ob.brk=1; break;
+    case 'pot': { const u=W.zone&&W.zone.id>=4; pmesh(u?OBJ_GEO.urn():OBJ_GEO.pot(),g); /* v14: детальные процедурные модели (src/p28.js) везде, с моделями и без */ ob.r=.35; ob.hp=1; ob.brk=1; break; }
     case 'chest': case 'vault': { chestWorldBuild(ob,kind,o,g); break; } // v13: одна модель сундука везде (лавка, окно открытия, мир); крышка на шарнире у задней кромки
     case 'ore': objMesh('obj:ore',OBJ_GEO.ore,g); ob.r=.8; ob.hp=4; ob.res='ore'; break;
     case 'wood': objMesh('obj:wood',OBJ_GEO.woodPile,g); ob.r=.8; ob.hp=3; ob.res='wood'; break;

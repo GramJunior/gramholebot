@@ -565,6 +565,10 @@ body.cine::before{top:0} body.cine::after{bottom:0}
 #spirit{position:fixed;left:calc(max(var(--sl),6px) + 8px);top:calc(max(var(--st),4px) + 72px*var(--k,1) + 64px);z-index:29;display:flex;align-items:center;gap:8px;max-width:min(380px,44vw);padding:6px 12px 6px 6px;border-radius:30px;
   background:linear-gradient(90deg,rgba(60,18,6,.92),rgba(30,10,4,.82));box-shadow:0 0 0 1.5px #ff8a2b88,0 0 18px #ff6a1a55;color:#ffe8c0;font-family:var(--body);font-size:calc(13.5px*var(--k,1));pointer-events:none;opacity:0;transform:translateX(-14px);transition:opacity .35s,transform .35s}
 #spirit.on{opacity:1;transform:none} #spirit img{width:40px;height:40px;border-radius:50%;flex:0 0 40px;animation:spPulse 1.6s ease-in-out infinite}
+#spirit img{box-shadow:0 0 10px rgba(255,120,40,.55),inset 0 0 0 1px rgba(255,190,110,.4)} #spirit[data-mood=alarm] img{box-shadow:0 0 14px rgba(255,90,30,.9)}
+.spIc{width:20px;height:20px;border-radius:50%;vertical-align:-5px;margin-right:2px;box-shadow:0 0 6px rgba(255,120,40,.5)}
+.spChron{display:flex;gap:10px;align-items:center;margin:2px 0 8px;padding:6px 10px 6px 6px;border-radius:28px;background:linear-gradient(90deg,rgba(40,12,6,.92),rgba(40,12,6,.55));border:1px solid rgba(255,150,70,.35)}
+.spChron img{width:52px;height:52px;border-radius:50%;flex:0 0 52px;box-shadow:0 0 12px rgba(255,120,40,.6)} .spChron b{display:block;font-family:var(--sc);font-size:.8em;color:var(--emberL);letter-spacing:.08em} .spChron span{color:#f4dcc0;font-style:italic}
 #spirit b{display:block;font-family:var(--sc);font-size:.8em;color:var(--emberL);letter-spacing:.08em}
 @keyframes spPulse{50%{box-shadow:0 0 14px #ffb347}}
 html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 74px*var(--k,1));left:50%;transform:translate(-50%,10px);max-width:min(400px,46vw)} html.land #spirit.on{transform:translate(-50%,0)}
@@ -1794,18 +1798,18 @@ html.qlow #hud .ico.ic{animation-iteration-count:1!important}
   // v14 «живые персонажи»: скин-модели получают ту же кисть, что и мир (мазки на ткани и волосах, зерно кожи/кожаных деталей,
   // пятна и царапины металла, мягкие складки), мягкие нормали, AO у ног, тёплый контровой свет, глаза с бликами, моргание и
   // простые выражения, качание плащей. Всё внутри того же материала: ни одного нового вызова отрисовки.
-  const CHAR_VS_PARS = 'attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform float uSoft; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
+  const CHAR_VS_PARS = 'attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform float uSoft; uniform mat4 uDQ; uniform mat4 uDQi; uniform mat3 uDQn; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
   const CHAR_VS = `
   {
-    vec4 evB = bindMatrix * vec4( transformed, 1.0 );
+    vec4 evB = uDQ * ( bindMatrix * vec4( transformed, 1.0 ) ); // поза привязки в метрах модели (снимаем квантование KayKit)
     float sw = aFx.x;
     if ( sw > 0.0 ) { // плащи: отстают при беге, подлетают, колышутся (физика «на глаз», в позе привязки — дальше обычный скиннинг)
       float fl = sin( uTime * 5.3 + evB.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + evB.x * 6.0 + uSway.w * 1.7 ) * 0.4;
       float s2 = sw * sw;
-      evB.xyz += vec3( uSway.y * 0.22 * s2 + fl * 0.025 * sw, ( 0.03 + 0.42 * uSway.x ) * s2, -( 0.05 + 0.5 * uSway.x ) * s2 + fl * ( 0.03 + 0.06 * uSway.x ) * sw );
-      transformed = ( bindMatrixInverse * evB ).xyz;
+      vec3 evD = vec3( uSway.y * 0.22 * s2 + fl * 0.025 * sw, ( 0.03 + 0.42 * uSway.x ) * s2, ( 0.05 + 0.5 * uSway.x ) * s2 + fl * ( 0.03 + 0.06 * uSway.x ) * sw ); // спина модели KayKit — +z в позе привязки
+      transformed += mat3( bindMatrixInverse ) * ( mat3( uDQi ) * evD ); evB.xyz += evD;
     }
-    vBind = evB.xyz; vBN = normalize( mat3( bindMatrix ) * normal ); vFx = aFx;
+    vBind = evB.xyz; vBN = normalize( uDQn * ( mat3( bindMatrix ) * normal ) ); vFx = aFx;
   }`;
   const CHAR_FS_PARS = 'uniform sampler2D tBrush; uniform vec2 uBlink; uniform vec3 uSkin; uniform vec2 uCH; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
   const CHAR_FS = `
@@ -1823,7 +1827,7 @@ html.qlow #hud .ico.ic{animation-iteration-count:1!important}
     float cloth = clamp( 1.0 - skin - evMetal - leather, 0.0, 1.0 );
     float cape = vFx.x > 0.0 ? 1.0 : 0.0;
     float m = 1.0;
-    m *= mix( 1.0, 0.8 + 0.4 * bP.r, cloth * 0.85 );                          // ткань, волосы: мазки кисти
+    m *= mix( 1.0, 0.86 + 0.28 * bP.r, cloth * 0.85 * ( 1.0 - 0.65 * cape ) );                          // ткань, волосы: мазки кисти
     m *= mix( 1.0, 0.78 + 0.44 * bP.g, leather );                             // кожа ремней, сапог: волокна
     m *= mix( 1.0, 0.93 + 0.14 * bP.b, skin );                                // лицо и руки: мягкие пятна
     m *= mix( 1.0, 0.84 + 0.3 * bP.b + ( bP.a - 0.5 ) * 0.22, evMetal );       // металл: пятна и царапины
@@ -1861,7 +1865,7 @@ html.qlow #hud .ico.ic{animation-iteration-count:1!important}
     m.skinning = !!o.skinning;
     const ch = !!(o.skinning && S.charFX && o.char !== false);
     const U = { uFlash: { value: 0 }, uTint: { value: new T.Vector4(0, 0, 0, 0) }, uGlow: { value: new T.Vector4(0, 0, 0, 0) }, uMode: { value: o.mode || 0 }, uTime: EVAssets.time };
-    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush });
+    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush, uDQ: { value: new T.Matrix4() }, uDQi: { value: new T.Matrix4() }, uDQn: { value: new T.Matrix3() } });
     if (o.tint) { const c = C3(o.tint[0]); U.uTint.value.set(c.r, c.g, c.b, o.tint[1]); }
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
     m.userData.U = U; m.userData.char = ch;
@@ -2070,15 +2074,22 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   function charPrep(root, key) {
     root.updateMatrixWorld(true);
     root.traverse((o) => {
+      if (o.isMesh && !o.isSkinnedMesh && /cape|cloak/i.test(o.name) && !o.geometry.userData.evDS) { o.geometry = doubleSided(o.geometry, new T.Matrix4().copy(root.matrixWorld).invert().multiply(o.matrixWorld)); return; }
       if (!o.isSkinnedMesh || o.geometry.attributes.aFx) return;
       const g = o.geometry, P = g.attributes.position, N = g.attributes.normal, UV = g.attributes.uv, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, n = P.count;
       if (!N) return;
       ensureOutlineNormals(g);
       const fx = new Float32Array(n * 4); for (let i = 0; i < n; i++) fx[i * 4 + 3] = 1;
       const ps = normScale(P), us = UV ? normScale(UV) : 1, ws = normScale(SW), B = new Float32Array(n * 3), v = new T.Vector3();
-      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
+      // KayKit (meshopt): позиции квантованы, обратные матрицы костей содержат деквантование — D = кость(покой) · обратная = переход в метры модели
+      const sk = o.skeleton; sk.bones[0].updateMatrixWorld(true); const D = new T.Matrix4().multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]);
+      const rinv = new T.Matrix4().copy(root.matrixWorld).invert(); D.premultiply(rinv);
+      g.userData.evDQ = D.toArray();
+      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix).applyMatrix4(D); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
       if (/cape|cloak/i.test(o.name)) { let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, B[i * 3 + 1]); y1 = Math.max(y1, B[i * 3 + 1]); }
         for (let i = 0; i < n; i++) fx[i * 4] = Math.max(0.001, Math.min(1, (y1 - B[i * 3 + 1]) / Math.max(1e-3, y1 - y0))); o.userData.evCape = 1; }
+      g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
+      if (o.userData.evCape) { o.geometry = doubleSided(g, new T.Matrix4().multiplyMatrices(D, o.bindMatrix)); return; } // плащ KayKit — одна плоскость: вторая сторона со своей нормалью (раньше изнанка светилась плоским розовым)
       const head = o.skeleton.bones.findIndex((b) => /^head$/i.test(b.name)), px = UV && texPixels(o.material.map);
       if (head >= 0 && px) {
         const GC = (A, i, k) => k === 0 ? A.getX(i) : k === 1 ? A.getY(i) : k === 2 ? A.getZ(i) : A.getW(i);
@@ -2111,8 +2122,21 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
           }
         }
       }
-      g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
     });
+  }
+  // плоская сетка → две стороны (обратный порядок вершин, нормали наружу с каждой стороны); атрибуты — обычные (без interleave)
+  function doubleSided(g, M) {
+    const out = new T.BufferGeometry(), n = g.attributes.position.count;
+    // какая копия «правильная»: нормаль вершины против геометрической нормали первого треугольника (у плащей KayKit порядок вершин обратный)
+    const P = g.attributes.position, N = g.attributes.normal, i0 = g.index ? g.index.getX(0) : 0, i1 = g.index ? g.index.getX(1) : 1, i2 = g.index ? g.index.getX(2) : 2;
+    const ps = normScale(P), ns = N ? normScale(N) : 1, nm = new T.Matrix3().getNormalMatrix(M || new T.Matrix4()), pv = (i) => new T.Vector3().fromBufferAttribute(P, i).multiplyScalar(ps).applyMatrix4(M || new T.Matrix4());
+    const a0 = pv(i0), e1 = pv(i1).sub(a0), e2 = pv(i2).sub(a0);
+    const flipFirst = N && e1.cross(e2).dot(new T.Vector3().fromBufferAttribute(N, i0).multiplyScalar(ns).applyMatrix3(nm)) < 0;
+    for (const k in g.attributes) { const a = plainAttr(g.attributes[k]), sz = a.itemSize, A = new a.array.constructor(n * 2 * sz); A.set(a.array.subarray(0, n * sz)); A.set(a.array.subarray(0, n * sz), n * sz);
+      if (k === 'normal' || k === 'onormal') { const f0 = flipFirst ? 0 : n * sz; for (let i = f0; i < f0 + n * sz; i++) A[i] = -A[i]; }
+      out.setAttribute(k, new T.BufferAttribute(A, sz, a.normalized)); }
+    const idx = g.index ? Array.from(g.index.array) : Array.from({ length: n }, (_, i) => i), I = idx.slice(); for (let t = 0; t < idx.length; t += 3) I.push(idx[t] + n, idx[t + 2] + n, idx[t + 1] + n);
+    out.setIndex(I); out.userData = g.userData; out.userData.evDS = 1; return out;
   }
   function load(groups, onProgress) {
     if (!S.manifest) return Promise.reject(new Error('EVAssets.init() first'));
@@ -2226,7 +2250,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this._fx = { blinkT: 1 + Math.random() * 3, blink: 0, expr: null, exprT: 0, lid: [0, 0], px: null, pz: 0, spd: 0, turn: 0, yaw: null };
       let skin = null, eyes = false; for (const m of this.meshes) { if (m.userData.evSkin && !skin) skin = m.userData.evSkin; if (m.userData.evEyes) eyes = true; }
       this._fx.eyes = eyes && this.def.mat !== 'ghost' && this.def.mat !== 'lava' && this.def.mat !== 'stone';
-      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]); }
+      let dq = null; for (const m of this.meshes) if (m.isSkinnedMesh && m.geometry.userData.evDQ) { dq = m.geometry.userData.evDQ; break; }
+      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]);
+        if (dq) { U.uDQ.value.fromArray(dq); U.uDQi.value.copy(U.uDQ.value).invert(); U.uDQn.value.getNormalMatrix(U.uDQ.value); } }
     }
     /** простые выражения: 'blink' | 'squint' (замах, усилие) | 'hurt' (удар) | 'happy' (радость) | 'dead' | null */
     setExpr(e, t) { if (!this._fx) return; this._fx.expr = e; this._fx.exprT = t === undefined ? 0.5 : t; }
@@ -2301,7 +2327,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this._outline = on;
       for (const m of this.meshes) {
         // tiny parts (eyes, capes, hoods: < 120 skinned / < 300 rigid vertices) get no hull — invisible at game zoom, 1 draw call each
-        if (on && !m.userData.evOutline && this.def.mat !== 'ghost' && (this.def.type === 'hero' || m.geometry.attributes.position.count >= (m.isSkinnedMesh ? 120 : 300))) addOutline(m, { color: this.def.outline });
+        if (on && !m.userData.evOutline && this.def.mat !== 'ghost' && !m.geometry.userData.evDS && (this.def.type === 'hero' || m.geometry.attributes.position.count >= (m.isSkinnedMesh ? 120 : 300))) addOutline(m, { color: this.def.outline });
         if (m.userData.evOutline) m.userData.evOutline.visible = on && m.visible;
       }
       const wo = on && this._weaponOutline();
@@ -2517,8 +2543,10 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   function icon(what, size, o = {}) {
     size = size || 96; const key = typeof what === 'string' ? what + '|' + size + '|' + JSON.stringify(o) : null;
     if (key && ICON.cache[key]) return ICON.cache[key];
+    const out = size; const ss = o.ss || (o.portrait || size >= 200 ? 2 : 1); size = out * ss; // v14: портреты и кукла — ×2 суперсэмплинг (чёткие края)
     const R = S.renderer; if (!R) throw new Error('EVAssets.icon needs init({renderer})');
-    if (!ICON.scene) { ICON.scene = new T.Scene(); ICON.scene.add(new T.HemisphereLight(0xfff4e0, 0x6a4a3a, 0.75)); const dl = new T.DirectionalLight(0xfff6ea, 0.7); dl.position.set(-2, 3, 4); ICON.scene.add(dl); ICON.cam = new T.PerspectiveCamera(28, 1, 0.05, 100); }
+    if (!ICON.scene) { ICON.scene = new T.Scene(); ICON.scene.add(new T.HemisphereLight(0xfff4e0, 0x6a4a3a, 0.7)); const dl = new T.DirectionalLight(0xfff6ea, 0.72); dl.position.set(-2, 3, 4); ICON.scene.add(dl);
+      const rl = new T.DirectionalLight(0xffd9a0, 0.45); rl.position.set(3, 2.5, -3); ICON.scene.add(rl); ICON.cam = new T.PerspectiveCamera(28, 1, 0.05, 100); } // v14: + тёплый контровой свет
     if (!ICON.rt || ICON.rt.width !== size) { ICON.rt && ICON.rt.dispose(); ICON.rt = new T.WebGLRenderTarget(size, size, { format: T.RGBAFormat }); }
     let obj, actor = null;
     if (typeof what === 'string') {
@@ -2537,16 +2565,17 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const d = r / Math.tan(14 * deg);
     ICON.cam.position.set(c.x, c.y + d * 0.12, c.z + d); ICON.cam.lookAt(c); ICON.cam.updateProjectionMatrix();
     const prevRT = R.getRenderTarget(), prevC = R.getClearColor(new T.Color()), prevA = R.getClearAlpha();
-    const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size);
+    const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size); const opx = OUT_U.uPx.value; OUT_U.uPx.value = Math.max(1.4, opx || 1.6) * ss * 0.8;
     const pexp = R.toneMappingExposure; R.toneMappingExposure = S.iconExpo || 1.15; // icons stay vivid under the game's ACES tone mapping
     const pu = S.paintU && S.paintU.value, pw = pu ? pu.x : 0; if (pu) pu.x = 0; // icons/portraits: no world-space painting
     R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp; if (pu) pu.x = pw;
     const px = new Uint8Array(size * size * 4); R.readRenderTargetPixels(ICON.rt, 0, 0, size, size, px);
-    R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res);
+    R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res); OUT_U.uPx.value = opx;
     ICON.scene.remove(holder); if (actor) actor.dispose();
-    const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d'); const im = g.createImageData(size, size);
+    let cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d'); const im = g.createImageData(size, size);
     for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);
     g.putImageData(im, 0, 0);
+    if (ss > 1) { const c2 = document.createElement('canvas'); c2.width = c2.height = out; const g2 = c2.getContext('2d'); g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high'; g2.drawImage(cv, 0, 0, out, out); cv = c2; }
     if (key) ICON.cache[key] = cv; return cv;
   }
   /** same as icon() but returns a cached data URL (what the game's RTT.shot() / iconFor() return today) */
@@ -4619,7 +4648,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint,brush:PAINT_U.tBrush.value}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint,brush:PAINT_U.tBrush.value,charFX:!/[?&]cfx=0/.test(location.search)}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
@@ -6426,6 +6455,7 @@ function buildGround(Z,b,opts={}){
 }
 function buildLiquid(Z){
   if(!W.pools||!W.pools.length) return;
+  if(!/[?&]wat=0/.test(location.search)) try{ buildWater(Z); if(W.liquid) return; }catch(e){ console.warn('water',e); } // v14: стилизованная вода (src/p28.js); ниже — прежние круги (запасной вариант)
   const geos=[]; for(const p of W.pools){ const c=new THREE.CircleGeometry(p.r,20); c.rotateX(-PI/2); c.translate(p.x,-.12,p.z); geos.push(c); }
   // merge circles
   let total=0; for(const g of geos) total+=g.index?g.index.count:g.attributes.position.count;
@@ -6472,10 +6502,10 @@ function mkObj(kind,x,z,o={}){
   const ob=Object.assign({kind,x,z,r:.6,hp:1,alive:true,y:0},o); let mesh;
   const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=o.ry!==undefined?o.ry:rand(TAU); worldRoot.add(g); ob.mesh=g;
   realRand(()=>{ switch(kind){
-    case 'barrel': objMesh('obj:barrel',OBJ_GEO.barrel,g); ob.r=.45; ob.hp=1; ob.brk=1; break;
+    case 'barrel': pmesh(OBJ_GEO.barrel(),g); ob.r=.45; ob.hp=1; ob.brk=1; break;
     case 'oilBarrel': pmesh(OBJ_GEO.oilBarrel(),g); ob.r=.5; ob.hp=1; ob.brk=1; ob.oil=1; break;
-    case 'crate': objMesh('obj:crate',OBJ_GEO.crate,g); ob.r=.55; ob.hp=1; ob.brk=1; break;
-    case 'pot': { const u=W.zone&&W.zone.id>=4; objMesh(u?'obj:urn':'obj:pot',u?OBJ_GEO.urn:OBJ_GEO.pot,g); ob.r=.35; ob.hp=1; ob.brk=1; break; }
+    case 'crate': pmesh(OBJ_GEO.crate(),g); ob.r=.55; ob.hp=1; ob.brk=1; break;
+    case 'pot': { const u=W.zone&&W.zone.id>=4; pmesh(u?OBJ_GEO.urn():OBJ_GEO.pot(),g); /* v14: детальные процедурные модели (src/p28.js) везде, с моделями и без */ ob.r=.35; ob.hp=1; ob.brk=1; break; }
     case 'chest': case 'vault': { chestWorldBuild(ob,kind,o,g); break; } // v13: одна модель сундука везде (лавка, окно открытия, мир); крышка на шарнире у задней кромки
     case 'ore': objMesh('obj:ore',OBJ_GEO.ore,g); ob.r=.8; ob.hp=4; ob.res='ore'; break;
     case 'wood': objMesh('obj:wood',OBJ_GEO.woodPile,g); ob.r=.8; ob.hp=3; ob.res='wood'; break;
@@ -7401,7 +7431,7 @@ const TER={on:true,err:null};
 function terOn(){ return TER.on&&!TER.err&&!/[?&]ter=0\b/.test(location.search); }
 function terRes(){ return QL==='med'||QL==='high'?512:256; }
 function terLite(){ return qLow()||(R.capabilities.maxTextures||16)<12; } // «Произв./Низк.»: 5 выборок вместо 9 (без колей/влаги/мха в шейдере — они запечены в цвета вершин)
-const TER_U={uTime:{value:0}};
+const TER_U={uTime:{value:0},uRain:{value:0},uPudSky:{value:new THREE.Color(0xcfe0e8)}};
 // MeshToonMaterial (same toon ramp / rim / ACES / saturation as everything else) + splat terrain in the fragment shader
 function terMat(Z,ctl){
   const T=ZTER[Z.id]||ZTER[1], N=terRes(), lite=terLite();
@@ -7411,7 +7441,8 @@ function terMat(Z,ctl){
   const m=toonMat(); m.vertexColors=true; const base=m.onBeforeCompile;
   const U={tL0:{value:tex[0]},tL1:{value:tex[1]},tL2:{value:tex[2]},tL3:{value:tex[3]},tL4:{value:tex[4]||tex[1]},tL5:{value:tex[5]||tex[1]},tC1:{value:ctl.t1},tC2:{value:ctl.t2},
     uS0:{value:new THREE.Vector4(1/T.S[0],1/T.S[1],1/T.S[2],1/T.S[3])},uS1:{value:new THREE.Vector2(1/T.S[4],1/T.S[5])},uCR:{value:new THREE.Vector4(ctl.x0,ctl.z0,1/ctl.w,1/ctl.h)},
-    uMoss:{value:C3(T.moss)},uWet:{value:C3(T.wet)},uInk:{value:T.ink}};
+    uMoss:{value:C3(T.moss)},uWet:{value:C3(T.wet)},uInk:{value:T.ink},uTime:TER_U.uTime,uRain:TER_U.uRain,uPudSky:TER_U.uPudSky};
+  TER_U.uPudSky.value.set(Z.sky||0xb8d0d8).lerp(new THREE.Color(0xffffff),.2);
   m.userData.TU=U;
   m.onBeforeCompile=(sh,r)=>{ base(sh,r); Object.assign(sh.uniforms,U);
     sh.vertexShader='attribute float aRock;\nvarying float vRock;\nvarying vec3 vTw;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vRock=aRock; vTw=(modelMatrix*vec4(transformed,1.0)).xyz;');
@@ -7421,7 +7452,7 @@ function terMat(Z,ctl){
 }
 const TER_FS=`
 uniform sampler2D tL0; uniform sampler2D tL1; uniform sampler2D tL2; uniform sampler2D tL3; uniform sampler2D tL4; uniform sampler2D tL5; uniform sampler2D tC1; uniform sampler2D tC2;
-uniform vec4 uS0; uniform vec2 uS1; uniform vec4 uCR; uniform vec3 uMoss; uniform vec3 uWet; uniform float uInk;
+uniform vec4 uS0; uniform vec2 uS1; uniform vec4 uCR; uniform vec3 uMoss; uniform vec3 uWet; uniform float uInk; uniform float uTime; uniform float uRain; uniform vec3 uPudSky;
 varying float vRock; varying vec3 vTw;
 vec3 evTerrain(){
   vec2 p=vTw.xz; vec2 cu=(p-uCR.xy)*uCR.zw;
@@ -7455,6 +7486,14 @@ vec3 evTerrain(){
   col=mix(col,col*vec3(0.5,0.52,0.56),c2.g);                                // wet ground / puddles: darker
   col+=uWet*c2.g*c2.g*smoothstep(0.35,0.1,abs(fract((p.x+p.y)*0.6+l2.a)-0.5))*0.18; // a glint on puddles
   col*=mix(vec3(0.88,0.92,0.84),vec3(1.07,1.05,0.98),c2.a);                // large-scale tint (kills tiling)
+  // v14: лужи в колеях и низинах — зеркало неба с тёмной кромкой, круги от капель в дождь
+  float pd=smoothstep(0.74,0.93,c2.g+(l2.a-0.5)*0.12);
+  if(pd>0.001){ vec2 rp=p*1.8; vec2 ci=floor(rp), cf=fract(rp)-0.5; float hh=fract(sin(dot(ci,vec2(127.1,311.7)))*43758.5453);
+    float ph=fract(uTime*0.9+hh); float ring=uRain*smoothstep(0.05,0.0,abs(length(cf-(vec2(hh,fract(hh*7.13))-0.5)*0.4)-ph*0.4))*(1.0-ph);
+    float wob=sin(p.x*3.1+uTime*1.1)*sin(p.y*2.7-uTime*0.9);
+    vec3 refl=mix(uPudSky*0.62,uPudSky,smoothstep(-0.4,0.6,wob+l0.a-0.5));
+    col=mix(col,col*0.3+refl*0.55+ring*0.35,pd*0.9);
+    col*=1.0-0.25*smoothstep(0.0,0.35,pd)*smoothstep(0.75,0.35,pd); }   // тёмный мокрый ободок
 #endif
   return col;
 }
@@ -7487,7 +7526,7 @@ function terBuildGround(Z,b,opts={}){
     let path=0, soil=0, pave=0, acc=0, rut=0, wet=0, moss=0;
     if(!opts.noPath&&d<.4){ const pc=bl(PC,x,z), pw=pw0*(.6+.3*n1)+(n2-.5)*.7+(n3-.5)*.3;
       path=1-sm01((pc-pw+.45)/.55); soil=Math.max(soil,(1-sm01((pc-pw-.1-n2*1.2)/.6))*.78);
-      if(stageLike&&path>.5){ const rd=Math.abs(pc-rutO); if(rd<.32&&n1>.3) rut=(1-sm01(rd/.32))*sm01((n1-.3)*5)*(.6+n3*.4); }
+      if(stageLike&&path>.5){ const rd=Math.abs(pc-rutO); if(rd<.32&&n1>.3) rut=(1-sm01(rd/.32))*sm01((n1-.3)*5)*(.6+n3*.4); if(zid<=3&&rut>.4){ const pt=zid===1?.66:.58; wet=Math.max(wet,sm01((rut-.4)*4)*sm01((n2-pt)*9)); } }
       const pn=bl(PN,x,z); if(pn<3){ const p2=1-sm01((pn-1.05-(n2-.5)*.6)/.45); path=Math.max(path,p2*.95); soil=Math.max(soil,(1-sm01((pn-1.7-n2)/.8))*.8); } }
     if(plaza){ const r=Math.hypot(x,z), e=r+(n2-.5)*1.2+(n3-.5)*.4; pave=Math.max(pave,1-sm01((e-plaza+.3)/.5)); soil=Math.max(soil,(1-sm01((e-plaza-1.2)/.8))*.8); }
     const L=pb(Math.floor(x/4)+','+Math.floor(z/4));
@@ -7576,7 +7615,7 @@ const CLG={
   _shroom:(cols,e)=>{ const b=CGB(); for(let i=0;i<3;i++){ const x=clRand(-.18,.18), z=clRand(-.18,.18), h=clRand(.08,.2), r=clRand(.05,.1); b.geo(new THREE.CylinderGeometry(r*.35,r*.45,h,5),0xece0c8,{p:[x,h/2,z]}); b.geo(new THREE.SphereGeometry(r,6,3,0,TAU,0,PI/2),cols[i%3],{p:[x,h*.92,z],s:[1,.7,1],e}); } return b.done(); },
   roots:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const a=i/3*TAU+clRand(-.4,.4), L=clRand(.7,1.15); b.geo(new THREE.CylinderGeometry(.03,.11,L,5,1),0x4a3220,{p:[Math.cos(a)*L*.5,.03,Math.sin(a)*L*.5],r:[0,-a,PI/2+.12],j:.06}); } return b.done(); },
   reeds:()=>{ const b=CGB(); clBlades(b,8,.2,.6,1.1,.03,.12,[.3,.36,.18],[.62,.68,.36]); for(let i=0;i<2;i++){ const x=clRand(-.1,.1), z=clRand(-.1,.1), h=clRand(.85,1.05); b.geo(new THREE.CylinderGeometry(.03,.03,.18,5),0x5a3a1a,{p:[x,h,z],w:.5}); } return b.done(); },
-  lily:()=>{ const b=CGB(); for(let k=0;k<2;k++){ const ox=k?clRand(.25,.4):0, oz=k?clRand(-.3,.3):0, r=k?clRand(.14,.2):clRand(.22,.3), n=9, c=[.3,.55,.22]; for(let i=0;i<n-1;i++){ const a0=i/n*TAU+.35, a1=(i+1)/n*TAU+.35; b.tri([ox,0,oz],[ox+Math.cos(a1)*r,0,oz+Math.sin(a1)*r],[ox+Math.cos(a0)*r,0,oz+Math.sin(a0)*r],c.map(v=>v*1.15),c,c,0,0,0,0,true); } }
+  lily:()=>{ const b=CGB(); for(let k=0;k<2;k++){ const ox=k?clRand(.25,.4):0, oz=k?clRand(-.3,.3):0, r=k?clRand(.14,.2):clRand(.22,.3), n=9, c=[.3,.55,.22]; for(let i=0;i<n-1;i++){ const a0=i/n*TAU+.35, a1=(i+1)/n*TAU+.35; b.tri([ox,0,oz],[ox+Math.cos(a1)*r,0,oz+Math.sin(a1)*r],[ox+Math.cos(a0)*r,0,oz+Math.sin(a0)*r],c.map(v=>v*1.15),c,c,.55,.55,.55,0,true); } } // v14: aWind одинаковый на всю кувшинку — она не гнётся, а медленно дрейфует
     if(CLR()<.5) b.geo(new THREE.ConeGeometry(.06,.07,5),0xffa8c8,{p:[0,.035,0],e:.25}); return b.done(); },
   bones:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const x=clRand(-.25,.25), z=clRand(-.25,.25), a=clRand(0,TAU), L=clRand(.22,.4); b.geo(new THREE.CylinderGeometry(.022,.022,L,4),0xd8d0b8,{p:[x,.025,z],r:[PI/2,a,0]}); for(const sg of [-1,1]) b.geo(new THREE.IcosahedronGeometry(.04,0),0xe8e0c8,{p:[x+Math.sin(a)*L*.5*sg,.03,z+Math.cos(a)*L*.5*sg],flat:1}); }
     if(CLR()<.5) b.geo(new THREE.SphereGeometry(.09,6,4),0xe8e0c8,{p:[clRand(-.15,.15),.07,clRand(-.15,.15)],s:[1,.85,1.15]}); return b.done(); },
@@ -7719,7 +7758,7 @@ function clCull(cx,cz,XR,Z0,Z1,all){
 
 // ---------- подключение к миру: после расстановки пропсов (buildPropMeshes) — штампы, мелочь; отсечение — вместе с пропсами ----------
 const _bpmT=buildPropMeshes; buildPropMeshes=function(){ if(terOn()) try{ terFinish(); }catch(e){ console.error('terFinish',e); } _bpmT(); };
-const _cpT=cullProps; cullProps=function(cx,cz,force){ TER_U.uTime.value=performance.now()/1000%1000; const was=W&&W.propCullAt; _cpT(cx,cz,force);
+const _cpT=cullProps; cullProps=function(cx,cz,force){ TER_U.uTime.value=performance.now()/1000%1000; TER_U.uRain.value+=((W&&W.rain?1:0)-TER_U.uRain.value)*.05; const was=W&&W.propCullAt; _cpT(cx,cz,force);
   if(W&&W.clutter&&W.propCullAt!==was){ const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12; const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; clCull(cx,cz,xr*far,z0*far,z1*far,!!W.cullAll); } try{ ambTick(); }catch(e){} };
 const _uwT=unloadWorld; unloadWorld=function(){ if(W&&W.ter&&W.ground){ try{ W.ground.material.dispose(); W.ter.ctl.t1.dispose(); W.ter.ctl.t2.dispose(); }catch(e){} }
   if(W&&W.atmos) for(const m of W.atmos){ m.geometry.dispose(); m.material.dispose(); } if(AS.bfly){ try{ scene.remove(AS.bfly.mesh); EVFX.remove(AS.bfly); }catch(e){} AS.bfly=null; } if(AS.amb) AS.amb._spot=null; _uwT(); };
@@ -7944,7 +7983,8 @@ function spawnEnemy(kind,x,z,L,o={}){
   e.hp=e.maxHp;
   rig.root.position.set(x,0,z); rig.root.rotation.y=e.face;
   rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
-  e.baseMat=MT; const mm=e.mods.find(m=>ELITE_MODS[m].mat); if(mm){ e.baseMat={fire:MTfire,ice:MTice}[ELITE_MODS[mm].mat]; setMat(e,e.baseMat); }
+  e.baseMat=MT; if(!(e.rig&&e.rig.actor)&&typeof MTC!=='undefined'){ e.baseMat=MTC; setMat(e,MTC); } // v14: процедурные существа — рисованная кисть
+  const mm=e.mods.find(m=>ELITE_MODS[m].mat); if(mm){ e.baseMat={fire:MTfire,ice:MTice}[ELITE_MODS[mm].mat]; setMat(e,e.baseMat); }
   if(D.ai==='burrow'){ e.burrowed=false; }
   if(rig.actor){ e.meshes=[]; if(o.summon||G.mode==='raid'||W.kind==='abyss'){ const sk=/^skel/.test(kind)&&rig.actor.clipMap.rise; rig.actor.play(sk?'rise':'spawn',{once:true,duration:.9,fade:0}); e._spawnT=.75; } }
   G.enemies.push(e); return e;
@@ -8536,6 +8576,7 @@ function spawnBoss(id,x,z,L,o={}){
   const e={id:EID++,type:'enemy',kind:id,D:{n:B.n,ai:'boss',el:B.el,col:0x2a2018,rng:3},bossD:B,boss:true,lvl:L,x,z,y:0,face:PI*0,vx:0,vz:0,kx:0,kz:0,r:B.r,rig,state:'chase',st:0,cd:0,alive:true,mods:[],flashT:0,stat:{},t:0,meshes:[],phase:0,patT:2,cur:null,baseMat:MT};
   e.maxHp=B.hp*F(L)*diffHp(L)*(o.hpMul||1); e.hp=e.maxHp; e.dmg=B.dmg*F(L)*diffDmg(L)*(o.dmgMul||1); e.spd=B.spd; e.soak={t:0,dmg:0};
   rig.root.position.set(x,0,z); if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
+  if(!rig.actor&&typeof MTC!=='undefined'){ e.baseMat=MTC; setMat(e,MTC); } // v14: процедурный босс — та же кисть
   G.enemies.push(e); G.boss=e; e.lastPat=''; return e;
 }
 const once=(p,k,tt)=>{ if(p.t>=tt&&!p.f[k]){ p.f[k]=1; return true; } return false; };
@@ -10728,7 +10769,8 @@ function loop(now){
   const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z); try{ cineOccTick(); }catch(e){}
   if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; }
     else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
-  for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;
+  for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid){ if(typeof waterTick==='function'&&W.liquid.material.uniforms.uSh) waterTick(Math.min(.1,dt||0)); else W.liquid.material.uniforms.uT.value=now/1000; }
+  try{ if(typeof spiritWorldTick==='function') spiritWorldTick(rdt); }catch(e){}
   wlBegin(); updateDmgNums(rdt); if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid') updateHpBars(); hudTick(rdt); if(typeof sysLabels==='function') sysLabels(rdt); wlEnd();
   asTick(dt,rdt);
   const t1=performance.now();
@@ -13916,6 +13958,345 @@ const DOLL={};
 asDoll=function(gear){ if(!asCan('hero')) return null; let key; try{ key=JSON.stringify(heroVis(gear))+(typeof cosGlowKey==='function'?cosGlowKey():''); }catch(e){ return null; } if(DOLL[key]) return DOLL[key];
   try{ const rig=buildHero(); dressHero(rig,gear); const a=rig.actor; if(a){ a.play('idle',{fade:0}); a.mixer.update(.5); } const g=new THREE.Group(); g.add(rig.root); rig.root.rotation.y=.35;
     const u=SHOT.url(g,300,{cam:[0,1.15,5.1],look:[0,1.0,0],fov:30}); if(a){ a.dispose(); AS.live.delete(a); } const ks=Object.keys(DOLL); if(ks.length>12) delete DOLL[ks[0]]; return DOLL[key]=u; }catch(e){ console.warn('doll',e); return null; } };
+
+// ================= p28: v14 вода, лава, топь, лужи =================
+// Озёра, ручьи, лужи и топи — одна сетка на локацию (1 вызов отрисовки, как раньше), но теперь это сетка-«лоскут» по клеткам 0,33 м
+// (0,5 м на «Низк./Произв.») только там, где есть вода, а у каждой вершины — глубина над рельефом (рельеф под водой уже выкопан
+// groundH), направление течения (ручьи) и признак лужи. Шейдер: волны-нормали (2–4 синусоиды + шум), френель + «отражение» неба
+// и берега, глубина (бирюза у берега → глубокий цвет), полоса пены по линии берега, пена-струи на ручьях, тень моста,
+// круги от шагов/падений и капель дождя, блики солнца. Лава — текущая корка (ячейки Вороного) со светящимися трещинами и
+// раскалённой кромкой; топь — мутная зелень, ряска и пузыри. Пресеты: «Произв.» — без кругов и бликов, «Низк.» — 4 круга,
+// «Сред.» — 8 кругов, капли, каустика; «Выс.» — + третья волна и мелкая рябь.
+const WATER={rip:[],ripN:0,stepT:0,list:[],t:0};
+const WQ=()=>QL==='perf'?0:QL==='low'?1:QL==='med'?2:3;
+// палитра: мелко, глубоко, пена, небо, «берег» в отражении
+const WPAL={
+  0:[0x5ec8bc,0x175d8e,0xeef6ea,0xcfe6ee,0x4a7a3c], 1:[0x5ec8bc,0x175d8e,0xeef6ea,0xcfe6ee,0x4a7a3c],
+  2:[0x4fb2a2,0x174a5c,0xdcefe0,0xb8d8c0,0x2e5a32], 3:[0x5e6a2c,0x18220e,0x8a9a52,0x5a6a44,0x1e2a14],
+  4:[0x4a6e8e,0x0e1a2a,0xb0c8e0,0x6a7a9a,0x2a2a3a], 5:[0xff7a1a,0x2a1410,0xffe08a,0,0], 6:[0xff6a1a,0x2a100e,0xffd27a,0,0]
+};
+const WATER_VS=`
+attribute vec4 aW; uniform float uT; varying vec3 vW; varying vec4 vA; varying float vFog;
+void main(){ vec4 w=modelMatrix*vec4(position,1.0);
+#ifdef LAVA
+  w.y+=sin(w.x*0.8+uT*0.9)*sin(w.z*0.7-uT*0.7)*0.02*clamp(aW.x/0.33,0.0,1.0);
+#endif
+  vW=w.xyz; vA=aW; vec4 mv=viewMatrix*w; vFog=-mv.z; gl_Position=projectionMatrix*mv; }`;
+const WATER_FS=`
+#include <common>
+uniform float uT; uniform vec3 uSh; uniform vec3 uDp; uniform vec3 uFoam; uniform vec3 uSky; uniform vec3 uRefl; uniform vec3 uSunD; uniform vec3 uSunC;
+uniform vec3 fogColor; uniform float fogNear; uniform float fogFar; uniform float uRain; uniform vec4 uBr; uniform float uBrW; uniform sampler2D tN;
+#if NR>0
+uniform vec4 uRip[NR];
+#endif
+varying vec3 vW; varying vec4 vA; varying float vFog;
+float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float vn(vec2 p){ return texture2D(tN,p*0.0625).b; }   // шум из кисти v10 (одна выборка вместо 4 хэшей)
+void main(){
+  vec2 p=vW.xz; float d=clamp(vA.x/0.33,0.0,1.0); vec2 fl=vA.yz; float sp=length(fl); float pud=vA.w;
+  vec3 col; float alpha=1.0;
+#ifdef LAVA
+  // текущая корка: ячейки Вороного, медленно ползут по течению; между плитами — светящиеся трещины, у берега — раскалённая кромка
+  vec2 q=p*1.15-fl*uT*0.5+vec2(uT*0.025,uT*0.018);
+  vec2 ip=floor(q), fp=fract(q); float d1=8.0, d2=8.0; float cid=0.0;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){ vec2 o=vec2(float(i),float(j)); vec2 c=ip+o; vec2 r=o+vec2(h21(c),h21(c+5.3))*0.8+0.1+0.12*vec2(sin(uT*0.37+6.3*h21(c+2.0)),cos(uT*0.31+6.3*h21(c+4.0)));
+    float dd=length(r-fp); if(dd<d1){ d2=d1; d1=dd; cid=h21(c+9.0); } else if(dd<d2) d2=dd; }
+  float edge=d2-d1; float crack=smoothstep(0.065,0.008,edge+(vn(p*6.0)-0.5)*0.05);
+  float heat=0.65+0.35*sin(uT*1.6+cid*6.28+p.x*0.25);
+  float n1=vn(p*2.2+uT*0.1);
+  vec3 crust=uDp*(0.6+0.7*n1)*(0.8+0.4*cid)+uSh*0.12*smoothstep(0.3,0.0,edge)*heat;
+  float molten=clamp(crack*heat+smoothstep(0.8,1.0,d)*0.2*(0.5+0.5*sin(uT*0.8+cid*9.0)),0.0,1.0);
+  col=mix(crust,mix(uSh*1.3,uFoam*1.5,crack*heat*0.6),molten);
+  float rimL=smoothstep(0.16,0.0,d+(n1-0.5)*0.1);
+  col=mix(col,uSh*1.6,rimL*0.8);
+  col+=uSh*0.25*(0.5+0.5*sin(uT*2.3+p.x*1.7+p.y*1.3))*(1.0-molten)*0.4;   // дрожащий жар над коркой
+#else
+  vec2 q=p-fl*uT*0.9;
+  vec2 g=vec2(0.0);
+  g+=vec2(0.9,0.4)*cos(dot(q,vec2(0.9,0.4))*2.3+uT*1.3)*0.5;
+  g+=vec2(-0.5,0.85)*cos(dot(q,vec2(-0.5,0.85))*3.1+uT*1.7)*0.35;
+#if WQ>=3
+  g+=vec2(0.3,-0.95)*cos(dot(q,vec2(0.3,-0.95))*5.7+uT*2.3)*0.2;
+  g+=(vec2(vn(q*2.1+uT*0.25),vn(q*2.1+7.3-uT*0.25))-0.5)*0.7;
+#endif
+  g*=mix(0.2,0.42,sp)*(1.0-pud*0.6);
+  float ringF=0.0;
+#if NR>0
+  for(int i=0;i<NR;i++){ vec4 r=uRip[i]; float age=uT-r.z; if(age<0.0||age>2.4) continue; vec2 dv=p-r.xy; float dist=length(dv); float rr=0.15+age*1.35;
+    float w=exp(-age*1.5)*r.w*smoothstep(0.5,0.0,abs(dist-rr)); g+=dv/(dist+1e-3)*sin((dist-rr)*20.0)*w*1.2; ringF+=w*smoothstep(0.07,0.0,abs(dist-rr)); }
+#endif
+#if WQ>=2
+  if(uRain>0.0){ vec2 rc=p*1.7; vec2 ci=floor(rc), cf=fract(rc)-0.5; float ph=fract(uT*0.85+h21(ci)); vec2 c0=(vec2(h21(ci+3.1),h21(ci+7.7))-0.5)*0.5;
+    float rd=length(cf-c0), rr=ph*0.42; float ring=smoothstep(0.045,0.0,abs(rd-rr))*(1.0-ph)*uRain; ringF+=ring*0.8; g+=(cf-c0)/(rd+1e-3)*ring*0.5; }
+#endif
+  vec3 n=normalize(vec3(-g.x,1.0,-g.y));
+  vec3 V=normalize(cameraPosition-vW);
+  float fres=pow(1.0-clamp(dot(n,V),0.0,1.0),3.0);
+  vec3 base=mix(uSh,uDp,smoothstep(0.05,0.8,d)); base=mix(base,uDp*0.35+uRefl*0.3,pud);
+  float rn=vn(p*0.3+n.xz*2.5);
+  vec3 env=mix(uRefl,uSky,smoothstep(0.3,0.7,rn+n.z*1.2)); env=mix(env,mix(uRefl*0.45,uSky*0.9,smoothstep(0.55,0.8,rn+n.z*2.0)),pud);   // «отражение»: небо и тёмные кроны/берег
+  float rk=mix(0.08,0.45,fres); rk=mix(rk,0.75,pud);
+  col=mix(base,env,rk);
+  col*=0.86+0.28*clamp(dot(n,uSunD),0.0,1.0);
+  // рисованные блики-штрихи на гребнях (как мазки на земле)
+  float wh=sin(dot(q,vec2(0.9,0.4))*4.6+uT*1.5)+sin(dot(q,vec2(-0.5,0.85))*6.2+uT*1.9)*0.8+(vn(q*3.4+uT*0.3)-0.5)*1.6;
+  col+=mix(uSky,vec3(1.0),0.5)*smoothstep(1.85,2.1,wh)*0.14*(0.3+0.7*d)*(1.0-pud);
+#if WQ>=1
+  vec3 H=normalize(uSunD+V); col+=uSunC*pow(clamp(dot(n,H),0.0,1.0),WQ>=2?150.0:70.0)*(WQ>=2?1.3:0.7);
+#endif
+#if WQ>=3
+  float ca=vn(p*3.1+uT*0.45)*vn(p*3.7-uT*0.37+3.0); col+=uSh*smoothstep(0.28,0.6,ca)*(1.0-d)*0.3*(1.0-pud);   // каустика на мелководье
+#endif
+  float fn=vn(p*4.0-fl*uT*1.6+vec2(uT*0.15,-uT*0.1));
+  float foam=smoothstep(0.14,0.03,d+(fn-0.5)*0.12);                                         // пена у самой кромки
+  float band=smoothstep(0.07,0.0,abs(d-0.2-0.05*sin(uT*1.3+fn*6.0)))*(0.35+0.65*fn);          // «дышащая» полоса прибоя
+  foam=max(foam,band*0.55*(1.0-pud)); foam*=1.0-pud*0.65;
+  if(sp>0.01){ float st=vn(vec2(dot(q,vec2(fl.y,-fl.x))*2.5,dot(q,fl)*0.7)*1.8); foam=max(foam,sp*smoothstep(0.62,0.82,st)*0.7); }   // струи пены на ручье
+  foam=max(foam,ringF);
+#ifdef SWAMP
+  float sc=smoothstep(0.66,0.8,vn(p*1.1+uT*0.015)*0.75+vn(p*3.3)*0.4)*smoothstep(0.1,0.4,d);    // ряска
+  col=mix(col*0.78,uFoam*(0.35+0.3*vn(p*6.0)),sc*0.8*(1.0-pud));
+  vec2 bc=floor(p*1.1); vec2 bf=fract(p*1.1)-0.5; float bph=fract(uT*0.22+h21(bc)); vec2 b0=(vec2(h21(bc+1.7),h21(bc+4.1))-0.5)*0.5; float bd=length(bf-b0);
+  float bub=step(bph,0.18)*smoothstep(0.07,0.03,bd-bph*0.25)+step(0.18,bph)*step(bph,0.3)*smoothstep(0.03,0.0,abs(bd-(bph-0.18)*2.2))*(0.3-bph)*8.0;
+  col+=vec3(0.55,0.6,0.35)*bub*0.55*(1.0-sc);
+  foam*=0.55;
+#endif
+  col=mix(col,uFoam,clamp(foam,0.0,1.0)*mix(0.85,0.5,pud));
+  alpha=mix(0.6,0.95,smoothstep(0.0,0.55,d)); alpha=max(alpha,clamp(foam,0.0,1.0)*0.92); alpha=mix(alpha,0.5+0.3*smoothstep(0.55,0.8,rn+n.z*2.0),pud);
+#endif
+  // тень моста
+  vec2 bq=p-uBr.xy; float bu=abs(dot(bq,uBr.zw)), bv=abs(dot(bq,vec2(-uBr.w,uBr.z)));
+  col*=1.0-0.42*smoothstep(0.5,0.0,bu-2.3)*smoothstep(0.5,0.0,bv-uBrW)*step(0.001,dot(uBr.zw,uBr.zw));
+  alpha*=smoothstep(-0.01,0.03,vA.x);
+  float f=smoothstep(fogNear,fogFar,vFog); col=mix(col,fogColor,f);
+  gl_FragColor=vec4(col,alpha);
+  #include <tonemapping_fragment>
+}`;
+function waterMat(Z){
+  const lava=!!(Z.liquid&&Z.liquid[2]), zid=Z.id|0, pal=WPAL[lava?(zid===6?6:5):zid]||WPAL[1], q=WQ(), nr=q===0||lava?0:q===1?3:q===2?6:8;
+  const u={uT:{value:0},uSh:{value:C3(pal[0])},uDp:{value:C3(pal[1])},uFoam:{value:C3(pal[2])},uSky:{value:C3(pal[3]||0)},uRefl:{value:C3(pal[4]||0)},
+    uSunD:{value:new THREE.Vector3(-12,24,10).normalize()},uSunC:{value:new THREE.Color(0xfff0d0)},uRain:{value:0},uBr:{value:new THREE.Vector4(0,0,0,0)},uBrW:{value:4},tN:PAINT_U.tBrush,
+    fogColor:{value:scene.fog.color},fogNear:{value:scene.fog.near},fogFar:{value:scene.fog.far}};
+  if(!lava&&Z.sky) u.uSky.value.set(Z.sky).lerp(new THREE.Color(0xffffff),.25);
+  if(nr){ u.uRip={value:[]}; for(let i=0;i<nr;i++) u.uRip.value.push(new THREE.Vector4(0,0,-99,0)); }
+  const m=new THREE.ShaderMaterial({uniforms:u,vertexShader:WATER_VS,fragmentShader:WATER_FS,transparent:!lava,depthWrite:lava,
+    defines:Object.assign({WQ:q,NR:nr},lava?{LAVA:1}:{},zid===3&&!lava?{SWAMP:1}:{})});
+  m.userData.nr=nr; return m;
+}
+// сетка воды: клетки только там, где есть водоём (без перекрытий у цепочки кругов ручья), у вершины — глубина/течение/лужа
+function buildWater(Z){
+  const pools=W.pools||[]; if(!pools.length) return;
+  const cs=qLow()?.5:.33, WY=-.12, cells=new Set(), I=new Map(), P=[], A=[], idx=[];
+  const streams=pools.filter(p=>p.kind==='stream');
+  const flowAt=(x,z)=>{ let best=null,bd=1e9,bi=-1; for(let i=0;i<streams.length;i++){ const s=streams[i], d=Math.hypot(x-s.x,z-s.z); if(d<bd){ bd=d; best=s; bi=i; } }
+    if(!best||bd>best.r+.8) return [0,0]; const a=streams[Math.max(0,bi-1)], b=streams[Math.min(streams.length-1,bi+1)]; let fx=b.x-a.x, fz=b.z-a.z; const l=Math.hypot(fx,fz)||1; const k=1-Math.min(1,Math.max(0,(bd-best.r*.6)/(best.r*.6+.8)))*.5; return [fx/l*k,fz/l*k]; };
+  for(const p of pools){ const R=p.r+.7, i0=Math.floor((p.x-R)/cs), i1=Math.ceil((p.x+R)/cs), j0=Math.floor((p.z-R)/cs), j1=Math.ceil((p.z+R)/cs);
+    for(let j=j0;j<j1;j++) for(let i=i0;i<i1;i++){ const cx=(i+.5)*cs, cz=(j+.5)*cs; if(Math.hypot(cx-p.x,cz-p.z)<R) cells.add(i+','+j); } }
+  const vtx=(i,j)=>{ const k=i+','+j; let v=I.get(k); if(v!==undefined) return v; const x=i*cs, z=j*cs, d=WY-groundH(x,z);
+    let pud=0; for(const p of pools){ if(p.kind==='wet'&&Math.hypot(x-p.x,z-p.z)<p.r+.8){ pud=1; break; } }
+    const f=streams.length?flowAt(x,z):[0,0]; v=P.length/3; P.push(x,WY,z); A.push(d,f[0],f[1],pud); I.set(k,v); return v; };
+  for(const k of cells){ const c=k.split(','), i=+c[0], j=+c[1]; const a=vtx(i,j), b=vtx(i+1,j), c2=vtx(i,j+1), d=vtx(i+1,j+1);
+    if(A[a*4]<-.02&&A[b*4]<-.02&&A[c2*4]<-.02&&A[d*4]<-.02) continue; idx.push(a,c2,b,b,c2,d); }
+  if(!idx.length) return;
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('aW',new THREE.Float32BufferAttribute(A,4));
+  g.setIndex(P.length/3>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1)); g.computeBoundingSphere();
+  const mat=waterMat(Z); const br=W.bridge; if(br){ mat.uniforms.uBr.value.set(br.x,br.z,br.ux,br.uz); mat.uniforms.uBrW.value=(br.w||8.5)*.5+.3; }
+  const m=new THREE.Mesh(g,mat); m.renderOrder=0; worldRoot.add(m); W.liquid=m;
+  WATER.rip.length=0; WATER.ripN=0; WATER.list=pools.filter(p=>!p.lava&&!p.bridged&&p.haz!=='burn');
+  W.waterInfo={verts:P.length/3,tris:idx.length/3,cells:cells.size};
+}
+// круги на воде: шаги, кувырок, падения (x,z,сила 0..1)
+function waterRipple(x,z,s){ const m=W&&W.liquid&&W.liquid.material; if(!m||!m.userData||!m.userData.nr) return; const R=m.uniforms.uRip.value, i=WATER.ripN++%R.length; R[i].set(x,z,m.uniforms.uT.value,s===undefined?1:s); }
+function waterAt(x,z,pad){ for(const p of WATER.list){ if(Math.hypot(x-p.x,z-p.z)<p.r+(pad||0)) return p; } return null; }
+const _wc=new THREE.Color(0xd8eef4);
+function waterSplash(x,z,s){ waterRipple(x,z,s); if(qLow()&&s<1) return; const n=Math.round((QL==='perf'?3:6)*(s||1)); _wc.set(W.zone&&W.zone.id===3?0xb8c890:0xd8eef4);
+  for(let i=0;i<n;i++){ const a=rand(TAU), v=rand(.8,2.2)*(s||1); PA.emit(x+Math.cos(a)*.15,.05,z+Math.sin(a)*.15,Math.cos(a)*v,rand(2.2,4.2)*(s||1),Math.sin(a)*v,rand(.3,.5),.16,.05,_wc,.8,12,1); } }
+// раз в кадр (из основного цикла): время шейдера, дождь, шаги героя и ближних врагов по воде
+function waterTick(dt){
+  const L=W&&W.liquid; if(!L||!L.material.uniforms) return; const u=L.material.uniforms; u.uT.value=performance.now()/1000%1000;
+  u.uRain.value+=((W.rain?1:0)-u.uRain.value)*Math.min(1,dt*2);
+  u.uSunD.value.copy(sun.position).sub(sun.target.position).normalize(); u.uSunC.value.copy(sun.color).multiplyScalar(sun.intensity*.9);
+  if(!G.P||!dt||!WATER.list.length) return;
+  WATER.stepT-=dt; if(WATER.stepT>0) return; WATER.stepT=.22;
+  const P=G.P, br=W.bridge, onBr=(x,z)=>br&&Math.abs((x-br.x)*br.ux+(z-br.z)*br.uz)<2.6&&Math.abs(-(x-br.x)*br.uz+(z-br.z)*br.ux)<(br.w||9)*.5+.5;
+  if(!P.dead&&(P.move>.15||P.state==='roll')&&waterAt(P.x,P.z,.35)&&!onBr(P.x,P.z)) waterSplash(P.x,P.z,P.state==='roll'?1.3:.55);
+  let n=0; for(const e of G.enemies){ if(!e.alive||n>=3||e.fly) continue; if((e.moving||0)>.2&&Math.abs(e.x-P.x)<14&&Math.abs(e.z-P.z)<12&&waterAt(e.x,e.z,.3)){ waterRipple(e.x,e.z,.6); n++; } }
+}
+
+// ================= v14 разбиваемые бочки, ящики, горшки, урны (рисованные, детальные; та же модель — пока цело) =================
+// Модели процедурные (построитель GB: цвета вершин + запечённый контур = 1 вызов отрисовки), кисть v10 (MTP) — волокна дерева,
+// пятна глины/камня. Бочка: 14 клёпок с щелями и разным тоном, выпуклый профиль, три обруча с заклёпками, крышка из досок с
+// пробкой, сколы у верхней кромки, потёки. Ящик: рама из брусьев, доски с щелями, диагональ, гвозди, верёвка с узлом.
+// Горшок: глина, венчик, роспись-пояс, ручки, скол; урна (склепы): камень, бронзовые пояса, ручки, крышка с навершием, руны.
+const _wv14=(c,k)=>{ const C=new THREE.Color(c); C.multiplyScalar(k); return C.getHex(); };
+function barrelGeo14(){ return cgeo('o_barrel14',b=>{ const rnd=rng32(1414), N=14, prof=k=>[[.3*k,0],[.355*k,.16],[.39*k,.42],[.39*k,.58],[.355*k,.84],[.3*k,1.0]];
+  b.cyl(.36,.36,.98,0x2a1a0e,{p:[0,.49,0],seg:14,ol:0});                                            // тёмное нутро в щелях
+  for(let i=0;i<N;i++){ const a0=i/N*TAU, al=TAU/N*.93, tone=.86+rnd()*.24, chip=rnd()<.28?rnd()*.06:0; const pts=prof(1).map(p=>new THREE.Vector2(p[0],Math.min(p[1],1-chip)));
+    b.add(new THREE.LatheGeometry(pts,2,a0,al),_wv14(0x9a6436,tone),{c2:_wv14(0x5a3a1e,tone)}); }
+  for(const [y,r] of [[.13,.362],[.5,.398],[.87,.362]]){ b.tor(r,.026,0x3a3634,{p:[0,y,0],r:[PI/2,0,0],ts:20,rs:5,ol:0}); for(let k=0;k<6;k++){ const a=k/6*TAU+.3; b.rivet(Math.cos(a)*(r+.02),y,Math.sin(a)*(r+.02),0x8a8070,{r:.016,r2:[0,-a,PI/2]}); } }
+  b.cyl(.31,.31,.05,0x7a5030,{p:[0,.965,0],seg:14,ol:0});                                            // крышка
+  for(let k=-1;k<=1;k++) b.box(.6,.012,.01,0x3a2412,{p:[0,.992,k*.1],ol:0});
+  b.cyl(.045,.05,.04,0x4a2e18,{p:[.14,1.0,.06],seg:8,ol:0});                                         // пробка
+},.03); }
+function crateGeo14(){ return cgeo('o_crate14',b=>{ const rnd=rng32(2828), S=.8, h=S/2, beam=0x6a4626, nail=0x5a5650;
+  b.box(S-.06,S-.06,S-.06,0x2a1a0e,{p:[0,h,0],ol:0});
+  // доски с щелями на каждой грани
+  for(let f=0;f<4;f++){ const ry=f*PI/2; for(let k=0;k<3;k++){ const tone=.84+rnd()*.28, y=.14+k*.26; const m=new THREE.Matrix4().makeRotationY(ry);
+      const g=new THREE.BoxGeometry(S-.1,.23,.035); g.translate(0,y,S/2-.012); g.applyMatrix4(m); b.add(g,_wv14(0xb08452,tone),{c2:_wv14(0x8a6236,tone),ol:0});
+      for(const sx of [-.3,.3]){ const v=new THREE.Vector3(sx,y,S/2+.008).applyMatrix4(m); b.rivet(v.x,v.y,v.z,nail,{r:.014,r2:[0,ry,0]}); } } }
+  for(let k=0;k<3;k++){ const tone=.86+rnd()*.24; b.box(S-.1,.035,.23,_wv14(0xb88a56,tone),{p:[0,S-.012,-.26+k*.26],ol:0}); }    // крышка
+  // рама из брусьев
+  for(const x of [-1,1]) for(const z of [-1,1]) b.rbox(.07,S,.07,beam,{p:[x*(h-.03),h,z*(h-.03)],bev:.012});
+  for(const y of [.035,S-.035]) for(const s of [-1,1]){ b.rbox(S,.07,.07,beam,{p:[0,y,s*(h-.03)],bev:.012}); b.rbox(.07,.07,S,beam,{p:[s*(h-.03),y,0],bev:.012}); }
+  b.rbox(.06,.92,.03,beam,{p:[0,h,h+.005],r:[0,0,.78],bev:.008}); b.rbox(.06,.92,.03,beam,{p:[h+.005,h,0],r:[.78,0,0],bev:.008});   // диагонали
+  // верёвка через крышку и бок + узел
+  b.box(.05,.04,S+.04,0xc8a46a,{p:[.12,S+.012,0],ol:0}); b.box(.05,S+.02,.04,0xc8a46a,{p:[.12,h,h+.02],ol:0}); b.box(.05,S+.02,.04,0xc8a46a,{p:[.12,h,-h-.02],ol:0});
+  b.sph(.05,0xb8945a,{p:[.12,S+.03,.18],ws:6,hs:5,ol:0}); b.cyl(.015,.012,.16,0xc8a46a,{p:[.16,S-.02,.24],r:[.6,0,.4],seg:5,ol:0});
+},.03); }
+function potGeo14(){ return cgeo('o_pot14',b=>{ const prof=[[0,0],[.2,0],[.27,.06],[.34,.2],[.36,.3],[.32,.44],[.21,.56],[.15,.6],[.17,.64],[.21,.68],[.19,.7],[.13,.66],[0,.64]];
+  b.lathe(prof,0xbc7646,{seg:18,c2:0x8a4a26});
+  b.add(new THREE.LatheGeometry([[.358,.27],[.365,.3],[.358,.34]].map(p=>new THREE.Vector2(p[0],p[1])),18),0x6a2e14,{ol:0});   // роспись-пояс
+  for(let k=0;k<9;k++){ const a=k/9*TAU; b.box(.05,.05,.01,0xe8c08a,{p:[Math.cos(a)*.352,.36,Math.sin(a)*.352],r:[0,-a+PI/2,PI/4],ol:0}); }
+  for(const s of [-1,1]) b.tor(.06,.018,0x9a5a32,{p:[s*.3,.47,0],r:[0,PI/2,0],arc:PI*1.2,ol:0});
+  b.box(.06,.04,.02,0x3a1a0c,{p:[.12,.69,.14],r:[0,.8,0],ol:0});                                    // скол на венчике
+},.03); }
+function urnGeo14(){ return cgeo('o_urn14',b=>{ const prof=[[0,0],[.18,0],[.2,.05],[.16,.1],[.26,.24],[.32,.38],[.29,.54],[.18,.66],[.15,.72],[.2,.76],[0,.76]];
+  b.lathe(prof,0x7a7a8c,{seg:16,c2:0x4a4a5a});
+  for(const [y,r] of [[.3,.305],[.6,.235]]) b.tor(r,.02,0xb89a50,{p:[0,y,0],r:[PI/2,0,0],ts:20,rs:4,ol:0});
+  for(const s of [-1,1]) b.tor(.075,.02,0x9a8a50,{p:[s*.31,.5,0],r:[0,PI/2,0],arc:PI*1.1,ol:0});
+  b.lathe([[0,.76],[.17,.76],[.12,.82],[.05,.84],[0,.84]],0x5a5a6a,{seg:12,ol:0}); b.sph(.045,0xb89a50,{p:[0,.88,0],ws:8,hs:6,ol:0});
+  for(let k=0;k<5;k++){ const a=k/5*TAU+.4; b.box(.012,.09,.008,0x9adcff,{p:[Math.cos(a)*.322,.44,Math.sin(a)*.322],r:[0,-a+PI/2,0],e:.6,ol:0}); }   // руны (слабое свечение)
+},.03); }
+OBJ_GEO.barrel=barrelGeo14; OBJ_GEO.crate=crateGeo14; OBJ_GEO.pot=potGeo14; OBJ_GEO.urn=urnGeo14;
+
+// ================= v14 процедурные существа (кабан, пыхгриб, жабошаман, виверна, дракон…) — та же кисть, что у KayKit-персонажей =================
+// Мазки в пространстве детали (не «плывут» при движении), шерсть/кожа — штрихи кисти, светлые — мягкие пятна, низ темнее, тёплый контровой свет.
+const MTC=(()=>{ const m=toonMat(); const base=m.onBeforeCompile;
+  m.onBeforeCompile=(sh,r)=>{ base(sh,r); sh.uniforms.tBrush=PAINT_U.tBrush; sh.uniforms.uPaint=PAINT_U.uPaint;
+    sh.vertexShader='varying vec3 vOP;\nvarying vec3 vON;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vOP=transformed; vON=normal;');
+    sh.fragmentShader='uniform sampler2D tBrush;\nuniform vec4 uPaint;\nvarying vec3 vOP;\nvarying vec3 vON;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',`
+  if(vE<0.5){ vec3 c=diffuseColor.rgb; float lumC=dot(c,vec3(0.299,0.587,0.114)); vec3 nO=normalize(vON);
+    vec2 tg=normalize(vec2(-nO.z,nO.x)+vec2(1e-4)); vec2 uvO=mix(vec2(dot(vOP.xz,tg),vOP.y),vOP.xz,smoothstep(0.5,0.8,abs(nO.y)))*2.1;
+    vec4 bP=texture2D(tBrush,uvO+vec2(0.13,0.71));
+    float dk=smoothstep(0.1,0.04,lumC);                                   // запечённый контур не трогаем
+    float m=(0.84+0.32*bP.r)*(0.94+0.12*bP.b); m*=mix(1.0,0.86,smoothstep(-0.2,-0.8,nO.y));
+    c*=mix(m,1.0,dk); diffuseColor.rgb=c; }
+#include <emissivemap_fragment>`).replace('outgoingLight+=uRim*smoothstep(0.6,0.7,rimF)*(1.0-vE)*0.32*diffuseColor.rgb;','outgoingLight+=uRim*smoothstep(0.58,0.74,rimF)*(1.0-vE)*0.42*diffuseColor.rgb;'); };
+  m.customProgramCacheKey=()=>'evcreature'; m.userData.paint=1; return m; })();
+
+// ================= p29: v14 Уголёк — дух Искры (портреты с настроением, присутствие в мире) =================
+// Владелец: «Нужно сделать нормальный скин угольку, а то не серьёзно». Было: мультяшный огонёк со смайликом. Стало: живой уголь —
+// раскалённое ядро с трещинами, языки пламени, глаза, сложенные из огня (без рта и «милоты»), искры по орбите, тусклое рунное кольцо.
+// Портрет рисуется на холсте (градиенты + свечение, без ctx.filter — его нет в Safari), 4 настроения: спокойный, ехидный, тревога, грусть.
+// В мире — маленький дух у плеча героя (спрайт + угольки, по пресету), вспыхивает, когда говорит.
+const SPA={cache:{},world:null};
+function spRng(seed){ let s=seed>>>0||1; return ()=>{ s=(s*16807)%2147483647; return (s-1)/2147483646; }; }
+// mood: 'calm' | 'smug' | 'alarm' | 'sad';  o.bg=false — прозрачный фон (мир)
+function spiritArt(mood,size,o={}){
+  size=size||256; const key=mood+'|'+size+'|'+(o.bg===false?0:1); if(SPA.cache[key]) return SPA.cache[key];
+  const c=document.createElement('canvas'); c.width=c.height=size; const x=c.getContext('2d'), S0=size/256, r=spRng(7+(mood.length*13));
+  const M={calm:{h:1,w:1,hot:1,eye:'calm'},smug:{h:1.04,w:.98,hot:1.05,eye:'smug'},alarm:{h:1.18,w:1.14,hot:1.2,eye:'alarm'},sad:{h:.82,w:.92,hot:.72,eye:'sad'}}[mood]||{h:1,w:1,hot:1,eye:'calm'};
+  x.save(); x.scale(S0,S0);
+  if(o.bg!==false){ const g=x.createRadialGradient(128,150,8,128,140,170); g.addColorStop(0,'#4a1406'); g.addColorStop(.45,'#1c0805'); g.addColorStop(1,'#070203'); x.fillStyle=g; x.fillRect(0,0,256,256);
+    // тусклое рунное кольцо
+    x.save(); x.translate(128,140); x.strokeStyle='rgba(255,140,60,.22)'; x.lineWidth=1.6; x.beginPath(); x.arc(0,0,104,0,TAU); x.stroke(); x.beginPath(); x.arc(0,0,92,0,TAU); x.strokeStyle='rgba(255,140,60,.12)'; x.stroke();
+    x.strokeStyle='rgba(255,170,90,.32)'; x.lineWidth=2;
+    for(let i=0;i<14;i++){ x.save(); x.rotate(i/14*TAU+.1); x.translate(0,-98); x.beginPath(); const k=i%4; if(k===0){ x.moveTo(-3,-4); x.lineTo(0,4); x.lineTo(3,-4); } else if(k===1){ x.moveTo(0,-5); x.lineTo(0,5); x.moveTo(-3,0); x.lineTo(3,-2); } else if(k===2){ x.moveTo(-3,4); x.lineTo(-3,-4); x.lineTo(3,0); } else { x.arc(0,0,3,.4,TAU-.4); } x.stroke(); x.restore(); }
+    x.restore(); }
+  const cx=128, base=176, H=150*M.h, Wd=58*M.w;
+  // внешнее свечение
+  x.globalCompositeOperation='lighter';
+  let g=x.createRadialGradient(cx,base-30,4,cx,base-40,120*M.w); g.addColorStop(0,`rgba(255,120,40,${.55*M.hot})`); g.addColorStop(.5,`rgba(160,40,10,${.25*M.hot})`); g.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=g; x.fillRect(0,0,256,256);
+  // языки пламени: от тёмно-красного к золоту; каждый язык — изогнутый «лист»
+  const tongue=(ox,h,w,lean,c0,c1,a)=>{ x.beginPath(); const tx=cx+ox+lean, ty=base-h; x.moveTo(cx+ox-w,base-6); x.bezierCurveTo(cx+ox-w*1.1,base-h*.45,tx-w*.35+lean*.3,ty+h*.32,tx,ty); x.bezierCurveTo(tx+w*.4+lean*.2,ty+h*.36,cx+ox+w*1.05,base-h*.42,cx+ox+w,base-6); x.closePath();
+    const gg=x.createLinearGradient(0,base,0,ty); gg.addColorStop(0,c0); gg.addColorStop(1,c1); x.globalAlpha=a; x.fillStyle=gg; x.fill(); x.globalAlpha=1; };
+  const T=[[-30,.55,.42,-14],[30,.6,.4,16],[-14,.85,.55,-8],[16,.8,.5,10],[0,1,.62,0],[-40,.38,.3,-20],[42,.42,.3,22]];
+  for(const [ox,hh,ww,ln] of T){ tongue(ox*M.w,H*hh,Wd*ww,ln+(r()-.5)*6,'rgba(150,24,8,1)','rgba(110,10,4,0)',.75*M.hot); }
+  for(const [ox,hh,ww,ln] of T.slice(2,5)){ tongue(ox*.8*M.w,H*hh*.86,Wd*ww*.72,ln*.7,'rgba(240,90,20,1)','rgba(220,60,10,0)',.7*M.hot); }
+  tongue(0,H*.66,Wd*.46,(mood==='smug'?6:0),'rgba(255,190,80,1)','rgba(255,150,40,0)',.75*M.hot);
+  tongue(0,H*.42,Wd*.3,0,'rgba(255,240,190,1)','rgba(255,210,120,0)',.6*M.hot);
+  // ядро-уголь: неровный многоугольник с раскалёнными трещинами
+  x.globalCompositeOperation='source-over';
+  const pts=[]; const n=11; for(let i=0;i<n;i++){ const a=i/n*TAU+.2, rr=(34+r()*10)*(i%2?1:.9); pts.push([cx+Math.cos(a)*rr*1.15,base-8+Math.sin(a)*rr*.62]); }
+  x.beginPath(); pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.closePath();
+  g=x.createRadialGradient(cx-10,base-22,4,cx,base-6,46); g.addColorStop(0,'#5a1e0e'); g.addColorStop(.6,'#2a0e07'); g.addColorStop(1,'#120604'); x.fillStyle=g; x.fill();
+  x.lineWidth=2.2; x.strokeStyle='rgba(20,6,3,.9)'; x.stroke();
+  x.globalCompositeOperation='lighter'; x.shadowColor='#ff7a1a'; x.shadowBlur=10;
+  x.strokeStyle=`rgba(255,${mood==='sad'?110:150},50,${.9*M.hot})`; x.lineWidth=2.4;
+  for(let k=0;k<7;k++){ let px=cx+(r()-.5)*50, py=base-8+(r()-.5)*24; x.beginPath(); x.moveTo(px,py); for(let s=0;s<3;s++){ px+=(r()-.5)*22; py+=(r()-.5)*12; x.lineTo(px,py); } x.stroke(); }
+  x.shadowBlur=0;
+  // глаза из огня (на уровне середины пламени): прорези-миндалины света, без рта
+  const ey=base-H*.48+(mood==='sad'?10:0), ex=21*M.w;
+  // тёмная «маска» лица в сердце пламени — на ней глаза читаются даже на маленьком портрете
+  x.globalCompositeOperation='source-over';
+  let mg=x.createRadialGradient(cx,ey-2,4,cx,ey,48*M.w); mg.addColorStop(0,'rgba(40,6,2,.82)'); mg.addColorStop(.55,'rgba(70,14,4,.55)'); mg.addColorStop(1,'rgba(90,20,6,0)');
+  x.save(); x.translate(cx,ey); x.scale(1,.62); x.translate(-cx,-ey); x.fillStyle=mg; x.beginPath(); x.arc(cx,ey,48*M.w,0,TAU); x.fill(); x.restore();
+  const eye=(sx,open,tilt,droop)=>{ x.save(); x.translate(cx+sx,ey); x.rotate(tilt); const w=17*(mood==='alarm'?1.12:1), h=Math.max(1.6,9*open);
+    x.shadowColor='#ffb347'; x.shadowBlur=16; x.fillStyle='#fff6d8'; x.beginPath(); x.moveTo(-w,droop); x.quadraticCurveTo(0,-h*1.6,w,-droop); x.quadraticCurveTo(0,h*.9,-w,droop); x.fill();
+    if(mood==='alarm'){ x.shadowBlur=0; x.fillStyle='rgba(120,20,4,.85)'; x.beginPath(); x.arc(0,-h*.3,2.6,0,TAU); x.fill(); }
+    x.restore(); };
+  x.globalCompositeOperation='source-over';
+  if(M.eye==='calm'){ eye(-ex,.75,.18,2); eye(ex,.75,-.18,-2); }
+  else if(M.eye==='smug'){ eye(-ex,.32,.08,1); eye(ex,.85,-.32,-3); // прищур + приподнятая «бровь» огня
+    x.globalCompositeOperation='lighter'; x.strokeStyle='rgba(255,220,140,.55)'; x.lineWidth=2.2; x.beginPath(); x.moveTo(cx+ex-12,ey-16); x.quadraticCurveTo(cx+ex,ey-22,cx+ex+13,ey-15); x.stroke(); x.globalCompositeOperation='source-over'; }
+  else if(M.eye==='alarm'){ eye(-ex,1.25,-.05,0); eye(ex,1.25,.05,0); }
+  else { eye(-ex,.55,-.32,-3); eye(ex,.55,.32,3); }
+  // искры по орбите
+  x.globalCompositeOperation='lighter';
+  const ns=mood==='alarm'?24:mood==='sad'?9:16;
+  for(let i=0;i<ns;i++){ const a=r()*TAU, rr=40+r()*70, sx=cx+Math.cos(a)*rr, sy=base-60+Math.sin(a)*rr*.75-(mood==='sad'?-10:10), s=1+r()*2.4;
+    const sg=x.createRadialGradient(sx,sy,0,sx,sy,s*4); sg.addColorStop(0,'rgba(255,240,190,.95)'); sg.addColorStop(.35,'rgba(255,150,50,.6)'); sg.addColorStop(1,'rgba(255,80,20,0)'); x.fillStyle=sg; x.fillRect(sx-s*4,sy-s*4,s*8,s*8);
+    if(r()<.4){ x.strokeStyle='rgba(255,170,80,.35)'; x.lineWidth=1; x.beginPath(); x.arc(cx,base-60,rr,a-.25,a); x.stroke(); } }
+  x.globalCompositeOperation='source-over'; x.restore();
+  if(o.bg!==false){ const v=x.createRadialGradient(size/2,size/2,size*.3,size/2,size/2,size*.72); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,.55)'); x.fillStyle=v; x.fillRect(0,0,size,size); }
+  return SPA.cache[key]=o.canvas?c:c.toDataURL('image/png');
+}
+// настроение по поводу реплики / по тексту
+const SP_MOOD={first_kill:'smug',streak:'smug',synergy:'smug',rare:'smug',level:'calm',low_hp:'alarm',raid:'alarm',death:'sad',secret:'smug',lore:'calm',echo:'sad',idle:'smug',pet:'alarm',companion:'smug',
+  boss_gobKing:'smug',boss_rotroot:'calm',boss_bogMother:'alarm',boss_morven:'sad',boss_colossus:'alarm',boss_dragon:'calm',boss_ashKing:'alarm',pro_dragon:'alarm',pro_king:'alarm',pro_lost:'sad'};
+function spiritMood(trig,txt){ if(trig&&SP_MOOD[trig]) return SP_MOOD[trig]; const t=String(txt||'').toLowerCase();
+  if(/бей|беги|осторож|эй[,!]|скорее|быстр|пожалуйста|страшн|король|хмарь у|не смотри/.test(t)) return 'alarm';
+  if(/прост|жаль|помн|не зла|гасн|одн[аио]|плак|тих|раскол|осталось|умер|сорок лет/.test(t)) return 'sad';
+  if(/ну[, ]|ладно|я считаю|ха|шутк|красив|видал|ого|бум|наденем|гордил|\?!/.test(t)) return 'smug';
+  return 'calm'; }
+spiritPortrait=function(mood){ return spiritArt(mood||'calm',256); };
+// диалог: портрет по тексту текущей реплики; присутствие в мире вспыхивает
+const _pfSpirit=portraitFor; portraitFor=function(sp){ if(sp==='spirit'){ let txt=''; try{ const q=DLGS.q&&DLGS.q[DLGS.i]; if(q&&q[0]==='spirit') txt=q[1]; }catch(e){} spiritFlare(1.2); return spiritPortrait(spiritMood(null,txt)); } return _pfSpirit(sp); };
+const _spiritTrig=spirit; spirit=function(trig,force){ SP_RT.trig=trig; const r=_spiritTrig(trig,force); SP_RT.trig=null; return r; };
+spiritSay=function(line,ms){ let el=$('spirit'); if(!el){ el=document.createElement('div'); el.id='spirit'; document.body.appendChild(el); }
+  const mood=spiritMood(SP_RT.trig,line); el.dataset.mood=mood;
+  el.innerHTML=`<img src="${spiritPortrait(mood)}" alt=""><div><b>Уголёк</b><span>${line}</span></div>`; el.classList.remove('out'); el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>{ el.classList.add('out'); el.classList.remove('on'); },ms||3800);
+  spiritFlare(1.5); };
+// ---------- в мире: дух у плеча героя ----------
+function spiritWorldMake(){ if(SPA.world) return SPA.world;
+  const tex=new THREE.CanvasTexture(spiritArt('calm',128,{bg:false,canvas:true})); tex.minFilter=THREE.LinearFilter; tex.generateMipmaps=false;
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,toneMapped:false});
+  const sp=new THREE.Sprite(mat); sp.renderOrder=3; sp.scale.set(.62,.62,1);
+  const core=new THREE.Mesh(new THREE.IcosahedronGeometry(.07,0),new THREE.MeshBasicMaterial({color:0xffc070,toneMapped:false})); core.renderOrder=3;
+  const g=new THREE.Group(); g.add(sp,core); g.userData={sp,core,flare:0,t:Math.random()*10,ang:0,emit:0};
+  return SPA.world=g; }
+function spiritFlare(a){ if(SPA.world) SPA.world.userData.flare=Math.max(SPA.world.userData.flare,a||1); }
+const _spc=new THREE.Color();
+function spiritWorldTick(dt){
+  const P=G.P, on=!!(P&&!P.dead&&S.set&&S.set.spirit&&S.seen&&S.seen.wake&&W&&(G.mode==='stage'||G.mode==='village'||G.mode==='abyss'||G.mode==='raid'||G.mode==='prologue'));
+  if(!on){ if(SPA.world&&SPA.world.parent) SPA.world.parent.remove(SPA.world); return; }
+  const g=spiritWorldMake(); if(g.parent!==scene) scene.add(g); const U=g.userData; U.t+=dt;
+    const sw=Math.sin(U.t*.6)*.12, ox=.62+sw, oz=-.28+Math.cos(U.t*.6)*.1, ty=2.0+Math.sin(U.t*2.1)*.08; // справа от головы (камера всегда смотрит на север) — виден при любом повороте героя
+  const k=Math.min(1,dt*5); g.position.x+=(P.x+ox-g.position.x)*k; g.position.z+=(P.z+oz-g.position.z)*k; g.position.y+=(ty+(P.y||0)-g.position.y)*k;
+  if(Math.abs(g.position.x-P.x)>5||Math.abs(g.position.z-P.z)>5) g.position.set(P.x+ox,ty,P.z+oz);
+  U.flare=Math.max(0,U.flare-dt*.9); const fl=U.flare, flick=1+Math.sin(U.t*13)*.05+Math.sin(U.t*7.3)*.06;
+  const s=(.56+fl*.28)*flick; U.sp.scale.set(s,s*1.08,1); U.sp.material.opacity=.85+fl*.15; U.core.scale.setScalar(1+fl*.6);
+  if(CINE.on){ U.sp.scale.multiplyScalar(.8); }
+  // угольки (по пресету)
+  const rate=QL==='perf'?0:QL==='low'?2:QL==='med'?6:10; U.emit+=dt*rate*(1+fl*3);
+  while(U.emit>=1){ U.emit-=1; _spc.setHSL(.06+Math.random()*.05,1,.55+Math.random()*.2); PA.emit(g.position.x+rand(-.08,.08),g.position.y+rand(-.05,.12),g.position.z+rand(-.08,.08),rand(-.3,.3),rand(.5,1.4),rand(-.3,.3),rand(.5,.9),.11,.02,_spc,.9,-1.5,.5); }
+}
+// настройки: иконка пункта «Уголёк» — сам дух
+const _pSettingsSp=pSettings; pSettings=function(pause){ let h=_pSettingsSp(pause); return h.replace(/(<label>)(<svg[^>]*>[\s\S]*?<\/svg>)?(\s*Уголёк)/,(m,a,svg,t)=>`${a}<img class="spIc" src="${spiritPortrait('smug')}" alt="">${t}`); };
+// Летопись: строка от Уголька наверху
+const _chronSp=PANEL_EXT.chron; PANEL_EXT.chron=()=>{ const r=_chronSp(); const n=Object.keys(STS().ch).length; const line=n?'Я помню каждое твоё решение. Даже те, что ты хотел бы забыть.':'Пусто. Пока. Летопись любит смелых — и тех, кто ошибается красиво.';
+  r.body=`<div class="spChron"><img src="${spiritPortrait(n?'calm':'smug')}" alt=""><div><b>Уголёк</b><span>${line}</span></div></div>`+r.body; return r; };
+Object.assign(window.__game,{ spiritArt:(m,s)=>spiritArt(m||'calm',s||256), spiritFlare });
 // ================= pz: boot =================
 boot();
 })();

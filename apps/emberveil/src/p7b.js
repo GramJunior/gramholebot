@@ -205,6 +205,7 @@ function spawnBoss(id,x,z,L,o={}){
   const e={id:EID++,type:'enemy',kind:id,D:{n:B.n,ai:'boss',el:B.el,col:0x2a2018,rng:3},bossD:B,boss:true,lvl:L,x,z,y:0,face:PI*0,vx:0,vz:0,kx:0,kz:0,r:B.r,rig,state:'chase',st:0,cd:0,alive:true,mods:[],flashT:0,stat:{},t:0,meshes:[],phase:0,patT:2,cur:null,baseMat:MT};
   e.maxHp=B.hp*F(L)*diffHp(L)*(o.hpMul||1); e.hp=e.maxHp; e.dmg=B.dmg*F(L)*diffDmg(L)*(o.dmgMul||1); e.spd=B.spd; e.soak={t:0,dmg:0};
   rig.root.position.set(x,0,z); if(!rig.actor) rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
+  if(!rig.actor&&typeof MTC!=='undefined'){ e.baseMat=MTC; setMat(e,MTC); } // v14: процедурный босс — та же кисть
   G.enemies.push(e); G.boss=e; e.lastPat=''; return e;
 }
 const once=(p,k,tt)=>{ if(p.t>=tt&&!p.f[k]){ p.f[k]=1; return true; } return false; };

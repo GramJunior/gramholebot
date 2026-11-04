@@ -352,3 +352,15 @@ Four pets are animated creatures by **Quaternius** (quaternius.com), licence **C
 Mirror licence check: `series-ai/jam-ready-assets` ships `quaternius-ultimate-monsters/3D/monster/License.txt` (SPDX CC0-1.0, source https://quaternius.com/packs/ultimatemonsters.html); `trebeljahr/quaternius-showcase` LICENSES.md lists *Ultimate Animated Animal Pack* as CC0-1.0. Quaternius releases all packs as CC0.
 
 Everything else added in v13 (chests, weapons by rarity, armour, jewellery, consumables, keys, materials, salamander/otter/fairy pets, loot beams) is procedural code in `src/p27.js` — no third-party assets.
+
+## v14 (персонажи, вода, Уголёк, бочки/ящики)
+
+No new third-party files were added in v14. Candidate CC0 packs (Quaternius «Ultimate Modular Characters», «Medieval/Fantasy» via the
+`trebeljahr/quaternius-showcase` / `chibifire-stages/quaternius-stage` mirrors) were considered but not imported: the hero's visible gear
+(40 swappable KayKit parts on one skeleton, v13 weapons/armour, collection skins) and all NPC/companion/enemy rigs depend on the KayKit
+skeleton and clip libraries, and a second style would have to replace ~30 rigs at once (+8–12 MB download).
+Instead the existing KayKit characters are re-rendered at runtime (`lab/assets.js`, «живые персонажи»): painted brush on clothing/hair/leather/metal,
+eyes with highlights, blinking and expressions, cape sway. Water/lava/swamp/puddles (`src/p28.js`), barrels/crates/pots/urns (`src/p28.js`) and the
+spirit «Уголёк» (`src/p29.js`) are procedural (code), so the asset list and licences above are unchanged.
+
+В v14 новых сторонних файлов нет: всё новое — код (шейдеры и процедурные модели), лицензии выше не меняются.

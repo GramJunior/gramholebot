@@ -565,6 +565,10 @@ body.cine::before{top:0} body.cine::after{bottom:0}
 #spirit{position:fixed;left:calc(max(var(--sl),6px) + 8px);top:calc(max(var(--st),4px) + 72px*var(--k,1) + 64px);z-index:29;display:flex;align-items:center;gap:8px;max-width:min(380px,44vw);padding:6px 12px 6px 6px;border-radius:30px;
   background:linear-gradient(90deg,rgba(60,18,6,.92),rgba(30,10,4,.82));box-shadow:0 0 0 1.5px #ff8a2b88,0 0 18px #ff6a1a55;color:#ffe8c0;font-family:var(--body);font-size:calc(13.5px*var(--k,1));pointer-events:none;opacity:0;transform:translateX(-14px);transition:opacity .35s,transform .35s}
 #spirit.on{opacity:1;transform:none} #spirit img{width:40px;height:40px;border-radius:50%;flex:0 0 40px;animation:spPulse 1.6s ease-in-out infinite}
+#spirit img{box-shadow:0 0 10px rgba(255,120,40,.55),inset 0 0 0 1px rgba(255,190,110,.4)} #spirit[data-mood=alarm] img{box-shadow:0 0 14px rgba(255,90,30,.9)}
+.spIc{width:20px;height:20px;border-radius:50%;vertical-align:-5px;margin-right:2px;box-shadow:0 0 6px rgba(255,120,40,.5)}
+.spChron{display:flex;gap:10px;align-items:center;margin:2px 0 8px;padding:6px 10px 6px 6px;border-radius:28px;background:linear-gradient(90deg,rgba(40,12,6,.92),rgba(40,12,6,.55));border:1px solid rgba(255,150,70,.35)}
+.spChron img{width:52px;height:52px;border-radius:50%;flex:0 0 52px;box-shadow:0 0 12px rgba(255,120,40,.6)} .spChron b{display:block;font-family:var(--sc);font-size:.8em;color:var(--emberL);letter-spacing:.08em} .spChron span{color:#f4dcc0;font-style:italic}
 #spirit b{display:block;font-family:var(--sc);font-size:.8em;color:var(--emberL);letter-spacing:.08em}
 @keyframes spPulse{50%{box-shadow:0 0 14px #ffb347}}
 html.land #spirit{top:auto;bottom:calc(max(var(--sb),4px) + 74px*var(--k,1));left:50%;transform:translate(-50%,10px);max-width:min(400px,46vw)} html.land #spirit.on{transform:translate(-50%,0)}

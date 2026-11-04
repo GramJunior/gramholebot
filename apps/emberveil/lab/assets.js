@@ -128,18 +128,18 @@
   // v14 «живые персонажи»: скин-модели получают ту же кисть, что и мир (мазки на ткани и волосах, зерно кожи/кожаных деталей,
   // пятна и царапины металла, мягкие складки), мягкие нормали, AO у ног, тёплый контровой свет, глаза с бликами, моргание и
   // простые выражения, качание плащей. Всё внутри того же материала: ни одного нового вызова отрисовки.
-  const CHAR_VS_PARS = 'attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform float uSoft; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
+  const CHAR_VS_PARS = 'attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform float uSoft; uniform mat4 uDQ; uniform mat4 uDQi; uniform mat3 uDQn; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
   const CHAR_VS = `
   {
-    vec4 evB = bindMatrix * vec4( transformed, 1.0 );
+    vec4 evB = uDQ * ( bindMatrix * vec4( transformed, 1.0 ) ); // поза привязки в метрах модели (снимаем квантование KayKit)
     float sw = aFx.x;
     if ( sw > 0.0 ) { // плащи: отстают при беге, подлетают, колышутся (физика «на глаз», в позе привязки — дальше обычный скиннинг)
       float fl = sin( uTime * 5.3 + evB.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + evB.x * 6.0 + uSway.w * 1.7 ) * 0.4;
       float s2 = sw * sw;
-      evB.xyz += vec3( uSway.y * 0.22 * s2 + fl * 0.025 * sw, ( 0.03 + 0.42 * uSway.x ) * s2, -( 0.05 + 0.5 * uSway.x ) * s2 + fl * ( 0.03 + 0.06 * uSway.x ) * sw );
-      transformed = ( bindMatrixInverse * evB ).xyz;
+      vec3 evD = vec3( uSway.y * 0.22 * s2 + fl * 0.025 * sw, ( 0.03 + 0.42 * uSway.x ) * s2, ( 0.05 + 0.5 * uSway.x ) * s2 + fl * ( 0.03 + 0.06 * uSway.x ) * sw ); // спина модели KayKit — +z в позе привязки
+      transformed += mat3( bindMatrixInverse ) * ( mat3( uDQi ) * evD ); evB.xyz += evD;
     }
-    vBind = evB.xyz; vBN = normalize( mat3( bindMatrix ) * normal ); vFx = aFx;
+    vBind = evB.xyz; vBN = normalize( uDQn * ( mat3( bindMatrix ) * normal ) ); vFx = aFx;
   }`;
   const CHAR_FS_PARS = 'uniform sampler2D tBrush; uniform vec2 uBlink; uniform vec3 uSkin; uniform vec2 uCH; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
   const CHAR_FS = `
@@ -157,7 +157,7 @@
     float cloth = clamp( 1.0 - skin - evMetal - leather, 0.0, 1.0 );
     float cape = vFx.x > 0.0 ? 1.0 : 0.0;
     float m = 1.0;
-    m *= mix( 1.0, 0.8 + 0.4 * bP.r, cloth * 0.85 );                          // ткань, волосы: мазки кисти
+    m *= mix( 1.0, 0.86 + 0.28 * bP.r, cloth * 0.85 * ( 1.0 - 0.65 * cape ) );                          // ткань, волосы: мазки кисти
     m *= mix( 1.0, 0.78 + 0.44 * bP.g, leather );                             // кожа ремней, сапог: волокна
     m *= mix( 1.0, 0.93 + 0.14 * bP.b, skin );                                // лицо и руки: мягкие пятна
     m *= mix( 1.0, 0.84 + 0.3 * bP.b + ( bP.a - 0.5 ) * 0.22, evMetal );       // металл: пятна и царапины
@@ -195,7 +195,7 @@
     m.skinning = !!o.skinning;
     const ch = !!(o.skinning && S.charFX && o.char !== false);
     const U = { uFlash: { value: 0 }, uTint: { value: new T.Vector4(0, 0, 0, 0) }, uGlow: { value: new T.Vector4(0, 0, 0, 0) }, uMode: { value: o.mode || 0 }, uTime: EVAssets.time };
-    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush });
+    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush, uDQ: { value: new T.Matrix4() }, uDQi: { value: new T.Matrix4() }, uDQn: { value: new T.Matrix3() } });
     if (o.tint) { const c = C3(o.tint[0]); U.uTint.value.set(c.r, c.g, c.b, o.tint[1]); }
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
     m.userData.U = U; m.userData.char = ch;
@@ -404,15 +404,22 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   function charPrep(root, key) {
     root.updateMatrixWorld(true);
     root.traverse((o) => {
+      if (o.isMesh && !o.isSkinnedMesh && /cape|cloak/i.test(o.name) && !o.geometry.userData.evDS) { o.geometry = doubleSided(o.geometry, new T.Matrix4().copy(root.matrixWorld).invert().multiply(o.matrixWorld)); return; }
       if (!o.isSkinnedMesh || o.geometry.attributes.aFx) return;
       const g = o.geometry, P = g.attributes.position, N = g.attributes.normal, UV = g.attributes.uv, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, n = P.count;
       if (!N) return;
       ensureOutlineNormals(g);
       const fx = new Float32Array(n * 4); for (let i = 0; i < n; i++) fx[i * 4 + 3] = 1;
       const ps = normScale(P), us = UV ? normScale(UV) : 1, ws = normScale(SW), B = new Float32Array(n * 3), v = new T.Vector3();
-      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
+      // KayKit (meshopt): позиции квантованы, обратные матрицы костей содержат деквантование — D = кость(покой) · обратная = переход в метры модели
+      const sk = o.skeleton; sk.bones[0].updateMatrixWorld(true); const D = new T.Matrix4().multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]);
+      const rinv = new T.Matrix4().copy(root.matrixWorld).invert(); D.premultiply(rinv);
+      g.userData.evDQ = D.toArray();
+      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix).applyMatrix4(D); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
       if (/cape|cloak/i.test(o.name)) { let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, B[i * 3 + 1]); y1 = Math.max(y1, B[i * 3 + 1]); }
         for (let i = 0; i < n; i++) fx[i * 4] = Math.max(0.001, Math.min(1, (y1 - B[i * 3 + 1]) / Math.max(1e-3, y1 - y0))); o.userData.evCape = 1; }
+      g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
+      if (o.userData.evCape) { o.geometry = doubleSided(g, new T.Matrix4().multiplyMatrices(D, o.bindMatrix)); return; } // плащ KayKit — одна плоскость: вторая сторона со своей нормалью (раньше изнанка светилась плоским розовым)
       const head = o.skeleton.bones.findIndex((b) => /^head$/i.test(b.name)), px = UV && texPixels(o.material.map);
       if (head >= 0 && px) {
         const GC = (A, i, k) => k === 0 ? A.getX(i) : k === 1 ? A.getY(i) : k === 2 ? A.getZ(i) : A.getW(i);
@@ -445,8 +452,21 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
           }
         }
       }
-      g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
     });
+  }
+  // плоская сетка → две стороны (обратный порядок вершин, нормали наружу с каждой стороны); атрибуты — обычные (без interleave)
+  function doubleSided(g, M) {
+    const out = new T.BufferGeometry(), n = g.attributes.position.count;
+    // какая копия «правильная»: нормаль вершины против геометрической нормали первого треугольника (у плащей KayKit порядок вершин обратный)
+    const P = g.attributes.position, N = g.attributes.normal, i0 = g.index ? g.index.getX(0) : 0, i1 = g.index ? g.index.getX(1) : 1, i2 = g.index ? g.index.getX(2) : 2;
+    const ps = normScale(P), ns = N ? normScale(N) : 1, nm = new T.Matrix3().getNormalMatrix(M || new T.Matrix4()), pv = (i) => new T.Vector3().fromBufferAttribute(P, i).multiplyScalar(ps).applyMatrix4(M || new T.Matrix4());
+    const a0 = pv(i0), e1 = pv(i1).sub(a0), e2 = pv(i2).sub(a0);
+    const flipFirst = N && e1.cross(e2).dot(new T.Vector3().fromBufferAttribute(N, i0).multiplyScalar(ns).applyMatrix3(nm)) < 0;
+    for (const k in g.attributes) { const a = plainAttr(g.attributes[k]), sz = a.itemSize, A = new a.array.constructor(n * 2 * sz); A.set(a.array.subarray(0, n * sz)); A.set(a.array.subarray(0, n * sz), n * sz);
+      if (k === 'normal' || k === 'onormal') { const f0 = flipFirst ? 0 : n * sz; for (let i = f0; i < f0 + n * sz; i++) A[i] = -A[i]; }
+      out.setAttribute(k, new T.BufferAttribute(A, sz, a.normalized)); }
+    const idx = g.index ? Array.from(g.index.array) : Array.from({ length: n }, (_, i) => i), I = idx.slice(); for (let t = 0; t < idx.length; t += 3) I.push(idx[t] + n, idx[t + 2] + n, idx[t + 1] + n);
+    out.setIndex(I); out.userData = g.userData; out.userData.evDS = 1; return out;
   }
   function load(groups, onProgress) {
     if (!S.manifest) return Promise.reject(new Error('EVAssets.init() first'));
@@ -560,7 +580,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this._fx = { blinkT: 1 + Math.random() * 3, blink: 0, expr: null, exprT: 0, lid: [0, 0], px: null, pz: 0, spd: 0, turn: 0, yaw: null };
       let skin = null, eyes = false; for (const m of this.meshes) { if (m.userData.evSkin && !skin) skin = m.userData.evSkin; if (m.userData.evEyes) eyes = true; }
       this._fx.eyes = eyes && this.def.mat !== 'ghost' && this.def.mat !== 'lava' && this.def.mat !== 'stone';
-      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]); }
+      let dq = null; for (const m of this.meshes) if (m.isSkinnedMesh && m.geometry.userData.evDQ) { dq = m.geometry.userData.evDQ; break; }
+      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]);
+        if (dq) { U.uDQ.value.fromArray(dq); U.uDQi.value.copy(U.uDQ.value).invert(); U.uDQn.value.getNormalMatrix(U.uDQ.value); } }
     }
     /** простые выражения: 'blink' | 'squint' (замах, усилие) | 'hurt' (удар) | 'happy' (радость) | 'dead' | null */
     setExpr(e, t) { if (!this._fx) return; this._fx.expr = e; this._fx.exprT = t === undefined ? 0.5 : t; }
@@ -635,7 +657,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this._outline = on;
       for (const m of this.meshes) {
         // tiny parts (eyes, capes, hoods: < 120 skinned / < 300 rigid vertices) get no hull — invisible at game zoom, 1 draw call each
-        if (on && !m.userData.evOutline && this.def.mat !== 'ghost' && (this.def.type === 'hero' || m.geometry.attributes.position.count >= (m.isSkinnedMesh ? 120 : 300))) addOutline(m, { color: this.def.outline });
+        if (on && !m.userData.evOutline && this.def.mat !== 'ghost' && !m.geometry.userData.evDS && (this.def.type === 'hero' || m.geometry.attributes.position.count >= (m.isSkinnedMesh ? 120 : 300))) addOutline(m, { color: this.def.outline });
         if (m.userData.evOutline) m.userData.evOutline.visible = on && m.visible;
       }
       const wo = on && this._weaponOutline();
@@ -851,8 +873,10 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   function icon(what, size, o = {}) {
     size = size || 96; const key = typeof what === 'string' ? what + '|' + size + '|' + JSON.stringify(o) : null;
     if (key && ICON.cache[key]) return ICON.cache[key];
+    const out = size; const ss = o.ss || (o.portrait || size >= 200 ? 2 : 1); size = out * ss; // v14: портреты и кукла — ×2 суперсэмплинг (чёткие края)
     const R = S.renderer; if (!R) throw new Error('EVAssets.icon needs init({renderer})');
-    if (!ICON.scene) { ICON.scene = new T.Scene(); ICON.scene.add(new T.HemisphereLight(0xfff4e0, 0x6a4a3a, 0.75)); const dl = new T.DirectionalLight(0xfff6ea, 0.7); dl.position.set(-2, 3, 4); ICON.scene.add(dl); ICON.cam = new T.PerspectiveCamera(28, 1, 0.05, 100); }
+    if (!ICON.scene) { ICON.scene = new T.Scene(); ICON.scene.add(new T.HemisphereLight(0xfff4e0, 0x6a4a3a, 0.7)); const dl = new T.DirectionalLight(0xfff6ea, 0.72); dl.position.set(-2, 3, 4); ICON.scene.add(dl);
+      const rl = new T.DirectionalLight(0xffd9a0, 0.45); rl.position.set(3, 2.5, -3); ICON.scene.add(rl); ICON.cam = new T.PerspectiveCamera(28, 1, 0.05, 100); } // v14: + тёплый контровой свет
     if (!ICON.rt || ICON.rt.width !== size) { ICON.rt && ICON.rt.dispose(); ICON.rt = new T.WebGLRenderTarget(size, size, { format: T.RGBAFormat }); }
     let obj, actor = null;
     if (typeof what === 'string') {
@@ -871,16 +895,17 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const d = r / Math.tan(14 * deg);
     ICON.cam.position.set(c.x, c.y + d * 0.12, c.z + d); ICON.cam.lookAt(c); ICON.cam.updateProjectionMatrix();
     const prevRT = R.getRenderTarget(), prevC = R.getClearColor(new T.Color()), prevA = R.getClearAlpha();
-    const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size);
+    const res = OUT_U.uRes.value.clone(); OUT_U.uRes.value.set(size, size); const opx = OUT_U.uPx.value; OUT_U.uPx.value = Math.max(1.4, opx || 1.6) * ss * 0.8;
     const pexp = R.toneMappingExposure; R.toneMappingExposure = S.iconExpo || 1.15; // icons stay vivid under the game's ACES tone mapping
     const pu = S.paintU && S.paintU.value, pw = pu ? pu.x : 0; if (pu) pu.x = 0; // icons/portraits: no world-space painting
     R.setRenderTarget(ICON.rt); R.setClearColor(o.bg || 0x000000, o.bg ? 1 : 0); R.clear(); R.render(ICON.scene, ICON.cam); R.toneMappingExposure = pexp; if (pu) pu.x = pw;
     const px = new Uint8Array(size * size * 4); R.readRenderTargetPixels(ICON.rt, 0, 0, size, size, px);
-    R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res);
+    R.setRenderTarget(prevRT); R.setClearColor(prevC, prevA); OUT_U.uRes.value.copy(res); OUT_U.uPx.value = opx;
     ICON.scene.remove(holder); if (actor) actor.dispose();
-    const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d'); const im = g.createImageData(size, size);
+    let cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d'); const im = g.createImageData(size, size);
     for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);
     g.putImageData(im, 0, 0);
+    if (ss > 1) { const c2 = document.createElement('canvas'); c2.width = c2.height = out; const g2 = c2.getContext('2d'); g2.imageSmoothingEnabled = true; g2.imageSmoothingQuality = 'high'; g2.drawImage(cv, 0, 0, out, out); cv = c2; }
     if (key) ICON.cache[key] = cv; return cv;
   }
   /** same as icon() but returns a cached data URL (what the game's RTT.shot() / iconFor() return today) */

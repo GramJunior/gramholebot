@@ -153,7 +153,7 @@ const TER={on:true,err:null};
 function terOn(){ return TER.on&&!TER.err&&!/[?&]ter=0\b/.test(location.search); }
 function terRes(){ return QL==='med'||QL==='high'?512:256; }
 function terLite(){ return qLow()||(R.capabilities.maxTextures||16)<12; } // «Произв./Низк.»: 5 выборок вместо 9 (без колей/влаги/мха в шейдере — они запечены в цвета вершин)
-const TER_U={uTime:{value:0}};
+const TER_U={uTime:{value:0},uRain:{value:0},uPudSky:{value:new THREE.Color(0xcfe0e8)}};
 // MeshToonMaterial (same toon ramp / rim / ACES / saturation as everything else) + splat terrain in the fragment shader
 function terMat(Z,ctl){
   const T=ZTER[Z.id]||ZTER[1], N=terRes(), lite=terLite();
@@ -163,7 +163,8 @@ function terMat(Z,ctl){
   const m=toonMat(); m.vertexColors=true; const base=m.onBeforeCompile;
   const U={tL0:{value:tex[0]},tL1:{value:tex[1]},tL2:{value:tex[2]},tL3:{value:tex[3]},tL4:{value:tex[4]||tex[1]},tL5:{value:tex[5]||tex[1]},tC1:{value:ctl.t1},tC2:{value:ctl.t2},
     uS0:{value:new THREE.Vector4(1/T.S[0],1/T.S[1],1/T.S[2],1/T.S[3])},uS1:{value:new THREE.Vector2(1/T.S[4],1/T.S[5])},uCR:{value:new THREE.Vector4(ctl.x0,ctl.z0,1/ctl.w,1/ctl.h)},
-    uMoss:{value:C3(T.moss)},uWet:{value:C3(T.wet)},uInk:{value:T.ink}};
+    uMoss:{value:C3(T.moss)},uWet:{value:C3(T.wet)},uInk:{value:T.ink},uTime:TER_U.uTime,uRain:TER_U.uRain,uPudSky:TER_U.uPudSky};
+  TER_U.uPudSky.value.set(Z.sky||0xb8d0d8).lerp(new THREE.Color(0xffffff),.2);
   m.userData.TU=U;
   m.onBeforeCompile=(sh,r)=>{ base(sh,r); Object.assign(sh.uniforms,U);
     sh.vertexShader='attribute float aRock;\nvarying float vRock;\nvarying vec3 vTw;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vRock=aRock; vTw=(modelMatrix*vec4(transformed,1.0)).xyz;');
@@ -173,7 +174,7 @@ function terMat(Z,ctl){
 }
 const TER_FS=`
 uniform sampler2D tL0; uniform sampler2D tL1; uniform sampler2D tL2; uniform sampler2D tL3; uniform sampler2D tL4; uniform sampler2D tL5; uniform sampler2D tC1; uniform sampler2D tC2;
-uniform vec4 uS0; uniform vec2 uS1; uniform vec4 uCR; uniform vec3 uMoss; uniform vec3 uWet; uniform float uInk;
+uniform vec4 uS0; uniform vec2 uS1; uniform vec4 uCR; uniform vec3 uMoss; uniform vec3 uWet; uniform float uInk; uniform float uTime; uniform float uRain; uniform vec3 uPudSky;
 varying float vRock; varying vec3 vTw;
 vec3 evTerrain(){
   vec2 p=vTw.xz; vec2 cu=(p-uCR.xy)*uCR.zw;
@@ -207,6 +208,14 @@ vec3 evTerrain(){
   col=mix(col,col*vec3(0.5,0.52,0.56),c2.g);                                // wet ground / puddles: darker
   col+=uWet*c2.g*c2.g*smoothstep(0.35,0.1,abs(fract((p.x+p.y)*0.6+l2.a)-0.5))*0.18; // a glint on puddles
   col*=mix(vec3(0.88,0.92,0.84),vec3(1.07,1.05,0.98),c2.a);                // large-scale tint (kills tiling)
+  // v14: лужи в колеях и низинах — зеркало неба с тёмной кромкой, круги от капель в дождь
+  float pd=smoothstep(0.74,0.93,c2.g+(l2.a-0.5)*0.12);
+  if(pd>0.001){ vec2 rp=p*1.8; vec2 ci=floor(rp), cf=fract(rp)-0.5; float hh=fract(sin(dot(ci,vec2(127.1,311.7)))*43758.5453);
+    float ph=fract(uTime*0.9+hh); float ring=uRain*smoothstep(0.05,0.0,abs(length(cf-(vec2(hh,fract(hh*7.13))-0.5)*0.4)-ph*0.4))*(1.0-ph);
+    float wob=sin(p.x*3.1+uTime*1.1)*sin(p.y*2.7-uTime*0.9);
+    vec3 refl=mix(uPudSky*0.62,uPudSky,smoothstep(-0.4,0.6,wob+l0.a-0.5));
+    col=mix(col,col*0.3+refl*0.55+ring*0.35,pd*0.9);
+    col*=1.0-0.25*smoothstep(0.0,0.35,pd)*smoothstep(0.75,0.35,pd); }   // тёмный мокрый ободок
 #endif
   return col;
 }
@@ -239,7 +248,7 @@ function terBuildGround(Z,b,opts={}){
     let path=0, soil=0, pave=0, acc=0, rut=0, wet=0, moss=0;
     if(!opts.noPath&&d<.4){ const pc=bl(PC,x,z), pw=pw0*(.6+.3*n1)+(n2-.5)*.7+(n3-.5)*.3;
       path=1-sm01((pc-pw+.45)/.55); soil=Math.max(soil,(1-sm01((pc-pw-.1-n2*1.2)/.6))*.78);
-      if(stageLike&&path>.5){ const rd=Math.abs(pc-rutO); if(rd<.32&&n1>.3) rut=(1-sm01(rd/.32))*sm01((n1-.3)*5)*(.6+n3*.4); }
+      if(stageLike&&path>.5){ const rd=Math.abs(pc-rutO); if(rd<.32&&n1>.3) rut=(1-sm01(rd/.32))*sm01((n1-.3)*5)*(.6+n3*.4); if(zid<=3&&rut>.4){ const pt=zid===1?.66:.58; wet=Math.max(wet,sm01((rut-.4)*4)*sm01((n2-pt)*9)); } }
       const pn=bl(PN,x,z); if(pn<3){ const p2=1-sm01((pn-1.05-(n2-.5)*.6)/.45); path=Math.max(path,p2*.95); soil=Math.max(soil,(1-sm01((pn-1.7-n2)/.8))*.8); } }
     if(plaza){ const r=Math.hypot(x,z), e=r+(n2-.5)*1.2+(n3-.5)*.4; pave=Math.max(pave,1-sm01((e-plaza+.3)/.5)); soil=Math.max(soil,(1-sm01((e-plaza-1.2)/.8))*.8); }
     const L=pb(Math.floor(x/4)+','+Math.floor(z/4));
@@ -328,7 +337,7 @@ const CLG={
   _shroom:(cols,e)=>{ const b=CGB(); for(let i=0;i<3;i++){ const x=clRand(-.18,.18), z=clRand(-.18,.18), h=clRand(.08,.2), r=clRand(.05,.1); b.geo(new THREE.CylinderGeometry(r*.35,r*.45,h,5),0xece0c8,{p:[x,h/2,z]}); b.geo(new THREE.SphereGeometry(r,6,3,0,TAU,0,PI/2),cols[i%3],{p:[x,h*.92,z],s:[1,.7,1],e}); } return b.done(); },
   roots:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const a=i/3*TAU+clRand(-.4,.4), L=clRand(.7,1.15); b.geo(new THREE.CylinderGeometry(.03,.11,L,5,1),0x4a3220,{p:[Math.cos(a)*L*.5,.03,Math.sin(a)*L*.5],r:[0,-a,PI/2+.12],j:.06}); } return b.done(); },
   reeds:()=>{ const b=CGB(); clBlades(b,8,.2,.6,1.1,.03,.12,[.3,.36,.18],[.62,.68,.36]); for(let i=0;i<2;i++){ const x=clRand(-.1,.1), z=clRand(-.1,.1), h=clRand(.85,1.05); b.geo(new THREE.CylinderGeometry(.03,.03,.18,5),0x5a3a1a,{p:[x,h,z],w:.5}); } return b.done(); },
-  lily:()=>{ const b=CGB(); for(let k=0;k<2;k++){ const ox=k?clRand(.25,.4):0, oz=k?clRand(-.3,.3):0, r=k?clRand(.14,.2):clRand(.22,.3), n=9, c=[.3,.55,.22]; for(let i=0;i<n-1;i++){ const a0=i/n*TAU+.35, a1=(i+1)/n*TAU+.35; b.tri([ox,0,oz],[ox+Math.cos(a1)*r,0,oz+Math.sin(a1)*r],[ox+Math.cos(a0)*r,0,oz+Math.sin(a0)*r],c.map(v=>v*1.15),c,c,0,0,0,0,true); } }
+  lily:()=>{ const b=CGB(); for(let k=0;k<2;k++){ const ox=k?clRand(.25,.4):0, oz=k?clRand(-.3,.3):0, r=k?clRand(.14,.2):clRand(.22,.3), n=9, c=[.3,.55,.22]; for(let i=0;i<n-1;i++){ const a0=i/n*TAU+.35, a1=(i+1)/n*TAU+.35; b.tri([ox,0,oz],[ox+Math.cos(a1)*r,0,oz+Math.sin(a1)*r],[ox+Math.cos(a0)*r,0,oz+Math.sin(a0)*r],c.map(v=>v*1.15),c,c,.55,.55,.55,0,true); } } // v14: aWind одинаковый на всю кувшинку — она не гнётся, а медленно дрейфует
     if(CLR()<.5) b.geo(new THREE.ConeGeometry(.06,.07,5),0xffa8c8,{p:[0,.035,0],e:.25}); return b.done(); },
   bones:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const x=clRand(-.25,.25), z=clRand(-.25,.25), a=clRand(0,TAU), L=clRand(.22,.4); b.geo(new THREE.CylinderGeometry(.022,.022,L,4),0xd8d0b8,{p:[x,.025,z],r:[PI/2,a,0]}); for(const sg of [-1,1]) b.geo(new THREE.IcosahedronGeometry(.04,0),0xe8e0c8,{p:[x+Math.sin(a)*L*.5*sg,.03,z+Math.cos(a)*L*.5*sg],flat:1}); }
     if(CLR()<.5) b.geo(new THREE.SphereGeometry(.09,6,4),0xe8e0c8,{p:[clRand(-.15,.15),.07,clRand(-.15,.15)],s:[1,.85,1.15]}); return b.done(); },
@@ -471,7 +480,7 @@ function clCull(cx,cz,XR,Z0,Z1,all){
 
 // ---------- подключение к миру: после расстановки пропсов (buildPropMeshes) — штампы, мелочь; отсечение — вместе с пропсами ----------
 const _bpmT=buildPropMeshes; buildPropMeshes=function(){ if(terOn()) try{ terFinish(); }catch(e){ console.error('terFinish',e); } _bpmT(); };
-const _cpT=cullProps; cullProps=function(cx,cz,force){ TER_U.uTime.value=performance.now()/1000%1000; const was=W&&W.propCullAt; _cpT(cx,cz,force);
+const _cpT=cullProps; cullProps=function(cx,cz,force){ TER_U.uTime.value=performance.now()/1000%1000; TER_U.uRain.value+=((W&&W.rain?1:0)-TER_U.uRain.value)*.05; const was=W&&W.propCullAt; _cpT(cx,cz,force);
   if(W&&W.clutter&&W.propCullAt!==was){ const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12; const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; clCull(cx,cz,xr*far,z0*far,z1*far,!!W.cullAll); } try{ ambTick(); }catch(e){} };
 const _uwT=unloadWorld; unloadWorld=function(){ if(W&&W.ter&&W.ground){ try{ W.ground.material.dispose(); W.ter.ctl.t1.dispose(); W.ter.ctl.t2.dispose(); }catch(e){} }
   if(W&&W.atmos) for(const m of W.atmos){ m.geometry.dispose(); m.material.dispose(); } if(AS.bfly){ try{ scene.remove(AS.bfly.mesh); EVFX.remove(AS.bfly); }catch(e){} AS.bfly=null; } if(AS.amb) AS.amb._spot=null; _uwT(); };

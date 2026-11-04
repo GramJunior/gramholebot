@@ -212,3 +212,10 @@ Offline pipeline in `lab/build/` (Node 18+, Python 3; `npm i` there). Directory 
 * Skeleton enemies’ `Skeletons_*` clips live in `anim_medium_extra.glb` (group z4 loads it).
 * Bow draw: KayKit bows have a static string; there is no string-pull morph.
 * `med` triangles in big fights can reach ~300 k with outlines; if a device drops frames, switch outline to `'none'` (`EVAssets.QUALITY.med.outline='none'`) before lowering post.
+
+## 12. v14: character FX
+
+`EVAssets.init({..., brush: <128px RGBA brush texture>, charFX: true, charSoft: 0.5})` — skinned materials get the painted brush (by atlas colour class),
+bind-pose AO, soft normals, cape sway (`aFx.x`), eyes with highlights/blinking/expressions (`aFx.yzw`, found at load per head) and a warm rim.
+`actor.setExpr('squint'|'hurt'|'happy'|'dead'|null, seconds)`; clip names drive expressions automatically. KayKit capes are made double-sided
+at load. Positions are de-quantized in the shader with `uDQ` (bone(rest) × inverse bind of bone 0) so brush/sway work in model metres.

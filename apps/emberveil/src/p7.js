@@ -175,7 +175,8 @@ function spawnEnemy(kind,x,z,L,o={}){
   e.hp=e.maxHp;
   rig.root.position.set(x,0,z); rig.root.rotation.y=e.face;
   rig.root.traverse(m=>{ if(m.isMesh) e.meshes.push(m); });
-  e.baseMat=MT; const mm=e.mods.find(m=>ELITE_MODS[m].mat); if(mm){ e.baseMat={fire:MTfire,ice:MTice}[ELITE_MODS[mm].mat]; setMat(e,e.baseMat); }
+  e.baseMat=MT; if(!(e.rig&&e.rig.actor)&&typeof MTC!=='undefined'){ e.baseMat=MTC; setMat(e,MTC); } // v14: процедурные существа — рисованная кисть
+  const mm=e.mods.find(m=>ELITE_MODS[m].mat); if(mm){ e.baseMat={fire:MTfire,ice:MTice}[ELITE_MODS[mm].mat]; setMat(e,e.baseMat); }
   if(D.ai==='burrow'){ e.burrowed=false; }
   if(rig.actor){ e.meshes=[]; if(o.summon||G.mode==='raid'||W.kind==='abyss'){ const sk=/^skel/.test(kind)&&rig.actor.clipMap.rise; rig.actor.play(sk?'rise':'spawn',{once:true,duration:.9,fade:0}); e._spawnT=.75; } }
   G.enemies.push(e); return e;
