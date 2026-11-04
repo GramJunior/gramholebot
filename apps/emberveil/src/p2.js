@@ -56,8 +56,16 @@ const SATG={value:1.16};
 // потолок PR для текущего пресета; ?rs=0.75 в адресе фиксирует PR (замеры), ?drs=0 выключает динамическое разрешение
 function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(window.devicePixelRatio||1,IS_MOBILE?Q.prMax:Q.prMaxD); }
 function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(prCap(),Q.prMin); }
-let PR=prCap();
-R.setPixelRatio(PR);
+// v9 (мерцание): PR — масштаб рендера (динамическое разрешение), CPR — плотность буфера холста. Холст НЕ меняет размер при смене PR:
+// сцена рисуется во внутреннюю цель нужного размера (EVPostFX.setScale) и растягивается на холст. Размер холста меняется только
+// при смене окна/пресета и только прямо перед отрисовкой кадра (rsFlush), иначе браузер показывает очищенный (чёрный) буфер.
+let PR=prCap(), CPR=PR;
+R.setPixelRatio(CPR);
+// журнал для Perf HUD/отчёта: сколько раз менялся буфер холста, перевыделялись цели рендера, менялся пресет, терялся контекст
+const RSZ={dirty:true,w:0,h:0,cpr:0,scale:1,n:{canvas:0,rt:0,drs:0,qual:0,lost:0,restored:0,skip:0},lost:false,log:[]};
+function rsLog(m){ RSZ.log.push(Math.round(performance.now()/1000)+'с '+m); if(RSZ.log.length>8) RSZ.log.shift(); }
+canvas.addEventListener('webglcontextlost',e=>{ e.preventDefault(); RSZ.lost=true; RSZ.n.lost++; rsLog('контекст потерян'); },false);
+canvas.addEventListener('webglcontextrestored',()=>{ RSZ.lost=false; RSZ.n.restored++; RSZ.dirty=true; RSZ.w=0; rsLog('контекст восстановлен'); try{ if(typeof AS!=='undefined'&&AS.FX) AS.FX.setSize(window.innerWidth,window.innerHeight,CPR); }catch(e){} },false);
 const scene=new THREE.Scene();
 const cam=new THREE.PerspectiveCamera(36,1,0.5,220);
 scene.fog=new THREE.Fog(0x9fc2a0,40,95);
@@ -344,13 +352,21 @@ function liquidMat(c1,c2,lava){
 
 // ---------- camera rig ----------
 const CAMR={x:0,z:0,tx:0,tz:0,dist:30,pitch:0.94,shake:0,shx:0,shz:0,override:null,fovW:10.8,fovH:15,zoom:1,look:{x:0,y:0,z:0}};
+// камера пересчитывается сразу, а буфер холста — только в rsFlush() прямо перед отрисовкой (в том же кадре)
 function camResize(){
   const w=window.innerWidth,h=window.innerHeight; cam.aspect=w/h;
   CAMR.dist=camFrame();
   cam.updateProjectionMatrix();
-  R.setSize(w,h,false);
-  PA.mat.uniforms.uScale.value=PN.mat.uniforms.uScale.value=h*PR*0.5/Math.tan(cam.fov*PI/360)/1;
-  asResize(w,h);
+  RSZ.dirty=true;
+}
+function rsFlush(){
+  const w=window.innerWidth,h=window.innerHeight, sc=clamp(PR/CPR,.25,1);
+  if(RSZ.dirty){ RSZ.dirty=false;
+    if(w!==RSZ.w||h!==RSZ.h||Math.abs(CPR-RSZ.cpr)>.001){ const a=w/h; if(Math.abs(cam.aspect-a)>1e-4){ cam.aspect=a; CAMR.dist=camFrame(); cam.updateProjectionMatrix(); }
+      R.setPixelRatio(CPR); R.setSize(w,h,false); RSZ.w=w; RSZ.h=h; RSZ.cpr=CPR; RSZ.n.canvas++; RSZ.scale=-1; asResize(w,h); } }
+  if(Math.abs(sc-RSZ.scale)>.001){ RSZ.scale=sc; if(AS.FX&&AS.FX.setScale) AS.FX.setScale(sc);
+    PA.mat.uniforms.uScale.value=PN.mat.uniforms.uScale.value=h*CPR*sc*0.5/Math.tan(cam.fov*PI/360);
+    if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*CPR*sc,h*CPR*sc); }
 }
 function camUpdate(dt,tx,tz){
   let d=CAMR.dist*CAMR.zoom, px, pz, ly=0.6;
@@ -400,7 +416,7 @@ const GAM=(()=>{const a=new Uint8Array(256);for(let i=0;i<256;i++){const v=i/255
 // Если упираемся в процессор (JS дольше бюджета), разрешение не трогаем — это не поможет.
 const PERF={acc:0,frames:0,fps:60,t:0,win:0,winN:0,winCpu:0,good:0,ceil:9,ceilT:0,lastSet:0,hist:new Float32Array(240),hi:0,hn:0,js:0,rs:0,gpu:-1,cpuAvg:0};
 function fpsTarget(){ return S&&S.set&&S.set.fps===30?30:60; }
-function setPR(np,why){ np=Math.round(np*20)/20; if(Math.abs(np-PR)<0.01) return; PR=np; R.setPixelRatio(PR); camResize(); PERF.lastSet=performance.now(); }
+function setPR(np,why){ np=Math.round(np*20)/20; if(Math.abs(np-PR)<0.01) return; PR=np; RSZ.n.drs++; PERF.lastSet=performance.now(); } // применяется в rsFlush(): только масштаб внутренней цели, холст не трогаем
 function perfTick(dt,raw,cpu){
   PERF.acc+=dt; PERF.frames++;
   if(raw>0&&raw<0.25){ PERF.win+=raw; PERF.winN++; PERF.winCpu+=cpu||0; PERF.hist[PERF.hi]=raw*1000; PERF.hi=(PERF.hi+1)%PERF.hist.length; PERF.hn=Math.min(PERF.hn+1,PERF.hist.length); }
@@ -411,7 +427,7 @@ function perfTick(dt,raw,cpu){
   const now=performance.now(), tgt=1000/fpsTarget(), max=prCap(), min=prMin();
   if(PR>max+.01){ setPR(max); return; }
   const gpuOk=PERF.gpu>=0&&PERF.gpu<tgt*.6; // по таймеру GPU видно, что видеокарта не узкое место
-  if(ms>tgt*1.18&&PR>min+.01&&!gpuOk&&cms<tgt*.85){
+  if(ms>tgt*1.18&&PR>min+.01&&!gpuOk&&cms<tgt*.85&&now-PERF.lastSet>900){
     PERF.good=0; PERF.ceil=PR; PERF.ceilT=now;
     setPR(Math.max(min,PR*Math.max(.82,Math.min(.95,Math.sqrt(tgt/ms)))),'down');
   } else if(ms<tgt*1.06){

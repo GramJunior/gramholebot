@@ -35,7 +35,8 @@ function perfSnap(){
     bound:gpuT>=0?(gpuT>cpu*1.1?'GPU':'CPU'):(ms>cpu*1.35+2?'GPU?':'CPU?'),
     calls:PH.calls,tris:PH.tris,progs:info.programs?info.programs.length:0,tex:info.memory.textures,geo:info.memory.geometries,
     act:AS.live.size,vis:AS.visible||0,anim:AS.animated||0,parts:perfParticles(),en:G.enemies?G.enemies.filter(e=>e.alive).length:0,
-    pr:PR,prMin:prMin(),prMax:prCap(),dpr:window.devicePixelRatio||1,w:R.domElement.width,h:R.domElement.height,q:QL,qSet:S.set.q,post:AS.post!=='low'&&!!AS.FX,fpsT:fpsTarget(),mode:G.mode,thr:!!PERF.throttled};
+    pr:PR,prMin:prMin(),prMax:prCap(),dpr:window.devicePixelRatio||1,w:R.domElement.width,h:R.domElement.height,q:QL,qSet:S.set.q,post:AS.post!=='low'&&!!AS.FX,fpsT:fpsTarget(),mode:G.mode,thr:!!PERF.throttled,
+    rsc:RSZ.scale>0?RSZ.scale:1,cv:RSZ.n.canvas,rta:(AS.FX&&AS.FX.allocs)||0,drs:RSZ.n.drs,qs:RSZ.n.qual,lost:RSZ.n.lost,rest:RSZ.n.restored};
 }
 const Q_NAME={perf:'Произв.',low:'Низк.',med:'Сред.',high:'Выс.'};
 const f1=v=>v<0?'—':v<10?v.toFixed(1):Math.round(v)+'';
@@ -46,7 +47,8 @@ function perfHudText(s){
 JS ${f1(s.js)} · отправка ${f1(s.rs)} · GPU ${g}${s.gpu<0&&s.bound==='GPU?'?' (оценка)':''} мс → ${s.bound}
 вызовы ${s.calls} · треуг. ${Math.round(s.tris/1000)}k · прогр. ${s.progs}
 текст. ${s.tex} · геом. ${s.geo} · акт. ${s.vis}/${s.act} (аним. ${s.anim}) · част. ${s.parts}
-PR ${s.pr.toFixed(2)} [${s.prMin.toFixed(2)}–${s.prMax.toFixed(2)}] DPR ${s.dpr} · ${s.w}×${s.h}
+PR ${s.pr.toFixed(2)} [${s.prMin.toFixed(2)}–${s.prMax.toFixed(2)}] DPR ${s.dpr} · ${s.w}×${s.h} · рендер ${Math.round(s.rsc*100)}%
+холст ${s.cv} · цели ${s.rta} · DRS ${s.drs} · пресет ${s.qs} · контекст −${s.lost}/+${s.rest}
 ${Q_NAME[s.q]}${s.qSet==='auto'?' (авто)':''} · пост ${s.post?'вкл':'выкл'} · цель ${s.fpsT}`;
 }
 function perfHudShow(on){
@@ -75,6 +77,7 @@ function perfReport(){
     `Экран ${d.scr} · DPR ${d.dpr} · окно ${window.innerWidth}×${window.innerHeight} · память ${d.mem} ГБ · ядер ${d.cores}${d.mobile?' · телефон':''}`,
     `Качество: ${Q_NAME[QL]}${S.set.q==='auto'?' (авто)':''} · пост: ${s.post?'вкл':'выкл'} · цель ${fpsTarget()} к/с · модели: ${AS.ok?'детальные':'простые'}`,
     `Сейчас (${s.mode}): ${f1(s.fps)} к/с (1% ${f1(s.low)}) · кадр ${f1(s.ms)} мс · JS ${f1(s.js)} · отпр. ${f1(s.rs)} · GPU ${s.gpu<0?'—':f1(s.gpu)} → ${s.bound}`,
+    `Мерцание: холст менялся ${s.cv} раз · цели рендера ${s.rta} · шагов DRS ${s.drs} (масштаб ${Math.round(s.rsc*100)}%, холст не меняется) · смен пресета/поста ${s.qs} · контекст потерян ${s.lost}, восстановлен ${s.rest}${RSZ.log.length?' · '+RSZ.log.join('; '):''}`,
     `PR ${s.pr.toFixed(2)} [${s.prMin.toFixed(2)}–${s.prMax.toFixed(2)}] · буфер ${s.w}×${s.h} · вызовы ${s.calls} · треуг. ${Math.round(s.tris/1000)}k · прогр. ${s.progs} · текст. ${s.tex} · геом. ${s.geo} · акт. ${s.vis}/${s.act}`];
   const B=PH.benchRes; if(B) for(const k of ['village','crowd']){ const r=B[k]; if(r) L.push(`Тест ${k==='village'?'деревня':'толпа'}: ${f1(r.fps)} к/с (1% ${f1(r.low)}) · кадр ${f1(r.ms)} · JS ${f1(r.js)} · отпр. ${f1(r.rs)} · GPU ${r.gpu<0?'—':f1(r.gpu)} · PR ${r.pr.toFixed(2)} · вызовы ${r.calls} · треуг. ${Math.round(r.tris/1000)}k`); }
   return L.join('\n');

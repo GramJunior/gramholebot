@@ -206,18 +206,18 @@ function postQ(){ if(S.set.post==='off'||QL==='perf') return 'low'; return QL; }
 const asQ=()=>QL;
 function asFXInit(){
   if(!window.EVPostFX) return;
-  try{ AS.FX=EVPostFX.create(R,scene,cam,{quality:postQ()}); AS.post=postQ(); const w=window.innerWidth,h=window.innerHeight; AS.FX.setSize(w,h,PR); }catch(e){ console.warn('postfx',e); AS.FX=null; }
+  try{ AS.FX=EVPostFX.create(R,scene,cam,{quality:postQ()}); AS.post=postQ(); const w=window.innerWidth,h=window.innerHeight; AS.FX.setSize(w,h,CPR); RSZ.scale=-1; }catch(e){ console.warn('postfx',e); AS.FX=null; }
   if(window.EVFX&&!AS.trail){ try{ AS.trail=EVFX.slashTrail({color:'#ffe2a0',segments:14}); scene.add(AS.trail.mesh); }catch(e){ AS.trail=null; } }
 }
 function asSetQuality(){
   if(window.EVAssets&&EVAssets.manifest) EVAssets.setQuality(asQ());
   emberLight.visible=Q.point!==false; // «Производительность»: без точечного света (дешевле каждый пиксель)
   try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){}
-  if(AS.FX){ AS.FX.setQuality(postQ()); AS.post=postQ(); AS.FX.setSize(window.innerWidth,window.innerHeight,PR); }
+  if(AS.FX){ const pq=postQ(); if(AS.FX.quality!==pq||AS.post!==pq){ AS.FX.setQuality(pq); RSZ.n.qual++; rsLog('пост '+pq); } AS.post=pq; RSZ.scale=-1; }
   if(AS.amb) AS.amb.count=asAmbCount();
   for(const a of AS.live) a._olFar=undefined;
 }
-function asResize(w,h){ if(AS.FX) AS.FX.setSize(w,h,PR); if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*PR,h*PR); }
+function asResize(w,h){ if(AS.FX) AS.FX.setSize(w,h,CPR); }
 const AMB_OF={pollen:'pollen',firefly:'firefly',bubble:'bubble',wisp:'wisp',ash:'ash',ember:'ember'};
 function asAmbCount(){ return QL==='perf'?24:QL==='low'?60:QL==='med'?160:280; }
 function asZone(Z){
@@ -276,7 +276,8 @@ function asOutlineVis(a,on){ if(!a._outline) return; for(const m of a.meshes){ c
   for(const k in a.slots){ const w=a.slots[k]; if(w) w.traverse(o=>{ if(o.userData&&o.userData.isOutline) o.visible=on&&a._weaponOutline(); }); } }
 
 function asRender(dt){
-  if(AS.FX&&AS.post!=='low'){ AS.FX.render(dt); } else { R.setRenderTarget(null); R.render(scene,cam); }
+  rsFlush(); if(RSZ.lost){ RSZ.n.skip++; return; }
+  if(AS.FX){ AS.FX.render(dt); } else { R.setRenderTarget(null); R.render(scene,cam); }
   lumaGuard(dt);
 }
 // safety net against washed-out frames on real GPUs: about once a second read three thin rows of the final frame
@@ -301,7 +302,7 @@ function lumaGuard(dt){
 // adaptive quality («Авто»): шаг вниз, если при минимальном разрешении (или упираясь в процессор) кадров < 72% цели ~4 с;
 // шаг вверх (не выше «Сред.»), если ~30 с подряд при максимальном разрешении держим цель и с последнего снижения прошло > 90 с.
 const AQ={low:0,hi:0,t:0,downT:-1e9};
-function applyQuality(q,why){ QL=q; Q=QP[QL]; const max=prCap(); if(PR>max||why==='set') PR=max; R.setPixelRatio(PR); asSetQuality(); camResize(); }
+function applyQuality(q,why){ const was=QL; QL=q; Q=QP[QL]; const max=prCap(); CPR=max; if(PR>max||why==='set') PR=max; asSetQuality(); camResize(); RSZ.n.qual++; rsLog('пресет '+was+'→'+q+(why?' ('+why+')':'')); }
 function asAdapt(fps){
   if(S.set.q!=='auto'||/[?&]q=/.test(location.search)||!G.P||G.mode==='title'||document.hidden||PERF.throttled||PH.bench) { AQ.low=0; AQ.hi=0; return; }
   const tgt=fpsTarget(), atMin=PR<=prMin()+.01, atMax=PR>=prCap()-.01, cpuBound=PERF.cpuAvg>1000/tgt*.85, now=performance.now();
