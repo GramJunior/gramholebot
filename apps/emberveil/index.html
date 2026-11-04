@@ -1791,22 +1791,89 @@ html.qlow #hud .ico.ic{animation-iteration-count:1!important}
   // r128 meshtoon_frag ends with 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );' (no <output_fragment> chunk yet)
   const OUT_RE = /#include <output_fragment>|gl_FragColor = vec4\( outgoingLight, diffuseColor\.a \);/;
   // Toon material compatible with the game's toonMat(): userData.U = {uFlash, uTint}; rim uniform shared (S.rim).
+  // v14 «живые персонажи»: скин-модели получают ту же кисть, что и мир (мазки на ткани и волосах, зерно кожи/кожаных деталей,
+  // пятна и царапины металла, мягкие складки), мягкие нормали, AO у ног, тёплый контровой свет, глаза с бликами, моргание и
+  // простые выражения, качание плащей. Всё внутри того же материала: ни одного нового вызова отрисовки.
+  const CHAR_VS_PARS = 'attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform float uSoft; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
+  const CHAR_VS = `
+  {
+    vec4 evB = bindMatrix * vec4( transformed, 1.0 );
+    float sw = aFx.x;
+    if ( sw > 0.0 ) { // плащи: отстают при беге, подлетают, колышутся (физика «на глаз», в позе привязки — дальше обычный скиннинг)
+      float fl = sin( uTime * 5.3 + evB.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + evB.x * 6.0 + uSway.w * 1.7 ) * 0.4;
+      float s2 = sw * sw;
+      evB.xyz += vec3( uSway.y * 0.22 * s2 + fl * 0.025 * sw, ( 0.03 + 0.42 * uSway.x ) * s2, -( 0.05 + 0.5 * uSway.x ) * s2 + fl * ( 0.03 + 0.06 * uSway.x ) * sw );
+      transformed = ( bindMatrixInverse * evB ).xyz;
+    }
+    vBind = evB.xyz; vBN = normalize( mat3( bindMatrix ) * normal ); vFx = aFx;
+  }`;
+  const CHAR_FS_PARS = 'uniform sampler2D tBrush; uniform vec2 uBlink; uniform vec3 uSkin; uniform vec2 uCH; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;\n';
+  const CHAR_FS = `
+  float evMetal = 0.0, evHL = 0.0, evEye = 0.0;
+  {
+    vec3 c = diffuseColor.rgb; float mxC = max( c.r, max( c.g, c.b ) ), mnC = min( c.r, min( c.g, c.b ) ), satC = mxC - mnC, lumC = dot( c, vec3( 0.299, 0.587, 0.114 ) );
+    vec3 nB = normalize( vBN ); vec3 p = vBind;
+    vec2 tg = normalize( vec2( -nB.z, nB.x ) + vec2( 1e-4 ) );
+    vec2 uvB = mix( vec2( dot( p.xz, tg ), p.y ), p.xz, smoothstep( 0.5, 0.8, abs( nB.y ) ) );
+    vec4 bP = texture2D( tBrush, uvB * 1.9 + vec2( 0.37, 0.11 ) );
+    float rb = c.r - c.b;
+    float skin = step( c.b, c.g ) * step( c.g, c.r + 0.02 ) * smoothstep( 0.5, 0.6, lumC ) * smoothstep( 0.06, 0.12, rb ) * ( 1.0 - smoothstep( 0.4, 0.52, rb ) );
+    evMetal = ( 1.0 - smoothstep( 0.07, 0.17, satC ) ) * smoothstep( 0.22, 0.36, lumC ) * ( 1.0 - skin );
+    float leather = smoothstep( 0.08, 0.22, rb ) * ( 1.0 - smoothstep( 0.3, 0.46, lumC ) ) * ( 1.0 - skin );
+    float cloth = clamp( 1.0 - skin - evMetal - leather, 0.0, 1.0 );
+    float cape = vFx.x > 0.0 ? 1.0 : 0.0;
+    float m = 1.0;
+    m *= mix( 1.0, 0.8 + 0.4 * bP.r, cloth * 0.85 );                          // ткань, волосы: мазки кисти
+    m *= mix( 1.0, 0.78 + 0.44 * bP.g, leather );                             // кожа ремней, сапог: волокна
+    m *= mix( 1.0, 0.93 + 0.14 * bP.b, skin );                                // лицо и руки: мягкие пятна
+    m *= mix( 1.0, 0.84 + 0.3 * bP.b + ( bP.a - 0.5 ) * 0.22, evMetal );       // металл: пятна и царапины
+    float fold = sin( dot( p.xz, tg ) * 15.0 + bP.b * 4.0 + p.y * 2.0 );
+    m *= 1.0 - ( 0.09 * fold + 0.03 ) * ( cloth * 0.55 + cape * 0.9 ) * ( 1.0 - skin );   // мягкие складки ткани / плаща
+    float hN = ( p.y - uCH.x ) / uCH.y;
+    m *= mix( 0.66, 1.0, smoothstep( 0.0, 0.2, hN ) ) * mix( 1.0, 1.07, smoothstep( 0.55, 1.0, hN ) );   // AO у ног, свет сверху
+    m *= mix( 0.84, 1.0, smoothstep( -0.75, -0.15, nB.y ) );                 // нижние грани темнее
+    c *= m;
+    c = mix( c, c * vec3( 1.06, 0.98, 0.9 ), skin * 0.5 );                    // тёплая кожа
+    if ( vFx.w < 0.5 ) { // глаза: блик, тёплая радужка снизу, веки (моргание, прищур, «радость»)
+      vec2 e = vFx.yz; evEye = 1.0;
+      vec3 ec = mix( vec3( 0.03, 0.025, 0.04 ), vec3( 0.2, 0.12, 0.08 ), smoothstep( 0.6, 0.05, e.y ) );
+      float h1 = smoothstep( 0.24, 0.13, length( ( e - vec2( 0.64, 0.7 ) ) * vec2( 1.0, 1.15 ) ) );
+      float h2 = smoothstep( 0.11, 0.05, length( ( e - vec2( 0.33, 0.28 ) ) * vec2( 1.0, 1.15 ) ) );
+      evHL = max( h1, h2 * 0.8 );
+      float top = 1.0 - uBlink.x * 1.1, bot = uBlink.y * 1.1;
+      float lid = clamp( step( top, e.y ) + step( e.y, bot ), 0.0, 1.0 );
+      evHL *= 1.0 - lid;
+      ec = mix( ec, uSkin * 0.9, lid );
+      float ln = smoothstep( 0.1, 0.0, abs( e.y - top ) ) * step( 0.03, uBlink.x ) + smoothstep( 0.1, 0.0, abs( e.y - bot ) ) * step( 0.03, uBlink.y );
+      ec = mix( ec, vec3( 0.1, 0.06, 0.05 ), clamp( ln, 0.0, 1.0 ) );
+      c = ec;
+    }
+    diffuseColor.rgb = c;
+  }`;
+  const CHAR_OUT = `
+  outgoingLight += vec3( 1.0, 0.95, 0.86 ) * evMetal * smoothstep( 0.3, 0.62, rimF ) * 0.16;   // металл: светлая кромка
+  outgoingLight += uRim * smoothstep( 0.62, 0.8, rimF ) * 0.22 * diffuseColor.rgb * ( 1.0 - evEye );  // тёплый контровой свет персонажа
+  outgoingLight = mix( outgoingLight, vec3( 1.0, 0.98, 0.95 ), evHL * 0.9 );`;
+  // Toon material compatible with the game's toonMat(): userData.U = {uFlash, uTint}; rim uniform shared (S.rim).
   function toonMat(map, o = {}) {
     const m = new T.MeshToonMaterial({ map: map || null, gradientMap: S.grad, color: 0xffffff,
       transparent: !!o.transparent, opacity: o.opacity === undefined ? 1 : o.opacity, depthWrite: o.depthWrite !== false, side: T.FrontSide });
     m.skinning = !!o.skinning;
+    const ch = !!(o.skinning && S.charFX && o.char !== false);
     const U = { uFlash: { value: 0 }, uTint: { value: new T.Vector4(0, 0, 0, 0) }, uGlow: { value: new T.Vector4(0, 0, 0, 0) }, uMode: { value: o.mode || 0 }, uTime: EVAssets.time };
+    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush });
     if (o.tint) { const c = C3(o.tint[0]); U.uTint.value.set(c.r, c.g, c.b, o.tint[1]); }
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
-    m.userData.U = U;
+    m.userData.U = U; m.userData.char = ch;
     m.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
-      sh.vertexShader = 'varying vec3 vObjPos;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
-      sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' +
-        sh.fragmentShader.replace(OUT_RE, (m0) => `
+      Object.assign(sh.uniforms, m.userData.U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
+      sh.vertexShader = 'varying vec3 vObjPos;\n' + (ch ? 'uniform float uTime;\n' + CHAR_VS_PARS : '') + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (ch ? CHAR_VS : '') + '\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
+      if (ch) sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = normalize( mix( vec3( normal ), onormal, uSoft ) );');
+      sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' + (ch ? CHAR_FS_PARS : '') +
+        sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + (ch ? CHAR_FS : '')).replace(OUT_RE, (m0) => `
   float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
   float rim = smoothstep(0.55, 0.72, rimF);
-  outgoingLight += uRim * rim * 0.32 * diffuseColor.rgb;
+  outgoingLight += uRim * rim * ${ch ? '0.2' : '0.32'} * diffuseColor.rgb;${ch ? CHAR_OUT : ''}
   float lum = dot(outgoingLight, vec3(0.33));
   outgoingLight = mix(outgoingLight, uTint.rgb * (0.4 + 0.8 * lum), uTint.a);
   if (uMode > 0.5 && uMode < 1.5) { // lava / ember skin: dark basalt + glowing cracks driven by atlas brightness
@@ -1827,7 +1894,7 @@ html.qlow #hud .ico.ic{animation-iteration-count:1!important}
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
-    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '');
+    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '') + (ch ? 'c' : '');
     if (o.paint && S.paint) { const base = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { base(sh, r); S.paint(sh); }; m.userData.paint = 1; }
     return m;
   }
@@ -1959,6 +2026,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const n = o.geometry.attributes.position.count; o.geometry.setAttribute('aOff', new T.BufferAttribute(new Float32Array(n).fill(m.elements[13] / sy), 1)); }); }
     }
     if (skinnedFile) g.scene.userData.evRest = measureSkinned(g.scene);
+    if (skinnedFile && S.charFX) { try { charPrep(g.scene, key); } catch (e) { console.warn('EVAssets.charPrep ' + key, e); } }
   }
   // accurate bind-pose bounds of skinned meshes (quantized positions => geometry bbox is meaningless)
   function normScale(attr) {
@@ -1986,6 +2054,66 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return box;
   }
 
+  function whiteTex() { const t = new T.DataTexture(new Uint8Array([128, 128, 128, 128]), 1, 1, T.RGBAFormat); t.needsUpdate = true; return t; }
+  // ------------------------------------------------------------------ v14 character prep (once per file; clones share geometry)
+  // aFx = (качание 0..1, глаз u, глаз v, 1 − признак глаза); onormal — сглаженные нормали (мягкая заливка + контур).
+  // Глаза KayKit — отдельные островки сетки на тёмной плашке атласа: ищем тёмные треугольники на голове, смотрящие вперёд,
+  // группируем по связности и берём пару «высоких» (брови — широкие и плоские, маски — крупные).
+  const _px = new Map();
+  function texPixels(map) {
+    if (!map || !map.image || !map.image.width) return null; let r = _px.get(map); if (r) return r;
+    try { const im = map.image, w = im.width, h = im.height, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); r = { d: g.getImageData(0, 0, w, h).data, w, h }; } catch (e) { r = null; }
+    _px.set(map, r); return r;
+  }
+  function texAt(px, u, v) { const x = Math.min(px.w - 1, Math.max(0, Math.floor(u * px.w))), y = Math.min(px.h - 1, Math.max(0, Math.floor(v * px.h))), k = (y * px.w + x) * 4; return [px.d[k] / 255, px.d[k + 1] / 255, px.d[k + 2] / 255]; }
+  const isSkinC = (c) => { const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2], rb = c[0] - c[2]; return c[2] <= c[1] && c[1] <= c[0] + 0.02 && l > 0.55 && rb > 0.08 && rb < 0.45; };
+  function charPrep(root, key) {
+    root.updateMatrixWorld(true);
+    root.traverse((o) => {
+      if (!o.isSkinnedMesh || o.geometry.attributes.aFx) return;
+      const g = o.geometry, P = g.attributes.position, N = g.attributes.normal, UV = g.attributes.uv, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, n = P.count;
+      if (!N) return;
+      ensureOutlineNormals(g);
+      const fx = new Float32Array(n * 4); for (let i = 0; i < n; i++) fx[i * 4 + 3] = 1;
+      const ps = normScale(P), us = UV ? normScale(UV) : 1, ws = normScale(SW), B = new Float32Array(n * 3), v = new T.Vector3();
+      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
+      if (/cape|cloak/i.test(o.name)) { let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, B[i * 3 + 1]); y1 = Math.max(y1, B[i * 3 + 1]); }
+        for (let i = 0; i < n; i++) fx[i * 4] = Math.max(0.001, Math.min(1, (y1 - B[i * 3 + 1]) / Math.max(1e-3, y1 - y0))); o.userData.evCape = 1; }
+      const head = o.skeleton.bones.findIndex((b) => /^head$/i.test(b.name)), px = UV && texPixels(o.material.map);
+      if (head >= 0 && px) {
+        const GC = (A, i, k) => k === 0 ? A.getX(i) : k === 1 ? A.getY(i) : k === 2 ? A.getZ(i) : A.getW(i);
+        const isHead = (i) => { for (let k = 0; k < 4; k++) if (GC(SI, i, k) === head && GC(SW, i, k) * ws > 0.5) return true; return false; };
+        const idx = g.index, nt = idx ? idx.count / 3 : n / 3, vi = (t, k) => idx ? idx.getX(t * 3 + k) : t * 3 + k;
+        const par = new Int32Array(n).map((_, i) => i); const find = (i) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+        const dark = new Uint8Array(n); let hx0 = 1e9, hx1 = -1e9, hy0 = 1e9, hy1 = -1e9; const skinVotes = new Map(); let nd = 0;
+        const e1 = new T.Vector3(), e2 = new T.Vector3(), fn = new T.Vector3();
+        for (let t = 0; t < nt; t++) {
+          const a = vi(t, 0), b = vi(t, 1), c = vi(t, 2); if (!isHead(a) || !isHead(b) || !isHead(c)) continue;
+          for (const q of [a, b, c]) { hx0 = Math.min(hx0, B[q * 3]); hx1 = Math.max(hx1, B[q * 3]); hy0 = Math.min(hy0, B[q * 3 + 1]); hy1 = Math.max(hy1, B[q * 3 + 1]); }
+          e1.set(B[b * 3] - B[a * 3], B[b * 3 + 1] - B[a * 3 + 1], B[b * 3 + 2] - B[a * 3 + 2]); e2.set(B[c * 3] - B[a * 3], B[c * 3 + 1] - B[a * 3 + 1], B[c * 3 + 2] - B[a * 3 + 2]); fn.crossVectors(e1, e2).normalize();
+          const u = (UV.getX(a) + UV.getX(b) + UV.getX(c)) * us / 3, w = (UV.getY(a) + UV.getY(b) + UV.getY(c)) * us / 3, col = texAt(px, u, w), l = 0.299 * col[0] + 0.587 * col[1] + 0.114 * col[2];
+          if (fn.z > 0.35 && l < 0.16) { dark[a] = dark[b] = dark[c] = 1; par[find(b)] = find(a); par[find(c)] = find(a); nd++; }
+          else if (fn.z > 0.3 && isSkinC(col)) { const k = col.map((x) => Math.round(x * 20)).join(','); skinVotes.set(k, (skinVotes.get(k) || 0) + 1); }
+        }
+        let best = null, bv = 0; for (const [k, c] of skinVotes) if (c > bv) { bv = c; best = k; }
+        if (best) o.userData.evSkin = best.split(',').map((x) => +x / 20);
+        if (nd) {
+          // weld by position (UV seams split vertices)
+          const pos = new Map(); for (let i = 0; i < n; i++) if (dark[i]) { const k = B[i * 3].toFixed(3) + ',' + B[i * 3 + 1].toFixed(3) + ',' + B[i * 3 + 2].toFixed(3); const j = pos.get(k); if (j === undefined) pos.set(k, i); else par[find(i)] = find(j); }
+          const comps = new Map(); for (let i = 0; i < n; i++) if (dark[i]) { const r = find(i); let C = comps.get(r); if (!C) comps.set(r, C = { v: [], x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 }); C.v.push(i); C.x0 = Math.min(C.x0, B[i * 3]); C.x1 = Math.max(C.x1, B[i * 3]); C.y0 = Math.min(C.y0, B[i * 3 + 1]); C.y1 = Math.max(C.y1, B[i * 3 + 1]); }
+          const hw = hx1 - hx0, hh = hy1 - hy0, hc = (hx0 + hx1) / 2;
+          const cand = [...comps.values()].filter((C) => { const w = C.x1 - C.x0, h = C.y1 - C.y0; return w > 0 && h > 0 && w < hw * 0.32 && h < hh * 0.42 && h >= w * 0.7; })
+            .sort((A, Bc) => (Bc.x1 - Bc.x0) * (Bc.y1 - Bc.y0) - (A.x1 - A.x0) * (A.y1 - A.y0));
+          const L = cand.find((C) => (C.x0 + C.x1) / 2 < hc), R = cand.find((C) => (C.x0 + C.x1) / 2 > hc);
+          if (L && R && Math.abs((L.y0 + L.y1) - (R.y0 + R.y1)) / 2 < hh * 0.15) {
+            for (const C of [L, R]) { const w = C.x1 - C.x0, h = C.y1 - C.y0; for (const i of C.v) { fx[i * 4 + 1] = (B[i * 3] - C.x0) / w; fx[i * 4 + 2] = (B[i * 3 + 1] - C.y0) / h; fx[i * 4 + 3] = 0; } }
+            o.userData.evEyes = 1;
+          }
+        }
+      }
+      g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
+    });
+  }
   function load(groups, onProgress) {
     if (!S.manifest) return Promise.reject(new Error('EVAssets.init() first'));
     const list = [];
@@ -2007,7 +2135,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const M = new T.Matrix4().copy(bindInv).multiply(new T.Matrix4().copy(sk.boneInverses[r.b]).invert()).multiply(new T.Matrix4().copy(r.bone.matrixWorld).invert()).multiply(r.o.matrixWorld);
       return { g: r.o.geometry, M, b: r.b }; }));
     let nv = 0, ni = 0; for (const p of parts) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
-    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4);
+    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4), FX = new Float32Array(nv * 4);
     const IDX = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
     const v = new T.Vector3(), nm = new T.Matrix3(); let o = 0, oi = 0;
     for (const p of parts) {
@@ -2019,6 +2147,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         v.set(pos.getX(i) * ps, pos.getY(i) * ps, pos.getZ(i) * ps); if (p.M) v.applyMatrix4(p.M); P[k] = v.x; P[k + 1] = v.y; P[k + 2] = v.z;
         v.set(nor.getX(i) * ns, nor.getY(i) * ns, nor.getZ(i) * ns); if (p.M) v.applyMatrix3(nm); v.normalize(); N[k] = v.x; N[k + 1] = v.y; N[k + 2] = v.z;
         if (uv) { UV[(o + i) * 2] = uv.getX(i) * us; UV[(o + i) * 2 + 1] = uv.getY(i) * us; }
+        const fa = A.aFx; if (fa && !p.M) { FX[k4] = fa.getX(i); FX[k4 + 1] = fa.getY(i); FX[k4 + 2] = fa.getZ(i); FX[k4 + 3] = fa.getW(i); } else FX[k4 + 3] = 1;
         if (p.M) { SI[k4] = p.b; SW[k4] = 1; }
         else { const si = A.skinIndex, sw = A.skinWeight, ws = normScale(sw); SI[k4] = si.getX(i); SI[k4 + 1] = si.getY(i); SI[k4 + 2] = si.getZ(i); SI[k4 + 3] = si.getW(i);
           SW[k4] = sw.getX(i) * ws; SW[k4 + 1] = sw.getY(i) * ws; SW[k4 + 2] = sw.getZ(i) * ws; SW[k4 + 3] = sw.getW(i) * ws; }
@@ -2029,7 +2158,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     }
     const g = new T.BufferGeometry();
     g.setAttribute('position', new T.BufferAttribute(P, 3)); g.setAttribute('normal', new T.BufferAttribute(N, 3)); g.setAttribute('uv', new T.BufferAttribute(UV, 2));
-    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
+    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setAttribute('aFx', new T.BufferAttribute(FX, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
     return g;
   }
 
@@ -2073,6 +2202,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (def.hide) for (const n of def.hide) { const p = this.findPart(n); if (p) p.visible = false; }
       // scale to game height
       const rest = g.scene.userData.evRest; const h0 = rest ? rest.max.y - Math.max(0, rest.min.y) : 2;
+      this._charInit(rest, h0);
       this.baseScale = (def.h || 2) / (h0 || 2) * (this.opts.scale || 1);
       this.model.scale.setScalar(this.baseScale);
       this.height = def.h || 2; this.radius = (rest ? Math.max(rest.max.x - rest.min.x, rest.max.z - rest.min.z) * 0.5 * this.baseScale : 0.5);
@@ -2090,6 +2220,35 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       S.actors.add(this);
       this.play(this.opts.clip || 'idle', { fade: 0 });
       this.mixer.update(Math.random() * 2);
+    }
+    // v14: per-actor character uniforms (height band for AO, skin colour for eyelids), blink/expression/cape state
+    _charInit(rest, h0) {
+      this._fx = { blinkT: 1 + Math.random() * 3, blink: 0, expr: null, exprT: 0, lid: [0, 0], px: null, pz: 0, spd: 0, turn: 0, yaw: null };
+      let skin = null, eyes = false; for (const m of this.meshes) { if (m.userData.evSkin && !skin) skin = m.userData.evSkin; if (m.userData.evEyes) eyes = true; }
+      this._fx.eyes = eyes && this.def.mat !== 'ghost' && this.def.mat !== 'lava' && this.def.mat !== 'stone';
+      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]); }
+    }
+    /** простые выражения: 'blink' | 'squint' (замах, усилие) | 'hurt' (удар) | 'happy' (радость) | 'dead' | null */
+    setExpr(e, t) { if (!this._fx) return; this._fx.expr = e; this._fx.exprT = t === undefined ? 0.5 : t; }
+    _charTick(dt) {
+      const F = this._fx; if (!F) return;
+      // эмоция по текущему клипу (без правок игры): замах/удар — прищур, получил удар — зажмурился, радость — «улыбка глазами», смерть — закрыты
+      const cn = this.currentName || '';
+      let tgt = [0, 0];
+      if (cn.indexOf('death') === 0) tgt = [1, 0];
+      else if (F.exprT > 0) { F.exprT -= dt; tgt = F.expr === 'hurt' ? [0.85, 0.2] : F.expr === 'squint' ? [0.42, 0.18] : F.expr === 'happy' ? [0.12, 0.5] : F.expr === 'dead' ? [1, 0] : [0, 0]; }
+      else if (cn === 'hit' || cn === 'hit2') tgt = [0.85, 0.2];
+      else if (cn === 'attack' || cn === 'heavy' || cn === 'dash' || cn === 'leap' || cn === 'skill' || cn === 'spin') tgt = [0.4, 0.15];
+      else if (cn === 'cheer' || cn === 'talk') tgt = cn === 'cheer' ? [0.1, 0.5] : [0, 0.12];
+      F.blinkT -= dt; if (F.blinkT <= 0) { F.blink = 0.16; F.blinkT = 1.8 + Math.random() * 3.6; if (Math.random() < 0.18) F.blinkT = 0.25; }
+      if (F.blink > 0) { F.blink -= dt; tgt = [1, Math.max(tgt[1], 0)]; }
+      const k = Math.min(1, dt * 22); F.lid[0] += (tgt[0] - F.lid[0]) * k; F.lid[1] += (tgt[1] - F.lid[1]) * k;
+      // плащ: скорость и поворот корня в мировых координатах
+      const r = this.root; let spd = 0, turn = 0;
+      if (F.px !== null && dt > 0) { spd = Math.hypot(r.position.x - F.px, r.position.z - F.pz) / dt; let dy = r.rotation.y - F.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); turn = dy / dt; }
+      F.px = r.position.x; F.pz = r.position.z; F.yaw = r.rotation.y;
+      const ks = Math.min(1, dt * 5); F.spd += (Math.min(1, spd / 6) - F.spd) * ks; F.turn += (Math.max(-1, Math.min(1, -turn / 8)) - F.turn) * ks;
+      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uBlink) continue; if (F.eyes) U.uBlink.value.set(F.lid[0], F.lid[1]); U.uSway.value.x = F.spd; U.uSway.value.y = F.turn; }
     }
     findPart(name) { const n = T.PropertyBinding.sanitizeNodeName(name); return this.parts[name] || this.parts[n] || null; }
     // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material).
@@ -2119,7 +2278,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         if (merged === undefined) {
           if (rigid.length) merged = mergeFloatSkinned(list, rigid);
           else {
-            const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'];
+            const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight', 'aFx', 'onormal'];
             const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
             const sig = (gg) => Object.keys(gg.attributes).sort().map((k) => k + gg.attributes[k].array.constructor.name + gg.attributes[k].normalized + gg.attributes[k].itemSize).join('|');
             merged = geos.some((gg) => sig(gg) !== sig(geos[0])) ? null : T.BufferGeometryUtils.mergeBufferGeometries(geos, false);
@@ -2207,7 +2366,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     update(dt, o) {
       if (this._flashT > 0) { this._flashT -= dt; this.setFlash(Math.max(0, this._flashT / this._flashMax) * 0.85); }
       const step = o && o.step ? o.step : o && o.far ? S.Q.animStepFar : 1;
-      this._acc += dt; if (++this._t % step !== 0) return; this.mixer.update(this._acc); this._acc = 0;
+      this._acc += dt; if (++this._t % step !== 0) return; this._charTick(this._acc); this.mixer.update(this._acc); this._acc = 0;
     }
     dispose() {
       this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.model);
@@ -2419,6 +2578,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   }
   function init(o = {}) {
     S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.paint = o.paint || null; S.paintU = o.paintU || null;
+    S.charFX = o.charFX !== false; S.brush = { value: o.brush || whiteTex() }; S.charSoft = { value: o.charSoft === undefined ? 0.5 : o.charSoft };
     S.linear = !S.renderer || S.renderer.outputEncoding === T.LinearEncoding;
     S.loader = new T.GLTFLoader();
     const mo = global.MeshoptDecoder; if (mo) S.loader.setMeshoptDecoder(mo);
@@ -4459,7 +4619,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint,brush:PAINT_U.tBrush.value}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));

@@ -360,6 +360,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const n = o.geometry.attributes.position.count; o.geometry.setAttribute('aOff', new T.BufferAttribute(new Float32Array(n).fill(m.elements[13] / sy), 1)); }); }
     }
     if (skinnedFile) g.scene.userData.evRest = measureSkinned(g.scene);
+    if (skinnedFile && S.charFX) { try { charPrep(g.scene, key); } catch (e) { console.warn('EVAssets.charPrep ' + key, e); } }
   }
   // accurate bind-pose bounds of skinned meshes (quantized positions => geometry bbox is meaningless)
   function normScale(attr) {
@@ -387,6 +388,66 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return box;
   }
 
+  function whiteTex() { const t = new T.DataTexture(new Uint8Array([128, 128, 128, 128]), 1, 1, T.RGBAFormat); t.needsUpdate = true; return t; }
+  // ------------------------------------------------------------------ v14 character prep (once per file; clones share geometry)
+  // aFx = (качание 0..1, глаз u, глаз v, 1 − признак глаза); onormal — сглаженные нормали (мягкая заливка + контур).
+  // Глаза KayKit — отдельные островки сетки на тёмной плашке атласа: ищем тёмные треугольники на голове, смотрящие вперёд,
+  // группируем по связности и берём пару «высоких» (брови — широкие и плоские, маски — крупные).
+  const _px = new Map();
+  function texPixels(map) {
+    if (!map || !map.image || !map.image.width) return null; let r = _px.get(map); if (r) return r;
+    try { const im = map.image, w = im.width, h = im.height, cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); r = { d: g.getImageData(0, 0, w, h).data, w, h }; } catch (e) { r = null; }
+    _px.set(map, r); return r;
+  }
+  function texAt(px, u, v) { const x = Math.min(px.w - 1, Math.max(0, Math.floor(u * px.w))), y = Math.min(px.h - 1, Math.max(0, Math.floor(v * px.h))), k = (y * px.w + x) * 4; return [px.d[k] / 255, px.d[k + 1] / 255, px.d[k + 2] / 255]; }
+  const isSkinC = (c) => { const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2], rb = c[0] - c[2]; return c[2] <= c[1] && c[1] <= c[0] + 0.02 && l > 0.55 && rb > 0.08 && rb < 0.45; };
+  function charPrep(root, key) {
+    root.updateMatrixWorld(true);
+    root.traverse((o) => {
+      if (!o.isSkinnedMesh || o.geometry.attributes.aFx) return;
+      const g = o.geometry, P = g.attributes.position, N = g.attributes.normal, UV = g.attributes.uv, SI = g.attributes.skinIndex, SW = g.attributes.skinWeight, n = P.count;
+      if (!N) return;
+      ensureOutlineNormals(g);
+      const fx = new Float32Array(n * 4); for (let i = 0; i < n; i++) fx[i * 4 + 3] = 1;
+      const ps = normScale(P), us = UV ? normScale(UV) : 1, ws = normScale(SW), B = new Float32Array(n * 3), v = new T.Vector3();
+      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
+      if (/cape|cloak/i.test(o.name)) { let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, B[i * 3 + 1]); y1 = Math.max(y1, B[i * 3 + 1]); }
+        for (let i = 0; i < n; i++) fx[i * 4] = Math.max(0.001, Math.min(1, (y1 - B[i * 3 + 1]) / Math.max(1e-3, y1 - y0))); o.userData.evCape = 1; }
+      const head = o.skeleton.bones.findIndex((b) => /^head$/i.test(b.name)), px = UV && texPixels(o.material.map);
+      if (head >= 0 && px) {
+        const GC = (A, i, k) => k === 0 ? A.getX(i) : k === 1 ? A.getY(i) : k === 2 ? A.getZ(i) : A.getW(i);
+        const isHead = (i) => { for (let k = 0; k < 4; k++) if (GC(SI, i, k) === head && GC(SW, i, k) * ws > 0.5) return true; return false; };
+        const idx = g.index, nt = idx ? idx.count / 3 : n / 3, vi = (t, k) => idx ? idx.getX(t * 3 + k) : t * 3 + k;
+        const par = new Int32Array(n).map((_, i) => i); const find = (i) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+        const dark = new Uint8Array(n); let hx0 = 1e9, hx1 = -1e9, hy0 = 1e9, hy1 = -1e9; const skinVotes = new Map(); let nd = 0;
+        const e1 = new T.Vector3(), e2 = new T.Vector3(), fn = new T.Vector3();
+        for (let t = 0; t < nt; t++) {
+          const a = vi(t, 0), b = vi(t, 1), c = vi(t, 2); if (!isHead(a) || !isHead(b) || !isHead(c)) continue;
+          for (const q of [a, b, c]) { hx0 = Math.min(hx0, B[q * 3]); hx1 = Math.max(hx1, B[q * 3]); hy0 = Math.min(hy0, B[q * 3 + 1]); hy1 = Math.max(hy1, B[q * 3 + 1]); }
+          e1.set(B[b * 3] - B[a * 3], B[b * 3 + 1] - B[a * 3 + 1], B[b * 3 + 2] - B[a * 3 + 2]); e2.set(B[c * 3] - B[a * 3], B[c * 3 + 1] - B[a * 3 + 1], B[c * 3 + 2] - B[a * 3 + 2]); fn.crossVectors(e1, e2).normalize();
+          const u = (UV.getX(a) + UV.getX(b) + UV.getX(c)) * us / 3, w = (UV.getY(a) + UV.getY(b) + UV.getY(c)) * us / 3, col = texAt(px, u, w), l = 0.299 * col[0] + 0.587 * col[1] + 0.114 * col[2];
+          if (fn.z > 0.35 && l < 0.16) { dark[a] = dark[b] = dark[c] = 1; par[find(b)] = find(a); par[find(c)] = find(a); nd++; }
+          else if (fn.z > 0.3 && isSkinC(col)) { const k = col.map((x) => Math.round(x * 20)).join(','); skinVotes.set(k, (skinVotes.get(k) || 0) + 1); }
+        }
+        let best = null, bv = 0; for (const [k, c] of skinVotes) if (c > bv) { bv = c; best = k; }
+        if (best) o.userData.evSkin = best.split(',').map((x) => +x / 20);
+        if (nd) {
+          // weld by position (UV seams split vertices)
+          const pos = new Map(); for (let i = 0; i < n; i++) if (dark[i]) { const k = B[i * 3].toFixed(3) + ',' + B[i * 3 + 1].toFixed(3) + ',' + B[i * 3 + 2].toFixed(3); const j = pos.get(k); if (j === undefined) pos.set(k, i); else par[find(i)] = find(j); }
+          const comps = new Map(); for (let i = 0; i < n; i++) if (dark[i]) { const r = find(i); let C = comps.get(r); if (!C) comps.set(r, C = { v: [], x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 }); C.v.push(i); C.x0 = Math.min(C.x0, B[i * 3]); C.x1 = Math.max(C.x1, B[i * 3]); C.y0 = Math.min(C.y0, B[i * 3 + 1]); C.y1 = Math.max(C.y1, B[i * 3 + 1]); }
+          const hw = hx1 - hx0, hh = hy1 - hy0, hc = (hx0 + hx1) / 2;
+          const cand = [...comps.values()].filter((C) => { const w = C.x1 - C.x0, h = C.y1 - C.y0; return w > 0 && h > 0 && w < hw * 0.32 && h < hh * 0.42 && h >= w * 0.7; })
+            .sort((A, Bc) => (Bc.x1 - Bc.x0) * (Bc.y1 - Bc.y0) - (A.x1 - A.x0) * (A.y1 - A.y0));
+          const L = cand.find((C) => (C.x0 + C.x1) / 2 < hc), R = cand.find((C) => (C.x0 + C.x1) / 2 > hc);
+          if (L && R && Math.abs((L.y0 + L.y1) - (R.y0 + R.y1)) / 2 < hh * 0.15) {
+            for (const C of [L, R]) { const w = C.x1 - C.x0, h = C.y1 - C.y0; for (const i of C.v) { fx[i * 4 + 1] = (B[i * 3] - C.x0) / w; fx[i * 4 + 2] = (B[i * 3 + 1] - C.y0) / h; fx[i * 4 + 3] = 0; } }
+            o.userData.evEyes = 1;
+          }
+        }
+      }
+      g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
+    });
+  }
   function load(groups, onProgress) {
     if (!S.manifest) return Promise.reject(new Error('EVAssets.init() first'));
     const list = [];
@@ -408,7 +469,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const M = new T.Matrix4().copy(bindInv).multiply(new T.Matrix4().copy(sk.boneInverses[r.b]).invert()).multiply(new T.Matrix4().copy(r.bone.matrixWorld).invert()).multiply(r.o.matrixWorld);
       return { g: r.o.geometry, M, b: r.b }; }));
     let nv = 0, ni = 0; for (const p of parts) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
-    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4);
+    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4), FX = new Float32Array(nv * 4);
     const IDX = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
     const v = new T.Vector3(), nm = new T.Matrix3(); let o = 0, oi = 0;
     for (const p of parts) {
@@ -420,6 +481,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         v.set(pos.getX(i) * ps, pos.getY(i) * ps, pos.getZ(i) * ps); if (p.M) v.applyMatrix4(p.M); P[k] = v.x; P[k + 1] = v.y; P[k + 2] = v.z;
         v.set(nor.getX(i) * ns, nor.getY(i) * ns, nor.getZ(i) * ns); if (p.M) v.applyMatrix3(nm); v.normalize(); N[k] = v.x; N[k + 1] = v.y; N[k + 2] = v.z;
         if (uv) { UV[(o + i) * 2] = uv.getX(i) * us; UV[(o + i) * 2 + 1] = uv.getY(i) * us; }
+        const fa = A.aFx; if (fa && !p.M) { FX[k4] = fa.getX(i); FX[k4 + 1] = fa.getY(i); FX[k4 + 2] = fa.getZ(i); FX[k4 + 3] = fa.getW(i); } else FX[k4 + 3] = 1;
         if (p.M) { SI[k4] = p.b; SW[k4] = 1; }
         else { const si = A.skinIndex, sw = A.skinWeight, ws = normScale(sw); SI[k4] = si.getX(i); SI[k4 + 1] = si.getY(i); SI[k4 + 2] = si.getZ(i); SI[k4 + 3] = si.getW(i);
           SW[k4] = sw.getX(i) * ws; SW[k4 + 1] = sw.getY(i) * ws; SW[k4 + 2] = sw.getZ(i) * ws; SW[k4 + 3] = sw.getW(i) * ws; }
@@ -430,7 +492,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     }
     const g = new T.BufferGeometry();
     g.setAttribute('position', new T.BufferAttribute(P, 3)); g.setAttribute('normal', new T.BufferAttribute(N, 3)); g.setAttribute('uv', new T.BufferAttribute(UV, 2));
-    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
+    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setAttribute('aFx', new T.BufferAttribute(FX, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
     return g;
   }
 
@@ -474,6 +536,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (def.hide) for (const n of def.hide) { const p = this.findPart(n); if (p) p.visible = false; }
       // scale to game height
       const rest = g.scene.userData.evRest; const h0 = rest ? rest.max.y - Math.max(0, rest.min.y) : 2;
+      this._charInit(rest, h0);
       this.baseScale = (def.h || 2) / (h0 || 2) * (this.opts.scale || 1);
       this.model.scale.setScalar(this.baseScale);
       this.height = def.h || 2; this.radius = (rest ? Math.max(rest.max.x - rest.min.x, rest.max.z - rest.min.z) * 0.5 * this.baseScale : 0.5);
@@ -491,6 +554,35 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       S.actors.add(this);
       this.play(this.opts.clip || 'idle', { fade: 0 });
       this.mixer.update(Math.random() * 2);
+    }
+    // v14: per-actor character uniforms (height band for AO, skin colour for eyelids), blink/expression/cape state
+    _charInit(rest, h0) {
+      this._fx = { blinkT: 1 + Math.random() * 3, blink: 0, expr: null, exprT: 0, lid: [0, 0], px: null, pz: 0, spd: 0, turn: 0, yaw: null };
+      let skin = null, eyes = false; for (const m of this.meshes) { if (m.userData.evSkin && !skin) skin = m.userData.evSkin; if (m.userData.evEyes) eyes = true; }
+      this._fx.eyes = eyes && this.def.mat !== 'ghost' && this.def.mat !== 'lava' && this.def.mat !== 'stone';
+      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]); }
+    }
+    /** простые выражения: 'blink' | 'squint' (замах, усилие) | 'hurt' (удар) | 'happy' (радость) | 'dead' | null */
+    setExpr(e, t) { if (!this._fx) return; this._fx.expr = e; this._fx.exprT = t === undefined ? 0.5 : t; }
+    _charTick(dt) {
+      const F = this._fx; if (!F) return;
+      // эмоция по текущему клипу (без правок игры): замах/удар — прищур, получил удар — зажмурился, радость — «улыбка глазами», смерть — закрыты
+      const cn = this.currentName || '';
+      let tgt = [0, 0];
+      if (cn.indexOf('death') === 0) tgt = [1, 0];
+      else if (F.exprT > 0) { F.exprT -= dt; tgt = F.expr === 'hurt' ? [0.85, 0.2] : F.expr === 'squint' ? [0.42, 0.18] : F.expr === 'happy' ? [0.12, 0.5] : F.expr === 'dead' ? [1, 0] : [0, 0]; }
+      else if (cn === 'hit' || cn === 'hit2') tgt = [0.85, 0.2];
+      else if (cn === 'attack' || cn === 'heavy' || cn === 'dash' || cn === 'leap' || cn === 'skill' || cn === 'spin') tgt = [0.4, 0.15];
+      else if (cn === 'cheer' || cn === 'talk') tgt = cn === 'cheer' ? [0.1, 0.5] : [0, 0.12];
+      F.blinkT -= dt; if (F.blinkT <= 0) { F.blink = 0.16; F.blinkT = 1.8 + Math.random() * 3.6; if (Math.random() < 0.18) F.blinkT = 0.25; }
+      if (F.blink > 0) { F.blink -= dt; tgt = [1, Math.max(tgt[1], 0)]; }
+      const k = Math.min(1, dt * 22); F.lid[0] += (tgt[0] - F.lid[0]) * k; F.lid[1] += (tgt[1] - F.lid[1]) * k;
+      // плащ: скорость и поворот корня в мировых координатах
+      const r = this.root; let spd = 0, turn = 0;
+      if (F.px !== null && dt > 0) { spd = Math.hypot(r.position.x - F.px, r.position.z - F.pz) / dt; let dy = r.rotation.y - F.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); turn = dy / dt; }
+      F.px = r.position.x; F.pz = r.position.z; F.yaw = r.rotation.y;
+      const ks = Math.min(1, dt * 5); F.spd += (Math.min(1, spd / 6) - F.spd) * ks; F.turn += (Math.max(-1, Math.min(1, -turn / 8)) - F.turn) * ks;
+      for (const mm of this.matList) { const U = mm.userData.U; if (!U.uBlink) continue; if (F.eyes) U.uBlink.value.set(F.lid[0], F.lid[1]); U.uSway.value.x = F.spd; U.uSway.value.y = F.turn; }
     }
     findPart(name) { const n = T.PropertyBinding.sanitizeNodeName(name); return this.parts[name] || this.parts[n] || null; }
     // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material).
@@ -520,7 +612,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         if (merged === undefined) {
           if (rigid.length) merged = mergeFloatSkinned(list, rigid);
           else {
-            const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'];
+            const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight', 'aFx', 'onormal'];
             const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
             const sig = (gg) => Object.keys(gg.attributes).sort().map((k) => k + gg.attributes[k].array.constructor.name + gg.attributes[k].normalized + gg.attributes[k].itemSize).join('|');
             merged = geos.some((gg) => sig(gg) !== sig(geos[0])) ? null : T.BufferGeometryUtils.mergeBufferGeometries(geos, false);
@@ -608,7 +700,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     update(dt, o) {
       if (this._flashT > 0) { this._flashT -= dt; this.setFlash(Math.max(0, this._flashT / this._flashMax) * 0.85); }
       const step = o && o.step ? o.step : o && o.far ? S.Q.animStepFar : 1;
-      this._acc += dt; if (++this._t % step !== 0) return; this.mixer.update(this._acc); this._acc = 0;
+      this._acc += dt; if (++this._t % step !== 0) return; this._charTick(this._acc); this.mixer.update(this._acc); this._acc = 0;
     }
     dispose() {
       this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.model);
@@ -820,6 +912,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   }
   function init(o = {}) {
     S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.paint = o.paint || null; S.paintU = o.paintU || null;
+    S.charFX = o.charFX !== false; S.brush = { value: o.brush || whiteTex() }; S.charSoft = { value: o.charSoft === undefined ? 0.5 : o.charSoft };
     S.linear = !S.renderer || S.renderer.outputEncoding === T.LinearEncoding;
     S.loader = new T.GLTFLoader();
     const mo = global.MeshoptDecoder; if (mo) S.loader.setMeshoptDecoder(mo);
