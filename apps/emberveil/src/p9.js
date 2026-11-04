@@ -72,7 +72,7 @@ function startStage2(z,s){
     show('hud'); hudBuild(); AU.music(info.zone.mus); cullProps(W.start.x,W.start.z,true);
     banner(info.name,`${info.zone.n} · ${STAGE_TYPES[info.type].n}`); track('stage_start',info.key);
     if(Object.keys(RUNBUF).length) toast('Эликсир выпит — сила разливается по жилам');
-    if(!S.seen.tut1){ S.seen.tut1=1; later(2.5,()=>toast('<b>Атака</b> — большая кнопка справа: цель выбирается сама. Удерживайте для серии.')); later(7,()=>toast('<b>Красные зоны</b> на земле — сюда сейчас ударят. Уходите или делайте <b>кувырок</b>.')); later(12,()=>toast('Бочки, ящики и жилы руды тоже можно бить. Ищите <b>треснувшие стены</b> — за ними тайники.')); }
+    if(!S.seen.tut1){ S.seen.tut1=1; later(2.5,()=>toast('<b>Атака</b> — большая кнопка справа: цель выбирается сама. Удерживайте для серии.')); later(7,()=>toast('<b>Красные зоны</b> на земле — сюда сейчас ударят. Уходите или делайте <b>кувырок</b>.')); later(12,()=>toast('Бочки, ящики и жилы руды тоже можно бить. Ищите <b>треснувшие стены и баррикады</b> (искрятся) — за ними тайники; рунную дверь открывает рычаг рядом.')); }
     if(info.z>=2&&!S.seen['zone'+info.z]){ S.seen['zone'+info.z]=1; later(3,()=>toast(`<b>${info.zone.n}</b>: враги сильнее. Улучшайте снаряжение в кузнице и не забывайте о питомцах.`)); }
     saveGame();
   });
@@ -98,7 +98,7 @@ function updateStage(dt){
   if(T==='boss') bossStageTick(dt);
   // portal anim
   for(const o of W.objs){ if(o.swirl) o.swirl.material.uniforms.uT.value=G.time; if(o.opened&&o.lid&&o.openT<1){ o.openT+=dt*3; o.lid.rotation.x=-Math.min(1,o.openT)*1.9; if(o.evPop){ const u=Math.min(1,o.openT); o.evPop.scale.set(1+Math.sin(u*PI)*.28,1-Math.sin(u*PI)*.18+u*.0,1+Math.sin(u*PI)*.28); if(u>=1) asBurst(o.x,.2,o.z,0xffd27a,1.6,.5); } } if(o.float&&o.mesh){ o.mesh.position.y=1+Math.sin(G.time*2)*.15; o.mesh.rotation.y+=dt; if(Math.random()<dt*4) fx('trail',o.x,1.2,o.z,{col:0xffe0a0}); } if(o.eggMesh){ o.eggMesh.rotation.z=Math.sin(G.time*3)*.1; }
-    if(o.kind==='portal'&&o.on&&Math.random()<dt*12) fx('ember',o.x+rand(-1.2,1.2),rand(.3,3),o.z); if(o.kind==='secret'&&o.alive&&Math.random()<dt*2) fx('ember',o.x+rand(-1,1),rand(.3,1.8),o.z,{col:0xffd080}); }
+    if(o.kind==='portal'&&o.on&&Math.random()<dt*12) fx('ember',o.x+rand(-1.2,1.2),rand(.3,3),o.z); if(o.kind==='secret'&&o.alive&&Math.random()<dt*2) fx('ember',o.x+rand(-1,1),rand(.3,1.8),o.z,{col:o.locked?0x8ad8ff:0xffd080}); if(o.kind==='lever'&&o.alive&&Math.random()<dt*1.5) fx('ember',o.x+rand(-.3,.3),rand(.5,1.4),o.z,{col:0x8ad8ff}); }
   ambient(dt);
 }
 function ambient(dt){

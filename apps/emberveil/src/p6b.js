@@ -61,16 +61,16 @@ OBJ_GEO.lever=()=>cgeo('o_lever',b=>{ b.box(.8,.5,.6,0x5a5048,{p:[0,.25,0]}); b.
 
 // ---------- zone kits: what grows/stands where (KayKit types with procedural fallbacks) ----------
 const ZKIT={
-  1:{trees:['n:tree_bloom','treeRound','n:tree_wide','treeBirch','n:tree_autumn'],shrub:['bush','n:bush_berry','n:bush_tall'],rock:['rock','n:rock_small','stone2'],tuft:['grass','flowers','grass','n:grass_blade','flowers'],
-     shore:['reeds','n:rock_small','grass'],ruin:['pillarBroken','wallSeg','d:column','d:rubble_half'],edge:['treeRound','n:tree_wide','treeBirch','n:tree_bloom','bush','rock','n:bush_tall'],
+  1:{trees:['n:tree_bloom','treeRound','n:tree_wide','treeBirch'],shrub:['bush','n:bush_berry'],rock:['rock','stone2'],tuft:['grass','flowers','grass','flowers'],
+     shore:['reeds','n:rock_small','grass'],ruin:['pillarBroken','wallSeg','pillarBroken','d:rubble_half'],edge:['treeRound','n:tree_wide','treeBirch','n:tree_bloom','bush','rock'],
      themes:['camp','clearing','ruins','farm','camp'],big:['n:tree_wide',1.7],bridge:'bridgeWood',small:['flowers','n:rock_pebble']},
-  2:{trees:['pine','n:fir','n:pine_dark','oakDark','n:fir_dark'],shrub:['n:bush_dark','bush','fern'],rock:['stone2','n:rock_block','n:rock_small'],tuft:['fern','grass','shrooms','fern','n:grass_blade'],
-     shore:['reeds','fern','n:rock_small'],ruin:['stone2','pillarBroken','log','d:rubble_half'],edge:['pine','n:fir','n:pine_dark','oakDark','n:fir_dark','pine','stone2'],
+  2:{trees:['pine','n:fir','n:pine_dark','oakDark'],shrub:['n:bush_dark','fern'],rock:['stone2','n:rock_block'],tuft:['fern','grass','shrooms','fern'],
+     shore:['reeds','fern','n:rock_small'],ruin:['stone2','pillarBroken','log','d:rubble_half'],edge:['pine','n:fir','n:pine_dark','oakDark','pine','stone2'],
      themes:['camp','grove','logging','ruins','camp'],big:['n:tree_wide_dark',1.9],bridge:'bridgeWood',small:['shrooms','n:rock_pebble']},
-  3:{trees:['deadTree','n:tree_swamp','n:dead_tree_thin','stump'],shrub:['n:bush_swamp','reeds'],rock:['bogRock','n:rock_bog_round'],tuft:['reeds','glowShroom','reeds','n:grass_blade'],
-     shore:['reeds','reeds','n:rock_bog_round'],ruin:['pillarBroken','bogRock','stump','d:rubble_half'],edge:['deadTree','n:tree_swamp','deadTree','reeds','bogRock','n:dead_tree_thin','stump'],
+  3:{trees:['deadTree','n:tree_swamp','stump'],shrub:['n:bush_swamp','reeds'],rock:['bogRock','n:rock_bog_round'],tuft:['reeds','glowShroom','reeds'],
+     shore:['reeds','reeds','n:rock_bog_round'],ruin:['pillarBroken','bogRock','stump','d:rubble_half'],edge:['deadTree','n:tree_swamp','deadTree','reeds','bogRock','stump'],
      themes:['camp','deadgrove','ruins','totems','camp'],big:['n:tree_swamp',1.9],bridge:'bridgeWood',small:['glowShroom','n:rock_pebble']},
-  4:{trees:['pillar','d:column','pillarBroken'],shrub:['d:rubble_half','bones'],rock:['tomb','h:gravestone','h:grave_B'],tuft:['candles','bones','h:bone_A','d:sword_shield_broken'],
+  4:{trees:['pillar','d:column','pillarBroken'],shrub:['d:rubble_half','bones'],rock:['tomb','h:gravestone'],tuft:['candles','bones','bones'],
      shore:['bones'],ruin:['pillarBroken','wallSeg','d:column','d:wall_half','d:rubble_half'],edge:['pillar','wallSeg','pillarBroken','tomb','pillar','d:column'],
      themes:['hall','graveyard','ruins','shrine','hall'],big:['h:crypt',.9],bridge:null,small:['candles','bones']},
   5:{trees:['charTree','n:dead_tree_red'],shrub:['vent','d:rocks'],rock:['obsidian','lavaRock','n:rock_red'],tuft:['skulls','d:rocks','n:rock_pebble'],
@@ -180,7 +180,7 @@ function stageLayout(info){
   W.paths=[]; for(let j=0;j<route.length-1;j++) W.paths.push({ax:route[j].x,az:route[j].z,bx:route[j+1].x,bz:route[j+1].z});
   // side features: puzzle room (p12) → secret → 1–2 nooks
   const mids=areas.filter(a=>a.role==='mid');
-  if(T!=='boss'){ puzzlePlan(info,walk); }
+  if(T!=='boss'){ puzzlePlan(info,walk); if(PUZ_PLAN[info.key]&&!W.puzzle) return false; }
   if(T!=='boss'){ const sec=layoutSide({R:4.4,len:rand(6,8),w:3.1,pad:5.5,secret:true}); if(!sec) return false; W.secret=sec; W.secretRoom=sec.room; sec.seg.closed=true; }
   const nk=T==='boss'?1:(chance(.5)?2:1); const kinds=['cache','elite','shrine'].sort(()=>Math.random()-.5);
   for(let i=0;i<nk;i++){ const s=layoutSide({R:rand(5.5,6.5),len:rand(7,11),w:6,pad:4}); if(s){ s.kind=i===0?'cache':kinds[i]; s.room.nook=s.kind; W.nooks.push(s); } }
@@ -251,14 +251,17 @@ function placeLiquids(info){
 }
 
 // ---------- dressing ----------
-function kitOf(Z){ return ZKIT[Z.id]||ZKIT[1]; }
+// «Произв.»/«Низк.»: меньше разных типов пропсов (каждый тип — отдельный вызов отрисовки)
+const KIT_CACHE={};
+function kitOf(Z){ const K=ZKIT[Z.id]||ZKIT[1]; if(!qLow()) return K; const key=Z.id+QL; if(KIT_CACHE[key]) return KIT_CACHE[key];
+  const n={trees:2,rock:1,shrub:1,tuft:1,shore:2,edge:3,ruin:2}; const C=Object.assign({},K); for(const k in n) C[k]=K[k].slice(0,n[k]); C.edge=Array.from(new Set(C.trees.concat(C.rock,C.edge.slice(0,1)))); C.small=[K.small[0],C.tuft[0]]; return KIT_CACHE[key]=C; }
 function themeAreas(info){ const K=kitOf(info.zone); const th=K.themes.slice().sort(()=>Math.random()-.5); const mids=W.areas.filter(a=>a.role==='mid');
   mids.forEach((a,i)=>{ a.theme=th[i%th.length]; }); }
 // rim: a dense row of rocks/trees right outside the walkable edge — the level reads as framed by cliffs, not by invisible walls
 function rimWalls(Z){ const K=kitOf(Z); const keep=.55+.45*Q.props; const pts=[];
   for(const n of W.walk.nodes){ if(n.joint) continue; const C=TAU*(n.r+1.2), m=Math.ceil(C/2.1); for(let i=0;i<m;i++){ const a=i/m*TAU+rand(-.08,.08), rr=n.r+rand(.8,1.6); pts.push([n.x+Math.cos(a)*rr,n.z+Math.sin(a)*rr]); } }
   for(const s of W.walk.segs){ const L=Math.hypot(s.bx-s.ax,s.bz-s.az), ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L; for(let t=0;t<L;t+=2.2) for(const sd of [-1,1]){ const o=s.w/2+rand(.8,1.6); pts.push([s.ax+ux*t-uz*o*sd,s.az+uz*t+ux*o*sd]); } }
-  for(const [x,z] of pts){ if(Math.random()>keep) continue; if(sdfW(x,z)<.55) continue; putProp(chance(.5)?pick(K.rock):pick(K.edge),x,z,{out:true,edge:.55,s:rand(.9,1.35),poolGap:.4,gap:0}); } }
+  for(const [x,z] of pts){ if(Math.random()>keep) continue; if(sdfW(x,z)<.55) continue; const south=sdfW(x,z-2.5)<-.5; putProp(chance(.5)||south?pick(K.rock):pick(K.edge),x,z,{out:true,edge:.55,s:rand(.9,1.35)*(south?.85:1),poolGap:.4,gap:0}); } }
 function dressArea(a,Z){
   const K=kitOf(Z), M=ZMAT[Z.id]||ZMAT[1], th=a.theme;
   const ringFn=(f0,f1)=>()=>ringPt(a,a.r*f0,a.r*f1);
@@ -273,7 +276,7 @@ function dressArea(a,Z){
   else if(th==='ruins'||th==='hall'){ // a ring of broken pillars / wall bits around a paved patch
     W.paint.push({x:a.x,z:a.z,r:a.r*.66,c:M.stone,k:.6,tiles:1});
     const n=randi(5,7), a0=rand(TAU); for(let i=0;i<n;i++){ const ang=a0+i/n*TAU+rand(-.15,.15), rr=a.r*rand(.62,.8); putProp(i%3===2?pick(K.ruin):K.ruin[i%2],a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,{s:rand(.85,1.1)}); }
-    for(let i=0;i<5;i++) tryProp(pick(['d:rubble_half','n:rock_small','n:rock_pebble']),ringFn(.3,.9),6,{s:rand(.7,1)});
+    for(let i=0;i<5;i++) tryProp(pick(['d:rubble_half','n:rock_pebble']),ringFn(.3,.9),6,{s:rand(.7,1)});
     if(th==='hall') for(let i=0;i<4;i++) tryProp('candles',ringFn(.4,.8),6);
   }
   else if(th==='clearing'||th==='grove'||th==='deadgrove'||th==='crystals'||th==='spires'){ // landmark + flower/mushroom ring
@@ -286,14 +289,15 @@ function dressArea(a,Z){
   else if(th==='farm'){ for(let i=0;i<3;i++) tryProp(pick(['hay','h:haybale']),ringFn(.55,.85),10); tryProp('h:scarecrow',ringFn(.45,.75),10); tryProp('cart',ringFn(.6,.85),10);
     const ang=rand(TAU); for(let i=0;i<4;i++){ const aa=ang+i*.2; putProp('fence',a.x+Math.cos(aa)*a.r*.86,a.z+Math.sin(aa)*a.r*.86,{ry:-aa}); } W.paint.push({x:a.x,z:a.z,r:a.r*.5,c:M.dirt,k:.3}); }
   else if(th==='logging'){ for(let i=0;i<4;i++) tryProp('stump',ringFn(.45,.85),10,{s:rand(1.6,2.2)}); for(let i=0;i<2;i++) tryProp('log',ringFn(.5,.85),10); W.paint.push({x:a.x,z:a.z,r:a.r*.55,c:M.dirt,k:.35}); }
-  else if(th==='graveyard'){ const a0=rand(TAU); for(let i=0;i<9;i++){ const ang=a0+i*.55, rr=a.r*(.58+(i%3)*.12); putProp(pick(['tomb','h:gravestone','h:grave_B','h:gravemarker_A']),a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,{ry:-ang+PI/2}); }
+  else if(th==='graveyard'){ const a0=rand(TAU); for(let i=0;i<9;i++){ const ang=a0+i*.55, rr=a.r*(.58+(i%3)*.12); putProp(pick(['tomb','h:gravestone','tomb']),a.x+Math.cos(ang)*rr,a.z+Math.sin(ang)*rr,{ry:-ang+PI/2}); }
     tryProp('h:lantern_standing',ringFn(.5,.7),8); }
   else if(th==='shrine'){ tryProp('h:shrine_candles',ringFn(.55,.7),12); for(let i=0;i<3;i++) tryProp(pick(['coffin','h:coffin_decorated'].filter(t=>PFOOT[t])),ringFn(.6,.85),8); W.paint.push({x:a.x,z:a.z,r:a.r*.6,c:M.stone,k:.5,tiles:1}); }
   else if(th==='totems'){ for(let i=0;i<4;i++) tryProp('h:post_skull',ringFn(.6,.85),8); tryProp('campfire',ringFn(.3,.45),12); }
   else if(th==='hoard'){ for(let i=0;i<5;i++) tryProp(pick(['goldPile','d:rocks_gold']),ringFn(.5,.85),8,{s:rand(1,1.6)}); tryProp('rib',ringFn(.7,.85),8,{s:1.6}); }
   else if(th==='bones'){ for(let i=0;i<3;i++) tryProp('rib',ringFn(.6,.85),8,{s:rand(1.4,2)}); for(let i=0;i<6;i++) tryProp('skulls',ringFn(.3,.9),5); }
   // soft frame: trees/rocks in the outer ring of every area (keeps the middle open for combat)
-  const nb=Math.round(a.r*.55*(Q.props*.5+.5)); for(let i=0;i<nb;i++) tryProp(chance(.62)?pick(K.trees):pick(K.rock),ringFn(.74,.97),6,{s:rand(.85,1.2)});
+  // camera looks north (−z): no tall trees on the south rim, so they never hide the hero
+  const nb=Math.round(a.r*.55*(Q.props*.5+.5)); for(let i=0;i<nb;i++){ for(let k=0;k<6;k++){ const [x,z]=ringPt(a,a.r*.74,a.r*.97); const south=(z-a.z)/a.r>.3; const t=south?(chance(.5)?pick(K.rock):pick(K.shrub)):(chance(.62)?pick(K.trees):pick(K.rock)); if(putProp(t,x,z,{s:rand(.85,1.2)})) break; } }
   for(let i=0;i<Math.round(4*Q.props);i++) tryProp(pick(K.shrub),ringFn(.6,.98),5,{s:rand(.8,1.2)});
 }
 function dressCorridors(Z){ const K=kitOf(Z);
@@ -315,7 +319,7 @@ function scatterWallsV8(Z,b,dens){ const K=kitOf(Z); const step=2.1/Math.sqrt(de
   for(let x=b.minX;x<=b.maxX;x+=step) for(let z=b.minZ;z<=b.maxZ;z+=step){
     const px=x+rand(-step*.45,step*.45), pz=z+rand(-step*.45,step*.45); const d=sdfW(px,pz);
     if(d<.7) continue; if(d>16&&chance(.8)) continue; if(d>8&&chance(.35)) continue;
-    const t=d<2.2&&chance(.3)?pick(K.rock):pick(K.edge); putProp(t,px,pz,{out:true,s:rand(.85,1.3)*(d>5?1.15:1),edge:.7,poolGap:.6,gap:.05});
+    const south=d<5&&sdfW(px,pz-4)<d-3; const t=(d<2.2&&chance(.3))||south?pick(K.rock):pick(K.edge); putProp(t,px,pz,{out:true,s:rand(.85,1.3)*(d>5?1.15:1),edge:.7,poolGap:.6,gap:.05});
   }
 }
 

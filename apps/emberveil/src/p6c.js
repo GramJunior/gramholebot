@@ -110,7 +110,7 @@ function validateWorld(opt={}){
     for(const n of (W.npcs||[])) if(!navReach(N,D,n.x,n.z,1.5)) add('unreachable',`NPC ${n.kind} недостижим`,n.x,n.z);
     if(W.gate&&!navReach(N,D,W.gate.x,W.gate.z,2)) add('unreachable','ворота недостижимы',W.gate.x,W.gate.z);
   }
-  stats.props=P.length; stats.obst=live.length; stats.objs=W.objs.length; stats.pools=pools.length; stats.areas=(W.areas||[]).length; stats.nooks=(W.nooks||[]).length; stats.seedTry=W.seedTry;
+  if(W.puzzle) stats.puzzle=W.puzzle.type; stats.props=P.length; stats.obst=live.length; stats.objs=W.objs.length; stats.pools=pools.length; stats.areas=(W.areas||[]).length; stats.nooks=(W.nooks||[]).length; stats.seedTry=W.seedTry;
   if(W.route){ let L=0; for(let i=0;i<W.route.length-1;i++) L+=Math.hypot(W.route[i+1].x-W.route[i].x,W.route[i+1].z-W.route[i].z); stats.routeLen=Math.round(L); }
   const by={}; for(const v of V) by[v.rule]=(by[v.rule]||0)+1;
   return {ok:V.length===0,n:V.length,by,violations:V.slice(0,opt.max||30),stats};
@@ -125,7 +125,7 @@ const P6C_HOOKS={
   genVillage:()=>{ G.mode='check'; clearEntities(); makeVillage(); return validateWorld({spawns:false}); },
   overview:(o={})=>{ const b=W.bounds; const cx=(b.minX+b.maxX)/2, cz=(b.minZ+b.maxZ)/2; const tf=Math.tan(cam.fov*PI/360); const h=(b.maxZ-b.minZ)-(o.pad||30), w=(b.maxX-b.minX)-(o.pad||30);
     const dist=Math.max(h/(2*tf), w/(2*tf*cam.aspect))*1.04; CAMR.override={x:cx,z:cz-dist*Math.cos(1.53)*.0,dist,pitch:o.pitch||1.53}; CAMR.x=cx; CAMR.z=cz; cam.far=Math.max(220,dist*1.6); cam.updateProjectionMatrix();
-    scene.fog.near=dist*2; scene.fog.far=dist*3; if(W.liquid){ W.liquid.material.uniforms.fogNear.value=dist*2; W.liquid.material.uniforms.fogFar.value=dist*3; } W.cullAll=true; if(!document.getElementById('ovwCss')){ const st=document.createElement('style'); st.id='ovwCss'; st.textContent='body.ovw > *:not(#cv):not(script){visibility:hidden!important}'; document.head.appendChild(st); } document.body.classList.add('ovw'); cullProps(cx,cz,true); return {cx,cz,dist}; },
+    scene.fog.near=dist*2; scene.fog.far=dist*3; if(W.liquid){ W.liquid.material.uniforms.fogNear.value=dist*2; W.liquid.material.uniforms.fogFar.value=dist*3; } W.cullAll=true; if(o.bright!==false){ hemi.intensity=Math.max(hemi.intensity,.95); sun.intensity=Math.max(sun.intensity,1.0); } if(!document.getElementById('ovwCss')){ const st=document.createElement('style'); st.id='ovwCss'; st.textContent='body.ovw > *:not(#cv):not(script){visibility:hidden!important}'; document.head.appendChild(st); } document.body.classList.add('ovw'); cullProps(cx,cz,true); return {cx,cz,dist}; },
   overviewOff:()=>{ document.body.classList.remove('ovw'); CAMR.override=null; cam.far=220; cam.updateProjectionMatrix(); if(W){ W.cullAll=false; setZoneLook(W.zone); if(W.liquid){ W.liquid.material.uniforms.fogNear.value=scene.fog.near; W.liquid.material.uniforms.fogFar.value=scene.fog.far; } } },
   layout:()=>W&&{areas:(W.areas||[]).map(a=>({x:+a.x.toFixed(1),z:+a.z.toFixed(1),r:+a.r.toFixed(1),role:a.role,theme:a.theme})),nooks:(W.nooks||[]).map(n=>({x:+n.room.x.toFixed(1),z:+n.room.z.toFixed(1),kind:n.kind})),secret:W.secret&&{x:W.secret.room.x,z:W.secret.room.z,mode:W.secret.mode,wx:W.secret.wall.x,wz:W.secret.wall.z,lever:W.secret.lever&&{x:W.secret.lever.x,z:W.secret.lever.z}},bridge:W.bridge,puzzle:W.puzzle&&{x:W.puzzle.room.x,z:W.puzzle.room.z,type:W.puzzle.type},start:W.start,exit:W.exit},
 };
