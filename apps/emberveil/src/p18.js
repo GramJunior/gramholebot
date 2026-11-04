@@ -110,7 +110,7 @@ const COSM={
   troph_echo:{t:'trophy',n:'Осколок Эха',c:'#ffb347',src:'event',d:'Победа над «Эхом Колосса» в Бездне.'},
   troph_abyss10:{t:'trophy',n:'Глаз Бездны',c:'#c47cff',src:'boss',abyss:10,d:'Достигните 10 этажа Бездны.'},
 };
-const COS_TABS=[['skin','Облик','helm'],['glow','Свечение','spark'],['pet','Питомцы','paw'],['deco','Деревня','house'],['frame','Рамки','ring'],['trophy','Трофеи','crown']];
+const COS_TABS=[['skin','Облик','cloak'],['glow','Свечение','spark'],['pet','Питомцы','pets'],['deco','Деревня','house'],['frame','Рамки','profile'],['trophy','Трофеи','coll']];
 const cosOwned=id=>{ const C=COSM[id]; if(!C) return false; if(C.src==='free') return true; if(C.src==='boss') return C.boss?stageDone(C.boss):(S.endless.best>=(C.abyss||99)); return !!metaS().cos.own[id]; };
 function cosGrant(id,quiet){ const C=COSM[id]; if(!C){ return false; } if(cosOwned(id)) return false; metaS().cos.own[id]=Date.now(); track('cosmetic',id); if(!quiet){ toast(`Новое в коллекции: <b style="color:${C.c}">${esc(C.n)}</b> · ${COS_TABS.find(t=>t[0]===C.t)[1]}`,null,3,'quest'); AU.sfx('legend',.7); } saveGame(); if(C.t==='deco'&&W&&W.kind==='village') cosVillageDeco(); return true; }
 function cosEquipped(t){ const c=metaS().cos; return c[t]||(t+'_none'); }
@@ -224,7 +224,7 @@ function pCal(){ const m=metaS(); const R=calRewards(); const can=CAL.lastCan!==
   R.forEach((rw,i)=>{ const done=i<doneN; const today=i===todayI; h+=`<div class="calD ${done?'done':''} ${today?'today':''} ${rw.cosmetic?'big':''}"><span class="dn">${i+1}</span>${rw.cosmetic?cosIcon(rw.cosmetic):rwHtml(rw)}${done?`<i class="ck">${ico('check')}</i>`:''}</div>`; });
   h+=`</div><div class="sect">Колесо Угля</div><div class="spinRow"><div class="spinWrap"><div id="spinW" class="spinW">${SPIN.map((s,i)=>`<span style="transform:rotate(${i*45}deg)"><b>${s.n}</b></span>`).join('')}</div><i class="spinPin"></i></div><div class="grow">
     <div class="muted">Одно вращение в день бесплатно, ещё одно — за короткий ролик.</div><div class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px">
-    ${m.cal.spin!==dayKeyL()?`<button class="btn leather" ${act(()=>spinDo(false))}>${ico('whirl')} Крутить</button>`:'<span class="pill">Вращение использовано</span>'}
+    ${m.cal.spin!==dayKeyL()?`<button class="btn leather" ${act(()=>spinDo(false))}>${ico('wheel')} Крутить</button>`:'<span class="pill">Вращение использовано</span>'}
     ${m.cal.spin===dayKeyL()&&m.cal.spinAd!==dayKeyL()?adBtn('spin','Ещё вращение',()=>spinDo(true),'woodb'):''}</div></div></div>`;
   return h; }
 
@@ -285,7 +285,7 @@ PANEL_EXT.shop=()=>{ const P=shopProducts(); let body=`<div class="card"><p clas
   for(const p of P){ const g=PRODUCT_GRANT[p.id]||[]; const owned=p.id===passSeason().premiumProduct?passS().prem:p.id==='keeper_30d'?keeperActive():g.length&&g.every(cosOwned);
     body+=`<div class="shopItem ${owned?'own':''}"><div class="row" style="gap:4px">${g.length?g.map(id=>cosIcon(id,1)).join(''):p.type==='battlepass'?`<span class="cosic big" style="--c:#ffd27a">${ico('crown')}</span>`:`<span class="cosic big" style="--c:#9ad0ff">${ico('house')}</span>`}</div><b>${esc(p.title)}</b><small>${esc(p.description||'')}</small>${owned?`<span class="pill">${p.id==='keeper_30d'?'Активно':'Куплено'}</span>`:`<button class="btn leather small" ${act(()=>payBuy(p.id))}>⭐ ${p.stars}</button>`}</div>`; }
   body+=`</div>${friendsCard()}`; return {title:'Лавка Странника',sub:'облики и удобство за Telegram Stars',body}; };
-PANEL_EXT.pass=()=>({title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','star'],['cal','Дары очага','gold'],['wk','Контракты','scroll']],body:(PANEL.tab||'pass')==='cal'?pCal():(PANEL.tab==='wk')?wkHtml():pPass()});
+PANEL_EXT.pass=()=>({title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','pass'],['cal','Дары очага','cal'],['wk','Контракты','quest']],body:(PANEL.tab||'pass')==='cal'?pCal():(PANEL.tab==='wk')?wkHtml():pPass()});
 PANEL_EXT.cal=()=>{ PANEL.kind='pass'; PANEL.tab='cal'; return PANEL_EXT.pass(); };
 PANEL_EXT.events=()=>{ const L=liveEvents(); let body=L.active.length?'':'<div class="card muted">Сейчас событий нет — загляните позже.</div>';
   for(const e of L.active) body+=`<div class="evCard" style="--c:${e.col||'#ffd27a'}"><div class="evIc">${ico(e.icon||'star')}</div><div class="grow"><h4>${esc(e.name)}</h4><div>${esc(e.descr||'')}</div><div class="muted">Закончится через ${fmtDur(e.end-Date.now())}</div>${e.modifiers&&e.modifiers.seasonBoss?`<button class="btn leather small" style="margin-top:6px" ${act(()=>{ closePanel(); if(!stageDone('1-5')){ toast('Бездна откроется после победы над Брюханом (1-5)'); return; } startAbyss(5); })}>${ico('skull')} Сразиться (Бездна, 5 этаж)</button><div class="muted" style="font-size:11px">Забег с 5 этажа не идёт в рейтинг: рейтинг считает только забеги с 1 этажа.</div>`:''}${e.modifiers&&e.modifiers.abyssMod?`<button class="btn leather small" style="margin-top:6px" ${act(()=>{ closePanel(); if(!stageDone('1-5')){ toast('Бездна откроется после победы над Брюханом (1-5)'); return; } startAbyss(1); })}>${ico('abyss')} В Бездну</button>`:''}</div></div>`;

@@ -77,7 +77,7 @@ function netAbyssEnd(A,r){ if(!A||!A.net) return; const fl=Math.max(0,A.floor-1)
 function hudNetDot(){ const b=$('mNet'); if(!b) return; b.classList.toggle('off',!netOn()); }
 function openNet(tab){ if(tab) NET.tab=tab; NET.data={}; openPanel('net',{tab:NET.tab}); if(!netOn()&&window.EVNet&&!NET.busy){ NET.busy=true; netRetry(); } }
 function netRetry(){ if(!window.EVNet) return; EVNet.init({baseUrl:window.EVNET_BASE_URL||'',onConflict:netConflict,onRemoteSave:d=>applyCloud(d)}).then(r=>{ NET.busy=false; NET.ok=!!r.ok; NET.me=r.me||null; NET.err=r.error||''; if(PANEL.kind==='net') { NET.data={}; rerender(); } if(NET.ok&&G.mode==='village') netVillage(); }); }
-const NET_TABS=[['lb','Рейтинг','crown'],['clan','Кланы','flag'],['pvp','Набег на соседа','sword'],['log','Журнал','scroll']];
+const NET_TABS=[['lb','Рейтинг','crown'],['clan','Кланы','flag'],['pvp','Набег на соседа','swords'],['log','Журнал','scroll']];
 function netOffline(){
   return `<div class="card" style="text-align:center"><p class="dcap" style="text-align:left">Почтовые вороны не долетают до других деревень — связи с Вейлом сейчас нет${NET.err==='not_configured'?' (сервер не настроен)':''}.</p><div class="muted">Рейтинги, кланы и набеги на соседей вернутся, как только появится сеть. Путь, деревня и Бездна работают как прежде — летопись хранится на этом устройстве.</div>
     <button class="btn woodb small" style="margin-top:8px" ${act(()=>{ NET.busy=true; rerender(); netRetry(); })}>${NET.busy?'Зовём воронов…':'Попробовать снова'}</button></div>`;

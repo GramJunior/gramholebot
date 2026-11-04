@@ -36,6 +36,7 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;background
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
 .hidden{display:none!important}
 .ico{width:1em;height:1em;display:inline-block;vertical-align:-.14em;fill:currentColor}
+.ico.ic{width:1.18em;height:1.18em;vertical-align:-.24em;overflow:visible;flex:0 0 auto}
 
 /* ===== shared surfaces ===== */
 .parch{background:var(--ptex),radial-gradient(ellipse at 50% 40%,#f1e2bd 0%,#e2c993 70%,#c9a66a 100%);background-size:256px 256px,100% 100%;color:var(--ink);
@@ -1554,6 +1555,73 @@ html.qlow #hud *,html.qlow #hud *::before,html.qlow #hud *::after,html.qlow #hEv
 /* HUD: подсветка события без анимации тени (тень перерисовывается каждый кадр) */
 @keyframes evGlowT{50%{transform:scale(1.04)}}
 #hEvent{animation-name:evGlowT}
+
+/* =====================================================================
+   v12 ИКОНКИ — цветной реестр ICONS (src/p1i.js): размеры, состояния, бейджи, микродвижение
+   ===================================================================== */
+:root{--icoRail:clamp(24px,calc(30px*var(--k)),36px);--icoMenu:calc(40px*var(--k));--icoHud:calc(28px*var(--k))}
+/* нажатие: иконка «вдавливается», отпускание — упругий возврат (только transform) */
+.ico.ic{transition:transform .28s var(--ease),filter .2s}
+button:active>.ico.ic,.hbtn:active .ico.ic,.tab:active .ico.ic,.chip:active .ico.ic{transform:scale(.86);transition-duration:.06s}
+/* ---- нижнее меню деревни: крупные круглые кнопки, иконка ~72% ---- */
+html.land #hMenu{gap:calc(8px*var(--k));padding-bottom:14px}
+html.land #hMenu .hbtn{width:calc(56px*var(--k));height:calc(56px*var(--k));min-width:46px;min-height:46px}
+#hMenu .hbtn .ico.ic{width:var(--icoMenu);height:var(--icoMenu);min-width:32px;min-height:32px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
+html.land #hMenu .hbtn span.t{bottom:-15px;font-size:11.5px;text-shadow:0 1px 0 #000,0 0 4px #000,0 0 8px #000}
+html.land.xshort #hMenu .hbtn{width:46px;height:46px}
+html.land.xshort #hMenu .hbtn .ico.ic{width:33px;height:33px}
+/* ---- кнопки HUD справа сверху (настройки, коллекция, путь, вече, колесо) ---- */
+#hRight .hbtn .ico.ic,#bPause .ico.ic,#pClose .ico.ic,#mapClose .ico.ic,#icX .ico.ic{width:var(--icoHud);height:var(--icoHud);min-width:26px;min-height:26px}
+#pClose .ico.ic,#mapClose .ico.ic,#icX .ico.ic{width:24px;height:24px}
+/* ---- кнопки боя ---- */
+#bAtk .ic .ico.ic{width:52px;height:52px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
+.ab.sk .ic .ico.ic,#bUlt .ic .ico.ic{width:36px;height:36px}
+#bDodge .ico.ic,#bSpell .ico.ic{width:32px;height:32px}
+#bPot .ico.ic{width:32px;height:32px}#bBomb .ico.ic{width:28px;height:28px}
+/* ---- вкладки и боковые рельсы окон ---- */
+.tab .ico.ic{width:24px;height:24px;flex:0 0 auto;filter:saturate(.72) brightness(.9);transition:filter .2s,transform .28s var(--ease)}
+.tab{display:inline-flex;align-items:center;gap:7px}
+html.land .tab .ico.ic{width:var(--icoRail);height:var(--icoRail)}
+html.land.xshort .tab .ico.ic{width:24px;height:24px}
+.tab:hover .ico.ic{filter:none}
+.tab.on .ico.ic{filter:drop-shadow(0 0 2px #fff6d6) drop-shadow(0 1px 1px rgba(60,25,0,.7));transform:scale(1.08)}
+.tab.on::after{content:"";position:absolute;left:8px;right:8px;bottom:2px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,#7a3c08,transparent);opacity:.55}
+html.land .tab.on::after{left:auto;right:0;top:6px;bottom:6px;width:3px;height:auto;background:linear-gradient(180deg,#fff6d6,#c4801c);opacity:1;border-radius:2px 0 0 2px}
+#panel.v-tab .tab.on .ico.ic,#panel.v-open .tab.on .ico.ic{animation:icoPop .42s var(--ease)}
+@keyframes icoPop{0%{transform:scale(.7) rotate(-8deg)}60%{transform:scale(1.2) rotate(3deg)}100%{transform:scale(1.08)}}
+/* фильтры-чипы (Все / Оружие / Броня / Украшения / Лучше) */
+.chip .ico.ic{width:22px;height:22px;filter:saturate(.8)}
+.chip.on .ico.ic{filter:drop-shadow(0 0 2px #fff6d6);transform:scale(1.06)}
+/* строки характеристик и валюта */
+.ic-st .si .ico.ic{width:20px;height:20px}
+.rchip .ico.ic{width:19px;height:19px;filter:drop-shadow(0 0 2px rgba(0,0,0,.7))}
+#hRes .rchip .ico.ic{width:21px;height:21px}
+.btn .ico.ic{width:1.3em;height:1.3em;vertical-align:-.3em}
+/* ---- бейдж «можно забрать»: на ободке кнопки, не на иконке; число при нескольких поводах; кольцо-пульс ---- */
+.hbtn .dot,#hMenu .hbtn .dot{top:-4px;right:-4px;min-width:16px;height:16px;border-radius:9px;padding:0 4px;box-sizing:border-box;z-index:3;
+  font:800 10.5px/16px var(--sc);color:#fff;text-align:center;text-shadow:0 1px 0 #6a1004;animation:none}
+.hbtn .dot.n{min-width:19px;height:19px;line-height:19px;font-size:12px;top:-6px;right:-6px}
+.hbtn .dot::after{content:"";position:absolute;inset:-2px;border-radius:inherit;border:2px solid #ff8a4a;pointer-events:none;animation:dotRing 1.8s ease-out infinite}
+@keyframes dotRing{0%{transform:scale(.9);opacity:.95}80%,100%{transform:scale(2);opacity:0}}
+.hbtn .kdot{background:radial-gradient(circle at 40% 35%,#c8f0ff,#3fa8e8 60%,#14508a);box-shadow:0 0 0 2px #0a1a2a,0 0 8px #6fd8ff}
+.hbtn .kdot::after{border-color:#8adcff}
+#hMenu .hbtn .kdot{top:auto;bottom:-2px;right:-4px}
+/* состояние «можно забрать»: иконка покачивается раз в ~2,6 с, кнопка подсвечивается */
+.hbtn:has(.dot:not(.kdot)) .ico.ic{animation:icoNudge 2.6s ease-in-out infinite;transform-origin:50% 85%}
+#hMenu .hbtn:has(.dot:not(.kdot)){box-shadow:0 0 0 1.5px #0a0604,0 0 0 3px #f2c14a,0 0 0 4px #2a1a08,0 0 14px rgba(255,170,60,.55),0 3px 8px rgba(0,0,0,.6)}
+@keyframes icoNudge{0%,64%,100%{transform:none}70%{transform:translateY(-3px) rotate(-7deg)}77%{transform:translateY(0) rotate(5deg)}84%{transform:rotate(-3deg)}90%{transform:rotate(1deg)}}
+#bUlt.ready .ic .ico.ic{animation:icoGlow 1s ease-in-out infinite}
+@keyframes icoGlow{50%{transform:scale(1.1)}}
+/* итоги, карточки, пустые экраны: иконки крупнее и с объёмом */
+.resTile .ico.ic{width:30px;height:30px}
+.fempty .ico.ic{width:56px;height:56px}
+.evIc .ico.ic{width:28px;height:28px}
+.qcard .qi .ico.ic,.bcard .bi .ico.ic,.bldtop .bi .ico.ic{width:32px;height:32px}
+html.qlow #hud .ico.ic{animation-iteration-count:1!important}
+.set label .ico.ic{width:24px;height:24px;vertical-align:-.36em}
+.chip{gap:5px}
+.wheelWin .ico.ic{width:48px;height:48px}
+.sitem .sic .ico.ic,.offer .med .ico.ic,.bcard2 .med .ico.ic{width:1.25em;height:1.25em}
 </style>
 </head>
 <body>

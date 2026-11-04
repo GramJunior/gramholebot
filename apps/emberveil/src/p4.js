@@ -3,7 +3,7 @@ const F=(L)=>Math.pow(1.12,Math.max(0,L-1));
 // v5: множители редкости сжаты (было 1/1.12/1.26/1.42/1.62), чтобы легендарки не обесценивали поздние зоны
 const RAR=[{n:'Обычный',c:'#d9ccae',m:1,aff:1},{n:'Редкий',c:'#62a8e8',m:1.1,aff:2},{n:'Эпический',c:'#b47cf0',m:1.2,aff:3},{n:'Легендарный',c:'#f2a634',m:1.32,aff:4},{n:'Мифический',c:'#ff4c39',m:1.45,aff:4}];
 const SLOT_NAME={weapon:'Оружие',offhand:'Левая рука',helm:'Шлем',chest:'Доспех',gloves:'Перчатки',boots:'Сапоги',amulet:'Амулет',ring1:'Кольцо',ring2:'Кольцо',ring:'Кольцо'};
-const SLOT_IC={weapon:'sword',offhand:'shield',helm:'helm',chest:'chest',gloves:'gloves',boots:'boots',amulet:'amulet',ring1:'ring',ring2:'ring'};
+const SLOT_IC={weapon:'sword',offhand:'shield',helm:'helm',chest:'cuirass',gloves:'gloves',boots:'boots',amulet:'amulet',ring1:'ring',ring2:'ring'};
 const CLS_NAME={sword:'Меч и щит',axe:'Двуручное',bow:'Лук',staff:'Посох'};
 const EL_NAME={fire:'Огонь',ice:'Лёд',poison:'Яд',light:'Молния'};
 const ITEM_BASES={

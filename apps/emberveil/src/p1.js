@@ -381,7 +381,7 @@ const IC={
   clock:'<path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm-1 3h2v5l4 2-1 2-5-3V7z"/>',
   spark:'<path d="M12 1l2.2 7.8L22 11l-7.8 2.2L12 21l-2.2-7.8L2 11l7.8-2.2L12 1z"/>'
 };
-const ico=(n,cls='')=>`<svg class="ico ${cls}" viewBox="0 0 24 24">${IC[n]||IC.spark}</svg>`;
+const ico=(n,cls='')=>icoSvg(n,cls); // v12: цветные иконки из реестра ICONS (src/p1i.js), одноцветный IC — запасной
 const RES_IC={gold:'gold',wood:'wood',ore:'ore',ess:'ess',shards:'shard'};
 const RES_NAME={gold:'Золото',wood:'Древесина',ore:'Руда',ess:'Эссенция',shards:'Осколки Бездны'};
 const RES_COL={gold:'#e6b43a',wood:'#b07a44',ore:'#9aa7b0',ess:'#6fe0d6',shards:'#c47cff'};

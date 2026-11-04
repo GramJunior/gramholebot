@@ -120,7 +120,7 @@ templeBody=function(tab){
   return _templeBody(tab); };
 
 // ---------- «Лавка» ----------
-const SHOP_TABS=[['deals','Предложения дня','star'],['chests','Сундуки','chest'],['packs','Наборы','crown'],['boosts','Бусты','boost'],['crys','Самоцветы','crys'],['skins','Облики','spark']];
+const SHOP_TABS=[['deals','Предложения дня','deal'],['chests','Сундуки','chest'],['packs','Наборы','gifts'],['boosts','Бусты','boost'],['crys','Самоцветы','crys'],['skins','Облики','cloak']];
 function openShop(tab){ openPanel('shop',{tab:tab||'deals'}); }
 function shopHead(){ return `<div class="shophead">${resChip('gold',S.res.gold)}${resChip(CRYS,S.res[CRYS]||0)}${['iron','gold','leg'].map(k=>`<span class="rchip" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('key')}<span style="color:#f3dcb0">${keyCount(k)}</span></span>`).join('')}<span class="rchip" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('key')}<span style="color:#f3dcb0">${S.ck.f}/${GOLD_FRAG}</span></span></div>`; }
 const chestImgCache={};
@@ -215,13 +215,13 @@ const _buildVillageBuildings=buildVillageBuildings; buildVillageBuildings=functi
 
 // ---------- HUD: «Лавка» button, самоцветы chip, spell button ----------
 const _hudBuild=hudBuild; hudBuild=function(){ _hudBuild();
-  const v=G.mode==='village'; const m=$('hMenu'); if(m&&v&&!$('mShop')){ m.insertAdjacentHTML('afterbegin',`<button class="hbtn pe" id="mShop">${ico('chest')}<span class="t">Лавка</span></button>`); const b=$('mShop'); b.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); AU.init(); AU.sfx('ui'); openShop(freeChestReady()||Object.values(S.chests).some(n=>n>0)?'chests':'deals'); }); }
+  const v=G.mode==='village'; const m=$('hMenu'); if(m&&v&&!$('mShop')){ m.insertAdjacentHTML('afterbegin',`<button class="hbtn pe" id="mShop">${ico('shop')}<span class="t">Лавка</span></button>`); const b=$('mShop'); b.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); AU.init(); AU.sfx('ui'); openShop(freeChestReady()||Object.values(S.chests).some(n=>n>0)?'chests':'deals'); }); }
   const a=$('acts'); if(a&&!v&&!$('bSpell')){ a.insertAdjacentHTML('beforeend',`<button class="ab pe" id="bSpell"><span class="ic"></span><span class="cd"></span><span class="cdt"></span></button>`); $('bSpell').addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); AU.init(); castSpell(); }); }
   hudSpellBtn(); };
 function hudSpellBtn(){ const b=$('bSpell'); if(!b) return; const k=S.spell.slot; if(!k||!spellRank(k)){ b.style.display='none'; return; } b.style.display=''; b.style.setProperty('--c',SPELLS[k].col); b.querySelector('.ic').innerHTML=ico(SPELLS[k].ic); }
 const _hudRefresh=hudRefresh; hudRefresh=function(){ _hudRefresh(); const r=$('hRes'); if(r&&G.mode==='village'){ r.insertAdjacentHTML('beforeend',resChip(CRYS,S.res[CRYS]||0)); }
-  const ms=$('mShop'); if(ms){ ms.querySelector('.dot')?.remove(); if(freeChestReady()||Object.keys(S.chests).some(t=>S.chests[t]>0&&(!CHESTS[t].key||keyCount(CHESTS[t].key)>0))) ms.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
-  const mb=$('mBuild'); if(mb&&BQ().list.some(j=>bqLeft(j)<=0)){ mb.querySelector('.dot')?.remove(); mb.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
+  const ms=$('mShop'); if(ms){ ms.querySelector('.dot')?.remove(); const n=(freeChestReady()?1:0)+Object.keys(S.chests).reduce((a,t)=>a+(S.chests[t]>0&&(!CHESTS[t].key||keyCount(CHESTS[t].key)>0)?Math.min(S.chests[t],CHESTS[t].key?keyCount(CHESTS[t].key):S.chests[t]):0),0); if(n) ms.insertAdjacentHTML('beforeend',dotHtml(n)); }
+  const mb=$('mBuild'); const nb=BQ().list.filter(j=>bqLeft(j)<=0).length; if(mb&&nb){ mb.querySelector('.dot')?.remove(); mb.insertAdjacentHTML('beforeend',dotHtml(nb)); }
   const mh=$('mHero'); if(mh&&S.hero.ap>0&&!mh.querySelector('.dot')) mh.insertAdjacentHTML('beforeend','<i class="dot"></i>'); };
 const _hudTick=hudTick; hudTick=function(dt){ _hudTick(dt); const b=$('bSpell'); if(b&&G.P&&b.style.display!=='none'){ const c=G.P.cds.spell||0, m=(G.P.cdMax&&G.P.cdMax.spell)||1; b.querySelector('.cd').style.setProperty('--p',(c>0?c/m*100:0)+'%'); b.querySelector('.cdt').textContent=c>0?Math.ceil(c):''; } };
 window.addEventListener('keydown',ev=>{ if((ev.code==='Digit4'||ev.code==='KeyT')&&G.mode!=='village'&&!PANEL.kind){ castSpell(); } });

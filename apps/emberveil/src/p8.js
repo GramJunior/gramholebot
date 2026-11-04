@@ -6,7 +6,7 @@ function show(id,on=true){ const el=$(id); if(el) el.classList.toggle('hidden',!
 // toast(): see p17 notification queue (max 2 visible, de-duplicated; loot goes to the side feed)
 function toastEl(html,icon,rar,kind){
   const t=document.createElement('div'); t.className='toast dkt bg-r'+(rar||0);
-  t.innerHTML=(icon?`<span class="ti" style="background-image:url(${icon})"></span>`:kind==='quest'?`<span style="color:#ffb35a;font-size:20px">${ico('scroll')}</span>`:'')+`<span>${html}</span>`;
+  t.innerHTML=(icon?`<span class="ti" style="background-image:url(${icon})"></span>`:kind==='quest'?`<span style="color:#ffb35a;font-size:20px">${ico('quest')}</span>`:'')+`<span>${html}</span>`;
   $('toasts').appendChild(t); return t;
 }
 let _banT=0;
@@ -45,12 +45,12 @@ function hudBuild(){
     <div id="hPort" class="pe"><img id="hPimg" alt=""><span id="hLvl">1</span></div>
     <div id="hBars"><div class="bar hp"><i class="lag" id="hpLag"></i><i class="v" id="hpV"></i><b id="hpT"></b></div>
       <div class="bar em" id="emB"><i class="v" id="emV"></i></div><div class="bar xp"><i class="v" id="xpV"></i></div></div>
-    <div id="hRight"><button class="hbtn pe" id="bPause">${ico(v?'gear':'pause')}</button>${v?`<button class="hbtn pe" id="mColl" title="Коллекция">${ico('gem')}</button><button class="hbtn pe" id="mPass" title="Путь Угля: пропуск, календарь, контракты">${ico('star')}</button><button class="hbtn pe${netOn()?'':' off'}" id="mNet" title="Вече: рейтинг, кланы, набеги">${ico('crown')}</button><div id="hRes"></div>`:''}</div>
+    <div id="hRight"><button class="hbtn pe" id="bPause">${ico(v?'gear':'pause')}</button>${v?`<button class="hbtn pe" id="mColl" title="Коллекция">${ico('coll')}</button><button class="hbtn pe" id="mPass" title="Путь Угля: пропуск, календарь, контракты">${ico('pass')}</button><button class="hbtn pe${netOn()?'':' off'}" id="mNet" title="Вече: рейтинг, кланы, набеги">${ico('vece')}</button><div id="hRes"></div>`:''}</div>
   </div>
   <div id="hQuest" class="parch pe"></div>
   ${!v?'<div id="hObj"></div><div id="hBoss" class="hidden"><div class="bn" id="bossN"></div><div class="bar"><i class="lag" id="bossLag"></i><i class="v" id="bossV"></i></div><div class="ph" id="bossPh"></div></div>':''}
   <div id="banner"></div>
-  ${v?`<div id="hMenu"><button class="hbtn pe" id="mHero">${ico('bag')}<span class="t">Герой</span></button><button class="hbtn pe" id="mBuild">${ico('hall')}<span class="t">Стройка</span></button><button class="hbtn pe" id="mSquad">${ico('helm')}<span class="t">Отряд</span></button>${raidUnlocked()?`<button class="hbtn pe" id="mRaid">${ico('tower')}<span class="t">Набег</span></button>`:''}<button class="hbtn pe" id="mQuest">${ico('scroll')}<span class="t">Задания</span></button><button class="hbtn pe" id="mMap">${ico('map')}<span class="t">Поход</span></button></div>`:''}
+  ${v?`<div id="hMenu"><button class="hbtn pe" id="mHero">${ico('hero')}<span class="t">Герой</span></button><button class="hbtn pe" id="mBuild">${ico('build')}<span class="t">Стройка</span></button><button class="hbtn pe" id="mSquad">${ico('squad')}<span class="t">Отряд</span></button>${raidUnlocked()?`<button class="hbtn pe" id="mRaid">${ico('tower')}<span class="t">Набег</span></button>`:''}<button class="hbtn pe" id="mQuest">${ico('quest')}<span class="t">Задания</span></button><button class="hbtn pe" id="mMap">${ico('march')}<span class="t">Поход</span></button></div>`:''}
   <div id="joy"><div class="ring"></div><div class="knob" id="joyK"></div></div>
   ${G.mode==='village'?'':''}
   <div id="acts" class="${left?'left':''}">
@@ -78,15 +78,15 @@ function hudRefresh(){
     const u=$('bUlt'); if(u){ u.querySelector('.ic').innerHTML=ico(SKILLS[cls][3].ic); u.style.display=skillRank('ult')>0?'':'none'; } }
   setTimeout(hudKnowDot,0);
   const dot=$('mHero'); if(dot){ const n=(S.hero.tp>0?1:0)+(S.inv.some(i=>i.nw)?1:0); dot.querySelector('.dot')?.remove(); if(n) dot.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
-  const mq=$('mQuest'); if(mq){ mq.querySelector('.dot')?.remove(); const ready=SIDE.some(q=>S.q.side[q.id]&&S.q.side[q.id].ready)||S.q.daily.list.some(q=>q.p>=q.v&&!q.c); if(ready) mq.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
-  const ms=$('mSquad'); if(ms){ ms.querySelector('.dot')?.remove(); if(expReadyCount()||COMP_ORDER.some(id=>!compOwned(id)&&compUnlocked(id)&&!Object.keys(COMPANIONS[id].cost).length)) ms.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
+  const mq=$('mQuest'); if(mq){ mq.querySelector('.dot')?.remove(); const ready=SIDE.filter(q=>S.q.side[q.id]&&S.q.side[q.id].ready).length+S.q.daily.list.filter(q=>q.p>=q.v&&!q.c).length; if(ready) mq.insertAdjacentHTML('beforeend',dotHtml(ready)); }
+  const ms=$('mSquad'); if(ms){ ms.querySelector('.dot')?.remove(); const ns=expReadyCount()+COMP_ORDER.filter(id=>!compOwned(id)&&compUnlocked(id)&&!Object.keys(COMPANIONS[id].cost).length).length; if(ns) ms.insertAdjacentHTML('beforeend',dotHtml(ns)); }
   const mr=$('mRaid'); if(mr){ mr.querySelector('.dot')?.remove(); if(raidDue()) mr.insertAdjacentHTML('beforeend','<i class="dot"></i>'); mr.classList.toggle('due',raidDue()); }
   const mb=$('mBuild'); if(mb){ mb.querySelector('.dot')?.remove(); if(BLD_ORDER.some(id=>canBuildNow(id))) mb.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
 }
 function hudQuest(){
   const el=$('hQuest'); if(!el) return;
   let html='';
-  if(G.mode==='village'||G.mode==='stage'){ const q=STORY[S.q.story]; if(q){ const [p,t]=goalProgress(q.goal,S.q.flags['b_'+q.id]); html+=`<h4>${ico('scroll')} ${esc(q.n)}</h4><div class="q">${esc(q.d)}${t>1?` <b>${p}/${t}</b>`:''}</div>`; } else html+=`<h4>${ico('star')} Летопись завершена</h4><div class="q">Бездна ждёт.</div>`; }
+  if(G.mode==='village'||G.mode==='stage'){ const q=STORY[S.q.story]; if(q){ const [p,t]=goalProgress(q.goal,S.q.flags['b_'+q.id]); html+=`<h4>${ico('quest')} ${esc(q.n)}</h4><div class="q">${esc(q.d)}${t>1?` <b>${p}/${t}</b>`:''}</div>`; } else html+=`<h4>${ico('star')} Летопись завершена</h4><div class="q">Бездна ждёт.</div>`; }
   const act=SIDE.filter(q=>S.q.side[q.id]&&S.q.side[q.id].st==='act').slice(0,G.mode==='village'?2:1);
   for(const q of act){ const [p,t]=goalProgress(q.goal,S.q.side[q.id].b); html+=`<div class="q ${p>=t?'done':''}"><b>${esc(q.n)}</b> ${p}/${t}</div>`; }
   if(G.mode==='abyss'&&G.abyss){ html=`<h4>${ico('abyss')} Бездна · этаж ${G.abyss.floor}</h4><div class="q">${G.abyss.mods.map(m=>`<b>${ABYSS_MODS[m].n}</b>`).join(', ')||'Без особенностей'}</div><div class="q">Осколков: <b>${G.abyss.shards}</b> · рекорд ${S.endless.best}</div>`; }
@@ -341,7 +341,7 @@ function pCodex(){
 function pSettings(pause){
   let h='';
   if(pause){ h+=`<div class="row" style="flex-direction:column;gap:8px;margin-bottom:10px"><button class="btn leather" style="width:100%" ${act(()=>closePanel())}>${ico('play')} Продолжить</button>
-    <button class="btn woodb" style="width:100%" ${act(()=>{ PANEL.kind='hero'; PANEL.tab='gear'; renderPanel(); })}>${ico('bag')} Снаряжение и умения</button>
+    <button class="btn woodb" style="width:100%" ${act(()=>{ PANEL.kind='hero'; PANEL.tab='gear'; renderPanel(); })}>${ico('equip')} Снаряжение и умения</button>
     <button class="btn woodb" style="width:100%" ${act(()=>{ closePanel(); if(S.cons.scroll>0&&G.mode==='stage'){ S.cons.scroll--; runEnd(false,'Вы вернулись по свитку',true); } else runEnd(false,'Вы отступили'); })}>${ico('door')} ${S.cons.scroll>0&&G.mode==='stage'?'Свиток возвращения (добыча сохранится)':'Отступить в деревню'}</button></div>`; }
   const seg=(k,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${S.set[k]===v?'on':''}" ${act(()=>{ S.set[k]=v; applySettings(k); saveGame(); rerender(); })}>${l}</button>`).join('')}</div>`;
   h+=`<div class="set"><label>Звуки</label><input type="range" min="0" max="1" step="0.05" value="${S.set.sfx}" id="sSfx"></div>

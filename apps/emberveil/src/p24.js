@@ -46,7 +46,7 @@ const _hudRefreshV6=hudRefresh; hudRefresh=function(){ _hudRefreshV6(); try{ for
 
 // ---------- HUD: кнопка Колеса Угля с бейджем ----------
 const _hudBuildV6=hudBuild; hudBuild=function(){ _hudBuildV6(); try{ if(G.mode!=='village') return; const ps=$('mPass'); if(!ps||$('mSpin')) return;
-  ps.insertAdjacentHTML('beforebegin',`<button class="hbtn pe" id="mSpin" title="Колесо Угля">${ico('whirl')}</button>`); const b=$('mSpin');
+  ps.insertAdjacentHTML('beforebegin',`<button class="hbtn pe" id="mSpin" title="Колесо Угля">${ico('wheel')}</button>`); const b=$('mSpin');
   b.addEventListener('pointerdown',ev=>{ ev.stopPropagation(); AU.init(); AU.sfx('ui'); openPanel('pass',{tab:'spin'}); }); hudSpinDot(); }catch(e){} };
 function spinFree(){ return metaS().cal.spin!==dayKeyL(); }
 function hudSpinDot(){ const b=$('mSpin'); if(!b) return; b.querySelector('.dot')?.remove(); if(spinFree()) b.insertAdjacentHTML('beforeend','<i class="dot"></i>'); }
@@ -200,7 +200,7 @@ function wheelSvg(){ const N=SPIN.length, R=100; let seg='', deco='';
   for(let i=0;i<N;i++){ const a0=(i*360/N-90)*PI/180, a1=((i+1)*360/N-90)*PI/180; const x0=Math.cos(a0)*R, y0=Math.sin(a0)*R, x1=Math.cos(a1)*R, y1=Math.sin(a1)*R; const rare=i===7;
     seg+=`<path d="M0 0L${x0.toFixed(2)} ${y0.toFixed(2)}A${R} ${R} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}Z" fill="url(#${rare?'wgR':i%2?'wgA':'wgB'})" stroke="#2a1604" stroke-width="1.2"/>`;
     const mid=(i+.5)*360/N; const s=SPIN[i];
-    seg+=`<g transform="rotate(${mid})"><text y="-86" text-anchor="middle" font-family="Alegreya SC,Georgia,serif" font-weight="800" font-size="8.2" fill="#ffe7b0" stroke="#1a0c04" stroke-width="2" paint-order="stroke">${esc(SPIN_SHORT[i])}</text><g transform="translate(0,-63) scale(1.2) translate(-12,-12)" fill="${SPIN_COL[i]}" style="filter:drop-shadow(0 0 3px ${SPIN_COL[i]})">${IC[SPIN_IC[i]]||IC.star}</g><text y="-35" text-anchor="middle" font-family="Ruslan Display,Georgia,serif" font-size="14" fill="#fff4d2" stroke="#1a0c04" stroke-width="2.8" paint-order="stroke">${SPIN_AMT(s)||'★'}</text></g>`; }
+    seg+=`<g transform="rotate(${mid})"><text y="-86" text-anchor="middle" font-family="Alegreya SC,Georgia,serif" font-weight="800" font-size="8.2" fill="#ffe7b0" stroke="#1a0c04" stroke-width="2" paint-order="stroke">${esc(SPIN_SHORT[i])}</text><use href="#i-${icoId(SPIN_IC[i])||'star'}" x="-16" y="-79" width="32" height="32" style="filter:drop-shadow(0 0 3px ${SPIN_COL[i]})"/><text y="-35" text-anchor="middle" font-family="Ruslan Display,Georgia,serif" font-size="14" fill="#fff4d2" stroke="#1a0c04" stroke-width="2.8" paint-order="stroke">${SPIN_AMT(s)||'★'}</text></g>`; }
   for(let i=0;i<24;i++){ const a=(i*15-90)*PI/180; deco+=`<circle class="bulb ${i%2?'b2':''}" cx="${(Math.cos(a)*107).toFixed(1)}" cy="${(Math.sin(a)*107).toFixed(1)}" r="2.6"/>`; }
   return `<svg class="wh" viewBox="-116 -116 232 232"><defs>
     <radialGradient id="wgA" r="1"><stop offset=".15" stop-color="#7a2a12"/><stop offset="1" stop-color="#3a0e06"/></radialGradient>
@@ -212,7 +212,7 @@ function wheelSvg(){ const N=SPIN.length, R=100; let seg='', deco='';
 function pSpin(){ const m=metaS(); const free=m.cal.spin!==dayKeyL(); const adOk=!free&&m.cal.spinAd!==dayKeyL(); const wd=Math.round(Math.max(200,Math.min(window.innerHeight-(LAYOUT&&LAYOUT.land?84:200),(window.innerWidth-(LAYOUT&&LAYOUT.land?250:40))*.62,460)));
   return `<div class="wheelPane"><div class="wheelBox" id="wheelBox" style="--wd:${wd}px">${wheelSvg()}<svg class="ptr" viewBox="0 0 38 50"><path d="M19 48L4 12Q2 2 19 2t15 10z" fill="url(#wgP)" stroke="#2a1604" stroke-width="2"/><defs><linearGradient id="wgP" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c8"/><stop offset=".5" stop-color="#ff9a2a"/><stop offset="1" stop-color="#b8320c"/></linearGradient></defs><circle cx="19" cy="14" r="5" fill="#fff3c8"/></svg><div class="hub">${ico('flame')}</div></div>
     <div class="wheelSide"><h3>Колесо Угля</h3><p>Одно вращение каждый день — бесплатно. Ещё одно — за короткий ролик. Главный приз — редкий сундук с вещью не ниже эпической.</p>
-    ${free?`<button class="btn leather big" id="spinGo" ${act(()=>wheelSpin(false))}>${ico('whirl')} Крутить бесплатно</button>`:adOk?adBtn('spin','Ещё вращение',()=>wheelSpin(true),'leather big'):`<div class="wleft">${ico('clock')} Следующее бесплатное — через <b data-end="${new Date(new Date().setHours(24,0,0,0)).getTime()}">${fmtTimer(new Date(new Date().setHours(24,0,0,0))-Date.now())}</b></div>`}
+    ${free?`<button class="btn leather big" id="spinGo" ${act(()=>wheelSpin(false))}>${ico('wheel')} Крутить бесплатно</button>`:adOk?adBtn('spin','Ещё вращение',()=>wheelSpin(true),'leather big'):`<div class="wleft">${ico('clock')} Следующее бесплатное — через <b data-end="${new Date(new Date().setHours(24,0,0,0)).getTime()}">${fmtTimer(new Date(new Date().setHours(24,0,0,0))-Date.now())}</b></div>`}
     ${free?'<div class="wleft">Бесплатно сегодня: 1</div>':''}</div></div>`; }
 function wheelSpin(extra){ if(WH.busy) return; const m=metaS(); if(!extra&&m.cal.spin===dayKeyL()) return; const i=Math.random()<.08?7:randi(0,6); const s=SPIN[i];
   if(extra) m.cal.spinAd=dayKeyL(); else m.cal.spin=dayKeyL(); track('spin',extra?'ad':'free'); saveGame(); WH.busy=true;
@@ -231,7 +231,7 @@ function wheelSpin(extra){ if(WH.busy) return; const m=metaS(); if(!extra&&m.cal
     if(k<1) requestAnimationFrame(step); else fin(); };
   requestAnimationFrame(step); }
 spinDo=function(extra){ PANEL.kind==='pass'&&PANEL.tab==='spin'?wheelSpin(extra):wheelSpin(extra); };
-PANEL_EXT.pass=()=>{ const tab=PANEL.tab||'pass'; return {title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','star'],['cal','Дары очага'+(calCanClaimLocal()?' •':''),'gold'],['spin','Колесо'+(spinFree()?' •':''),'whirl'],['wk','Контракты','scroll']],body:tab==='cal'?pCal():tab==='spin'?pSpin():tab==='wk'?wkHtml():pPass()}; };
+PANEL_EXT.pass=()=>{ const tab=PANEL.tab||'pass'; return {title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','pass'],['cal','Дары очага'+(calCanClaimLocal()?' •':''),'cal'],['spin','Колесо'+(spinFree()?' •':''),'wheel'],['wk','Контракты','quest']],body:tab==='cal'?pCal():tab==='spin'?pSpin():tab==='wk'?wkHtml():pPass()}; };
 PANEL_EXT.spin=()=>{ PANEL.kind='pass'; PANEL.tab='spin'; return PANEL_EXT.pass(); };
 Object.assign(window.__game,{ spin:(extra)=>wheelSpin(!!extra), art:()=>({cached:Object.keys(ART).length,queue:ARTQ.length}) });
 
@@ -242,5 +242,5 @@ const _pPetsV6=pPets; pPets=function(compact){ if(!Object.keys(S.pets.owned).len
 const _bldBodyV6b=bldBody; bldBody=function(id,tab){ const h=_bldBodyV6b(id,tab); if(id==='pen'&&tab==='eggs'&&!(S.pets.eggs||[]).length) return h.replace(/<div class="card[^"]*">Яиц нет[\s\S]*?<\/div>/,'')+emptyArt({npc:'beast',h:'Гнездо пустует',p:'Яйца встречаются в тайниках за треснувшими стенами, у чемпионов и боссов. Принесите — Ойка высидит.'}); return h; };
 
 // ---------- настройки: иконки у пунктов, две колонки в альбомной ориентации ----------
-const SET_IC={'Звуки':'bolt','Музыка':'book','Яркость':'sun','Графика':'eye','Постэффекты':'spark','Модели':'helm','Камера':'map','Джойстик':'dodge','Вибрация':'bolt','Цифры урона':'sword','Полный экран':'up','Уголёк':'flame','Имя героя':'crown','Напоминания бота':'clock'};
+const SET_IC={'Звуки':'sound','Музыка':'music','Яркость':'sun','Графика':'eye','Постэффекты':'spark','Модели':'helm','Камера':'map','Джойстик':'dodge','Вибрация':'bolt','Цифры урона':'sword','Полный экран':'up','Уголёк':'flame','Имя героя':'crown','Напоминания бота':'clock'};
 const _pSettingsV6=pSettings; pSettings=function(pause){ let h=_pSettingsV6(pause); h=h.replace(/<label>([^<]+?)(\s*<small|<\/label>)/g,(m,t,rest)=>{ const k=t.trim(); return SET_IC[k]?`<label>${ico(SET_IC[k])} ${t}${rest}`:m; }); return `<div class="setv6">${h}</div>`; };

@@ -3,7 +3,7 @@ function canBuildNow(id){ const lv=S.bld[id]; if(lv>=5) return false; if(bldUnlo
 function bldTabs(id){
   const lv=S.bld[id]; if(!lv) return [['bld','Строительство','hall']];
   const T={hall:[['list','Постройки','hall'],['prod','Доход','gold']],forge:[['up','Улучшение','hammer'],['craft','Ковка','anvil'],['reforge','Перековка','spark'],['gems','Камни','gem'],['bld','Здание','hall']],
-    alch:[['shop','Лавка','flask'],['bld','Здание','hall']],pen:[['eggs','Яйца','egg'],['pets','Питомцы','paw'],['bld','Здание','hall']],tavern:[['roster','Наёмники','helm'],['exp','Походы','map'],['board','Доска','scroll'],['daily','Контракты','clock'],['bld','Здание','hall']],
+    alch:[['shop','Лавка','flask'],['bld','Здание','hall']],pen:[['eggs','Яйца','egg'],['pets','Питомцы','pets'],['bld','Здание','hall']],tavern:[['roster','Наёмники','squad'],['exp','Походы','march'],['board','Доска','quest'],['daily','Контракты','clock'],['bld','Здание','hall']],
     temple:[['bless','Благословения','sun'],['respec','Сброс','book'],['bld','Здание','hall']]}[id];
   return T||[['bld','Здание','hall']];
 }

@@ -92,7 +92,7 @@ function bindIn(root){ for(const el of root.querySelectorAll('[data-act]')){ if(
 itemTip=function(it,ctx){ return `<div class="tipInline">${cardHtml(it,ctx==='inv'||ctx==='eq'?ctx:'view')}</div>`; };
 
 // ---------- hero panel ----------
-const HERO_TABS=[['prof','Профиль','crown'],['gear','Снаряжение','bag'],['skills','Умения','spark'],['magic','Магия','flame'],['pets','Питомцы','paw'],['squad','Отряд','helm'],['quests','Задания','scroll'],['know','Знания','book']];
+const HERO_TABS=[['prof','Профиль','profile'],['gear','Снаряжение','equip'],['skills','Умения','skills'],['magic','Магия','magic'],['pets','Питомцы','pets'],['squad','Отряд','squad'],['quests','Задания','quest'],['know','Знания','lore']];
 function heroPanel(){
   PANEL.tab=PANEL.tab||'gear'; if(PANEL.tab==='codex') PANEL.tab='know';
   const body=({prof:pProfile,gear:pGear2,skills:pSkills2,magic:pMagic,pets:pPets,squad:pSquad,quests:pQuests,know:()=>{ if(S.syn&&S.syn.unread){ S.syn.unread=0; setTimeout(hudKnowDot,0); } return pKnow()+pCodex(); }})[PANEL.tab]();
@@ -122,7 +122,7 @@ function pProfile(){
 }
 
 let INV_F='all';
-const INV_FILT={all:['Все','bag',()=>true],wpn:['Оружие','sword',it=>{ const s=ITEM_BASES[it.base].slot; return s==='weapon'||s==='offhand'; }],arm:['Броня','chest',it=>['helm','chest','gloves','boots'].includes(ITEM_BASES[it.base].slot)],jew:['Украшения','ring',it=>['amulet','ring'].includes(ITEM_BASES[it.base].slot)],up:['Лучше','up',it=>cmpVal(it)>0]};
+const INV_FILT={all:['Все','bag',()=>true],wpn:['Оружие','swords',it=>{ const s=ITEM_BASES[it.base].slot; return s==='weapon'||s==='offhand'; }],arm:['Броня','cuirass',it=>['helm','chest','gloves','boots'].includes(ITEM_BASES[it.base].slot)],jew:['Украшения','ring',it=>['amulet','ring'].includes(ITEM_BASES[it.base].slot)],up:['Лучше','better',it=>cmpVal(it)>0]};
 function pGear2(){
   const g=S.gear; iconWarm(); const sel=PANEL.sel;
   const slot=(s,lab)=>`<div class="ds ds-${s}">${itHtml(g[s],{act:act(()=>{ if(g[s]){ PANEL.sel=g[s]; cardOpen(g[s],'eq'); } else { INV_F=s==='weapon'||s==='offhand'?'wpn':s.startsWith('ring')||s==='amulet'?'jew':'arm'; rerender(); } }),ph:SLOT_IC[s],label:lab,cmp:false,sel:sel===g[s]&&!!g[s]})}</div>`;
