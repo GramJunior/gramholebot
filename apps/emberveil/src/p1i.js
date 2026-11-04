@@ -43,6 +43,14 @@ const _MAP_D='<path d="M11 4.2L21 7.2V27.8L11 24.8Z" fill="#b8925a" opacity=".45
 const _HAMMER_B='<path d="M16.9 16.1L6.5 28.6L4.1 26.6L14.6 14.1Z" fill="url(#gW)"/><path d="M15.4 3.7L26.9 13.3L21.8 19.5L10.3 9.9Z" fill="url(#gS)"/>';
 const _HAMMER_D='<path d="M14.6 5.2L11.2 9.2M25.8 14.6L22.4 18.6" stroke="#f2c14a" stroke-width="1.6"/>'+icoH('M15.8 5.6L24.6 13',.75,1);
 const _ARC=(d,c,w)=>icoL(d,c,w);
+// v16: части иконок материалов — слитки (два бруска), рулон ткани, шкура, капля-кристалл стихии
+const _ING=(f,t,e)=>`<path d="M3 28.5L5.5 21.5H23.5L26 28.5Z" fill="url(#${f})"/><path d="M5.5 21.5L8.5 18H26.5L23.5 21.5Z" fill="url(#${t})"/><path d="M23.5 21.5L26.5 18L29 25L26 28.5Z" fill="url(#${e})"/><path d="M6 18L8.5 11.5H22.5L25 18Z" fill="url(#${f})"/><path d="M8.5 11.5L11.5 8H25.5L22.5 11.5Z" fill="url(#${t})"/><path d="M22.5 11.5L25.5 8L28 14.5L25 18Z" fill="url(#${e})"/>`;
+const _ING_D=c=>icoH('M7 26.6L8.4 23',.8,1.1,c)+icoH('M10 16.2L11.4 12.8',.8,1.1,c);
+const _BOLT=g=>`<path d="M18 19H27.5V29.5L24.4 27.4L21.2 29.5L18 27.4Z" fill="url(#${g})"/><rect x="3" y="7.5" width="25" height="14" rx="7" fill="url(#${g})"/><ellipse cx="10" cy="14.5" rx="4.4" ry="7" fill="url(#${g})"/>`;
+const _BOLT_D=c=>`<path d="M10 9.4C8.2 9.4 7.4 12 7.4 14.5C7.4 17 8.4 19.4 10 19.4C11.4 19.4 12.4 17.4 12.4 14.5C12.4 12.4 11.6 11.4 10.6 11.6" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9"/><path d="M16 7.6V21.4M21.6 7.6V21.4" stroke="${c}" stroke-width="1.3"/>`;
+const _PELT='M6 6C9 7 11 5 13 3C15 5 17 5 19 3C21 5 23 7 26 6C25 10 27 13 29 15C27 17 25 21 26 26C23 25 21 27 19 29C17 27 15 27 13 29C11 27 9 25 6 26C7 21 5 17 3 15C5 13 7 10 6 6Z';
+const _DROP=g=>`<path d="M16 2.5C20 9 26.5 13.5 26.5 20.2A10.5 10.5 0 0 1 5.5 20.2C5.5 13.5 12 9 16 2.5Z" fill="url(#${g})"/>`;
+const _DROP_D=icoH('M9 17.6C9.6 14.6 11.6 11.6 13.6 9.4',.85,1.3);
 const ICONS={
  // ---------- оружие и снаряжение (сталь) ----------
  sword:[_SW_B,_SW_D],
@@ -124,6 +132,30 @@ const ICONS={
    '<path d="M6.6 13L15 20.6M25 9L17 16.6M16 4.6V10.6" stroke="#e2ffae" stroke-opacity=".7" stroke-width=".9" fill="none"/>'],
  dust:[`<path d="${icoStar(13,15,10.4,2.8,4)}" fill="url(#gU)"/><path d="${icoStar(24.4,7.4,5.2,1.4,4)}" fill="url(#gU)"/><path d="${icoStar(23.6,24.4,5.6,1.5,4)}" fill="url(#gU)"/>`,'<circle cx="6" cy="26" r="1.2" fill="#d2c2ff"/><circle cx="28" cy="15.4" r="1" fill="#d2c2ff"/>'],
  core:[`<path d="${icoPoly(16,16,14,6)}" fill="url(#gT)"/><path d="${icoPoly(16,16,8,6)}" fill="url(#rF)" stroke-width="1"/>`,'<path d="M16 2V8M28.1 9L22.9 12M28.1 23L22.9 20M16 30V24M3.9 23L9.1 20M3.9 9L9.1 12" stroke="#ffd0b0" stroke-opacity=".55" stroke-width=".9"/>'+icoH('M5.6 10.6L14.4 5.2',.6,1.1)],
+ // ---------- v16: материалы разбора (металл, ткань и кожа, дерево, украшения, стихии, чертежи) ----------
+ ingot:[_ING('gK','gS','gD'),_ING_D('#e8eef4')+'<path d="M12 23.6H17M15.6 13.4H19.6" stroke="#3a4048" stroke-width="1.1" stroke-linecap="round"/>'],
+ steel:[_ING('gS','gE','gK'),_ING_D('#fff')+`<path d="${icoStar(27.4,5,3,.8,4)}" fill="#dff2ff"/>`],
+ mithril:[_ING('gC','gU','gB'),_ING_D('#fff')+`<path d="${icoStar(27.4,5,3.4,.9,4)}" fill="#c4fff8"/><path d="${icoStar(4.6,15,2.4,.7,4)}" fill="#c4fff8"/>`],
+ cloth:[_BOLT('gB'),_BOLT_D('#ffd982')],
+ silk:[_BOLT('gM'),_BOLT_D('#fff4c0')+icoH('M7 11.4C11 10.4 15 10.4 19 11.6',.95,1.4)],
+ leather:[`<path d="${_PELT}" fill="url(#gL)"/>`,'<path d="M9.5 9.5H22.5V22.5H9.5Z" fill="none" stroke="#f2c890" stroke-width="1" stroke-dasharray="1.8 1.4"/>'+icoH('M8 8.6C10 9 11.6 7.8 13 6.6',.6,1.1)],
+ dhide:[`<path d="${_PELT}" fill="url(#gT)"/>`,'<path d="M9 13.5Q11.5 10.5 14 13.5Q16.5 10.5 19 13.5Q21.5 10.5 24 13.5M7.5 18.5Q10 15.5 12.5 18.5Q15 15.5 17.5 18.5Q20 15.5 22.5 18.5M10 23.5Q12.5 20.5 15 23.5Q17.5 20.5 20 23.5" fill="none" stroke="#ffc090" stroke-width="1.1"/>'+icoH('M8 8.6C10 9 11.6 7.8 13 6.6',.6,1.1)],
+ thread:['<path d="M10.5 7.5H21.5V24.5H10.5Z" fill="url(#gA)"/><path d="M7.5 3.5H24.5V8H7.5Z" fill="url(#gW)"/><path d="M7.5 24H24.5V28.5H7.5Z" fill="url(#gW)"/>'+icoL('M21.5 17C26 17.5 28 21 27 25.5','#e8d6a8',1.2),
+   '<path d="M11 10.5L21 11.6M11 13.6L21 14.7M11 16.7L21 17.8M11 19.8L21 20.9" stroke="#a88a52" stroke-width=".8"/>'+icoH('M12.4 9V23',.55,1.1)],
+ sinew:[icoL('M9 22C3 21 3 13 9 12.5C15 12 23 12.2 25 16C27 20 21 22.5 15 22.2C9 22 7 18 11 16.5C15 15 21 15.6 22 17.4','#e8c08a',2.4)+icoL('M22 17.4C25 20 27 24 27.5 29','#e8c08a',1.6),
+   icoH('M7.6 14.2C10 13.4 14 13.2 18 13.6',.6,1)],
+ ironwood:['<path d="M5 10.5H21A7 7 0 0 1 21 24.5H5A7 7 0 0 1 5 10.5Z" fill="url(#gD)"/><ellipse cx="21" cy="17.5" rx="5.2" ry="7" fill="url(#gK)"/><path d="M10 9.6H14V25.4H10Z" fill="url(#gS)" stroke-width="1"/>',
+   '<ellipse cx="21" cy="17.5" rx="2.8" ry="3.9" fill="none" stroke="#9ec4e8" stroke-width=".9"/><ellipse cx="21" cy="17.5" rx="1" ry="1.4" fill="#9ec4e8"/><path d="M4 14.5H9M15 20.5H18M4 21H8" stroke="#7a8696" stroke-width=".9" stroke-linecap="round"/>'+icoH('M11 11V24',.7,1)],
+ gshard:['<path d="M4 27L7.5 12.5L13 16.5L12 28Z" fill="url(#gB)"/><path d="M11.5 28L13.5 9L18.5 3.5L22 12L20 28Z" fill="url(#gR)"/><path d="M19.5 28L22.5 15.5L28.5 18.5L27.5 28Z" fill="url(#gN)"/>',
+   '<path d="M18.5 3.5L16.5 28M7.5 12.5L8.6 27.6M22.5 15.5L23.8 28" stroke="#fff" stroke-opacity=".45" stroke-width=".8"/>'+icoH('M14.6 10.6L17.6 5.6',.85,1.1)],
+ gdust:['<path d="M3 27.5C5.5 20 10.5 15 16 15C21.5 15 26.5 20 29 27.5Z" fill="url(#gY)"/>',
+   `<path d="${icoStar(16,7.4,4.6,1.2,4)}" fill="#fff6c4"/><path d="${icoStar(25.6,11.6,2.8,.8,4)}" fill="#fff6c4"/><path d="${icoStar(6.4,12.6,2.4,.7,4)}" fill="#fff6c4"/><circle cx="12" cy="22" r="1.1" fill="#fff6c4"/><circle cx="19.4" cy="20.2" r=".9" fill="#fff6c4"/><circle cx="22.4" cy="24.4" r="1" fill="#a8620f"/><circle cx="9" cy="25.4" r=".9" fill="#a8620f"/>`+icoH('M7.4 23C9 19.8 11.6 17.6 14.6 17',.75,1.2)],
+ efire:[_DROP('rF'),`<path d="M16 13C17.2 15.6 20.4 17 20.4 20.6C20.4 23.2 18.4 25 16 25C13.6 25 11.6 23.2 11.6 20.6C11.6 18.8 12.8 17.4 13.8 16.8C14 18.2 14.6 18.8 15.2 19C14.8 17 15.2 14.8 16 13Z" fill="#fff3a0"/>`+_DROP_D],
+ eice:[_DROP('rB'),'<path d="M16 13.4V26.6M10.3 16.7L21.7 23.3M10.3 23.3L21.7 16.7" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M14.4 14.2L16 15.8L17.6 14.2M14.4 25.8L16 24.2L17.6 25.8" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>'+_DROP_D],
+ epoison:[_DROP('gN'),'<circle cx="14.4" cy="21.4" r="3.2" fill="#e2ffae" fill-opacity=".85"/><circle cx="19.6" cy="17.4" r="2" fill="#e2ffae" fill-opacity=".8"/><circle cx="18.4" cy="24.6" r="1.4" fill="#e2ffae" fill-opacity=".7"/><circle cx="13.4" cy="15.6" r="1.1" fill="#e2ffae" fill-opacity=".7"/>'+_DROP_D],
+ elight:[_DROP('gY'),`<path d="M18 12.4L12.2 20.6H15.8L14 27.4L20.2 18.6H16.4Z" fill="#fff" stroke="#e0880a" stroke-width=".8" stroke-linejoin="round"/>`+_DROP_D],
+ scrap:['<path d="M4 4.5H24.5L26 8L23.6 11L27 14.2L24.4 17.6L27.4 21L24.8 24.6L26.4 27.5H4Z" fill="url(#gB)"/>',
+   '<path d="M7 9.5H21M7 13.5H18M7 17.5H21M7 21.5H15" stroke="#e4f4ff" stroke-opacity=".75" stroke-width=".8"/><circle cx="17.6" cy="22.4" r="3.2" fill="none" stroke="#fff" stroke-width="1.1"/><path d="M17.6 18.4V26.4M13.6 22.4H21.6" stroke="#fff" stroke-width=".7"/><path d="M8.4 6.2V25.8" stroke="#ffd982" stroke-width="1" stroke-dasharray="1.6 1.2"/>'+icoH('M6 7H20',.5,1)],
  // тонируемые варианты (цвет задаёт родитель через color): ключи разных сундуков, камни-самоцветы в гнёздах
  keyT:(()=>{ const K='<path fill-rule="evenodd" d="M10 3.4a6.6 6.6 0 1 1 0 13.2a6.6 6.6 0 1 1 0-13.2ZM10 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6Z" fill="F"/><path d="M13.2 15.6L15.6 13.2L28.4 26L26 28.4Z" fill="F"/><path d="M21.8 23.4L24.6 20.6L26.8 22.8L24 25.6ZM18 19.6L20.8 16.8L22.4 18.4L19.6 21.2Z" fill="F"/>';
    return [K.replace(/fill="F"/g,'fill="currentColor"'),K.replace(/fill="F"/g,'fill="url(#gSh)"')+icoH('M5.2 8.6A5 5 0 0 1 8.4 4.8',.85,1.2)]; })(),

@@ -44,9 +44,9 @@ function bldBody(id,tab){
 }
 // ----- forge -----
 const upCost=it=>({gold:Math.round(40*F(it.ilvl)*Math.pow(1+it.up,1.25)),ore:Math.round(5*(1+it.up)*Math.sqrt(F(it.ilvl)))});
-const reforgeCost=it=>({gold:Math.round(90*F(it.ilvl)),ess:2+it.rar*2});
+const reforgeCost=it=>Object.assign({gold:Math.round(90*F(it.ilvl)),ess:2+it.rar*2},famBind(it)); // v16: + связующий материал семейства (слитки/нити/жилы/золотая пыль)
 const craftCost=()=>{ const L=S.hero.lvl; return {gold:Math.round(110*F(L)),ore:Math.round(18*Math.sqrt(F(L))),wood:12}; };
-const socketCost=it=>({gold:Math.round(200*F(it.ilvl)),ess:12*(it.sock.length+1)});
+const socketCost=it=>({gold:Math.round(200*F(it.ilvl)),ess:12*(it.sock.length+1),gshard:4*(it.sock.length+1)}); // v16: + осколки камней
 function allItems(){ return Object.values(S.gear).filter(Boolean).concat(S.inv); }
 function pickerGrid(filter){ return `<div id="invGrid">${allItems().filter(filter||(()=>true)).map(it=>`<div>${slotHtml(ITEM_BASES[it.base].slot,it,act(()=>{ PANEL.sel=it; PANEL.aff=null; rerender(); }))}${Object.values(S.gear).includes(it)?'<span style="display:block;text-align:center;font-size:10px;font-family:var(--sc);font-weight:800;color:#7c2418">надето</span>':''}</div>`).join('')}</div>`; }
 function forgeBody(tab){

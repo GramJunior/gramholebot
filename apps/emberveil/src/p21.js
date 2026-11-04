@@ -93,14 +93,14 @@ const RECIPES={
 const BLUEPRINT_BOSS={rotroot:'bp_warden',bogMother:'rec_legend',morven:'bp_owl',colossus:'bp_ash',ashKing:'bp_king'};
 const recOk=r=>!RECIPES[r].need||!!(S.rec&&S.rec[RECIPES[r].need]);
 function craftSlots(){ return 1+(S.bld.forge>=4?1:0); }
-function craftStart(rid,slot,cls){ const R=RECIPES[rid]; const L=Math.max(S.hero.lvl,zoneLvlNow()); const c=R.c(L);
+function craftStart(rid,slot,cls,el){ const R=RECIPES[rid]; const L=Math.max(S.hero.lvl,zoneLvlNow()); if(slot!=='weapon'||R.set) el=null; const c=recipeCost(rid,slot,cls,L,el);
   if(S.bld.forge<R.lv||!recOk(rid)||S.craft.list.length>=craftSlots()||!pay(c)) return false;
-  const job={rid,slot,cls,L,start:Date.now(),end:Date.now()+R.t*1000*timeMul()};
+  const job={rid,slot,cls,L,el:el||null,start:Date.now(),end:Date.now()+R.t*1000*timeMul()};
   if(R.t<=0){ craftFinish(job); return true; } S.craft.list.push(job); S.st.crafted++; ev('craft'); saveGame(); return true; }
 function craftFinish(job){ const R=RECIPES[job.rid]; const i=S.craft.list.indexOf(job); if(i>=0) S.craft.list.splice(i,1);
   let it; const slot=job.slot||'weapon';
   if(R.set){ const pieces=SETS[R.set].pieces; const sl=pieces[slot]?slot:Object.keys(pieces)[0]; it=genItem(job.L,{base:pieces[sl],rar:3,set:R.set}); }
-  else { const r=R.rar[0]+(Math.random()<(R.rar[1]>R.rar[0]?(R.rar[0]>=2?.15:.35):0)?1:0); it=genItem(job.L,{slot,cls:slot==='weapon'?job.cls:undefined,rar:r}); }
+  else { const r=R.rar[0]+(Math.random()<(R.rar[1]>R.rar[0]?(R.rar[0]>=2?.15:.35):0)?1:0); it=genItem(job.L,{slot,cls:slot==='weapon'?job.cls:undefined,rar:r,el:slot==='weapon'&&job.el?job.el:undefined}); }
   addItem(it); it.nw=true; AU.sfx(it.rar>=3?'legend':'build'); toast(`Горан выковал: <b class="r${it.rar}">${esc(it.name)}</b>`,iconFor(it),it.rar,'loot'); ev('craft'); saveGame(); return it; }
 function craftTick(){ if(!S.craft) return; for(const j of S.craft.list.slice()) if(Date.now()>=j.end) craftFinish(j); }
 function zoneLvlNow(){ let z=1; for(let i=1;i<=6;i++) if(stageDone(i+'-1')) z=i; return ZONES[z-1].lv+2; }
@@ -122,8 +122,12 @@ const RUNES={
   leech:{n:'Руна жажды',ic:'drop',d:'Лечит на 12% нанесённого заклинанием урона'},
   power:{n:'Руна мощи',ic:'boost',d:'+35% урона заклинания'}
 };
-const runeCost=()=>({dust:12,ess:20,core:1});
-const spellLearnCost=(k,r)=>({gold:Math.round(120*F(Math.max(1,SPELLS[k].z*5-4))*r),ess:6*r});
+// v16: руна просит эссенцию своей стихии (эхо — молния, простор и жажда — яд, спешка — лёд, мощь — огонь)
+const RUNE_EL={echo:'elight',wide:'epoison',swift:'eice',leech:'epoison',power:'efire'};
+const runeCost=(k)=>{ const c={dust:12,ess:20,core:1}; if(k&&RUNE_EL[k]) c[RUNE_EL[k]]=6; return c; };
+// v16: ранги 2–5 просят эссенцию школы (огонь/лёд/яд/молния), Свет — золотую пыль, Тень — осколки камней; 1-й ранг — без материалов
+const SPELL_MAT={fire:'efire',ice:'eice',poison:'epoison',light:'elight',holy:'gdust',shadow:'gshard'};
+const spellLearnCost=(k,r)=>{ const c={gold:Math.round(120*F(Math.max(1,SPELLS[k].z*5-4))*r),ess:6*r}; if(r>=2&&SPELL_MAT[k]) c[SPELL_MAT[k]]=2*(r-1); return c; };
 const spS=()=>S.spell;
 function spellRank(k){ return (spS().known[k]||0); }
 function spellAvail(k){ return stageDone(Math.max(1,SPELLS[k].z-1)+'-5')||SPELLS[k].z===1&&stageDone('1-1'); }
@@ -211,7 +215,7 @@ function worldChestLoot(o){
   const tier=o.kind==='vault'?'iron':'wood'; const out=chestRoll(tier,W.lvl);
   out.items.forEach((it,i)=>later(.25+i*.15,()=>spawnDrop('item',o.x,o.z,{item:it})));
   later(.2,()=>{ for(const s of out.sup){ if(s.k==='gold'){ for(let i=0;i<4;i++) spawnDrop('gold',o.x,o.z,{v:Math.max(1,Math.round(s.v/4*(1+PS.gold/100)))}); }
-    else if(['wood','ore','ess','shards','herb','dust','core'].includes(s.k)) spawnDrop('mat',o.x,o.z,{res:s.k,v:s.v});
+    else if(['wood','ore','ess','shards','herb','dust','core'].includes(s.k)||isMatRes(s.k)) spawnDrop('mat',o.x,o.z,{res:s.k,v:s.v});
     else if(s.k==='potion') spawnDrop('potion',o.x,o.z); else if(s.k==='gem') spawnDrop('gem',o.x,o.z,{gem:pick(Object.keys(GEMS))+'0'}); else if(s.k==='iron') spawnDrop('key',o.x,o.z);
     else { grantSup(s); toast(`${ico(supIcon(s))} <b>${esc(supLabel(s))}</b>${s.v>1?' ×'+s.v:''}`,null,2,'loot'); } } });
 }

@@ -71,7 +71,9 @@ function cardHtml(it,ctx){
   h+='</ul>';
   if(it.uniq){ const u=Object.values(UNIQUES).find(u=>u.id===it.uniq); h+=`<div class="ic-uni">${ico('spark')} <b>${u.n}.</b> ${u.t}</div>`; }
   if(it.set){ const S0=SETS[it.set]; const c=setCount()[it.set]||0; h+=`<div class="ic-set"><b>${ico('crown')} ${S0.n} (${c}/4)</b><div class="${c>=2?'on':''}">(2) ${S0.b2.t}</div><div class="${c>=4?'on':''}">(4) ${S0.b4.t}</div></div>`; }
-  h+=`<div class="ic-acts">${cardActs(it,ctx,isEq)}</div></div>`;
+  h+=`<div class="ic-acts">${cardActs(it,ctx,isEq)}</div>`;
+  if(!isEq&&ctx!=='view'&&!it.lock) h+=salvPreviewHtml(it,true); // v16: «Разобрать → получишь: …» + кнопка
+  h+='</div>';
   return h; }
 function cardActs(it,ctx,isEq){ const B=ITEM_BASES[it.base]; let h='';
   const after=()=>{ _dollKey=''; PANEL.sel=null; cardClose(); rerender(); hudPortrait(); };
@@ -81,7 +83,7 @@ function cardActs(it,ctx,isEq){ const B=ITEM_BASES[it.base]; let h='';
   if(S.bld.forge>0&&ctx!=='view'){ h+=`<button class="btn woodb" ${act(()=>{ cardClose(); openPanel('bld',{id:'forge',tab:'up',sel:it}); })}>${ico('up')} Улучшить</button>`;
     if(it.aff.length) h+=`<button class="btn woodb" ${act(()=>{ cardClose(); openPanel('bld',{id:'forge',tab:'reforge',sel:it}); })}>${ico('spark')} Перековать</button>`; }
   if(!isEq&&ctx!=='view'){ h+=`<button class="btn woodb sq" title="${it.lock?'Открепить':'Закрепить'}" ${act(()=>{ it.lock=!it.lock; cardOpen(it,ctx); rerender(); })}>${ico('lock')}${it.lock?' Снять замок':''}</button>`;
-    if(!it.lock){ const v=salvageValue(it); h+=`<button class="btn woodb" ${act(()=>{ salvage(it); AU.sfx('hit'); toast(`Разобрано: ${Object.keys(v).filter(k=>v[k]).map(k=>v[k]+' '+RES_NAME[k].toLowerCase()).join(', ')}`); PANEL.sel=null; cardClose(); rerender(); })}>${ico('salvage')} Разобрать</button>`; } }
+  }
   return h; }
 function cardOpen(it,ctx){ CARD={it,ctx}; let w=$('icardW'); if(!w){ w=document.createElement('div'); w.id='icardW'; document.body.appendChild(w); w.addEventListener('pointerdown',ev=>{ if(ev.target===w) cardClose(); }); }
   it.nw=false; w.innerHTML=`<div id="icard" class="r${it.rar}">${frame(`<button class="hbtn ic-x" id="icX">${ico('close')}</button><div class="ic-body">${cardHtml(it,ctx)}</div>`)}</div>`; w.classList.remove('hidden');
@@ -131,7 +133,7 @@ function pGear2(){
   const list=S.inv.filter(INV_FILT[INV_F][2]);
   let R=`<div class="invbar"><div class="chips">${Object.keys(INV_FILT).map(f=>`<button class="chip ${INV_F===f?'on':''}" ${act(()=>{ INV_F=f; rerender(); })}>${ico(INV_FILT[f][1])}<span>${INV_FILT[f][0]}</span></button>`).join('')}</div><span class="cap ${S.inv.length>=invCap()?'full':''}">${S.inv.length}/${invCap()}</span></div>`;
   R+=`<div class="invgrid">${list.map(it=>itHtml(it,{act:act(()=>{ PANEL.sel=it; it.nw=false; cardOpen(it,'inv'); }),sel:sel===it,cmpDn:true})).join('')}${list.length?'':`<div class="empty-note">${INV_F==='up'?'Ничего лучше надетого нет':'Пусто'}</div>`}</div>`;
-  R+=`<div class="row invact"><button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button><button class="btn woodb small" ${act(()=>{ let n=0; const tot={}; for(const it of S.inv.slice()){ if(!it.lock&&it.rar<=1&&cmpVal(it)<=0){ const v=salvage(it); if(v){ n++; for(const k in v) tot[k]=(tot[k]||0)+v[k]; } } } toast(n?`Разобрано: <b>${n}</b> · ${Object.keys(tot).filter(k=>tot[k]).map(k=>tot[k]+' '+RES_NAME[k].toLowerCase()).join(', ')}`:'Нечего разбирать'); AU.sfx('hit'); rerender(); })}>${ico('salvage')} Хлам</button><button class="btn leather small" ${act(()=>{ botEquipBest(); AU.sfx('pick'); rerender(); hudPortrait(); })}>${ico('check')} Лучшее</button></div>`;
+  R+=`<div class="row invact"><button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button><button class="btn woodb small" ${act(()=>salvBatchOpen())}>${ico('salvage')} Разбор</button><button class="btn leather small" ${act(()=>{ botEquipBest(); AU.sfx('pick'); rerender(); hudPortrait(); })}>${ico('check')} Лучшее</button></div>`;
   R+=`<div class="consrow">${['potion','bomb','elixir_str','elixir_def','elixir_spd','scroll','prot','tome'].filter(k=>S.cons[k]>0||k==='potion').map(k=>`<span class="cons" title="${CONS[k].n}">${ico(CONS[k].ic)}<b>${S.cons[k]||0}</b></span>`).join('')}${['iron','gold','leg'].filter(k=>keyCount(k)>0).map(k=>`<span class="cons" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('keyT')}<b>${keyCount(k)}</b></span>`).join('')}${S.ck.f?`<span class="cons" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('keyT')}<b>${S.ck.f}/${GOLD_FRAG}</b></span>`:''}</div>`;
   return `<div class="gear2"><div class="g-l">${L}</div><div class="g-r">${R}</div></div>`;
 }

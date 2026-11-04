@@ -3566,7 +3566,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=5;
+const SAVE_V=6;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -3579,7 +3579,9 @@ function newSave(){
     hero:{lvl:1,xp:0,tp:0,talents:{sword:{},axe:{},bow:{},staff:{}},attr:{str:0,agi:0,int:0,vit:0},ap:0,resp:0},
     gear:{weapon:null,offhand:null,helm:null,chest:null,gloves:null,boots:null,amulet:null,ring1:null,ring2:null},
     inv:[], uid:1,
-    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0,sparks:0,herb:3,dust:0,core:0},
+    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0,sparks:0,herb:3,dust:0,core:0,
+      // v16: материалы разбора (src/p31.js → MAT); стартовый запас — на первую ковку без разбора
+      ingot:6,steel:0,mithril:0,cloth:4,leather:4,thread:4,silk:0,dhide:0,sinew:3,ironwood:0,gshard:3,gdust:2,efire:3,eice:0,epoison:0,elight:0,scrap:0},
     gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0,prot:0,tome:0}, keys:0, potMax:3,
     // v5: chests & keys (S.keys = iron keys), pity counters, spells/runes, recipes, build & craft queues, boosts, shop state
     ck:{g:0,f:0,l:0}, chests:{wood:0,iron:0,gold:0,leg:0}, pity:{}, spell:{known:{},tomes:{},slot:'',runes:{},rune:{}}, rec:{}, bq:{list:[],slot2:false}, craft:{list:[]}, boost:{xp:0,gold:0,drop:0}, shop:{day:'',ref:0,bought:{},lim:{},free:0,adRef:0},
@@ -3639,6 +3641,8 @@ function migrateSave(d){
     // кузница > ур.: старым игрокам открываем рецепты по пройденным боссам
     d.rec=d.rec||{}; const st=(d.prog&&d.prog.stages)||{}; const BP={'2-5':'bp_warden','3-5':'rec_legend','4-5':'bp_owl','5-5':'bp_ash','6-5':'bp_king'}; for(const k in BP) if(st[k]) d.rec[BP[k]]=1;
     d.v=5; }
+  if(d.v<6){ // v5 → v6 (игра v16): материалы разбора по типу предметов. Часть руды → слитки, часть эссенции → эссенции стихий, подарок по уровню — см. matMigrate (p31.js)
+    try{ matMigrate(d); }catch(e){ console.error(e); } d.v=6; }
   return d;
 }
 let _saveT=0;
@@ -3986,6 +3990,14 @@ const _MAP_D='<path d="M11 4.2L21 7.2V27.8L11 24.8Z" fill="#b8925a" opacity=".45
 const _HAMMER_B='<path d="M16.9 16.1L6.5 28.6L4.1 26.6L14.6 14.1Z" fill="url(#gW)"/><path d="M15.4 3.7L26.9 13.3L21.8 19.5L10.3 9.9Z" fill="url(#gS)"/>';
 const _HAMMER_D='<path d="M14.6 5.2L11.2 9.2M25.8 14.6L22.4 18.6" stroke="#f2c14a" stroke-width="1.6"/>'+icoH('M15.8 5.6L24.6 13',.75,1);
 const _ARC=(d,c,w)=>icoL(d,c,w);
+// v16: части иконок материалов — слитки (два бруска), рулон ткани, шкура, капля-кристалл стихии
+const _ING=(f,t,e)=>`<path d="M3 28.5L5.5 21.5H23.5L26 28.5Z" fill="url(#${f})"/><path d="M5.5 21.5L8.5 18H26.5L23.5 21.5Z" fill="url(#${t})"/><path d="M23.5 21.5L26.5 18L29 25L26 28.5Z" fill="url(#${e})"/><path d="M6 18L8.5 11.5H22.5L25 18Z" fill="url(#${f})"/><path d="M8.5 11.5L11.5 8H25.5L22.5 11.5Z" fill="url(#${t})"/><path d="M22.5 11.5L25.5 8L28 14.5L25 18Z" fill="url(#${e})"/>`;
+const _ING_D=c=>icoH('M7 26.6L8.4 23',.8,1.1,c)+icoH('M10 16.2L11.4 12.8',.8,1.1,c);
+const _BOLT=g=>`<path d="M18 19H27.5V29.5L24.4 27.4L21.2 29.5L18 27.4Z" fill="url(#${g})"/><rect x="3" y="7.5" width="25" height="14" rx="7" fill="url(#${g})"/><ellipse cx="10" cy="14.5" rx="4.4" ry="7" fill="url(#${g})"/>`;
+const _BOLT_D=c=>`<path d="M10 9.4C8.2 9.4 7.4 12 7.4 14.5C7.4 17 8.4 19.4 10 19.4C11.4 19.4 12.4 17.4 12.4 14.5C12.4 12.4 11.6 11.4 10.6 11.6" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9"/><path d="M16 7.6V21.4M21.6 7.6V21.4" stroke="${c}" stroke-width="1.3"/>`;
+const _PELT='M6 6C9 7 11 5 13 3C15 5 17 5 19 3C21 5 23 7 26 6C25 10 27 13 29 15C27 17 25 21 26 26C23 25 21 27 19 29C17 27 15 27 13 29C11 27 9 25 6 26C7 21 5 17 3 15C5 13 7 10 6 6Z';
+const _DROP=g=>`<path d="M16 2.5C20 9 26.5 13.5 26.5 20.2A10.5 10.5 0 0 1 5.5 20.2C5.5 13.5 12 9 16 2.5Z" fill="url(#${g})"/>`;
+const _DROP_D=icoH('M9 17.6C9.6 14.6 11.6 11.6 13.6 9.4',.85,1.3);
 const ICONS={
  // ---------- оружие и снаряжение (сталь) ----------
  sword:[_SW_B,_SW_D],
@@ -4067,6 +4079,30 @@ const ICONS={
    '<path d="M6.6 13L15 20.6M25 9L17 16.6M16 4.6V10.6" stroke="#e2ffae" stroke-opacity=".7" stroke-width=".9" fill="none"/>'],
  dust:[`<path d="${icoStar(13,15,10.4,2.8,4)}" fill="url(#gU)"/><path d="${icoStar(24.4,7.4,5.2,1.4,4)}" fill="url(#gU)"/><path d="${icoStar(23.6,24.4,5.6,1.5,4)}" fill="url(#gU)"/>`,'<circle cx="6" cy="26" r="1.2" fill="#d2c2ff"/><circle cx="28" cy="15.4" r="1" fill="#d2c2ff"/>'],
  core:[`<path d="${icoPoly(16,16,14,6)}" fill="url(#gT)"/><path d="${icoPoly(16,16,8,6)}" fill="url(#rF)" stroke-width="1"/>`,'<path d="M16 2V8M28.1 9L22.9 12M28.1 23L22.9 20M16 30V24M3.9 23L9.1 20M3.9 9L9.1 12" stroke="#ffd0b0" stroke-opacity=".55" stroke-width=".9"/>'+icoH('M5.6 10.6L14.4 5.2',.6,1.1)],
+ // ---------- v16: материалы разбора (металл, ткань и кожа, дерево, украшения, стихии, чертежи) ----------
+ ingot:[_ING('gK','gS','gD'),_ING_D('#e8eef4')+'<path d="M12 23.6H17M15.6 13.4H19.6" stroke="#3a4048" stroke-width="1.1" stroke-linecap="round"/>'],
+ steel:[_ING('gS','gE','gK'),_ING_D('#fff')+`<path d="${icoStar(27.4,5,3,.8,4)}" fill="#dff2ff"/>`],
+ mithril:[_ING('gC','gU','gB'),_ING_D('#fff')+`<path d="${icoStar(27.4,5,3.4,.9,4)}" fill="#c4fff8"/><path d="${icoStar(4.6,15,2.4,.7,4)}" fill="#c4fff8"/>`],
+ cloth:[_BOLT('gB'),_BOLT_D('#ffd982')],
+ silk:[_BOLT('gM'),_BOLT_D('#fff4c0')+icoH('M7 11.4C11 10.4 15 10.4 19 11.6',.95,1.4)],
+ leather:[`<path d="${_PELT}" fill="url(#gL)"/>`,'<path d="M9.5 9.5H22.5V22.5H9.5Z" fill="none" stroke="#f2c890" stroke-width="1" stroke-dasharray="1.8 1.4"/>'+icoH('M8 8.6C10 9 11.6 7.8 13 6.6',.6,1.1)],
+ dhide:[`<path d="${_PELT}" fill="url(#gT)"/>`,'<path d="M9 13.5Q11.5 10.5 14 13.5Q16.5 10.5 19 13.5Q21.5 10.5 24 13.5M7.5 18.5Q10 15.5 12.5 18.5Q15 15.5 17.5 18.5Q20 15.5 22.5 18.5M10 23.5Q12.5 20.5 15 23.5Q17.5 20.5 20 23.5" fill="none" stroke="#ffc090" stroke-width="1.1"/>'+icoH('M8 8.6C10 9 11.6 7.8 13 6.6',.6,1.1)],
+ thread:['<path d="M10.5 7.5H21.5V24.5H10.5Z" fill="url(#gA)"/><path d="M7.5 3.5H24.5V8H7.5Z" fill="url(#gW)"/><path d="M7.5 24H24.5V28.5H7.5Z" fill="url(#gW)"/>'+icoL('M21.5 17C26 17.5 28 21 27 25.5','#e8d6a8',1.2),
+   '<path d="M11 10.5L21 11.6M11 13.6L21 14.7M11 16.7L21 17.8M11 19.8L21 20.9" stroke="#a88a52" stroke-width=".8"/>'+icoH('M12.4 9V23',.55,1.1)],
+ sinew:[icoL('M9 22C3 21 3 13 9 12.5C15 12 23 12.2 25 16C27 20 21 22.5 15 22.2C9 22 7 18 11 16.5C15 15 21 15.6 22 17.4','#e8c08a',2.4)+icoL('M22 17.4C25 20 27 24 27.5 29','#e8c08a',1.6),
+   icoH('M7.6 14.2C10 13.4 14 13.2 18 13.6',.6,1)],
+ ironwood:['<path d="M5 10.5H21A7 7 0 0 1 21 24.5H5A7 7 0 0 1 5 10.5Z" fill="url(#gD)"/><ellipse cx="21" cy="17.5" rx="5.2" ry="7" fill="url(#gK)"/><path d="M10 9.6H14V25.4H10Z" fill="url(#gS)" stroke-width="1"/>',
+   '<ellipse cx="21" cy="17.5" rx="2.8" ry="3.9" fill="none" stroke="#9ec4e8" stroke-width=".9"/><ellipse cx="21" cy="17.5" rx="1" ry="1.4" fill="#9ec4e8"/><path d="M4 14.5H9M15 20.5H18M4 21H8" stroke="#7a8696" stroke-width=".9" stroke-linecap="round"/>'+icoH('M11 11V24',.7,1)],
+ gshard:['<path d="M4 27L7.5 12.5L13 16.5L12 28Z" fill="url(#gB)"/><path d="M11.5 28L13.5 9L18.5 3.5L22 12L20 28Z" fill="url(#gR)"/><path d="M19.5 28L22.5 15.5L28.5 18.5L27.5 28Z" fill="url(#gN)"/>',
+   '<path d="M18.5 3.5L16.5 28M7.5 12.5L8.6 27.6M22.5 15.5L23.8 28" stroke="#fff" stroke-opacity=".45" stroke-width=".8"/>'+icoH('M14.6 10.6L17.6 5.6',.85,1.1)],
+ gdust:['<path d="M3 27.5C5.5 20 10.5 15 16 15C21.5 15 26.5 20 29 27.5Z" fill="url(#gY)"/>',
+   `<path d="${icoStar(16,7.4,4.6,1.2,4)}" fill="#fff6c4"/><path d="${icoStar(25.6,11.6,2.8,.8,4)}" fill="#fff6c4"/><path d="${icoStar(6.4,12.6,2.4,.7,4)}" fill="#fff6c4"/><circle cx="12" cy="22" r="1.1" fill="#fff6c4"/><circle cx="19.4" cy="20.2" r=".9" fill="#fff6c4"/><circle cx="22.4" cy="24.4" r="1" fill="#a8620f"/><circle cx="9" cy="25.4" r=".9" fill="#a8620f"/>`+icoH('M7.4 23C9 19.8 11.6 17.6 14.6 17',.75,1.2)],
+ efire:[_DROP('rF'),`<path d="M16 13C17.2 15.6 20.4 17 20.4 20.6C20.4 23.2 18.4 25 16 25C13.6 25 11.6 23.2 11.6 20.6C11.6 18.8 12.8 17.4 13.8 16.8C14 18.2 14.6 18.8 15.2 19C14.8 17 15.2 14.8 16 13Z" fill="#fff3a0"/>`+_DROP_D],
+ eice:[_DROP('rB'),'<path d="M16 13.4V26.6M10.3 16.7L21.7 23.3M10.3 23.3L21.7 16.7" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M14.4 14.2L16 15.8L17.6 14.2M14.4 25.8L16 24.2L17.6 25.8" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/>'+_DROP_D],
+ epoison:[_DROP('gN'),'<circle cx="14.4" cy="21.4" r="3.2" fill="#e2ffae" fill-opacity=".85"/><circle cx="19.6" cy="17.4" r="2" fill="#e2ffae" fill-opacity=".8"/><circle cx="18.4" cy="24.6" r="1.4" fill="#e2ffae" fill-opacity=".7"/><circle cx="13.4" cy="15.6" r="1.1" fill="#e2ffae" fill-opacity=".7"/>'+_DROP_D],
+ elight:[_DROP('gY'),`<path d="M18 12.4L12.2 20.6H15.8L14 27.4L20.2 18.6H16.4Z" fill="#fff" stroke="#e0880a" stroke-width=".8" stroke-linejoin="round"/>`+_DROP_D],
+ scrap:['<path d="M4 4.5H24.5L26 8L23.6 11L27 14.2L24.4 17.6L27.4 21L24.8 24.6L26.4 27.5H4Z" fill="url(#gB)"/>',
+   '<path d="M7 9.5H21M7 13.5H18M7 17.5H21M7 21.5H15" stroke="#e4f4ff" stroke-opacity=".75" stroke-width=".8"/><circle cx="17.6" cy="22.4" r="3.2" fill="none" stroke="#fff" stroke-width="1.1"/><path d="M17.6 18.4V26.4M13.6 22.4H21.6" stroke="#fff" stroke-width=".7"/><path d="M8.4 6.2V25.8" stroke="#ffd982" stroke-width="1" stroke-dasharray="1.6 1.2"/>'+icoH('M6 7H20',.5,1)],
  // тонируемые варианты (цвет задаёт родитель через color): ключи разных сундуков, камни-самоцветы в гнёздах
  keyT:(()=>{ const K='<path fill-rule="evenodd" d="M10 3.4a6.6 6.6 0 1 1 0 13.2a6.6 6.6 0 1 1 0-13.2ZM10 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6Z" fill="F"/><path d="M13.2 15.6L15.6 13.2L28.4 26L26 28.4Z" fill="F"/><path d="M21.8 23.4L24.6 20.6L26.8 22.8L24 25.6ZM18 19.6L20.8 16.8L22.4 18.4L19.6 21.2Z" fill="F"/>';
    return [K.replace(/fill="F"/g,'fill="currentColor"'),K.replace(/fill="F"/g,'fill="url(#gSh)"')+icoH('M5.2 8.6A5 5 0 0 1 8.4 4.8',.85,1.2)]; })(),
@@ -9017,7 +9053,8 @@ function openPanel(kind,opts={}){
 function closePanel(){ const oc=PANEL.opts&&PANEL.opts.onClose; show('panel',false); PANEL.kind=null; PANEL.opts={}; G.paused=false; AU.sfx('ui'); if(G.mode==='village'){ hudRefresh(); hudQuest(); } if(oc) setTimeout(oc,0); }
 function renderPanel(){
   let k=PANEL.kind; let title='',sub='',tabs=[],body='';
-  const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
+  const resK=k==='bld'&&PANEL.opts.id==='forge'?['gold','ore','ingot','steel','mithril','ess','dust']:k==='bld'&&PANEL.opts.id==='alch'?['gold','herb','ess','efire','eice','epoison','elight']:['gold','wood','ore','ess','shards']; // v16: в кузнице и у алхимика — их материалы
+  const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${resK.map(r=>resChip(r,S.res[r]||0)).join('')}</div>`;
   if(k==='hero'){ const o=heroPanel(); title=o.title; sub=o.sub; tabs=o.tabs; body=o.body; }
   else if(k==='bld'){ const id=PANEL.opts.id; const B=BUILDINGS[id]; title=B.n; sub=S.bld[id]?`Уровень ${S.bld[id]}`:'Не построено';
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }
@@ -9229,9 +9266,9 @@ function bldBody(id,tab){
 }
 // ----- forge -----
 const upCost=it=>({gold:Math.round(40*F(it.ilvl)*Math.pow(1+it.up,1.25)),ore:Math.round(5*(1+it.up)*Math.sqrt(F(it.ilvl)))});
-const reforgeCost=it=>({gold:Math.round(90*F(it.ilvl)),ess:2+it.rar*2});
+const reforgeCost=it=>Object.assign({gold:Math.round(90*F(it.ilvl)),ess:2+it.rar*2},famBind(it)); // v16: + связующий материал семейства (слитки/нити/жилы/золотая пыль)
 const craftCost=()=>{ const L=S.hero.lvl; return {gold:Math.round(110*F(L)),ore:Math.round(18*Math.sqrt(F(L))),wood:12}; };
-const socketCost=it=>({gold:Math.round(200*F(it.ilvl)),ess:12*(it.sock.length+1)});
+const socketCost=it=>({gold:Math.round(200*F(it.ilvl)),ess:12*(it.sock.length+1),gshard:4*(it.sock.length+1)}); // v16: + осколки камней
 function allItems(){ return Object.values(S.gear).filter(Boolean).concat(S.inv); }
 function pickerGrid(filter){ return `<div id="invGrid">${allItems().filter(filter||(()=>true)).map(it=>`<div>${slotHtml(ITEM_BASES[it.base].slot,it,act(()=>{ PANEL.sel=it; PANEL.aff=null; rerender(); }))}${Object.values(S.gear).includes(it)?'<span style="display:block;text-align:center;font-size:10px;font-family:var(--sc);font-weight:800;color:#7c2418">надето</span>':''}</div>`).join('')}</div>`; }
 function forgeBody(tab){
@@ -12071,14 +12108,14 @@ const RECIPES={
 const BLUEPRINT_BOSS={rotroot:'bp_warden',bogMother:'rec_legend',morven:'bp_owl',colossus:'bp_ash',ashKing:'bp_king'};
 const recOk=r=>!RECIPES[r].need||!!(S.rec&&S.rec[RECIPES[r].need]);
 function craftSlots(){ return 1+(S.bld.forge>=4?1:0); }
-function craftStart(rid,slot,cls){ const R=RECIPES[rid]; const L=Math.max(S.hero.lvl,zoneLvlNow()); const c=R.c(L);
+function craftStart(rid,slot,cls,el){ const R=RECIPES[rid]; const L=Math.max(S.hero.lvl,zoneLvlNow()); if(slot!=='weapon'||R.set) el=null; const c=recipeCost(rid,slot,cls,L,el);
   if(S.bld.forge<R.lv||!recOk(rid)||S.craft.list.length>=craftSlots()||!pay(c)) return false;
-  const job={rid,slot,cls,L,start:Date.now(),end:Date.now()+R.t*1000*timeMul()};
+  const job={rid,slot,cls,L,el:el||null,start:Date.now(),end:Date.now()+R.t*1000*timeMul()};
   if(R.t<=0){ craftFinish(job); return true; } S.craft.list.push(job); S.st.crafted++; ev('craft'); saveGame(); return true; }
 function craftFinish(job){ const R=RECIPES[job.rid]; const i=S.craft.list.indexOf(job); if(i>=0) S.craft.list.splice(i,1);
   let it; const slot=job.slot||'weapon';
   if(R.set){ const pieces=SETS[R.set].pieces; const sl=pieces[slot]?slot:Object.keys(pieces)[0]; it=genItem(job.L,{base:pieces[sl],rar:3,set:R.set}); }
-  else { const r=R.rar[0]+(Math.random()<(R.rar[1]>R.rar[0]?(R.rar[0]>=2?.15:.35):0)?1:0); it=genItem(job.L,{slot,cls:slot==='weapon'?job.cls:undefined,rar:r}); }
+  else { const r=R.rar[0]+(Math.random()<(R.rar[1]>R.rar[0]?(R.rar[0]>=2?.15:.35):0)?1:0); it=genItem(job.L,{slot,cls:slot==='weapon'?job.cls:undefined,rar:r,el:slot==='weapon'&&job.el?job.el:undefined}); }
   addItem(it); it.nw=true; AU.sfx(it.rar>=3?'legend':'build'); toast(`Горан выковал: <b class="r${it.rar}">${esc(it.name)}</b>`,iconFor(it),it.rar,'loot'); ev('craft'); saveGame(); return it; }
 function craftTick(){ if(!S.craft) return; for(const j of S.craft.list.slice()) if(Date.now()>=j.end) craftFinish(j); }
 function zoneLvlNow(){ let z=1; for(let i=1;i<=6;i++) if(stageDone(i+'-1')) z=i; return ZONES[z-1].lv+2; }
@@ -12100,8 +12137,12 @@ const RUNES={
   leech:{n:'Руна жажды',ic:'drop',d:'Лечит на 12% нанесённого заклинанием урона'},
   power:{n:'Руна мощи',ic:'boost',d:'+35% урона заклинания'}
 };
-const runeCost=()=>({dust:12,ess:20,core:1});
-const spellLearnCost=(k,r)=>({gold:Math.round(120*F(Math.max(1,SPELLS[k].z*5-4))*r),ess:6*r});
+// v16: руна просит эссенцию своей стихии (эхо — молния, простор и жажда — яд, спешка — лёд, мощь — огонь)
+const RUNE_EL={echo:'elight',wide:'epoison',swift:'eice',leech:'epoison',power:'efire'};
+const runeCost=(k)=>{ const c={dust:12,ess:20,core:1}; if(k&&RUNE_EL[k]) c[RUNE_EL[k]]=6; return c; };
+// v16: ранги 2–5 просят эссенцию школы (огонь/лёд/яд/молния), Свет — золотую пыль, Тень — осколки камней; 1-й ранг — без материалов
+const SPELL_MAT={fire:'efire',ice:'eice',poison:'epoison',light:'elight',holy:'gdust',shadow:'gshard'};
+const spellLearnCost=(k,r)=>{ const c={gold:Math.round(120*F(Math.max(1,SPELLS[k].z*5-4))*r),ess:6*r}; if(r>=2&&SPELL_MAT[k]) c[SPELL_MAT[k]]=2*(r-1); return c; };
 const spS=()=>S.spell;
 function spellRank(k){ return (spS().known[k]||0); }
 function spellAvail(k){ return stageDone(Math.max(1,SPELLS[k].z-1)+'-5')||SPELLS[k].z===1&&stageDone('1-1'); }
@@ -12189,7 +12230,7 @@ function worldChestLoot(o){
   const tier=o.kind==='vault'?'iron':'wood'; const out=chestRoll(tier,W.lvl);
   out.items.forEach((it,i)=>later(.25+i*.15,()=>spawnDrop('item',o.x,o.z,{item:it})));
   later(.2,()=>{ for(const s of out.sup){ if(s.k==='gold'){ for(let i=0;i<4;i++) spawnDrop('gold',o.x,o.z,{v:Math.max(1,Math.round(s.v/4*(1+PS.gold/100)))}); }
-    else if(['wood','ore','ess','shards','herb','dust','core'].includes(s.k)) spawnDrop('mat',o.x,o.z,{res:s.k,v:s.v});
+    else if(['wood','ore','ess','shards','herb','dust','core'].includes(s.k)||isMatRes(s.k)) spawnDrop('mat',o.x,o.z,{res:s.k,v:s.v});
     else if(s.k==='potion') spawnDrop('potion',o.x,o.z); else if(s.k==='gem') spawnDrop('gem',o.x,o.z,{gem:pick(Object.keys(GEMS))+'0'}); else if(s.k==='iron') spawnDrop('key',o.x,o.z);
     else { grantSup(s); toast(`${ico(supIcon(s))} <b>${esc(supLabel(s))}</b>${s.v>1?' ×'+s.v:''}`,null,2,'loot'); } } });
 }
@@ -12439,7 +12480,9 @@ function cardHtml(it,ctx){
   h+='</ul>';
   if(it.uniq){ const u=Object.values(UNIQUES).find(u=>u.id===it.uniq); h+=`<div class="ic-uni">${ico('spark')} <b>${u.n}.</b> ${u.t}</div>`; }
   if(it.set){ const S0=SETS[it.set]; const c=setCount()[it.set]||0; h+=`<div class="ic-set"><b>${ico('crown')} ${S0.n} (${c}/4)</b><div class="${c>=2?'on':''}">(2) ${S0.b2.t}</div><div class="${c>=4?'on':''}">(4) ${S0.b4.t}</div></div>`; }
-  h+=`<div class="ic-acts">${cardActs(it,ctx,isEq)}</div></div>`;
+  h+=`<div class="ic-acts">${cardActs(it,ctx,isEq)}</div>`;
+  if(!isEq&&ctx!=='view'&&!it.lock) h+=salvPreviewHtml(it,true); // v16: «Разобрать → получишь: …» + кнопка
+  h+='</div>';
   return h; }
 function cardActs(it,ctx,isEq){ const B=ITEM_BASES[it.base]; let h='';
   const after=()=>{ _dollKey=''; PANEL.sel=null; cardClose(); rerender(); hudPortrait(); };
@@ -12449,7 +12492,7 @@ function cardActs(it,ctx,isEq){ const B=ITEM_BASES[it.base]; let h='';
   if(S.bld.forge>0&&ctx!=='view'){ h+=`<button class="btn woodb" ${act(()=>{ cardClose(); openPanel('bld',{id:'forge',tab:'up',sel:it}); })}>${ico('up')} Улучшить</button>`;
     if(it.aff.length) h+=`<button class="btn woodb" ${act(()=>{ cardClose(); openPanel('bld',{id:'forge',tab:'reforge',sel:it}); })}>${ico('spark')} Перековать</button>`; }
   if(!isEq&&ctx!=='view'){ h+=`<button class="btn woodb sq" title="${it.lock?'Открепить':'Закрепить'}" ${act(()=>{ it.lock=!it.lock; cardOpen(it,ctx); rerender(); })}>${ico('lock')}${it.lock?' Снять замок':''}</button>`;
-    if(!it.lock){ const v=salvageValue(it); h+=`<button class="btn woodb" ${act(()=>{ salvage(it); AU.sfx('hit'); toast(`Разобрано: ${Object.keys(v).filter(k=>v[k]).map(k=>v[k]+' '+RES_NAME[k].toLowerCase()).join(', ')}`); PANEL.sel=null; cardClose(); rerender(); })}>${ico('salvage')} Разобрать</button>`; } }
+  }
   return h; }
 function cardOpen(it,ctx){ CARD={it,ctx}; let w=$('icardW'); if(!w){ w=document.createElement('div'); w.id='icardW'; document.body.appendChild(w); w.addEventListener('pointerdown',ev=>{ if(ev.target===w) cardClose(); }); }
   it.nw=false; w.innerHTML=`<div id="icard" class="r${it.rar}">${frame(`<button class="hbtn ic-x" id="icX">${ico('close')}</button><div class="ic-body">${cardHtml(it,ctx)}</div>`)}</div>`; w.classList.remove('hidden');
@@ -12499,7 +12542,7 @@ function pGear2(){
   const list=S.inv.filter(INV_FILT[INV_F][2]);
   let R=`<div class="invbar"><div class="chips">${Object.keys(INV_FILT).map(f=>`<button class="chip ${INV_F===f?'on':''}" ${act(()=>{ INV_F=f; rerender(); })}>${ico(INV_FILT[f][1])}<span>${INV_FILT[f][0]}</span></button>`).join('')}</div><span class="cap ${S.inv.length>=invCap()?'full':''}">${S.inv.length}/${invCap()}</span></div>`;
   R+=`<div class="invgrid">${list.map(it=>itHtml(it,{act:act(()=>{ PANEL.sel=it; it.nw=false; cardOpen(it,'inv'); }),sel:sel===it,cmpDn:true})).join('')}${list.length?'':`<div class="empty-note">${INV_F==='up'?'Ничего лучше надетого нет':'Пусто'}</div>`}</div>`;
-  R+=`<div class="row invact"><button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button><button class="btn woodb small" ${act(()=>{ let n=0; const tot={}; for(const it of S.inv.slice()){ if(!it.lock&&it.rar<=1&&cmpVal(it)<=0){ const v=salvage(it); if(v){ n++; for(const k in v) tot[k]=(tot[k]||0)+v[k]; } } } toast(n?`Разобрано: <b>${n}</b> · ${Object.keys(tot).filter(k=>tot[k]).map(k=>tot[k]+' '+RES_NAME[k].toLowerCase()).join(', ')}`:'Нечего разбирать'); AU.sfx('hit'); rerender(); })}>${ico('salvage')} Хлам</button><button class="btn leather small" ${act(()=>{ botEquipBest(); AU.sfx('pick'); rerender(); hudPortrait(); })}>${ico('check')} Лучшее</button></div>`;
+  R+=`<div class="row invact"><button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button><button class="btn woodb small" ${act(()=>salvBatchOpen())}>${ico('salvage')} Разбор</button><button class="btn leather small" ${act(()=>{ botEquipBest(); AU.sfx('pick'); rerender(); hudPortrait(); })}>${ico('check')} Лучшее</button></div>`;
   R+=`<div class="consrow">${['potion','bomb','elixir_str','elixir_def','elixir_spd','scroll','prot','tome'].filter(k=>S.cons[k]>0||k==='potion').map(k=>`<span class="cons" title="${CONS[k].n}">${ico(CONS[k].ic)}<b>${S.cons[k]||0}</b></span>`).join('')}${['iron','gold','leg'].filter(k=>keyCount(k)>0).map(k=>`<span class="cons" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('keyT')}<b>${keyCount(k)}</b></span>`).join('')}${S.ck.f?`<span class="cons" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('keyT')}<b>${S.ck.f}/${GOLD_FRAG}</b></span>`:''}</div>`;
   return `<div class="gear2"><div class="g-l">${L}</div><div class="g-r">${R}</div></div>`;
 }
@@ -12614,7 +12657,7 @@ forgeBody=function(tab){
   }
   if(tab==='gems'){
     let box=''; for(const g in GEMS) for(let t=0;t<3;t++){ const id=g+t, n=S.gems[id]||0; if(!n) continue; const G0=GEMS[g];
-      box+=`<div class="gemc"><span style="color:${G0.c}" class="gi t${t}">${ico('gemT')}</span><b>${GEM_TIER[t]} ${G0.n.toLowerCase()}</b><small>${G0.t.replace('{v}',G0.v[t])}</small><i>×${n}</i>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
+      box+=`<div class="gemc"><span style="color:${G0.c}" class="gi t${t}">${ico('gemT')}</span><b>${GEM_TIER[t]} ${G0.n.toLowerCase()}</b><small>${G0.t.replace('{v}',G0.v[t])}</small><i>×${n}</i>${t<2&&n>=3?`<span class="muted" style="font-size:11px">${ico('gdust')}${(t+1)*3}</span><button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5),gdust:(t+1)*3}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
     R+=`<div class="sect">Шкатулка камней</div><div class="gembox">${box||'<span class="muted">Камней нет. Ищите их в сундуках, у элиты и в рудных жилах.</span>'}</div>`;
     if(it){ R+=big; it.sock.forEach((g,si)=>{ if(g) R+=`<button class="btn woodb small" ${act(()=>{ S.gems[g]=(S.gems[g]||0)+1; it.sock[si]=null; after(); })}>Извлечь ${GEMS[g.slice(0,-1)].n.toLowerCase()}</button> `;
         else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); R+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gemT')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
@@ -12646,7 +12689,7 @@ templeBody=function(tab){
     for(const k in SPELLS){ const s=SPELLS[k]; const av=spellAvail(k); const c={ess:20+s.z*10,shards:4+s.z*4};
       h+=`<div class="brew ${av?'':'lock'}" style="--c:${s.col}"><span class="bi" style="color:${s.col}">${ico(s.ic)}</span><b>Фолиант: ${s.sch}</b><small>${s.n} · у вас ${S.spell.tomes[k]||0}, ранг ${spellRank(k)}</small><div class="bn">${av?costHtml(c):`<span class="muted">${s.z>1?'После владыки зоны '+(s.z-1):'После этапа 1-1'}</span>`}</div>${av?`<button class="btn leather small" ${canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ S.spell.tomes[k]=(S.spell.tomes[k]||0)+1; AU.sfx('page'); saveGame(); rerender(); } })}>Купить</button>`:''}</div>`; }
     h+=`</div><div class="sect">Руны</div><div class="brews">`;
-    for(const k in RUNES){ const R=RUNES[k]; const c=runeCost(); const ok=S.bld.temple>=2;
+    for(const k in RUNES){ const R=RUNES[k]; const c=runeCost(k); const ok=S.bld.temple>=2;
       h+=`<div class="brew ${ok?'':'lock'}"><span class="bi" style="color:#b9a6ff">${ico(R.ic)}</span><b>${R.n}</b><small>${R.d} · у вас ${S.spell.runes[k]||0}</small><div class="bn">${ok?costHtml(c):'<span class="muted">Храм 2 ур.</span>'}</div>${ok?`<button class="btn leather small" ${canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ S.spell.runes[k]=(S.spell.runes[k]||0)+1; AU.sfx('zap'); S.st.crafted++; ev('craft'); saveGame(); rerender(); } })}>Создать</button>`:''}</div>`; }
     h+=`</div><button class="btn woodb" style="margin-top:6px" ${act(()=>openPanel('hero',{tab:'magic'}))}>${ico('flame')} Открыть «Магию» героя</button>`; return h; }
   if(tab==='respec') return _templeBody(tab)+`<div class="card"><p class="dcap">Атрибуты героя сбрасываются в «Профиле»: первый раз бесплатно, затем за золото или ${SHOP_CRYS.respec} самоцветов.</p><button class="btn woodb" ${act(()=>openPanel('hero',{tab:'prof'}))}>${ico('crown')} Профиль героя</button></div>`;
@@ -12774,7 +12817,7 @@ Object.assign(window.__game,{
   manage:()=>{ botEquipBest(); for(const it of S.inv.slice()) if(!it.lock&&it.rar<=1&&cmpVal(it)<=0) salvage(it); attrAuto(); const cls=curCls(); const T=S.hero.talents[cls]; const ord=['s1','p1','s2','p2','ult','s3','p3','p4']; let g=0; while(S.hero.tp>0&&g++<60){ let d=false; for(const k of ord){ const mx=k[0]==='p'?3:5; const sk=SKILLS[cls].find(x=>x.id===k); if((T[k]||0)<mx&&(!sk||S.hero.lvl>=sk.lv)&&!(k[0]==='p'&&S.hero.lvl<4)){ T[k]=(T[k]||0)+1; S.hero.tp--; d=true; break; } } if(!d) break; }
     let up=0; for(let i=0;i<30;i++){ let best=null; for(const s of ['weapon','chest','helm','offhand','gloves','boots','amulet','ring1','ring2']){ const it=S.gear[s]; if(it&&(it.up||0)<Math.min(enhCap(),ENH_SAFE)&&canPay(enhCost(it))&&(!best||(it.up||0)<(best.up||0))) best=it; } if(!best) break; enhTry(best,false); up++; }
     // craft fresh gear when equipped items lag behind the zone (best recipe the forge allows)
-    const Lz=Math.max(S.hero.lvl,zoneLvlNow()); for(const sl of ['weapon','chest','helm','offhand','gloves','boots','amulet','ring']){ const g=S.gear[sl==='ring'?'ring1':sl]; if(g&&g.ilvl>=Lz-4) continue; for(const rid of ['g_master','g_fine','g_basic']){ const R=RECIPES[rid]; if(S.bld.forge>=R.lv&&recOk(rid)&&canPay(R.c(Lz))&&S.craft.list.length<craftSlots()){ craftStart(rid,sl,curCls()); for(const j of S.craft.list) j.end=Date.now()-1; craftTick(); break; } } }
+    const Lz=Math.max(S.hero.lvl,zoneLvlNow()); for(const sl of ['weapon','chest','helm','offhand','gloves','boots','amulet','ring']){ const g=S.gear[sl==='ring'?'ring1':sl]; if(g&&g.ilvl>=Lz-4) continue; for(const rid of ['g_master','g_fine','g_basic']){ const R=RECIPES[rid]; if(S.bld.forge>=R.lv&&recOk(rid)&&canPay(recipeCost(rid,sl,curCls(),Lz))&&S.craft.list.length<craftSlots()){ craftStart(rid,sl,curCls()); for(const j of S.craft.list) j.end=Date.now()-1; craftTick(); break; } } }
     for(const k in SPELLS){ while((S.spell.tomes[k]||0)>0&&spellLearn(k)){} } if(!S.spell.slot){ const k=Object.keys(S.spell.known)[0]; if(k) S.spell.slot=k; }
     for(const t of CHEST_ORDER) while((S.chests[t]||0)>0&&(!CHESTS[t].key||keyCount(CHESTS[t].key)>0)) chestOpen(t); botEquipBest();
     refreshPlayer(true); return {up,lvl:S.hero.lvl,pow:gearPower()}; }
@@ -12873,9 +12916,11 @@ forgeBody=function(tab){
   for(const j of Lq){ const Rc=RECIPES[j.rid]; const pv=craftPreview(j.rid,j.slot,j.cls,j.L||Lv); const tot=Math.max(1,j.end-j.start), p=Math.round(Math.min(1,(Date.now()-j.start)/tot)*100);
     h+=`<div class="qring"><div class="ring" data-rs="${j.start}" data-re="${j.end}" style="--p:${p}">${pv?itHtml(pv,{cmp:false,lv:false}):ico(Rc.ic)}</div><div class="grow"><b>${Rc.n}</b> <span class="muted">· ${SLOT_NAME[j.slot]||''}</span><div class="tleft" data-end="${j.end}">${fmtTimer(j.end-Date.now())}</div></div><div class="qa">${speedBtns(j,'craft')}</div></div>`; }
   h+=`<div class="chips one" style="margin-bottom:8px">${['weapon','offhand','helm','chest','gloves','boots','amulet','ring'].map(s=>`<button class="chip ${slot===s?'on':''}" ${act(()=>{ PANEL.opts.slot=s; rerender(); })}>${ico(SLOT_IC[s==='ring'?'ring1':s])}<span>${SLOT_NAME[s]}</span></button>`).join('')}${slot==='weapon'?'<i class="sep"></i>'+Object.keys(CLS_NAME).map(c=>`<button class="chip ${cls===c?'on':''}" ${act(()=>{ PANEL.opts.cls=c; rerender(); })}>${ico(c)}<span>${CLS_NAME[c]}</span></button>`).join(''):''}</div>`;
-  h+=`<div class="rcards v-stg">${Object.keys(RECIPES).map(rid=>{ const Rc=RECIPES[rid]; const c=Rc.c(Lv); const known=recOk(rid); const lock=lv<Rc.lv; const setSlot=Rc.set&&!SETS[Rc.set].pieces[slot==='ring'?'ring':slot];
-      const ok=!lock&&known&&!setSlot&&Lq.length<craftSlots()&&canPay(c); const pv=craftPreview(rid,slot,cls,Lv); const rar=pv?pv.rar:1;
-      return `<div class="rcard bg-r${rar} ${lock||!known||setSlot?'lock':''}"><span class="rlbl">${Rc.set?'Комплект':RAR[rar].n}</span><span class="rtime">${ico('hourglass')} ${Rc.t?fmtDur(Rc.t*1000):'сразу'}</span>${pv?itHtml(pv,{cmp:false,lv:false}):`<span class="ri">${ico(Rc.ic)}</span>`}<b>${Rc.n}</b><small>${Rc.d}</small>${costHtml(c)}${lock?`<small class="muted">Кузница ${Rc.lv} ур.</small>`:!known?'<small class="muted">Чертёж не найден</small>':setSlot?'<small class="muted">Нет такой вещи в комплекте</small>':''}<button class="btn ${ok?'leather':'woodb'} small" ${ok?'':'disabled'} ${act(()=>{ if(craftStart(rid,slot,cls)){ AU.sfx('build'); rerender(); } })}>${ico('anvil')} Ковать</button></div>`; }).join('')}</div>`;
+  // v16: стихия оружия (по желанию) — за эссенцию стихии
+  if(slot==='weapon') h+=`<div class="chips one elchips" style="margin:-2px 0 8px"><span class="muted" style="align-self:center;white-space:nowrap">Стихия:</span>${[null,'fire','ice','poison','light'].map(e=>`<button class="chip ${(PANEL.opts.el||null)===e?'on':''}" ${act(()=>{ PANEL.opts.el=e; rerender(); })}>${e?`<span style="color:${RES_COL['e'+e]}">${ico('e'+e)}</span><span>${EL_NAME[e]}</span>`:'<span>Случайно</span>'}</button>`).join('')}</div>`;
+  h+=`<div class="rcards v-stg">${Object.keys(RECIPES).map(rid=>{ const Rc=RECIPES[rid]; const el=slot==='weapon'&&!Rc.set?PANEL.opts.el||null:null; const c=recipeCost(rid,slot,cls,Lv,el); const known=recOk(rid); const lock=lv<Rc.lv; const setSlot=Rc.set&&!SETS[Rc.set].pieces[slot==='ring'?'ring':slot];
+      const ok=!lock&&known&&!setSlot&&Lq.length<craftSlots()&&canPay(c); const pv=craftPreview(rid,slot,cls,Lv); if(pv&&el) pv.el=el; const rar=pv?pv.rar:1;
+      return `<div class="rcard bg-r${rar} ${lock||!known||setSlot?'lock':''}"><span class="rlbl">${Rc.set?'Комплект':RAR[rar].n}</span><span class="rtime">${ico('hourglass')} ${Rc.t?fmtDur(Rc.t*1000):'сразу'}</span>${pv?itHtml(pv,{cmp:false,lv:false}):`<span class="ri">${ico(Rc.ic)}</span>`}<b>${Rc.n}</b><small>${Rc.d}</small>${costHtml(c)}${lock?`<small class="muted">Кузница ${Rc.lv} ур.</small>`:!known?'<small class="muted">Чертёж не найден</small>':setSlot?'<small class="muted">Нет такой вещи в комплекте</small>':''}<button class="btn ${ok?'leather':'woodb'} small" ${ok?'':'disabled'} ${act(()=>{ if(craftStart(rid,slot,cls,el)){ AU.sfx('build'); rerender(); } })}>${ico('anvil')} Ковать</button></div>`; }).join('')}</div>`;
   return h; };
 // кольца-таймеры ковки обновляются раз в секунду
 setInterval(()=>{ for(const r of document.querySelectorAll('.ring[data-re]')){ const s=+r.dataset.rs, e=+r.dataset.re; r.style.setProperty('--p',Math.round(Math.min(1,(Date.now()-s)/Math.max(1,e-s))*100)); } },1000);
@@ -12886,7 +12931,7 @@ let BREW_LAST=null;
 function sceneHtml(o){ return `<div class="scene ${o.cls||''}" style="${o.style||''}">${o.art||''}<div class="grow"><h3>${o.h}</h3>${o.p?`<p>${o.p}</p>`:''}${o.stats?`<div class="stats">${o.stats}</div>`:''}</div>${o.right||''}</div>`; }
 alchBody=function(){
   const L=S.hero.lvl, lv=S.bld.alch; const potCap=S.potMax+lv;
-  const items=[['potion',{gold:15+L*5,herb:1},potCap,1],['bomb',{gold:25+L*6,ore:4,herb:1},5,1],['elixir_str',{gold:90+L*20,ess:3+Math.round(L/3),herb:2},3,2],['elixir_def',{gold:90+L*20,ess:3+Math.round(L/3),herb:2},3,2],['elixir_spd',{gold:80+L*18,ess:2+Math.round(L/3),herb:2},3,3],['scroll',{gold:80+L*12,herb:1},3,2],['prot',{gold:600,dust:10,ess:20},5,3]];
+  const items=[['potion',{gold:15+L*5,herb:1},potCap,1],['bomb',{gold:25+L*6,ore:4,herb:1},5,1],['elixir_str',{gold:90+L*20,ess:2+Math.round(L/4),herb:2,efire:2},3,2],['elixir_def',{gold:90+L*20,ess:2+Math.round(L/4),herb:2,eice:2},3,2],['elixir_spd',{gold:80+L*18,ess:1+Math.round(L/4),herb:2,elight:2},3,3],['scroll',{gold:80+L*12,herb:1,thread:1},3,2],['prot',{gold:600,dust:10,ess:20,gdust:3},5,3]];
   let h=sceneHtml({cls:'',style:'--sc1:rgba(90,255,120,.38)',art:`<div class="cauldron"><span class="pot"></span><span class="brew"></span><i></i><i></i><i></i></div>`+npcArt('alch','who'),h:'Котёл Миры',p:'Травы — с монстров, из сундуков и в «Лавке». Эликсиры действуют одну вылазку — выберите их на карточке этапа.',stats:`${resChip('herb',S.res.herb||0)}${resChip('ess',S.res.ess||0)}${resChip('gold',S.res.gold||0)}`});
   h+=`<div class="bcards v-stg">`;
   for(const [k,c,cap,need] of items){ const C=CONS[k], n=S.cons[k]||0; const lock=lv<need; const col=BREW_COL[k]||'#ffd27a';
@@ -12903,7 +12948,7 @@ templeBody=function(tab){
   for(const k in SPELLS){ const s=SPELLS[k]; const av=spellAvail(k); const c={ess:20+s.z*10,shards:4+s.z*4};
     h+=`<div class="bcard2 ${av?'':'lock'}" style="--c:${s.col}"><span class="have">${S.spell.tomes[k]||0}</span><span class="med">${ico(s.ic)}</span><b>${s.sch}</b><small>${s.n} · ранг ${spellRank(k)}</small>${av?costHtml(c):`<span class="muted">${s.z>1?'После владыки зоны '+(s.z-1):'После этапа 1-1'}</span>`}${av?`<button class="btn leather small" ${canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ S.spell.tomes[k]=(S.spell.tomes[k]||0)+1; AU.sfx('page'); saveGame(); rerender(); } })}>${ico('book')} Купить</button>`:''}</div>`; }
   h+=`</div><div class="sect">Руны</div><div class="bcards">`;
-  for(const k in RUNES){ const R=RUNES[k]; const c=runeCost(); const ok=S.bld.temple>=2;
+  for(const k in RUNES){ const R=RUNES[k]; const c=runeCost(k); const ok=S.bld.temple>=2;
     h+=`<div class="bcard2 ${ok?'':'lock'}" style="--c:#b9a6ff"><span class="have">${S.spell.runes[k]||0}</span><span class="med">${ico(R.ic)}</span><b>${R.n}</b><small>${R.d}</small>${ok?costHtml(c):'<span class="muted">Храм 2 ур.</span>'}${ok?`<button class="btn leather small" ${canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ S.spell.runes[k]=(S.spell.runes[k]||0)+1; AU.sfx('zap'); S.st.crafted++; ev2('craft'); saveGame(); rerender(); } })}>${ico('spark')} Создать</button>`:''}</div>`; }
   return h+'</div>'; };
 
@@ -14623,6 +14668,435 @@ function yardWanted(){ return !S.seen.yard&&!window.__noYard&&!/[?&]noyard/.test
 const _yVillageSeq=typeof ftueVillageSeq==='function'?ftueVillageSeq:null;
 if(_yVillageSeq) ftueVillageSeq=function(seq){ _yVillageSeq(seq); if(!S.seen.yard&&!S.seen.yardOffer&&S.started&&S.seen.wake){ S.seen.yardOffer=1; seq.push(cb=>{ later(4,()=>toast(`${ico('sword')} Новое: <b>Учебный плац</b> — Настройки → «Учебный плац»`,null,2,'quest')); cb(); }); } };
 Object.assign(window.__game,{ yard:(r)=>yardStart(r!==false), yardState:()=>({on:YARD.on,i:YARD.i,card:YARD.card,step:YSTEPS[YARD.i]&&YSTEPS[YARD.i].id,n:Object.assign({},YARD.n),dist:+YARD.dist.toFixed(1)}), yardTry:()=>yTry(), yardNext:()=>yNext(), yardSkip:()=>yardEnd(false,true), controls:()=>controlsHtml(), render:()=>({w:R.domElement.width,h:R.domElement.height,pr:PR,cpr:CPR,q:QL,sharp:AS.FX&&AS.FX.sharp,scale:RSZ.scale,dpr:devicePixelRatio,css:vpSize()}) });
+
+// ================= p31 (v16): материалы разбора — разбор по типу предмета, материалы в рецептах, «Переработка», вкладка «Материалы», пакетный разбор, анимация =================
+// Владелец: «Предметы — оружие, кольца, мантии… при разборе дают материалы по типу вещи — логично добавить».
+// Металл → слитки/сталь/мифрил, ткань и кожа → ткань/кожа/нити/шёлк/драконья кожа, дерево → древесина/жилы/железное дерево,
+// украшения → осколки камней и золотая пыль, стихийные вещи → эссенции стихий, комплекты и именные → обрывки чертежей.
+// Камни из гнёзд возвращаются целыми, заточка возвращает 45% потраченного. Все материалы лежат в S.res (как руда и эссенция):
+// цены (costHtml/canPay/pay), награды (giveReward), добыча на земле (spawnDrop 'mat') работают без особых случаев.
+
+// ---------- материалы: id → название, семейство, ступень, цвет, где добыть, на что идёт ----------
+const MAT_FAM={metal:{n:'Металл',ic:'ingot'},soft:{n:'Ткань и кожа',ic:'leather'},wood:{n:'Дерево',ic:'ironwood'},jewel:{n:'Украшения',ic:'gshard'},el:{n:'Стихии',ic:'efire'},bp:{n:'Чертежи',ic:'scrap'},gen:{n:'Общие',ic:'gold'}};
+const MAT={
+  ingot:{n:'Слиток железа',fam:'metal',t:1,col:'#a9b3bd',src:['Разбор металла: мечи, секиры, молоты, шлемы, кольчуги, латы, латные рукавицы и сапоги','Враги Склепов и Пустошей','«Переработка» в кузнице: 4 руды → 1 слиток','Сундуки, набеги, «Лавка»'],use:['Ковка оружия и брони (рукояти, клинки, пластины)','Перековка металлических вещей','Закалка в сталь (3 → 1)']},
+  steel:{n:'Сталь',fam:'metal',t:2,col:'#d6e2ee',src:['Разбор редких и лучше металлических вещей','Враги Пустошей и Логова Игнара','Закалка: 3 слитка + 2 эссенции → 1 сталь (кузница 2 ур.)','Железные сундуки, Бездна'],use:['Заточка +5…+10','Добротная и мастерская ковка металла','Переплавка в мифрил']},
+  mithril:{n:'Мифрил',fam:'metal',t:3,col:'#7ff0f0',src:['Разбор легендарных и мифических вещей из металла и украшений','Логово Игнара (редко), Бездна с 10 этажа','Переплавка: 3 стали + 3 рунной пыли → 1 мифрил (кузница 4 ур.)','Легендарные сундуки'],use:['Заточка +10…+15','Легендарная ковка, чертежи комплектов, оправы украшений','Возвышение']},
+  cloth:{n:'Ткань',fam:'soft',t:1,col:'#6aa8f0',src:['Разбор стёганок, мантий, капюшонов, шёлковых перчаток, мягких туфель','Враги Лугов и Топей','Сундуки, «Лавка»'],use:['Подклад доспехов','Ковка вещей из ткани (комплект «Ночная Сова»)']},
+  leather:{n:'Кожа',fam:'soft',t:1,col:'#c88a4e',src:['Разбор кожаных перчаток и сапог, колчанов, фолиантов','Звери Лугов и Чащи','Набеги, сундуки'],use:['Рукояти оружия, ремни шлемов и доспехов','Ковка перчаток, сапог, предметов левой руки']},
+  thread:{n:'Нити',fam:'soft',t:1,col:'#e8d6a8',src:['Разбор любых вещей из ткани и кожи','Враги Лугов и Топей'],use:['Шитьё перчаток и сапог','Перековка вещей из ткани и кожи']},
+  silk:{n:'Шёлк',fam:'soft',t:2,col:'#ff8ab0',src:['Разбор эпических и лучше вещей из ткани и кожи','Гнилые Топи (редко)','Золотые сундуки'],use:['Добротная и мастерская ковка перчаток и сапог','Ковка мантий и плащей']},
+  dhide:{n:'Драконья кожа',fam:'soft',t:3,col:'#ff7046',src:['Разбор легендарных и мифических вещей из ткани и кожи','Логово Игнара (редко), Бездна','Легендарные сундуки'],use:['Легендарная ковка перчаток и сапог','Чертежи «Пеплоход» и «Ночная Сова»']},
+  sinew:{n:'Жилы',fam:'wood',t:1,col:'#e8c08a',src:['Разбор луков, посохов и щитов','Звери Шепчущей Чащи','Набеги'],use:['Тетивы и обмотки: ковка луков, посохов, щитов','Перековка деревянных вещей']},
+  ironwood:{n:'Железное дерево',fam:'wood',t:2,col:'#9ec4e8',src:['Разбор эпических и лучше луков, посохов, щитов','Шепчущая Чаща и Логово (редко)','Золотые сундуки'],use:['Добротная, мастерская и легендарная ковка луков, посохов и щитов']},
+  gshard:{n:'Осколки камней',fam:'jewel',t:1,col:'#ff6a8a',src:['Разбор колец, амулетов, обручей, венцов и сфер','Враги Склепов Остена','Железные сундуки'],use:['Ковка украшений, навершия посохов','Пробивка гнёзд','«Огранка»: 8 осколков → камень для гнезда']},
+  gdust:{n:'Золотая пыль',fam:'jewel',t:1,col:'#ffd24a',src:['Разбор украшений','Враги Пепельных Пустошей','Сундуки'],use:['Ковка украшений','Слияние камней 3 → 1','Свиток защиты, «Свет Искры»']},
+  efire:{n:'Эссенция огня',fam:'el',t:2,col:'#ff7a3a',el:'fire',src:['Разбор вещей со стихией огня (оружие «пламени», свойства огня)','Враги Пустошей и Логова','«Перегонка» у алхимика: 3 эссенции → 1'],use:['Заточка огненных вещей с +5','Ковка оружия со стихией огня','«Огненный шар» (ранги 2–5), руна мощи, эликсир ярости']},
+  eice:{n:'Эссенция льда',fam:'el',t:2,col:'#8ae8ff',el:'ice',src:['Разбор вещей со стихией льда','Враги Склепов и Логова','«Перегонка» у алхимика'],use:['Заточка ледяных вещей с +5','Ковка оружия стужи','«Ледяная звезда», руна спешки, эликсир защиты']},
+  epoison:{n:'Эссенция яда',fam:'el',t:2,col:'#9ad040',el:'poison',src:['Разбор вещей со стихией яда','Враги Гнилых Топей и Логова','«Перегонка» у алхимика'],use:['Заточка ядовитых вещей с +5','Ковка оружия яда','«Ядовитое облако», руны простора и жажды']},
+  elight:{n:'Эссенция молнии',fam:'el',t:2,col:'#f8e070',el:'light',src:['Разбор вещей со стихией молнии','Враги Шепчущей Чащи и Логова','«Перегонка» у алхимика'],use:['Заточка вещей молнии с +5','Ковка оружия грозы','«Небесный разряд», руна эха, эликсир скорости']},
+  scrap:{n:'Обрывок чертежа',fam:'bp',t:3,col:'#6ab0ff',src:['Разбор вещей комплектов (2), легендарных именных (1) и мифических (2)','Владыки зон (3 за первую победу, 1 за повтор)','Бездна — каждые 10 этажей; золотые и легендарные сундуки'],use:['Ковка по чертежам комплектов (3) и легендарная ковка (2)','Возвышение','«Сборка чертежа»: 10 обрывков → чертёж, которого ещё нет']}
+};
+const MAT_ORDER=Object.keys(MAT);
+// общие ресурсы — те же подсказки во вкладке «Материалы» (что осталось нужным после v16)
+const MAT_GEN={
+  gold:{src:['Враги, сундуки, разбор (любой предмет)','Ратуша и дома'],use:['Всё: ковка, заточка, стройка, «Лавка»']},
+  wood:{src:['Лесопилка, первое прохождение этапов','Разбор луков, посохов и щитов','Сундуки'],use:['Стройка','Топливо горна, ковка луков, посохов и щитов']},
+  ore:{src:['Шахта, рудные жилы на этапах','Первое прохождение этапов, сундуки'],use:['Стройка','Заточка +1…+5 (дальше — меньше)','«Переработка»: 4 руды → слиток','Бомбы']},
+  ess:{src:['Колодец, враги, разбор эпических+','Сундуки, награды'],use:['Заточка с +5, мастерская ковка','Закалка стали, «Перегонка» в эссенции стихий','Заклинания, руны, эликсиры, стройка']},
+  dust:{src:['Разбор эпических+ вещей','Сундуки, элита Бездны'],use:['Заточка +11…+15, руны, свитки защиты','Переплавка мифрила, легендарная ковка']},
+  core:{src:['Разбор мифических, золотые/легендарные сундуки','Бездна с 15 этажа'],use:['Возвышение, заточка +13…+15','Комплекты, третье гнездо, руны']},
+  herb:{src:['Монстры, сундуки, «Лавка»'],use:['Зелья, эликсиры, «Перегонка»']},
+  shards:{src:['Бездна'],use:['Фолианты в Храме, «Лавка»']}
+};
+Object.assign(RES_IC,Object.fromEntries(MAT_ORDER.map(k=>[k,k])));
+Object.assign(RES_NAME,Object.fromEntries(MAT_ORDER.map(k=>[k,MAT[k].n])));
+Object.assign(RES_COL,Object.fromEntries(MAT_ORDER.map(k=>[k,MAT[k].col])));
+const isMatRes=k=>!!MAT[k];
+const elMat=el=>el?'e'+el:null;
+
+// ---------- семейство предмета ----------
+const BASE_FAM={helm_guard:'metal',helm_horn:'metal',chest_mail:'metal',chest_plate:'metal',gloves_plate:'metal',boots_plate:'metal',
+  helm_hood:'cloth',chest_cloth:'cloth',chest_robe:'cloth',gloves_mage:'cloth',boots_cloth:'cloth',gloves_leather:'leather',boots_leather:'leather',quiver1:'leather',tome1:'leather',
+  amulet:'jewel',ring:'jewel',helm_circ:'jewel',helm_crown:'jewel',orb1:'jewel'};
+function baseFam(b){ const f=BASE_FAM[b]; if(f) return f==='cloth'||f==='leather'?'soft':f; const B=ITEM_BASES[b]; if(!B) return 'metal';
+  if(B.slot==='weapon') return B.cls==='bow'||B.cls==='staff'?'wood':'metal'; if(B.slot==='offhand') return 'wood'; if(B.slot==='amulet'||B.slot==='ring') return 'jewel'; if(B.slot==='gloves'||B.slot==='boots') return 'soft'; return 'metal'; }
+const softKind=b=>BASE_FAM[b]==='leather'||(!BASE_FAM[b]&&/leather/.test(b))?'leather':'cloth';
+function itemFam(it){ return baseFam(it.base); }
+// стихии предмета: стихия оружия (вес 1) и стихийные свойства (вес 0,5)
+function itemEls(it){ const o={}; if(it.el) o[it.el]=1; for(const a of it.aff) if(AFFIX[a.k]&&AFFIX[a.k].el&&!o[a.k]) o[a.k]=.5; return o; }
+
+// ---------- разбор: состав (детерминированный — превью совпадает с результатом) ----------
+const ENH_REFUND=.45;
+function enhRefund(it){ const u=it.up||0; if(!u) return {}; const t={}; const tmp=Object.assign({},it);
+  for(let i=0;i<u;i++){ tmp.up=i; const c=enhCost(tmp); for(const k in c) t[k]=(t[k]||0)+c[k]; }
+  const o={}; for(const k in t){ const n=Math.floor(t[k]*ENH_REFUND); if(n>0) o[k]=n; } return o; }
+function salvageParts(it){ const r=it.rar, f=F(it.ilvl), s=Math.sqrt(f); const v={}; const add=(k,n)=>{ n=Math.round(n); if(n>0) v[k]=(v[k]||0)+n; };
+  add('gold',6*f*(1+r));
+  const fam=itemFam(it);
+  if(fam==='metal'){ add('ingot',(2+1.5*r)*s); if(r>=1) add('steel',Math.max(1,r*s)); if(r>=3) add('mithril',(r-2)+s*.4); }
+  else if(fam==='soft'){ add(softKind(it.base),(2+1.5*r)*s); add('thread',Math.max(1,(1+r)*.6*s)); if(r>=2) add('silk',Math.max(1,(r-1)*.6*s)); if(r>=3) add('dhide',(r-2)+s*.4); }
+  else if(fam==='wood'){ add('wood',(3+2*r)*s); add('sinew',Math.max(1,(1+r)*.6*s)); if(r>=2) add('ironwood',Math.max(1,(r-1)*.7*s)+(r>=3?(r-2)*2:0)); }
+  else { add('gshard',(1+1.2*r)*s); add('gdust',Math.max(1,(1+r)*.7*s)); if(r>=3) add('mithril',(r-2)+s*.3); }
+  const els=itemEls(it); for(const el in els) add('e'+el,Math.max(1,(1+r)*.5*s*els[el]));
+  if(r>=2){ add('ess',(r-1)*1.5*s); v.dust=(r-1)*2+((it.up||0)>=6?2:0); } if(r>=4) v.core=1;
+  if(it.set) add('scrap',2); else if(r===3) add('scrap',1); else if(r===4) add('scrap',2);
+  return {base:v,ref:enhRefund(it),gems:it.sock.filter(Boolean)}; }
+salvageValue=function(it){ const p=salvageParts(it); const v=Object.assign({},p.base); for(const k in p.ref) v[k]=(v[k]||0)+p.ref[k]; return v; };
+salvage=function(it){ const i=S.inv.indexOf(it); if(i<0||it.lock) return null; S.inv.splice(i,1);
+  const v=salvageValue(it); for(const k in v) S.res[k]=(S.res[k]||0)+v[k];
+  for(const g of it.sock) if(g) S.gems[g]=(S.gems[g]||0)+1;
+  S.st.salv=(S.st.salv||0)+1; S.seen.matNew=1; ev('salvage'); return v; };
+
+// ---------- заточка: сталь (+5…+9), мифрил (+10…+14), эссенция своей стихии (+5…) ----------
+const _enhCostV16=enhCost;
+enhCost=function(it){ const c=_enhCostV16(it); const u=it.up||0, s=Math.sqrt(F(it.ilvl));
+  if(u>=5){ c.ore=Math.round(c.ore*.6); c.steel=Math.max(1,Math.round((u-4)*.25*s)); }
+  if(u>=ENH_SAFE) c.mithril=Math.max(1,Math.round((u-9)*.45*(1+s*.25)));
+  if(it.el&&u>=5) c['e'+it.el]=Math.ceil((u-3)*.6);
+  return c; };
+// возвышение: мифрил и обрывки чертежей
+{ const a2=ASC[2].c, a3=ASC[3].c; ASC[2].c=f=>Object.assign(a2(f),{mithril:3,scrap:1}); ASC[3].c=f=>Object.assign(a3(f),{mithril:8,scrap:3}); }
+// перековка: «связующий» материал семейства
+function famBind(it){ const f=itemFam(it), n=2+it.rar; return f==='metal'?{ingot:n}:f==='soft'?{thread:n}:f==='wood'?{sinew:n}:{gdust:Math.max(1,n-1)}; }
+
+// ---------- ковка: материалы по ячейке/оружию и ступени рецепта ----------
+// [множитель базовых материалов, материал 2-й ступени, материал 3-й ступени]
+const CRAFT_K={g_basic:[1,0,0],g_fine:[1.6,1,0],g_master:[2.4,2.5,0],g_legend:[3,3,2],set:[3,3,2.5]};
+function craftFam(rid,slot,cls){ const R=RECIPES[rid]; if(R&&R.set){ const b=SETS[R.set].pieces[slot]; if(b) return {fam:baseFam(b),soft:softKind(b)}; }
+  if(slot==='weapon') return {fam:cls==='bow'||cls==='staff'?'wood':'metal'}; if(slot==='offhand') return {fam:'wood'};
+  if(slot==='helm'||slot==='chest') return {fam:'metal'}; if(slot==='gloves'||slot==='boots') return {fam:'soft',soft:'leather'}; return {fam:'jewel'}; }
+function craftMats(rid,slot,cls,L){ const R=RECIPES[rid]; if(!R) return {}; const s=Math.sqrt(F(L)); const [a,b,c3]=CRAFT_K[R.set?'set':rid]||[1,0,0]; const cf=craftFam(rid,slot,cls); const o={};
+  const add=(k,n)=>{ n=Math.round(n); if(n>0) o[k]=(o[k]||0)+n; };
+  if(cf.fam==='metal'){ add('ingot',4*a*s); add('leather',(slot==='chest'?1:1.5)*a*s); if(slot==='chest') add('cloth',1.5*a*s); if(b) add('steel',b*.8*s); if(c3) add('mithril',c3+s*.4); }
+  else if(cf.fam==='soft'){ add(cf.soft||'leather',3*a*s); add('thread',2*a*s); if(slot==='chest') add('cloth',1.5*a*s); if(b) add('silk',b*.8*s); if(c3) add('dhide',c3+s*.4); }
+  else if(cf.fam==='wood'){ add('wood',5*a*s); add('sinew',2*a*s); if(cls==='staff'&&slot==='weapon') add('gshard',a*s); if(slot==='offhand') add('leather',a*s); if(b) add('ironwood',b*.8*s); if(c3) add('ironwood',(c3+s*.4)*1.5); }
+  else { add('gshard',3*a*s); add('gdust',2*a*s); if(b) add('gdust',b*.8*s); if(c3) add('mithril',c3+s*.3); }
+  if(R.set) add('scrap',3); else if(rid==='g_legend') add('scrap',2);
+  return o; }
+// полная цена рецепта (руды вдвое меньше — её место заняли слитки; у легендарных и комплектов меньше пыли и ядер — их место занял мифрил)
+function recipeCost(rid,slot,cls,L,el){ const R=RECIPES[rid]; const c=Object.assign({},R.c(L)); if(c.ore) c.ore=Math.round(c.ore*.5);
+  if(R.set||rid==='g_legend'){ if(c.dust) c.dust=Math.round(c.dust*.75); if(c.core) c.core=Math.max(2,Math.round(c.core*.75)); }
+  const m=craftMats(rid,slot==='ring1'||slot==='ring2'?'ring':slot,cls,L); for(const k in m) c[k]=(c[k]||0)+m[k];
+  if(el&&slot==='weapon'&&!R.set) c['e'+el]=(c['e'+el]||0)+3+Math.round(2*Math.sqrt(F(L)));
+  return c; }
+
+// ---------- «Переработка» в кузнице: плавка, закалка, мифрил, огранка, сборка чертежа ----------
+const REFINE=[
+  {id:'smelt',n:'Плавка',d:'4 руды → 1 слиток железа',lv:1,give:{ingot:1},c:()=>({ore:4,gold:6})},
+  {id:'temper',n:'Закалка',d:'3 слитка → 1 сталь',lv:2,give:{steel:1},c:()=>({ingot:3,ess:2,gold:20})},
+  {id:'mith',n:'Мифриловая плавка',d:'3 стали + рунная пыль → 1 мифрил',lv:4,give:{mithril:1},c:()=>({steel:3,dust:3,gold:80})},
+  {id:'cut',n:'Огранка',d:'8 осколков → камень для гнезда',lv:2,give:{gem:1},c:()=>({gshard:8,gdust:2})},
+  {id:'bp',n:'Сборка чертежа',d:'10 обрывков → чертёж, которого ещё нет',lv:4,give:{bp:1},c:()=>({scrap:10})}
+];
+const BP_ORDER=['rec_legend','bp_warden','bp_owl','bp_ash','bp_king'];
+function bpNext(){ return BP_ORDER.find(k=>!S.rec[k])||null; }
+function refineDo(id,n){ const R=REFINE.find(x=>x.id===id); if(!R||S.bld.forge<R.lv) return 0; let done=0;
+  for(let i=0;i<(n||1);i++){ if(R.give.bp&&!bpNext()) break; const c=R.c(); if(!pay(c)) break; done++;
+    if(R.give.gem){ const g=pick(Object.keys(GEMS))+'0'; S.gems[g]=(S.gems[g]||0)+1; }
+    else if(R.give.bp){ const k=bpNext(); S.rec[k]=1; const r=Object.keys(RECIPES).find(x=>RECIPES[x].need===k); toast(`${ico('scrap')} Чертёж собран: <b>${RECIPES[r].n}</b>`,null,3,'quest'); }
+    else for(const k in R.give) S.res[k]=(S.res[k]||0)+R.give[k]; }
+  if(done){ S.st.crafted=(S.st.crafted||0)+1; ev('craft'); saveGame(); } return done; }
+function refineMax(id){ const R=REFINE.find(x=>x.id===id); const c=R.c(); let n=1e9; for(const k in c) n=Math.min(n,Math.floor((S.res[k]||0)/c[k])); return Math.max(0,n); }
+function refineHtml(){ const lv=S.bld.forge; let h=`<div class="muted" style="margin-bottom:6px">Горан переплавляет руду и разобранное в материалы следующей ступени. Ничего не пропадает: всё, что не нашлось в разборе, можно сделать здесь.</div><div class="rfcards">`;
+  for(const R of REFINE){ const c=R.c(); const lock=lv<R.lv; const mx=lock?0:refineMax(R.id); const bpEnd=R.give.bp&&!bpNext();
+    const out=R.give.gem?`<span class="rfo" style="color:#e0303a">${ico('gem')}</span>`:R.give.bp?`<span class="rfo" style="color:#6ab0ff">${ico('scrap')}</span>`:`<span class="rfo" style="color:${RES_COL[Object.keys(R.give)[0]]}">${ico(Object.keys(R.give)[0])}</span>`;
+    h+=`<div class="rfcard ${lock?'lock':''}">${out}<div class="grow"><b>${R.n}</b><small>${R.d}${R.give.bp&&bpNext()?` · следующий: <b>${RECIPES[Object.keys(RECIPES).find(x=>RECIPES[x].need===bpNext())].n.replace('Чертёж ','')}</b>`:''}</small>${costHtml(c)}${lock?`<small class="muted">Кузница ${R.lv} ур.</small>`:bpEnd?'<small class="muted">Все чертежи собраны</small>':''}</div>`+
+      (lock||bpEnd?'':`<div class="rfb"><button class="btn leather small" ${mx>=1?'':'disabled'} ${act(()=>{ if(refineDo(R.id,1)){ AU.sfx('build'); rerender(); } })}>×1</button>${R.give.bp?'':`<button class="btn woodb small" ${mx>=5?'':'disabled'} ${act(()=>{ if(refineDo(R.id,5)){ AU.sfx('build'); rerender(); } })}>×5</button><button class="btn woodb small" ${mx>=2?'':'disabled'} ${act(()=>{ const n=refineDo(R.id,refineMax(R.id)); if(n){ AU.sfx('build'); toast(`${R.n}: ×${n}`); rerender(); } })}>Всё ${mx>1?'('+fmt(mx)+')':''}</button>`}</div>`)+`</div>`; }
+  return h+'</div>'; }
+const _bldTabsV16=bldTabs; bldTabs=function(id){ const t=_bldTabsV16(id); if(id==='forge'&&S.bld.forge){ const i=t.findIndex(x=>x[0]==='craft'); if(i>=0&&!t.some(x=>x[0]==='smelt')) t.splice(i+1,0,['smelt','Переработка','ingot']); } return t; };
+const _forgeBodyV16=forgeBody; forgeBody=function(tab){ if(tab==='smelt') return refineHtml(); return _forgeBodyV16(tab); };
+
+// ---------- алхимик: перегонка эссенции в эссенции стихий ----------
+const DISTILL_C={ess:3,herb:1};
+const _alchBodyV16=alchBody; alchBody=function(){ let h=_alchBodyV16(); const lv=S.bld.alch;
+  h+=`<div class="sect">${ico('ess')} Перегонка эссенции</div><div class="muted" style="margin-bottom:6px">3 эссенции и пучок трав → 1 эссенция стихии. Эссенции стихий — для заточки стихийных вещей, ковки оружия со стихией, рангов заклинаний, рун и эликсиров.</div><div class="rfcards">`;
+  for(const el of ['fire','ice','poison','light']){ const k='e'+el; const mx=Math.min(Math.floor((S.res.ess||0)/3),S.res.herb||0);
+    h+=`<div class="rfcard"><span class="rfo" style="color:${RES_COL[k]}">${ico(k)}</span><div class="grow"><b>${MAT[k].n}</b><small>есть ${fmt(S.res[k]||0)}</small>${costHtml(DISTILL_C)}</div><div class="rfb"><button class="btn leather small" ${lv>=1&&mx>=1?'':'disabled'} ${act(()=>{ if(pay(DISTILL_C)){ S.res[k]=(S.res[k]||0)+1; AU.sfx('potion'); saveGame(); rerender(); } })}>×1</button><button class="btn woodb small" ${lv>=1&&mx>=5?'':'disabled'} ${act(()=>{ let n=0; while(n<5&&pay(DISTILL_C)){ S.res[k]=(S.res[k]||0)+1; n++; } AU.sfx('potion'); saveGame(); rerender(); })}>×5</button></div></div>`; }
+  return h+'</div>'; };
+
+// ---------- добыча: враги по зонам, владыки, сундуки, Бездна, набеги, «Лавка» ----------
+// [материал, вес]; ступень 1 — 1–3 шт (+зона/2), ступень 2 — 1–2, ступень 3 — 1
+const ZONE_MATS={1:[['leather',3],['cloth',3],['thread',2]],2:[['sinew',3],['leather',2],['elight',1.2],['ironwood',.4]],3:[['thread',2],['cloth',2],['epoison',1.5],['silk',.5]],
+  4:[['ingot',3],['gshard',2],['eice',1.5],['steel',.6]],5:[['ingot',2],['steel',1.5],['gdust',2],['efire',1.5],['leather',1.5]],6:[['steel',2],['leather',1],['mithril',.5],['dhide',.5],['ironwood',.5],['efire',1],['elight',1],['eice',.6],['epoison',.6]]};
+function zoneNow(){ try{ if(W&&W.zone&&W.zone.id) return Math.max(1,Math.min(6,W.zone.id)); }catch(e){} return 1; }
+function matRoll(z,boost){ const L=ZONE_MATS[z]||ZONE_MATS[1]; const x=wpick(L.map(([k,w])=>[k,w*(MAT[k].t>1?(boost||1):1)])); const k=x[0], t=MAT[k].t;
+  return {k,v:t===1?randi(1,3)+Math.floor(z/2):t===2?randi(1,2)+(z>=5?1:0):1}; }
+const _dropLootV16=dropLoot; dropLoot=function(e){ _dropLootV16(e); try{ const z=G.abyss?randi(3,6):zoneNow(); const p=e.champion?1:e.elite?.35:.07;
+  const n=e.champion?2:1; for(let i=0;i<n;i++) if(Math.random()<p){ const m=matRoll(z,e.elite?2:1); spawnDrop('mat',e.x,e.z,{res:m.k,v:m.v}); } }catch(er){ console.error(er); } };
+const _onBossDeathV16=onBossDeath; onBossDeath=function(e){ const first=!G.abyss&&W&&W.info&&!stageDone(W.info.key); _onBossDeathV16(e);
+  if(G.abyss||e.kind==='dragon') return; const z=zoneNow();
+  later(1.1,()=>{ for(let i=0;i<3;i++){ const m=matRoll(z,3); spawnDrop('mat',e.x,e.z,{res:m.k,v:m.v*2}); } spawnDrop('mat',e.x,e.z,{res:'scrap',v:first?3:1}); }); };
+const _chestRollV16=chestRoll; chestRoll=function(tier,L){ const out=_chestRollV16(tier,L); try{ const z=Math.max(1,Math.min(6,Math.ceil((L||S.hero.lvl)/5)));
+  const T1=['ingot','leather','cloth','thread','sinew','gshard','gdust'], T2=['steel','silk','ironwood','efire','eice','epoison','elight'], T3=['mithril','dhide','ironwood'];
+  const k1=()=>({k:pick(T1),v:randi(3,6)+z}), k2=()=>({k:pick(T2),v:randi(2,4)+Math.floor(z/2)}), k3=()=>({k:pick(T3),v:randi(1,3)});
+  if(tier==='wood') out.sup.push(k1());
+  else if(tier==='iron'){ out.sup.push(k1()); if(chance(.5)) out.sup.push(k2()); }
+  else if(tier==='gold'){ out.sup.push(k2()); if(chance(.5)) out.sup.push({k:'scrap',v:1}); }
+  else if(tier==='leg'){ out.sup.push(k3(),{k:'scrap',v:randi(1,2)}); } }catch(e){ console.error(e); } return out; };
+const _abyssFloorDoneV16=abyssFloorDone; abyssFloorDone=function(){ const f=G.abyss&&G.abyss.floor; _abyssFloorDoneV16();
+  if(f&&f%5===0){ const rw={}; const T2=['steel','silk','ironwood','efire','eice','epoison','elight']; for(let i=0;i<2;i++){ const k=pick(T2); rw[k]=(rw[k]||0)+2+Math.floor(f/10); }
+    if(f>=10){ const k=pick(['mithril','dhide','ironwood']); rw[k]=(rw[k]||0)+1+Math.floor(f/20); } if(f%10===0) rw.scrap=2; giveReward(rw,'Бездна: материалы'); } };
+const _raidEndV16=raidEnd; raidEnd=function(win,reason){ const was=RAID&&!RAID.done; _raidEndV16(win,reason);
+  if(was&&win&&!(typeof PVP!=='undefined'&&PVP)){ const t=(typeof raidTier==='function'?raidTier():1)||1; giveReward({ingot:4+t*3,leather:3+t*2,sinew:2+t*2,steel:t>=3?t:0},'Трофеи набега'); } };
+DEAL_POOL.push({id:'ingot25',n:'Слитки железа ×25',cost:{gold:340},give:{ingot:25},ic:'ingot'},{id:'leather20',n:'Кожа ×20',cost:{gold:260},give:{leather:20},ic:'leather'},
+  {id:'cloth20',n:'Ткань и нити ×20',cost:{gold:260},give:{cloth:20,thread:10},ic:'cloth'},{id:'sinew15',n:'Жилы ×15',cost:{gold:240},give:{sinew:15},ic:'sinew'},
+  {id:'gshard12',n:'Осколки камней ×12',cost:{ess:30},give:{gshard:12,gdust:6},ic:'gshard'},{id:'steel8',n:'Сталь ×8',cost:{gold:650},give:{steel:8},ic:'steel'},
+  {id:'mith3',n:'Мифрил ×3',cost:{[CRYS]:40},give:{mithril:3},ic:'mithril',crys:1});
+Object.assign(DEAL_COL,Object.fromEntries(MAT_ORDER.map(k=>[k,MAT[k].col])));
+
+// ---------- миграция v5 → v6: честный перевод запасов ----------
+function matMigrate(d){ d.res=d.res||{}; const r=d.res; for(const k of Object.keys(MAT)) if(typeof r[k]!=='number') r[k]=0;
+  if(!d.started) return; const L=(d.hero&&d.hero.lvl)||1, fl=(d.bld&&d.bld.forge)||0;
+  // 30% руды → слитки (3:1 — щедрее «Плавки» 4:1); 20% эссенции → эссенции стихий (2:1, поровну)
+  const oc=Math.floor((r.ore||0)*.3); r.ore-=oc; r.ingot+=Math.floor(oc/3);
+  const ec=Math.floor((r.ess||0)*.2); r.ess-=ec; for(const el of ['efire','eice','epoison','elight']) r[el]+=Math.floor(ec/8);
+  // подарок по уровню: на первые рецепты и заточку +5…+10 без простоя
+  const g={cloth:6+L,leather:6+L,thread:4+L,sinew:4+L,gshard:4+Math.ceil(L/2),gdust:3+Math.ceil(L/2),steel:L>=8?Math.floor(L*1.5):0,silk:L>=12?Math.floor(L/3):0,ironwood:L>=12?Math.floor(L/3):0,
+    mithril:L>=18?Math.floor((L-14)/2):0,dhide:L>=22?Math.floor((L-20)/3):0,scrap:fl>=4?5:0};
+  for(const k in g) r[k]+=g[k];
+  d.seen=d.seen||{}; d.seen.v16mat=0; }
+function v16Gift(){ if(S.seen.v16mat!==0) return; S.seen.v16mat=1; later(2.2,()=>{ banner('Разбор по-новому','Металл, ткань, дерево, камни, стихии'); toast(`${ico('salvage')} Разбор вещей теперь даёт <b>материалы по типу предмета</b>. Часть руды переплавлена в слитки, а в сумке — подарок по уровню. Загляните в «Герой → Материалы».`,null,4,'quest'); }); saveGame(); }
+const _enterVillageV16=enterVillage; enterVillage=function(after){ const r=_enterVillageV16(after); try{ v16Gift(); }catch(e){} return r; };
+
+// ---------- 3D-модели материалов на земле и в окне сундука ----------
+const MAT_3D={ingot:[0x6a7078,0],steel:[0xc8d4e0,.05],mithril:[0x8af0ff,.45],cloth:[0x3a78d0,0],silk:[0xff7aa8,.15],leather:[0x9a5a2a,0],dhide:[0xc8401e,.1],thread:[0xe8d6a8,0],sinew:[0xd8b07a,0],ironwood:[0x4a4e58,0],
+  gshard:[0xe0303a,.5],gdust:[0xf0c040,.35],efire:[0xff6a1a,.85],eice:[0x7ad8ff,.85],epoison:[0x8ad030,.85],elight:[0xffe050,.85],scrap:[0x3a7ad0,.1]};
+function matGeo(b,k){ const [c,e]=MAT_3D[k]||[0xd8c8a0,0];
+  if(k==='ingot'||k==='steel'||k==='mithril'){ b.box(.4,.12,.17,c,{p:[0,-.08,0],e}); b.box(.4,.12,.17,c,{p:[.03,.05,.02],r:[0,.45,0],e}); b.box(.3,.01,.1,0xffffff,{p:[.03,.115,.02],r:[0,.45,0],e:.3,ol:0}); if(k==='mithril') b.oct(.04,0xffffff,{p:[.16,.16,.06],e:1,ol:0}); }
+  else if(k==='cloth'||k==='silk'){ b.cyl(.13,.13,.44,c,{r:[0,0,PI/2],seg:12,e}); b.box(.2,.2,.02,c,{p:[.1,-.17,.11],r:[.15,0,0],e}); for(const x of [-.1,.1]) b.cyl(.135,.135,.03,0xffd27a,{p:[x,0,0],r:[0,0,PI/2],seg:12,ol:0}); }
+  else if(k==='leather'||k==='dhide'){ b.box(.46,.035,.36,c,{r:[.25,0,.08],e}); b.cyl(.05,.05,.46,_dk(c,.15),{p:[0,-.04,-.18],r:[0,0,PI/2],seg:8}); if(k==='dhide') for(let i=0;i<5;i++) b.cone(.035,.08,0xffb070,{p:[-.16+i*.08,.05,-.02+(i%2)*.06],r:[.25,0,0],seg:5}); }
+  else if(k==='thread'){ b.cyl(.07,.07,.26,c,{seg:10}); for(const y of [-.14,.14]) b.cyl(.12,.12,.04,0x8a5a32,{p:[0,y,0],seg:10}); b.tor(.075,.012,_dk(c,.2),{p:[0,0,0],r:[PI/2,0,0],ol:0}); }
+  else if(k==='sinew'){ for(let i=0;i<3;i++) b.tor(.13-i*.02,.025,c,{p:[0,-.08+i*.06,0],r:[PI/2+.2*(i-1),0,0],ts:14}); }
+  else if(k==='ironwood'){ b.cyl(.13,.13,.48,c,{r:[0,0,PI/2],seg:9}); for(const x of [-.245,.245]) b.cyl(.11,.11,.01,0x9ec4e8,{p:[x,0,0],r:[0,0,PI/2],seg:9,e:.3,ol:0}); b.cyl(.14,.14,.05,0xb8c4d0,{p:[-.08,0,0],r:[0,0,PI/2],seg:9}); }
+  else if(k==='gshard'){ const cs=[0xe0303a,0x3a7ae0,0x3ac060]; for(let i=0;i<3;i++) b.oct(.1-i*.015,cs[i],{p:[(i-1)*.12,-.04+(i===1?.06:0),0],s:[.6,1.6,.6],r:[0,i,(i-1)*.4],e}); }
+  else if(k==='gdust'){ b.sph(.16,0x7a4a26,{p:[0,-.06,0],s:[1,.9,1]}); b.cyl(.06,.1,.08,0x6a3a1a,{p:[0,.12,0],seg:8}); b.cone(.12,.08,c,{p:[.17,-.18,.06],seg:10,e}); for(let i=0;i<5;i++) b.oct(.025,0xfff0a0,{p:[.12+Math.cos(i*1.4)*.08,-.1+i*.02,.06+Math.sin(i*1.4)*.06],e:1,ol:0}); }
+  else if(k[0]==='e'&&MAT[k]&&MAT[k].el){ b.oct(.13,c,{p:[0,.06,0],s:[.7,1.7,.7],e}); b.oct(.08,_lt(c,.3),{p:[.12,-.04,.04],s:[.7,1.5,.7],r:[0,0,-.5],e}); b.dod(.12,0x3a3a4a,{p:[0,-.18,0],s:[1.4,.5,1.2]}); }
+  else if(k==='scrap'){ b.box(.4,.015,.3,c,{r:[.35,0,.12],e}); for(let i=0;i<3;i++) b.box(.26-i*.05,.004,.012,0xe4f4ff,{p:[-.02,.012+i*.0,-.08+i*.07],r:[.35,0,.12],e:.4,ol:0}); b.tor(.05,.008,0xffffff,{p:[.1,.03,.05],r:[PI/2-.35,0,0],e:.4,ol:0}); }
+  else b.sph(.15,c,{}); }
+const _supGeoV16=supGeo; supGeo=function(k,sub){ if(!MAT[k]) return _supGeoV16(k,sub); return cgeo('supm_'+k,b=>matGeo(b,k),.02); };
+Object.assign(SUP_POSE,{ingot:[.35,.5,0],steel:[.35,.5,0],mithril:[.35,.5,0],cloth:[.25,.5,0],silk:[.25,.5,0],leather:[.1,.4,0],dhide:[.1,.4,0],ironwood:[.25,.5,0],scrap:[.2,.3,0]});
+
+// =====================================================================================================
+// UI: превью разбора в карточке, подтверждение для эпических+, пакетный разбор с фильтрами, анимация, вкладка «Материалы»
+// =====================================================================================================
+const MAT_SORT=MAT_ORDER.concat(['wood','gold','ore','ess','dust','core','herb','shards']);
+const matIdx=k=>{ const i=MAT_SORT.indexOf(k); return i<0?99:i; };
+function matChips(v){ const ks=Object.keys(v).filter(k=>v[k]>0).sort((a,b)=>matIdx(a)-matIdx(b));
+  return `<span class="mchips">${ks.map(k=>`<span class="mchip" style="color:${RES_COL[k]||'#ffd27a'}" title="${esc(RES_NAME[k]||k)}">${ico(RES_IC[k]||'spark')}<b>${fmt(v[k])}</b></span>`).join('')}</span>`; }
+function gemChips(list){ const c={}; for(const g of list) c[g]=(c[g]||0)+1;
+  return `<span class="mchips">${Object.keys(c).map(g=>{ const G0=GEMS[g.slice(0,-1)]; return `<span class="mchip" style="color:${G0.c}" title="${GEM_TIER[+g.slice(-1)]} ${G0.n.toLowerCase()}">${ico('gemT')}<b>${c[g]>1?'×'+c[g]:GEM_TIER[+g.slice(-1)]}</b></span>`; }).join('')}</span>`; }
+function salvPreviewHtml(it,btn){ const p=salvageParts(it);
+  let h=`<div class="salv-pv">${btn?`<button class="btn woodb small sp-b" ${act(()=>salvageAsk([it],{from:'card'}))}>${ico('salvage')} Разобрать</button>`:''}<div class="sp-h">${ico('salvage')} Разобрать → получишь:</div>${matChips(p.base)}`;
+  if(Object.keys(p.ref).length) h+=`<div class="sp-r"><small>Возврат заточки +${it.up} (${Math.round(ENH_REFUND*100)}%):</small>${matChips(p.ref)}</div>`;
+  if(p.gems.length) h+=`<div class="sp-r"><small>Камни вернутся целыми:</small>${gemChips(p.gems)}</div>`;
+  return h+'</div>'; }
+function salvTotals(list){ const tot={}; let gems=[]; for(const it of list){ const v=salvageValue(it); for(const k in v) tot[k]=(tot[k]||0)+v[k]; gems=gems.concat(it.sock.filter(Boolean)); } return {tot,gems}; }
+
+// ---------- модальное окно разбора (подтверждение и пакетный режим) ----------
+const SALV={rar:{0:1,1:1},typ:'all',worse:1,keepSet:1,ex:{},step:'pick',list:null,from:null};
+const SALV_TYP={all:['Все','bag',()=>true],wpn:['Оружие','swords',it=>{ const s=ITEM_BASES[it.base].slot; return s==='weapon'||s==='offhand'; }],
+  arm:['Броня','cuirass',it=>['helm','chest','gloves','boots'].includes(ITEM_BASES[it.base].slot)],jew:['Украшения','ring',it=>['amulet','ring'].includes(ITEM_BASES[it.base].slot)]};
+function salvMatch(){ return S.inv.filter(it=>!it.lock&&SALV.rar[it.rar]&&SALV_TYP[SALV.typ][2](it)&&(!SALV.worse||cmpVal(it)<0)&&(!SALV.keepSet||!it.set)); }
+function salvSel(){ return SALV.list?SALV.list.filter(it=>S.inv.includes(it)&&!it.lock):salvMatch().filter(it=>!SALV.ex[it.id]); }
+function salvBatchOpen(){ SALV.list=null; SALV.ex={}; SALV.step='pick'; SALV.from='batch'; salvRender(); AU.sfx('page',.6); }
+function salvageAsk(list,o={}){ list=list.filter(it=>it&&!it.lock&&S.inv.includes(it)); if(!list.length) return;
+  if(list.some(it=>it.rar>=2)){ SALV.list=list; SALV.step='confirm'; SALV.from=o.from||'card'; salvRender(); AU.sfx('page',.6); return; }
+  salvageRun(list,o); }
+function salvClose(){ const w=$('salvW'); if(w){ w.classList.add('hidden'); w.innerHTML=''; } SALV.list=null; }
+function salvRender(){ let w=$('salvW'); if(!w){ w=document.createElement('div'); w.id='salvW'; document.body.appendChild(w); w.addEventListener('pointerdown',ev=>{ if(ev.target===w){ AU.sfx('ui'); salvClose(); } }); }
+  w.innerHTML=`<div id="salvBox">${frame(`<button class="hbtn ic-x" id="svX">${ico('close')}</button><div class="sv-body">${SALV.step==='confirm'?salvConfirmHtml():salvPickHtml()}</div>`)}</div>`; w.classList.remove('hidden');
+  $('svX').onclick=()=>{ AU.sfx('ui'); salvClose(); }; bindIn(w); }
+function salvPickHtml(){ const m=salvMatch(), sel=m.filter(it=>!SALV.ex[it.id]); const T=salvTotals(sel);
+  let h=`<h3 class="sv-t">${ico('salvage')} Разбор вещей <small>сумка ${S.inv.length}/${invCap()}</small></h3>`;
+  h+=`<div class="sv-row"><span class="sv-l">Редкость</span><div class="chips">${RAR.map((R,i)=>`<button class="chip rr ${SALV.rar[i]?'on':''}" style="--rc:${R.c}" ${act(()=>{ SALV.rar[i]=SALV.rar[i]?0:1; salvRender(); })}><i class="rdot"></i><span class="ln">${R.n}</span><span class="sn">${['Обыч.','Редк.','Эпич.','Леген.','Миф.'][i]}</span></button>`).join('')}</div></div>`;
+  h+=`<div class="sv-row"><span class="sv-l">Тип</span><div class="chips">${Object.keys(SALV_TYP).map(t=>`<button class="chip ${SALV.typ===t?'on':''}" ${act(()=>{ SALV.typ=t; salvRender(); })}>${ico(SALV_TYP[t][1])}<span>${SALV_TYP[t][0]}</span></button>`).join('')}</div></div>`;
+  h+=`<div class="sv-row sv-tg"><button class="tgl ${SALV.worse?'on':''}" ${act(()=>{ SALV.worse=SALV.worse?0:1; salvRender(); })}><i>${ico('check')}</i>Всё хуже надетого</button><button class="tgl ${SALV.keepSet?'on':''}" ${act(()=>{ SALV.keepSet=SALV.keepSet?0:1; salvRender(); })}><i>${ico('check')}</i>Оставить комплекты</button><span class="tgl on fixed"><i>${ico('lock')}</i>Закреплённые не трогаем</span></div>`;
+  h+=`<div class="sv-grid">${m.length?m.map(it=>`<div class="sv-it ${SALV.ex[it.id]?'ex':''}">${itHtml(it,{act:act(()=>{ SALV.ex[it.id]=SALV.ex[it.id]?0:1; salvRender(); }),cmp:false,lv:true,cls:'mini'})}</div>`).join(''):'<div class="empty-note">Под фильтр ничего не попало</div>'}</div>`;
+  if(m.length) h+=`<div class="muted sv-hint">Коснитесь вещи, чтобы оставить её.</div>`;
+  h+=`<div class="sv-tot"><b>Получишь:</b> ${sel.length?matChips(T.tot)+(T.gems.length?` <small>и камни:</small> ${gemChips(T.gems)}`:''):'<span class="muted">—</span>'}</div>`;
+  const hi=sel.filter(it=>it.rar>=2).length;
+  h+=`<div class="sv-btns"><button class="btn woodb" ${act(()=>{ salvClose(); })}>Отмена</button><button class="btn leather big" ${sel.length?'':'disabled'} ${act(()=>{ const L=salvSel(); if(!L.length) return; if(L.some(it=>it.rar>=2)){ SALV.list=L; SALV.step='confirm'; salvRender(); } else salvageRun(L,{from:'batch'}); })}>${ico('salvage')} Разобрать ${sel.length||''}${hi?` <small>(${hi} эпич.+)</small>`:''}</button></div>`;
+  return h; }
+function salvConfirmHtml(){ const L=salvSel(); const T=salvTotals(L); const hi=L.filter(it=>it.rar>=2);
+  let h=`<h3 class="sv-t warn">${ico('salvage')} ${L.length>1?`Разобрать ${L.length} ${plural(L.length,'вещь','вещи','вещей')}?`:'Разобрать вещь?'}</h3>`;
+  h+=`<div class="sv-warn">${hi.length===1&&L.length===1?`<b class="r${hi[0].rar}">${esc(hi[0].name)}</b> — ${RAR[hi[0].rar].n.toLowerCase()}.`:`Среди них <b>${hi.length}</b> ${plural(hi.length,'эпическая','эпические','эпических')} и выше: ${hi.slice(0,3).map(it=>`<b class="r${it.rar}">${esc(it.name)}</b>`).join(', ')}${hi.length>3?'…':''}.`} Разобранное не вернуть.</div>`;
+  h+=`<div class="sv-grid one">${L.slice(0,12).map(it=>`<div class="sv-it">${itHtml(it,{cmp:false,cls:'mini'})}</div>`).join('')}${L.length>12?`<span class="muted">+${L.length-12}</span>`:''}</div>`;
+  h+=`<div class="sv-tot"><b>Получишь:</b> ${matChips(T.tot)}${T.gems.length?` <small>и камни:</small> ${gemChips(T.gems)}`:''}</div>`;
+  h+=`<div class="sv-btns"><button class="btn woodb" ${act(()=>{ if(SALV.from==='batch'){ SALV.list=null; SALV.step='pick'; salvRender(); } else salvClose(); })}>${SALV.from==='batch'?'Назад':'Отмена'}</button><button class="btn leather big danger" ${act(()=>{ salvageRun(salvSel(),{from:SALV.from}); })}>${ico('salvage')} Да, разобрать</button></div>`;
+  return h; }
+function rectOf(sel){ const e=typeof sel==='string'?document.querySelector(sel):sel; if(!e) return null; const r=e.getBoundingClientRect(); if(!r.width) return null; return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width}; }
+function salvageRun(list,o={}){ const from=o.from==='card'?rectOf('#icard .ic-big'):null; const tot={}; const done=[]; let gems=0;
+  const imgs=list.map(it=>iconHQ(it));
+  list.forEach((it,i)=>{ const ng=it.sock.filter(Boolean).length; const v=salvage(it); if(!v) return; done.push({it,img:imgs[i]}); gems+=ng; for(const k in v) tot[k]=(tot[k]||0)+v[k]; });
+  if(!done.length) return null; PANEL.sel=null; cardClose(); salvClose(); _dollKey='';
+  if(PANEL.kind) rerender(); else hudRefresh();
+  AU.sfx('hit'); setTimeout(()=>AU.sfx('loot',.5),380); vib('medium');
+  toast(`${ico('salvage')} Разобрано: <b>${done.length}</b>${gems?` · камней вернулось: <b>${gems}</b>`:''}`,null,null,'loot');
+  try{ salvFx(done,tot,from); }catch(e){ console.error(e); }
+  saveGame(); try{ questCheck(); }catch(e){} return tot; }
+
+// ---------- анимация: предмет трескается, разлетается осколками, материалы летят к вкладке «Материалы» ----------
+const SHARD_POLY=['0 0,55% 0,40% 45%','55% 0,100% 0,100% 40%,40% 45%','100% 40%,100% 100%,60% 100%,40% 45%','60% 100%,0 100%,0 60%,40% 45%','0 60%,0 0,40% 45%','35% 30%,60% 35%,50% 60%'];
+function salvTarget(){ const t=rectOf('#pTabs .tab[data-tab="mats"]')||rectOf('#mHero')||rectOf('#hPort'); return t||{x:innerWidth-40,y:40}; }
+function salvFx(done,tot,from){ let lay=$('salvFx'); if(!lay){ lay=document.createElement('div'); lay.id='salvFx'; document.body.appendChild(lay); }
+  if(!lay.animate) return; lay.innerHTML=''; clearTimeout(lay._t);
+  const W0=innerWidth, H0=innerHeight; const cx=from?from.x:W0/2, cy=from?from.y:H0*.46; const N=Math.min(done.length,6);
+  const sz=from&&N===1?Math.min(from.w,120):Math.max(56,Math.min(84,W0*.1)); const gap=Math.min(sz*1.15,(W0-60)/Math.max(1,N));
+  const flash=document.createElement('i'); flash.className='sfx-fl'; flash.style.cssText=`left:${cx}px;top:${cy}px`; lay.appendChild(flash);
+  flash.animate([{transform:'translate(-50%,-50%) scale(.2)',opacity:0},{transform:'translate(-50%,-50%) scale(.2)',opacity:0,offset:.35},{transform:'translate(-50%,-50%) scale(1)',opacity:1,offset:.5},{transform:'translate(-50%,-50%) scale(1.6)',opacity:0}],{duration:900,easing:'ease-out',fill:'forwards'});
+  done.slice(0,N).forEach(({it,img},i)=>{ const x=cx+(i-(N-1)/2)*gap, y=cy; const d0=i*70;
+    const box=document.createElement('div'); box.className='sfx-it r'+it.rar; box.style.cssText=`left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px`; box.innerHTML=`<img src="${img}" alt=""><i class="crk"></i>`; lay.appendChild(box);
+    box.animate([{transform:'scale(.9)',opacity:0},{transform:'scale(1.06)',opacity:1,offset:.15},{transform:'scale(1.06) rotate(-7deg)',offset:.32},{transform:'scale(1.08) rotate(6deg)',offset:.48},{transform:'scale(1.12) rotate(-3deg)',offset:.64},{transform:'scale(1.18)',opacity:1,offset:.86},{transform:'scale(1.25)',opacity:0}],{duration:520,delay:d0,easing:'ease-in',fill:'both'});
+    setTimeout(()=>{ for(let q=0;q<SHARD_POLY.length;q++){ const sh=document.createElement('div'); sh.className='sfx-sh'; sh.style.cssText=`left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px;background-image:url("${img}");clip-path:polygon(${SHARD_POLY[q]})`; lay.appendChild(sh);
+        const a=q/SHARD_POLY.length*TAU+rand(-.35,.35), dd=rand(sz*.7,sz*1.5); sh.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${Math.cos(a)*dd|0}px,${(Math.sin(a)*dd+sz*.5)|0}px) rotate(${rand(-220,220)|0}deg) scale(.6)`,opacity:0}],{duration:700,easing:'cubic-bezier(.15,.7,.35,1)',fill:'forwards'}); }
+      for(let q=0;q<10;q++){ const sp=document.createElement('i'); sp.className='sfx-sp'; sp.style.cssText=`left:${x}px;top:${y}px`; lay.appendChild(sp); const a=rand(0,TAU), dd=rand(20,sz); sp.animate([{transform:'translate(-50%,-50%)',opacity:1},{transform:`translate(calc(-50% + ${Math.cos(a)*dd|0}px),calc(-50% + ${Math.sin(a)*dd|0}px))`,opacity:0}],{duration:rand(300,600)|0,easing:'ease-out',fill:'forwards'}); } },d0+430); });
+  const tg=salvTarget(); const ks=Object.keys(tot).filter(k=>tot[k]>0).sort((a,b)=>matIdx(a)-matIdx(b)).slice(0,12); const t0=430+(N-1)*70;
+  ks.forEach((k,i)=>{ setTimeout(()=>{ const el=document.createElement('div'); el.className='sfx-m'; el.style.cssText=`left:${cx}px;top:${cy}px;color:${RES_COL[k]||'#ffd27a'}`; el.innerHTML=`<span>${ico(RES_IC[k]||'spark')}<b>+${fmt(tot[k])}</b></span>`; lay.appendChild(el);
+      const n=ks.length, a=-PI/2+(n<=4?(i-(n-1)/2)*.62:i/n*TAU), rx=Math.min(W0*.3,250)*(n<=4?.8:1), ry=Math.min(H0*.3,130)*(n<=4?.9:1); const bx=Math.cos(a)*rx|0, by=Math.sin(a)*ry|0; const tx=tg.x-cx|0, ty=tg.y-cy|0;
+      const an=el.animate([{transform:'translate(0,0) scale(.3)',opacity:0},{transform:`translate(${bx}px,${by}px) scale(1.15)`,opacity:1,offset:.22},{transform:`translate(${bx}px,${by-6}px) scale(1)`,opacity:1,offset:.62},{transform:`translate(${tx}px,${ty}px) scale(.4)`,opacity:.15}],{duration:1900,easing:'cubic-bezier(.3,.05,.35,1)',fill:'forwards'});
+      an.onfinish=()=>{ el.remove(); const tb=document.querySelector('#pTabs .tab[data-tab="mats"]'); if(tb){ tb.classList.remove('got'); void tb.offsetWidth; tb.classList.add('got'); } if(i%2===0) AU.sfx('pick',.3); }; },t0+i*60); });
+  lay._t=setTimeout(()=>{ lay.innerHTML=''; },t0+ks.length*60+2200); }
+
+// ---------- вкладка героя «Материалы» ----------
+let MAT_SEL='ingot';
+const _heroPanelV16=heroPanel; heroPanel=function(){ const mats=PANEL.tab==='mats'; if(mats) PANEL.tab='quests'; const o=_heroPanelV16(); if(mats){ PANEL.tab='mats'; o.body=pMats(); S.seen.matNew=0; }
+  const i=o.tabs.findIndex(t=>t[0]==='gear'); o.tabs.splice(i+1,0,['mats','Материалы'+(S.seen.matNew&&!mats?' •':''),'ingot']); return o; };
+function matInfo(k){ return MAT[k]||MAT_GEN[k]||{src:[],use:[]}; }
+function matTile(k){ const n=S.res[k]||0, M=MAT[k]; return `<button class="mtile ${MAT_SEL===k?'on':''} ${n?'':'zero'}" style="--c:${RES_COL[k]||'#ffd27a'}" title="${esc(RES_NAME[k]+' — '+matInfo(k).use.join('; '))}" ${act(()=>{ MAT_SEL=k; AU.sfx('ui'); rerender(); })}><span class="mti">${ico(RES_IC[k])}</span><b>${fmt(n)}</b><small>${RES_NAME[k]}</small>${M?`<i class="tdots t${M.t}"></i>`:''}</button>`; }
+function pMats(){ let L='';
+  for(const f of ['metal','soft','wood','jewel','el','bp']){ const ks=MAT_ORDER.filter(k=>MAT[k].fam===f).concat(f==='wood'?['wood']:[]).sort((a,b)=>(MAT[a]?MAT[a].t:1)-(MAT[b]?MAT[b].t:1));
+    L+=`<div class="msect">${ico(MAT_FAM[f].ic)} ${MAT_FAM[f].n}</div><div class="mgrid">${ks.map(matTile).join('')}</div>`; }
+  L+=`<div class="msect">${ico('gold')} ${MAT_FAM.gen.n}</div><div class="mgrid">${['gold','ore','ess','dust','core','herb','shards'].map(matTile).join('')}</div>`;
+  const k=MAT_SEL, I=matInfo(k), M=MAT[k]; const tierN=M?['','I ступень — обычные и редкие вещи','II ступень — эпические вещи','III ступень — легендарные и мифические'][M.t]:'Общий ресурс';
+  let R=`<div class="mdet" style="--c:${RES_COL[k]||'#ffd27a'}"><div class="md-h"><span class="md-i">${ico(RES_IC[k])}</span><div><h4>${RES_NAME[k]}</h4><small>${M?MAT_FAM[M.fam].n+' · ':''}${tierN}</small><div class="md-n">У вас: <b>${fmt(S.res[k]||0)}</b></div></div></div>`;
+  R+=`<div class="md-s">${ico('map')} Где добыть</div><ul>${I.src.map(x=>`<li>${x}</li>`).join('')}</ul><div class="md-s">${ico('hammer')} На что идёт</div><ul>${I.use.join?I.use.map(x=>`<li>${x}</li>`).join(''):''}</ul>`;
+  const btn=[]; if(M&&(M.fam==='metal'||k==='scrap'||k==='gshard')&&S.bld.forge) btn.push(`<button class="btn woodb small" ${act(()=>openPanel('bld',{id:'forge',tab:'smelt'}))}>${ico('anvil')} Переработка</button>`);
+  if(M&&M.fam==='el'&&S.bld.alch) btn.push(`<button class="btn woodb small" ${act(()=>openPanel('bld',{id:'alch'}))}>${ico('flask')} Перегонка</button>`);
+  btn.push(`<button class="btn woodb small" ${act(()=>salvBatchOpen())}>${ico('salvage')} Разбор</button>`);
+  R+=`<div class="md-b">${btn.join('')}</div></div>`;
+  return `<div class="mtab"><div class="mt-l">${L}</div><div class="mt-r">${R}</div></div>`; }
+
+// ---------- стили ----------
+(()=>{ const st=document.createElement('style'); st.id='v16css'; st.textContent=`
+.mchips{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle}
+.mchip{display:inline-flex;align-items:center;gap:2px;padding:1px 7px 1px 2px;border-radius:12px;background:rgba(0,0,0,.42);box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 45%,transparent);font-size:13px;line-height:1.2}
+.mchip .ico{width:21px;height:21px}
+.mchip b{color:var(--tx);font-family:var(--sc);font-weight:800}
+.salv-pv{margin:8px 0 2px;padding:6px 8px;border-radius:8px;background:linear-gradient(180deg,rgba(255,200,120,.07),rgba(0,0,0,.28));box-shadow:inset 0 0 0 1px rgba(234,180,90,.2)}
+.salv-pv{display:flow-root}
+.salv-pv .sp-b{float:right;margin:0 0 4px 8px;min-height:36px}
+.salv-pv .sp-h{font-family:var(--sc);font-weight:800;font-size:13px;letter-spacing:.03em;color:var(--g1);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.salv-pv .sp-h .ico{width:18px;height:18px}
+.salv-pv .sp-r{margin-top:5px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.salv-pv small,.sv-tot small{color:var(--tx2);font-size:12px}
+#salvW{position:fixed;inset:0;z-index:47;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 50%,rgba(20,10,4,.66),rgba(2,1,0,.9));padding:calc(var(--st) + 6px) calc(var(--sr) + 8px) calc(var(--sb) + 6px) calc(var(--sl) + 8px);animation:fadeIn .15s}
+#salvW.hidden{display:none}
+#salvBox{width:min(720px,96vw);max-height:100%;display:flex;animation:popIn .18s ease-out}
+#salvBox>.woodframe{flex:1;display:flex;min-height:0;max-height:calc(var(--vh,100vh) - var(--st) - var(--sb) - 12px)}
+#salvBox>.woodframe>.inner{flex:1;overflow-y:auto;position:relative;padding:12px 14px}
+#salvBox .ic-x{position:absolute;right:6px;top:6px;z-index:3;width:40px;height:40px;font-size:20px;color:var(--g1)}
+.sv-t{font-family:var(--sc);font-size:19px;color:var(--g1);margin:0 44px 8px 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sv-t small{font-size:12.5px;color:var(--tx2);font-weight:600}
+.sv-t.warn{color:#ffb07a}
+.sv-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:0}
+.sv-l{flex:0 0 74px;font-family:var(--sc);font-weight:700;font-size:12.5px;color:var(--tx2)}
+.sv-row .chips{flex-wrap:wrap;gap:4px}
+.sv-row .chip{min-height:34px;padding:4px 9px;font-size:13px}
+.chip.rr .rdot{width:10px;height:10px;border-radius:50%;background:var(--rc);box-shadow:0 0 6px var(--rc)}
+.chip.rr:not(.on){opacity:.62}
+.chip.rr.on{box-shadow:inset 0 0 0 1.5px var(--rc),0 2px 0 #070403}
+.sv-tg{flex-wrap:wrap;gap:6px}
+.tgl{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 10px 4px 5px;border-radius:17px;font-family:var(--sc);font-weight:700;font-size:12.5px;color:var(--tx2);background:linear-gradient(180deg,#2a2019,#17110d);box-shadow:inset 0 0 0 1px rgba(234,180,90,.25)}
+.tgl i{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(234,180,90,.35)}
+.tgl i .ico{width:16px;height:16px;opacity:0}
+.tgl.on{color:var(--tx)}.tgl.on i .ico{opacity:1}
+.tgl.fixed{opacity:.75;cursor:default}
+.sv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px;margin:6px 0 2px;max-height:min(30vh,170px);overflow-y:auto;padding:2px}
+.sv-grid.one{max-height:none}
+.sv-it{position:relative}
+.sv-it .it{animation:none}
+.sv-it.ex .it{opacity:.32;filter:grayscale(.8)}
+.sv-it.ex::after{content:'оставить';position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:10px;font-weight:700;color:#9cff7a;text-shadow:0 1px 0 #000}
+.sv-hint{font-size:11.5px;margin-bottom:2px}
+.sv-tot{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:8px 0;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(234,180,90,.18)}
+.sv-tot>b{font-family:var(--sc);color:var(--g1)}
+.sv-warn{padding:8px 10px;border-radius:8px;background:rgba(120,30,10,.28);box-shadow:inset 0 0 0 1px rgba(255,120,80,.4);color:var(--tx);font-size:14px;margin-bottom:6px}
+.sv-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:-12px;z-index:2;margin:0 -14px -12px;padding:8px 14px 10px;background:linear-gradient(180deg,rgba(26,18,12,0),rgba(26,18,12,.94) 35%)}
+.chip.rr .sn{display:none}
+.sv-btns .btn.big{flex:0 1 auto;min-width:180px}
+.btn.danger{box-shadow:inset 0 0 0 1.5px #ff8a5a,inset 0 1px 0 rgba(255,220,150,.3),0 3px 0 #0a0603,0 5px 10px rgba(0,0,0,.5);color:#ffd2b0}
+#salvFx{position:fixed;inset:0;z-index:80;pointer-events:none;overflow:hidden}
+#salvFx .sfx-it{position:absolute;border-radius:12px;background:radial-gradient(circle at 50% 40%,rgba(255,220,150,.25),rgba(0,0,0,.4));box-shadow:0 0 0 2px var(--rcol,#d9ccae),0 0 18px var(--rcol,#d9ccae)}
+#salvFx .sfx-it img{width:100%;height:100%;object-fit:contain}
+#salvFx .sfx-it.r1{--rcol:#62a8e8}#salvFx .sfx-it.r2{--rcol:#b47cf0}#salvFx .sfx-it.r3{--rcol:#f2a634}#salvFx .sfx-it.r4{--rcol:#ff4c39}
+#salvFx .crk{position:absolute;inset:0;background:linear-gradient(118deg,transparent 46%,rgba(255,240,200,.95) 47.5%,transparent 49%),linear-gradient(32deg,transparent 52%,rgba(255,240,200,.85) 53.5%,transparent 55%);opacity:0;animation:sfxCrk .5s .18s forwards}
+@keyframes sfxCrk{to{opacity:1}}
+#salvFx .sfx-sh{position:absolute;background-size:100% 100%;filter:drop-shadow(0 0 4px rgba(255,200,120,.8))}
+#salvFx .sfx-sp{position:absolute;width:6px;height:6px;border-radius:50%;background:#ffe9a0;box-shadow:0 0 8px #ffb347}
+#salvFx .sfx-fl{position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(255,236,180,.9),rgba(255,170,60,.35) 40%,transparent 70%)}
+#salvFx .sfx-m{position:absolute;width:0;height:0}
+#salvFx .sfx-m>span{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:2px;padding:2px 8px 2px 3px;border-radius:16px;background:rgba(10,6,3,.82);box-shadow:inset 0 0 0 1.5px currentColor,0 0 14px color-mix(in srgb,currentColor 55%,transparent);white-space:nowrap}
+#salvFx .sfx-m .ico{width:28px;height:28px}
+#salvFx .sfx-m b{font-family:var(--sc);font-weight:800;font-size:15px;color:#fff6e0;text-shadow:0 1px 0 #000}
+#pTabs .tab.got{animation:tabGot .45s ease-out}
+@keyframes tabGot{40%{transform:scale(1.08);box-shadow:0 0 0 2px var(--g1),0 0 18px var(--g1)}}
+.mtab{display:grid;grid-template-columns:minmax(0,1fr) minmax(175px,40%);gap:12px;align-items:start}
+.mt-l{min-width:0}
+.mt-r{min-width:0;position:sticky;top:0}
+.msect{font-family:var(--sc);font-weight:800;font-size:13.5px;letter-spacing:.12em;color:var(--g1);margin:8px 0 5px;display:flex;align-items:center;gap:6px}
+.msect:first-child{margin-top:0}
+.msect .ico{width:20px;height:20px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.mtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 3px 4px;border-radius:10px;background:radial-gradient(circle at 50% 30%,#3a2a1e,#120c08);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent),0 2px 0 #070403;color:var(--c);min-width:0}
+.mtile.on{box-shadow:inset 0 0 0 2px var(--c),0 0 12px color-mix(in srgb,var(--c) 50%,transparent)}
+.mtile.zero{opacity:.55}
+.mtile .mti .ico{width:32px;height:32px}
+.mtile b{font-family:var(--sc);font-weight:800;font-size:15px;color:var(--tx);line-height:1}
+.mtile small{font-size:10.5px;line-height:1.12;color:var(--tx2);max-width:100%;overflow:hidden;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.24em}
+.tdots{position:absolute;right:5px;top:5px;display:flex;gap:2px}
+.tdots::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--c)}
+.tdots.t2::before{box-shadow:7px 0 0 var(--c)}.tdots.t3::before{box-shadow:7px 0 0 var(--c),14px 0 0 var(--c)}
+.tdots.t2{right:12px}.tdots.t3{right:19px}
+.mdet{border-radius:var(--rad);padding:10px 12px;background:linear-gradient(180deg,rgba(255,215,150,.07),rgba(0,0,0,.25));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 40%,rgba(234,180,90,.2)),0 2px 0 rgba(0,0,0,.45)}
+.md-h{display:flex;gap:10px;align-items:center}
+.md-i{width:56px;height:56px;flex:0 0 56px;border-radius:50%;display:grid;place-items:center;color:var(--c);background:radial-gradient(circle at 40% 35%,#3a2a1e,#0f0a08);box-shadow:inset 0 0 0 2px var(--c),0 0 16px color-mix(in srgb,var(--c) 45%,transparent)}
+.md-i .ico{width:38px;height:38px}
+.md-h h4{margin:0;font-family:var(--sc);font-size:18px;color:var(--c);text-shadow:0 1px 0 #000}
+.md-h small{display:block;color:var(--tx2);font-size:11.5px}
+.md-n{color:var(--tx);font-size:13.5px}.md-n b{font-family:var(--sc);font-size:16px}
+.md-s{font-family:var(--sc);font-weight:800;font-size:12.5px;letter-spacing:.08em;color:var(--g1);margin:8px 0 3px;display:flex;align-items:center;gap:5px}
+.md-s .ico{width:16px;height:16px}
+.mdet ul{margin:0;padding-left:18px;color:var(--tx);font-size:13px;line-height:1.35}
+.mdet li{margin:1px 0}
+.md-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rfcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.rfcard{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rad);background:linear-gradient(180deg,rgba(255,215,150,.07),rgba(0,0,0,.25));box-shadow:inset 0 0 0 1px rgba(234,180,90,.22),0 2px 0 rgba(0,0,0,.45)}
+.rfcard.lock{opacity:.55}
+.rfcard b{font-family:var(--sc);font-size:15px;color:var(--tx)}
+.rfcard small{display:block;color:var(--tx2);font-size:12px;margin-bottom:3px}
+.rfo{width:46px;height:46px;flex:0 0 46px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#3a2a1e,#0f0a08);box-shadow:inset 0 0 0 1.5px currentColor,0 0 10px color-mix(in srgb,currentColor 40%,transparent)}
+.rfo .ico{width:30px;height:30px}
+.rfcard{flex-wrap:wrap}
+.rfb{display:flex;gap:5px;flex:1 1 100%;justify-content:flex-end;margin-top:-2px}
+.rfb .btn{flex:0 0 auto;min-width:58px;min-height:34px;padding:3px 10px}
+.elchips .chip{min-height:34px}
+@media (max-width:700px){ .mtab{grid-template-columns:minmax(0,1fr) minmax(150px,44%);gap:8px} .mgrid{grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:4px} .mtile{padding:4px 2px 3px} .mtile .mti .ico{width:26px;height:26px} .mtile b{font-size:13.5px} .mtile small{font-size:9.5px} .md-i{width:40px;height:40px;flex-basis:40px} .md-i .ico{width:28px;height:28px} .md-h h4{font-size:15px} .mdet{padding:8px} .mdet ul{font-size:12px;padding-left:14px} }
+@media (max-height:420px){ .chip.rr .ln{display:none} .chip.rr .sn{display:inline} .sv-row .chip{min-height:32px;padding:3px 8px} .tgl{min-height:30px} .sv-grid{max-height:110px} .sv-t{font-size:16px;margin-bottom:5px} .sv-row{margin-bottom:4px} .sv-l{flex-basis:62px} .mtile .mti .ico{width:28px;height:28px} .mgrid{grid-template-columns:repeat(auto-fill,minmax(62px,1fr))} }
+`; document.head.appendChild(st); })();
+
+// ---------- тестовые крючки ----------
+function matAuto(){ // «аккуратный игрок» для бота: переплавить, когда не хватает
+  if(S.bld.forge>=1){ let g=0; while((S.res.ingot||0)<40&&(S.res.ore||0)>=220&&g++<60&&refineDo('smelt',1)){} }
+  if(S.bld.forge>=2){ let g=0; while((S.res.steel||0)<30&&(S.res.ingot||0)>=24&&g++<60&&refineDo('temper',1)){} }
+  if(S.bld.forge>=4){ let g=0; while((S.res.mithril||0)<10&&(S.res.steel||0)>=18&&(S.res.dust||0)>=40&&g++<30&&refineDo('mith',1)){} }
+  for(const k in SPELLS){ const m=SPELL_MAT[k]; if(m&&m[0]==='e'&&(S.spell.tomes[k]||0)>0){ let g=0; while((S.res[m]||0)<2*spellRank(k)&&(S.res.ess||0)>=30&&(S.res.herb||0)>=2&&g++<12&&pay(DISTILL_C)) S.res[m]++; } } }
+Object.assign(window.__game,{
+  salvOpen:()=>salvBatchOpen(), salvClose:()=>salvClose(), salvAsk:(i)=>{ const it=S.inv[i||0]; if(it) salvageAsk([it],{from:CARD?'card':'x'}); }, salvParts:(i)=>salvageParts(S.inv[i||0]),
+  salvRun:(ids)=>salvageRun(S.inv.filter(it=>ids.includes(it.id))), mats:()=>Object.fromEntries(MAT_ORDER.map(k=>[k,S.res[k]||0])), refine:(id,n)=>refineDo(id,n), matAuto:()=>matAuto(),
+  recipeCost:(rid,slot,cls,L,el)=>recipeCost(rid,slot,cls,L,el), enhCost:(slot)=>enhCost(S.gear[slot||'weapon']), matMigrate:(d)=>matMigrate(d)
+});
+{ const _m=window.__game.manage; window.__game.manage=function(){ matAuto(); const r=_m(); matAuto(); return r; }; }
 // ================= pz: boot =================
 boot();
 })();

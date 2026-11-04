@@ -213,7 +213,8 @@ function openPanel(kind,opts={}){
 function closePanel(){ const oc=PANEL.opts&&PANEL.opts.onClose; show('panel',false); PANEL.kind=null; PANEL.opts={}; G.paused=false; AU.sfx('ui'); if(G.mode==='village'){ hudRefresh(); hudQuest(); } if(oc) setTimeout(oc,0); }
 function renderPanel(){
   let k=PANEL.kind; let title='',sub='',tabs=[],body='';
-  const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${['gold','wood','ore','ess','shards'].map(r=>resChip(r,S.res[r])).join('')}</div>`;
+  const resK=k==='bld'&&PANEL.opts.id==='forge'?['gold','ore','ingot','steel','mithril','ess','dust']:k==='bld'&&PANEL.opts.id==='alch'?['gold','herb','ess','efire','eice','epoison','elight']:['gold','wood','ore','ess','shards']; // v16: в кузнице и у алхимика — их материалы
+  const res=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">${resK.map(r=>resChip(r,S.res[r]||0)).join('')}</div>`;
   if(k==='hero'){ const o=heroPanel(); title=o.title; sub=o.sub; tabs=o.tabs; body=o.body; }
   else if(k==='bld'){ const id=PANEL.opts.id; const B=BUILDINGS[id]; title=B.n; sub=S.bld[id]?`Уровень ${S.bld[id]}`:'Не построено';
     const t=bldTabs(id); tabs=t; PANEL.tab=PANEL.tab||(t[0]&&t[0][0]); body=res+bldBody(id,PANEL.tab); }

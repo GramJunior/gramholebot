@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=5;
+const SAVE_V=6;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -33,7 +33,9 @@ function newSave(){
     hero:{lvl:1,xp:0,tp:0,talents:{sword:{},axe:{},bow:{},staff:{}},attr:{str:0,agi:0,int:0,vit:0},ap:0,resp:0},
     gear:{weapon:null,offhand:null,helm:null,chest:null,gloves:null,boots:null,amulet:null,ring1:null,ring2:null},
     inv:[], uid:1,
-    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0,sparks:0,herb:3,dust:0,core:0},
+    res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0,sparks:0,herb:3,dust:0,core:0,
+      // v16: материалы разбора (src/p31.js → MAT); стартовый запас — на первую ковку без разбора
+      ingot:6,steel:0,mithril:0,cloth:4,leather:4,thread:4,silk:0,dhide:0,sinew:3,ironwood:0,gshard:3,gdust:2,efire:3,eice:0,epoison:0,elight:0,scrap:0},
     gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0,prot:0,tome:0}, keys:0, potMax:3,
     // v5: chests & keys (S.keys = iron keys), pity counters, spells/runes, recipes, build & craft queues, boosts, shop state
     ck:{g:0,f:0,l:0}, chests:{wood:0,iron:0,gold:0,leg:0}, pity:{}, spell:{known:{},tomes:{},slot:'',runes:{},rune:{}}, rec:{}, bq:{list:[],slot2:false}, craft:{list:[]}, boost:{xp:0,gold:0,drop:0}, shop:{day:'',ref:0,bought:{},lim:{},free:0,adRef:0},
@@ -93,6 +95,8 @@ function migrateSave(d){
     // кузница > ур.: старым игрокам открываем рецепты по пройденным боссам
     d.rec=d.rec||{}; const st=(d.prog&&d.prog.stages)||{}; const BP={'2-5':'bp_warden','3-5':'rec_legend','4-5':'bp_owl','5-5':'bp_ash','6-5':'bp_king'}; for(const k in BP) if(st[k]) d.rec[BP[k]]=1;
     d.v=5; }
+  if(d.v<6){ // v5 → v6 (игра v16): материалы разбора по типу предметов. Часть руды → слитки, часть эссенции → эссенции стихий, подарок по уровню — см. matMigrate (p31.js)
+    try{ matMigrate(d); }catch(e){ console.error(e); } d.v=6; }
   return d;
 }
 let _saveT=0;
