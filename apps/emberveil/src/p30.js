@@ -112,6 +112,8 @@ function yCard(kind){ const el=yEl(); G.paused=true; G.input.mx=G.input.mz=0; G.
   el.className='on side-'+side+(hole?'':' dim');
   el.innerHTML=(hole?`<div class="yHole${hole.round?' rnd':''}" data-y="${kind==='step'&&!YSTEPS[YARD.i].info?'try':'next'}" style="left:${hole.x}px;top:${hole.y}px;width:${hole.w}px;height:${hole.h}px"></div>`+(K.touch?`<div class="yFinger${YSTEPS[YARD.i]&&YSTEPS[YARD.i].sel==='@joy'?' drag':''}" style="left:${hole.x+hole.w/2}px;top:${hole.y+hole.h/2}px"></div>`:''):'')+
     `<div class="yCard dk">${body}<div class="yBtns">${btns}</div></div>`;
+  // карточка не должна закрывать подсвеченную кнопку: ширина — по свободному месту сбоку (на маленьких телефонах уже)
+  if(hole&&side!=='c'){ const sf=LAYOUT.safe||{l:0,r:0}, cd=el.querySelector('.yCard'); const av=side==='l'?hole.x-Math.max(sf.l,8)-12-10:innerWidth-(hole.x+hole.w)-Math.max(sf.r,8)-12-10; if(cd) cd.style.width=Math.round(clamp(av,250,380))+'px'; }
   const ch=$('yChip'); if(ch) ch.classList.remove('on');
 }
 function yNext(){ const st0=YSTEPS[YARD.i]; if(st0&&!YARD.n['tr_'+st0.id]){ YARD.n['tr_'+st0.id]=1; yTrack(st0.id+(YARD.n['ok_'+st0.id]||st0.info?'':'_next')); }
