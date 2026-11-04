@@ -8,7 +8,8 @@ function deviceTier(){
   const mem=navigator.deviceMemory||4, cores=navigator.hardwareConcurrency||4, px=screen.width*screen.height*(window.devicePixelRatio||1)**2;
   let t='high';
   if(IS_MOBILE) t='med';
-  if(/SwiftShader|llvmpipe|Software|Mali-[4T][0-9]{1,2}\b|Mali-G(31|51|52|57)|Adreno \(TM\) ?[2-5][0-9]{2}|PowerVR|SGX|Intel\(R\) HD Graphics [2-5]/i.test(gpu)||mem<=2||cores<=2) t='low';
+  if(/Mali-[4T][0-9]{1,2}\b|Adreno \(TM\) ?[2-4][0-9]{2}|SGX|PowerVR Rogue G[EM]?[0-9]/i.test(gpu)||mem<=1.5) t='perf';
+  else if(/SwiftShader|llvmpipe|Software|Mali-G(31|51|52|57)|Adreno \(TM\) ?5[0-9]{2}|PowerVR|Intel\(R\) HD Graphics [2-5]/i.test(gpu)||mem<=2||cores<=2) t='low';
   else if(IS_MOBILE&&(mem>=6&&cores>=8&&/Apple|Adreno \(TM\) ?(6[4-9]|7)\d\d|Mali-G(7[1-9]|71[0-9])|Xclipse/i.test(gpu))) t='high';
   else if(!IS_MOBILE&&(/Intel/i.test(gpu)&&px>4e6)) t='med';
   // «Авто» никогда не выбирает «Выс.» сам: высокое качество — только вручную в настройках (тяжёлые проходы и блум на реальных GPU)
@@ -16,13 +17,19 @@ function deviceTier(){
   if(got) DEVICE_TIER=t; DEVICE_GPU=gpu; return t;
 }
 let QL='med';
-function resolveQuality(){ let q=S.set.q; try{ const m=/[?&]q=(low|med|high)\b/.exec(location.search); if(m) q=m[1]; }catch(e){} if(q==='low'||q==='med'||q==='high') return q; if(S.set.qAuto==='low'||S.set.qAuto==='med') return S.set.qAuto; return deviceTier(); }
+// пресеты: perf («Производительность») < low < med < high. URL ?q=perf|low|med|high фиксирует пресет.
+const Q_ORDER=['perf','low','med','high'];
+function resolveQuality(){ let q=S.set.q; try{ const m=/[?&]q=(perf|low|med|high)\b/.exec(location.search); if(m) q=m[1]; }catch(e){} if(Q_ORDER.includes(q)) return q; if(S.set.qAuto==='perf'||S.set.qAuto==='low'||S.set.qAuto==='med') return S.set.qAuto; return deviceTier(); }
 QL=resolveQuality();
+// prMax/prMaxD — потолок плотности пикселей (телефон / компьютер), prMin — нижняя граница динамического разрешения (в CSS px).
+// Разрешение рендера = CSS-размер × PR; интерфейс (DOM) всегда чёткий — меняется только буфер холста.
 const QP={
-  low:{prMax:1.0,props:.55,parts:.5,shadows:false,ambient:.4,grass:.35,aa:false},
-  med:{prMax:1.6,props:.8,parts:.8,shadows:false,ambient:.8,grass:.7,aa:false},
-  high:{prMax:2,props:1,parts:1,shadows:false,ambient:1,grass:1,aa:true}
+  perf:{prMax:.85,prMaxD:1.0,prMin:.5,props:.42,parts:.3,shadows:false,ambient:.2,grass:.15,aa:false,point:false},
+  low:{prMax:1.0,prMaxD:1.25,prMin:.6,props:.55,parts:.5,shadows:false,ambient:.4,grass:.35,aa:false,point:true},
+  med:{prMax:1.5,prMaxD:1.75,prMin:.7,props:.8,parts:.8,shadows:false,ambient:.8,grass:.7,aa:false,point:true},
+  high:{prMax:1.5,prMaxD:2,prMin:.85,props:1,parts:1,shadows:false,ambient:1,grass:1,aa:true,point:true}
 };
+const qLow=()=>QL==='low'||QL==='perf';
 let Q=QP[QL];
 const canvas=$('cv');
 let R;
@@ -46,7 +53,10 @@ const LOOK={expo:1.0,zoneExpo:1.0}; // экспозиция зоны (setZoneLoo
 function applyExposure(){ const b=S&&S.set&&S.set.bright!=null?S.set.bright:1; LOOK.expo=LOOK.zoneExpo*clamp(b,.6,1.4); R.toneMappingExposure=LOOK.expo; }
 // общая насыщенность средних тонов для toon-материалов (игровых и KayKit): один uniform на всех
 const SATG={value:1.16};
-let PR=Math.min(window.devicePixelRatio||1,Q.prMax);
+// потолок PR для текущего пресета; ?rs=0.75 в адресе фиксирует PR (замеры), ?drs=0 выключает динамическое разрешение
+function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(window.devicePixelRatio||1,IS_MOBILE?Q.prMax:Q.prMaxD); }
+function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(prCap(),Q.prMin); }
+let PR=prCap();
 R.setPixelRatio(PR);
 const scene=new THREE.Scene();
 const cam=new THREE.PerspectiveCamera(36,1,0.5,220);
@@ -198,11 +208,11 @@ function makePFX(cap,additive){
   const pts=new THREE.Points(geo,mat); pts.frustumCulled=false; pts.renderOrder=5; scene.add(pts);
   const D={x:new Float32Array(cap),y:new Float32Array(cap),z:new Float32Array(cap),vx:new Float32Array(cap),vy:new Float32Array(cap),vz:new Float32Array(cap),
     life:new Float32Array(cap),max:new Float32Array(cap),s0:new Float32Array(cap),s1:new Float32Array(cap),r:new Float32Array(cap),g:new Float32Array(cap),b:new Float32Array(cap),a:new Float32Array(cap),grav:new Float32Array(cap),drag:new Float32Array(cap)};
-  let n=0;
+  let n=0, n0=-1; const DK=Object.values(D);
   return {
     pts,mat,
     emit(x,y,z,vx,vy,vz,life,s0,s1,col,a,grav,drag){
-      if(n>=cap) return; const i=n++;
+      if(n>=cap||n>=cap*Math.min(1,Q.parts*1.3)) return; const i=n++; // потолок частиц зависит от пресета
       D.x[i]=x;D.y[i]=y;D.z[i]=z;D.vx[i]=vx;D.vy[i]=vy;D.vz[i]=vz;D.life[i]=life;D.max[i]=life;D.s0[i]=s0;D.s1[i]=s1;
       D.r[i]=col.r;D.g[i]=col.g;D.b[i]=col.b;D.a[i]=a===undefined?1:a;D.grav[i]=grav||0;D.drag[i]=drag||0;
     },
@@ -210,7 +220,7 @@ function makePFX(cap,additive){
       let w=0;
       for(let i=0;i<n;i++){
         const l=D.life[i]-dt; if(l<=0) continue;
-        if(w!==i){ for(const k in D) D[k][w]=D[k][i]; }
+        if(w!==i){ for(let k=0;k<DK.length;k++) DK[k][w]=DK[k][i]; }
         D.life[w]=l; const dr=1-D.drag[w]*dt;
         D.vx[w]*=dr; D.vz[w]*=dr; D.vy[w]=D.vy[w]*dr-D.grav[w]*dt;
         D.x[w]+=D.vx[w]*dt; D.y[w]+=D.vy[w]*dt; D.z[w]+=D.vz[w]*dt;
@@ -221,7 +231,7 @@ function makePFX(cap,additive){
         siz[w]=lerp(D.s0[w],D.s1[w],t);
         w++;
       }
-      n=w; geo.setDrawRange(0,n);
+      n=w; if(n===0&&n0===0) return; n0=n; geo.setDrawRange(0,n);
       geo.attributes.position.needsUpdate=true; geo.attributes.aCol.needsUpdate=true; geo.attributes.aSize.needsUpdate=true;
     },
     clear(){n=0;geo.setDrawRange(0,0);},
@@ -384,13 +394,28 @@ const RTT=(()=>{
 })();
 const GAM=(()=>{const a=new Uint8Array(256);for(let i=0;i<256;i++){const v=i/255;a[i]=Math.round(255*(v<=0.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-0.055));}return a;})();
 
-// ---------- adaptive resolution ----------
-const PERF={acc:0,frames:0,fps:60,t:0};
-function perfTick(dt){
+// ---------- dynamic resolution (DRS) ----------
+// Цель — 60 (или 30) кадров/с. Раз в ~0,5 с смотрим среднее время кадра: медленно → PR вниз (сразу, пропорционально),
+// стабильно быстро → PR вверх по 0,05 с гистерезисом (уровень, на котором было медленно, «запоминается» на 20 с).
+// Если упираемся в процессор (JS дольше бюджета), разрешение не трогаем — это не поможет.
+const PERF={acc:0,frames:0,fps:60,t:0,win:0,winN:0,winCpu:0,good:0,ceil:9,ceilT:0,lastSet:0,hist:new Float32Array(240),hi:0,hn:0,js:0,rs:0,gpu:-1,cpuAvg:0};
+function fpsTarget(){ return S&&S.set&&S.set.fps===30?30:60; }
+function setPR(np,why){ np=Math.round(np*20)/20; if(Math.abs(np-PR)<0.01) return; PR=np; R.setPixelRatio(PR); camResize(); PERF.lastSet=performance.now(); }
+function perfTick(dt,raw,cpu){
   PERF.acc+=dt; PERF.frames++;
-  if(PERF.acc>=2){ PERF.fps=PERF.frames/PERF.acc; PERF.acc=0; PERF.frames=0; asAdapt(PERF.fps);
-    const max=Math.min(window.devicePixelRatio||1,Q.prMax);
-    let np=PR; if(PERF.fps<42) np=Math.max(0.75,PR-0.15); else if(PERF.fps>57&&PR<max) np=Math.min(max,PR+0.1);
-    if(Math.abs(np-PR)>0.01){ PR=np; R.setPixelRatio(PR); camResize(); }
-  }
+  if(raw>0&&raw<0.25){ PERF.win+=raw; PERF.winN++; PERF.winCpu+=cpu||0; PERF.hist[PERF.hi]=raw*1000; PERF.hi=(PERF.hi+1)%PERF.hist.length; PERF.hn=Math.min(PERF.hn+1,PERF.hist.length); }
+  if(PERF.acc>=2){ PERF.fps=PERF.frames/PERF.acc; PERF.acc=0; PERF.frames=0; asAdapt(PERF.fps); }
+  if(PERF.win<0.5) return;
+  const ms=PERF.win/PERF.winN*1000, cms=PERF.winCpu/PERF.winN; PERF.win=0; PERF.winN=0; PERF.winCpu=0; PERF.cpuAvg=cms;
+  if(/[?&](rs=|drs=0)/.test(location.search)||PERF.throttled) return;
+  const now=performance.now(), tgt=1000/fpsTarget(), max=prCap(), min=prMin();
+  if(PR>max+.01){ setPR(max); return; }
+  const gpuOk=PERF.gpu>=0&&PERF.gpu<tgt*.6; // по таймеру GPU видно, что видеокарта не узкое место
+  if(ms>tgt*1.18&&PR>min+.01&&!gpuOk&&cms<tgt*.85){
+    PERF.good=0; PERF.ceil=PR; PERF.ceilT=now;
+    setPR(Math.max(min,PR*Math.max(.82,Math.min(.95,Math.sqrt(tgt/ms)))),'down');
+  } else if(ms<tgt*1.06){
+    PERF.good++; if(now-PERF.ceilT>20000) PERF.ceil=9;
+    if(PERF.good>=4&&PR<max-.01&&PR+.05<PERF.ceil-.001&&now-PERF.lastSet>1500){ PERF.good=0; setPR(Math.min(max,PR+.05),'up'); }
+  } else PERF.good=0;
 }

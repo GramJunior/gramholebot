@@ -40,7 +40,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:QL,gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
@@ -54,7 +54,8 @@ function asPrefetch(){
   if(S.endless&&S.endless.runs>0||stageDone('1-5')) q.push('abyss');
   q.push('companions');
   for(let i=1;i<=6;i++) q.push(asZoneGroup(i));
-  let i=0; const next=()=>{ if(i>=q.length) return; asLoad(q[i++]).then(()=>setTimeout(next,250)); }; next();
+  // разбор .glb идёт в главном потоке: в бою (враги рядом) пакеты догружаются реже, чтобы не было рывков
+  let i=0; const busy=()=>(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid')&&G.enemies&&G.enemies.some(e=>e.alive&&(e.state==='chase'||e.state==='wind'||e.state==='act')); const next=()=>{ if(i>=q.length) return; if(busy()&&i>2){ setTimeout(next,1200); return; } asLoad(q[i++]).then(()=>setTimeout(next,250)); }; next();
 }
 
 // ---------- rigs from actors (same shape the game expects: root, h, r) ----------
@@ -200,20 +201,25 @@ function asHeroPortrait(gear){ return asCan('hero')?asPortrait('hero',asHeroGear
 function asDoll(gear){ if(!asCan('hero')) return null; try{ return EVAssets.iconURL('hero',300,{gear:asHeroGear(heroVis(gear)),yaw:.35,roll:0,pad:.62}); }catch(e){ return null; } }
 
 // ---------- post-processing, VFX, quality ----------
-function postQ(){ if(S.set.post==='off') return 'low'; return QL; }
+function postQ(){ if(S.set.post==='off'||QL==='perf') return 'low'; return QL; }
+// пресет для EVAssets (у него своя таблица: perf = без контуров, текстуры 128, анимации дальних — реже)
+const asQ=()=>QL;
 function asFXInit(){
   if(!window.EVPostFX) return;
   try{ AS.FX=EVPostFX.create(R,scene,cam,{quality:postQ()}); AS.post=postQ(); const w=window.innerWidth,h=window.innerHeight; AS.FX.setSize(w,h,PR); }catch(e){ console.warn('postfx',e); AS.FX=null; }
   if(window.EVFX&&!AS.trail){ try{ AS.trail=EVFX.slashTrail({color:'#ffe2a0',segments:14}); scene.add(AS.trail.mesh); }catch(e){ AS.trail=null; } }
 }
 function asSetQuality(){
-  if(window.EVAssets&&EVAssets.manifest) EVAssets.setQuality(QL);
+  if(window.EVAssets&&EVAssets.manifest) EVAssets.setQuality(asQ());
+  emberLight.visible=Q.point!==false; // «Производительность»: без точечного света (дешевле каждый пиксель)
+  try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){}
   if(AS.FX){ AS.FX.setQuality(postQ()); AS.post=postQ(); AS.FX.setSize(window.innerWidth,window.innerHeight,PR); }
   if(AS.amb) AS.amb.count=asAmbCount();
+  for(const a of AS.live) a._olFar=undefined;
 }
 function asResize(w,h){ if(AS.FX) AS.FX.setSize(w,h,PR); if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*PR,h*PR); }
 const AMB_OF={pollen:'pollen',firefly:'firefly',bubble:'bubble',wisp:'wisp',ash:'ash',ember:'ember'};
-function asAmbCount(){ return QL==='low'?60:QL==='med'?160:280; }
+function asAmbCount(){ return QL==='perf'?24:QL==='low'?60:QL==='med'?160:280; }
 function asZone(Z){
   const key=Z.id===0?'village':ZONE_KEY[Z.id]||'meadow'; AS.zoneKey=key;
   const M=window.EV_MANIFEST; let g=M&&M.zones[key]&&M.zones[key].grade;
@@ -224,12 +230,13 @@ function asZone(Z){
   if(g&&Z.title&&G.mode==='title') g=Object.assign({},g,{gain:[1.06,.96,.92],vignette:.55,bloom:.45,bloomTh:.8});
   else if(g&&key==='village') g=Object.assign({},g,{bloom:.16,bloomTh:.97});
   if(AS.FX&&g) AS.FX.setZone(g);
+  LUMA.ok=0;
   // ambient particles
   if(window.EVFX){ let kind=W&&W.kind==='village'?(G.mode==='title'?'firefly':'pollen'):AMB_OF[Z.amb]||null; if(W&&W.kind==='abyss') kind='wisp';
     if(AS.amb&&AS.ambKind!==kind){ scene.remove(AS.amb.mesh); EVFX.remove(AS.amb); AS.amb=null; }
     if(kind&&!AS.amb){ try{ AS.amb=EVFX.ambient({kind,count:320,area:[38,kind==='ash'||kind==='ember'?9:6,32]}); AS.amb.count=asAmbCount(); scene.add(AS.amb.mesh); AS.ambKind=kind; }catch(e){ AS.amb=null; } } }
 }
-function asBurst(x,y,z,col,r,dur){ if(!window.EVFX||QL==='low') return; try{ EVFX.burst(scene,new THREE.Vector3(x,(y||0)+.1,z),{color:col!==undefined?'#'+new THREE.Color(col).getHexString():'#ff8a3a',radius:r||2.4,duration:dur||.55,shards:QL==='high'?16:10}); }catch(e){} }
+function asBurst(x,y,z,col,r,dur){ if(!window.EVFX||qLow()) return; try{ EVFX.burst(scene,new THREE.Vector3(x,(y||0)+.1,z),{color:col!==undefined?'#'+new THREE.Color(col).getHexString():'#ff8a3a',radius:r||2.4,duration:dur||.55,shards:QL==='high'?16:10}); }catch(e){} }
 function asTrailColor(){ const w=S.gear.weapon; const c=w&&w.el?ELC[w.el]:w&&w.rar>=3?RCOL[w.rar]:0xffe2a0; if(AS.trail&&AS.trailC!==c){ AS.trailC=c; AS.trail.mesh.material.uniforms.uColor.value.set(c); } }
 function asHeroTrailBind(){ const P=G.P; if(!AS.trail||!P||!P.rig.actor) { if(AS.trail) AS.trail.target=null; return; } const w=P.rig.actor.slots.r; if(w){ const b=w.userData.evBox, s=w.scale.y||1; AS.trail.follow(w,new THREE.Vector3(0,b?b.max.y/s*.25:.2,0),new THREE.Vector3(0,b?b.max.y/s*.95:1.1,0)); } else AS.trail.target=null; asTrailColor(); }
 
@@ -245,7 +252,9 @@ function asTick(dt,rdt){
   cam.updateMatrixWorld(); _fm.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _frus.setFromProjectionMatrix(_fm);
   const adt=dt>0?dt:(G.mode==='village'||G.mode==='title'||G.mode==='raidprep'||G.mode==='result'?rdt:0);
   const cx=CAMR.x, cz=CAMR.z;
-  let vis=0;
+  // анимационный LOD: за кадром — заморожены; близкие — каждый кадр, средние — через кадр, дальние — раз в 3–4 кадра;
+  // одновременно анимируется не больше AS_ANIM_CAP[QL] (остальные — через кадр). Контуры — только у ближних (до 16 м от центра кадра, на «Выс.» — 24 м).
+  let vis=0, anim=0; const cap=AS_ANIM_CAP[QL]||24, olOn=!qLow(), olR2=(QL==='high'?24:16)**2;
   for(const a of AS.live){
     const root=a.root;
     if(!root.parent||!inScene(root)){ if(AS.frame-a._seen>60){ AS.live.delete(a); try{ a.dispose(); }catch(e){} } continue; }
@@ -255,11 +264,17 @@ function asTick(dt,rdt){
     const on=_frus.intersectsSphere(_sph);
     root.visible=on; if(!on) { a._acc=(a._acc||0)+adt; continue; }
     vis++;
-    const far=Math.hypot(_awp.x-cx,_awp.z-cz)>30;
-    if(adt>0) a.update(adt,{far});
+    const dx=_awp.x-cx, dz=_awp.z-cz, d2=dx*dx+dz*dz;
+    if(a._olFar!==undefined||olOn){ const far=!olOn||d2>olR2; if(a._olFar!==far){ a._olFar=far; asOutlineVis(a,!far); } }
+    if(adt>0){ const lod=d2>34*34?4:d2>20*20?2:1; a._lod=lod; anim++; _upo.step=anim>cap?Math.max(2,lod):lod; a.update(adt,_upo); }
   }
-  AS.visible=vis;
+  AS.visible=vis; AS.animated=anim;
 }
+const AS_ANIM_CAP={perf:10,low:14,med:22,high:32}, _upo={step:1};
+// показать/спрятать контуры актёра (без пересоздания): дальние актёры без контура — минус 1–2 вызова отрисовки на каждого
+function asOutlineVis(a,on){ if(!a._outline) return; for(const m of a.meshes){ const o=m.userData.evOutline; if(o) o.visible=on&&m.visible; }
+  for(const k in a.slots){ const w=a.slots[k]; if(w) w.traverse(o=>{ if(o.userData&&o.userData.isOutline) o.visible=on&&a._weaponOutline(); }); } }
+
 function asRender(dt){
   if(AS.FX&&AS.post!=='low'){ AS.FX.render(dt); } else { R.setRenderTarget(null); R.render(scene,cam); }
   lumaGuard(dt);
@@ -267,9 +282,11 @@ function asRender(dt){
 // safety net against washed-out frames on real GPUs: about once a second read three thin rows of the final frame
 // (right after drawing, before the browser composites) and if the average luminance stays > 0.85 for ~3 s,
 // first drop bloom, then switch post-effects off, and log it. The prologue's white flash is a DOM overlay and is not read.
-const LUMA={t:0,hot:0,buf:null,step:0,last:0,acts:[]};
+const LUMA={t:0,hot:0,buf:null,step:0,last:0,acts:[],ok:0};
+// readPixels останавливает конвейер GPU (рывок на телефонах), поэтому проверка идёт раз в ~2 с и только первые ~10 с в каждой локации
+// (после 5 спокойных замеров подряд — до смены зоны).
 function lumaGuard(dt){
-  LUMA.t+=dt||0; if(LUMA.t<1.1||!AS.FX||AS.post==='low'||!G.P||G.mode==='title'||document.hidden) return; LUMA.t=0;
+  LUMA.t+=dt||0; if(LUMA.t<2||LUMA.ok>=5||!AS.FX||AS.post==='low'||!G.P||G.mode==='title'||document.hidden) return; LUMA.t=0;
   try{ const gl=R.getContext(); const w=gl.drawingBufferWidth, h=gl.drawingBufferHeight; if(!w||!h) return;
     if(!LUMA.buf||LUMA.buf.length!==w*4) LUMA.buf=new Uint8Array(w*4); let sum=0,n=0;
     for(const fy of [.3,.55,.8]){ gl.readPixels(0,Math.floor(h*fy),w,1,gl.RGBA,gl.UNSIGNED_BYTE,LUMA.buf); const b=LUMA.buf; for(let i=0;i<w;i+=6){ const k=i*4; sum+=(.2126*b[k]+.7152*b[k+1]+.0722*b[k+2])/255; n++; } }
@@ -278,16 +295,20 @@ function lumaGuard(dt){
         if(LUMA.step===1){ AS.FX.limitBloom&&AS.FX.limitBloom(0); LUMA.acts.push('bloom_off'); console.info('[Эмбервейл] кадр пересвечен (яркость '+L.toFixed(2)+') — свечение выключено'); }
         else if(LUMA.step===2){ S.set.post='off'; AS.post='low'; asSetQuality(); LUMA.acts.push('post_off'); console.info('[Эмбервейл] кадр всё ещё пересвечен ('+L.toFixed(2)+') — постэффекты выключены (Настройки → Постэффекты)'); try{ toast('Картинка была слишком яркой — постэффекты выключены. Вернуть: Настройки → Постэффекты.'); }catch(e){} saveGame(); }
         if(typeof track==='function') track('luma_guard','s'+LUMA.step); } }
-    else LUMA.hot=0;
+    else { LUMA.hot=0; LUMA.ok++; }
   }catch(e){ LUMA.t=-1e9; }
 }
-// adaptive quality: fps < 40 for ~4 s → step down (only in «Авто»)
-const AQ={low:0,t:0};
+// adaptive quality («Авто»): шаг вниз, если при минимальном разрешении (или упираясь в процессор) кадров < 72% цели ~4 с;
+// шаг вверх (не выше «Сред.»), если ~30 с подряд при максимальном разрешении держим цель и с последнего снижения прошло > 90 с.
+const AQ={low:0,hi:0,t:0,downT:-1e9};
+function applyQuality(q,why){ QL=q; Q=QP[QL]; const max=prCap(); if(PR>max||why==='set') PR=max; R.setPixelRatio(PR); asSetQuality(); camResize(); }
 function asAdapt(fps){
-  if(S.set.q!=='auto'||/[?&]q=/.test(location.search)||!G.P||G.mode==='title'||document.hidden) { AQ.low=0; return; }
-  if(fps<40){ AQ.low++; } else AQ.low=0;
-  if(AQ.low>=2){ AQ.low=0; const order=['high','med','low']; const i=order.indexOf(QL);
-    if(i>=0&&i<2&&performance.now()-AQ.t>8000){ AQ.t=performance.now(); QL=order[i+1]; Q=QP[QL]; S.set.qAuto=QL; const max=Math.min(window.devicePixelRatio||1,Q.prMax); if(PR>max){ PR=max; R.setPixelRatio(PR); } asSetQuality(); camResize(); console.log('[Эмбервейл] качество снижено до',QL,'(fps',fps.toFixed(0)+')'); } }
+  if(S.set.q!=='auto'||/[?&]q=/.test(location.search)||!G.P||G.mode==='title'||document.hidden||PERF.throttled||PH.bench) { AQ.low=0; AQ.hi=0; return; }
+  const tgt=fpsTarget(), atMin=PR<=prMin()+.01, atMax=PR>=prCap()-.01, cpuBound=PERF.cpuAvg>1000/tgt*.85, now=performance.now();
+  AQ.low=fps<tgt*.72&&(atMin||cpuBound)?AQ.low+1:0; AQ.hi=fps>=tgt*.93&&atMax?AQ.hi+1:0;
+  const i=Q_ORDER.indexOf(QL);
+  if(AQ.low>=2&&i>0&&now-AQ.t>8000){ AQ.low=0; AQ.t=AQ.downT=now; const nq=Q_ORDER[i-1]; S.set.qAuto=nq; applyQuality(nq); console.log('[Эмбервейл] качество снижено до',nq,'(fps',fps.toFixed(0)+')'); }
+  else if(AQ.hi>=15&&i<2&&now-AQ.downT>90000&&now-AQ.t>30000){ AQ.hi=0; AQ.t=now; const nq=Q_ORDER[i+1]; S.set.qAuto=nq; applyQuality(nq); console.log('[Эмбервейл] качество повышено до',nq,'(fps',fps.toFixed(0)+')'); }
 }
 function asStats(){ const s=window.EVAssets&&EVAssets.manifest?EVAssets.stats():{}; return Object.assign({ok:AS.ok,errors:AS.errors,lastErr:AS.lastErr||'',live:AS.live.size,visible:AS.visible,mb:+(AS.bytes/1048576).toFixed(2),loadMs:Math.round(AS.loadMs),q:QL,post:AS.post,passes:AS.FX?AS.FX.passes:1},s); }
 

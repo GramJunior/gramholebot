@@ -917,7 +917,7 @@ html.port .gear2,html.port .prof,html.port .forge2,html.port .magic{grid-templat
 .hbtn:hover{filter:brightness(1.2)}
 /* бейдж «можно забрать» */
 .v-badge,.hbtn .dot,#hMenu .hbtn .dot,.tab .v-dot{position:absolute;top:-2px;right:-2px;min-width:14px;height:14px;border-radius:8px;background:radial-gradient(circle at 40% 35%,#ff9a6a,#e33a1c 60%,#8a1a08);box-shadow:0 0 0 2px #1a0d05,0 0 10px #ff5a2a;animation:vBadge 1.2s ease-in-out infinite}
-@keyframes vBadge{50%{transform:scale(1.25);box-shadow:0 0 0 2px #1a0d05,0 0 18px #ff7a3a}}
+@keyframes vBadge{50%{transform:scale(1.25)}}
 
 /* ---------- окно-панель ---------- */
 #panel{background:radial-gradient(ellipse at 50% 45%,rgba(20,10,4,.55),rgba(3,1,0,.86) 80%)}
@@ -1545,6 +1545,11 @@ html.land .setv6>*{break-inside:avoid}
 html.land.short #chestW .lc{width:calc(64px*var(--k))}
 html.land.short #chestW .chstage{height:min(44vh,220px)}
 html.land.short #chestW .chloot{gap:7px;margin-top:4px}
+/* perf: на «Произв.»/«Низк.» бесконечные анимации поверх 3D-сцены (HUD) проигрываются один раз — меньше перерисовки над холстом */
+html.qlow #hud *,html.qlow #hud *::before,html.qlow #hud *::after,html.qlow #hEvent,html.qlow #spirit img{animation-iteration-count:1!important}
+/* HUD: подсветка события без анимации тени (тень перерисовывается каждый кадр) */
+@keyframes evGlowT{50%{transform:scale(1.04)}}
+#hEvent{animation-name:evGlowT}
 </style>
 </head>
 <body>
@@ -1610,6 +1615,7 @@ html.land.short #chestW .chloot{gap:7px;margin-top:4px}
 
   // ------------------------------------------------------------------ quality presets
   const QUALITY = {
+    perf: { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 4, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
     low:  { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 3, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
     med:  { maxTex: 256, outline: 'chars', outlinePx: 1.6, animStepFar: 2, maxAnisotropy: 1, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true },
     high: { maxTex: 256, outline: 'all',   outlinePx: 2.0, animStepFar: 1, maxAnisotropy: 4, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true }, // hullProps:true also outlines InstancedMesh scatter (≈2× env triangles)
@@ -1892,6 +1898,41 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return Promise.all(list.map((f) => loadFile(f).then((r) => { done++; onProgress && onProgress(done, list.length, f); return r; }))).then(() => list);
   }
 
+  // float skinned geometry from skinned parts (as-is) + rigid bone children (rebased into bind space, weight 1 on their bone).
+  // world(rest) of a rigid vertex = meshWorld·v; skinned (attached mode) gives boneWorld·boneInverse·bindMatrix·v', so
+  // v' = bindMatrix⁻¹ · boneInverse⁻¹ · boneWorld⁻¹ · meshWorld · v — then it follows the bone in every pose.
+  function mergeFloatSkinned(skin, rigid) {
+    const first = skin[0], sk = first.skeleton, bindInv = new T.Matrix4().copy(first.bindMatrix).invert();
+    const parts = skin.map((m) => ({ g: m.geometry, M: null })).concat(rigid.map((r) => {
+      const M = new T.Matrix4().copy(bindInv).multiply(new T.Matrix4().copy(sk.boneInverses[r.b]).invert()).multiply(new T.Matrix4().copy(r.bone.matrixWorld).invert()).multiply(r.o.matrixWorld);
+      return { g: r.o.geometry, M, b: r.b }; }));
+    let nv = 0, ni = 0; for (const p of parts) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
+    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4);
+    const IDX = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+    const v = new T.Vector3(), nm = new T.Matrix3(); let o = 0, oi = 0;
+    for (const p of parts) {
+      const A = p.g.attributes, pos = A.position, nor = A.normal, uv = A.uv, n = pos.count;
+      const ps = normScale(pos), ns = normScale(nor), us = uv ? normScale(uv) : 1;
+      if (p.M) nm.getNormalMatrix(p.M);
+      for (let i = 0; i < n; i++) {
+        const k = (o + i) * 3, k4 = (o + i) * 4;
+        v.set(pos.getX(i) * ps, pos.getY(i) * ps, pos.getZ(i) * ps); if (p.M) v.applyMatrix4(p.M); P[k] = v.x; P[k + 1] = v.y; P[k + 2] = v.z;
+        v.set(nor.getX(i) * ns, nor.getY(i) * ns, nor.getZ(i) * ns); if (p.M) v.applyMatrix3(nm); v.normalize(); N[k] = v.x; N[k + 1] = v.y; N[k + 2] = v.z;
+        if (uv) { UV[(o + i) * 2] = uv.getX(i) * us; UV[(o + i) * 2 + 1] = uv.getY(i) * us; }
+        if (p.M) { SI[k4] = p.b; SW[k4] = 1; }
+        else { const si = A.skinIndex, sw = A.skinWeight, ws = normScale(sw); SI[k4] = si.getX(i); SI[k4 + 1] = si.getY(i); SI[k4 + 2] = si.getZ(i); SI[k4 + 3] = si.getW(i);
+          SW[k4] = sw.getX(i) * ws; SW[k4 + 1] = sw.getY(i) * ws; SW[k4 + 2] = sw.getZ(i) * ws; SW[k4 + 3] = sw.getW(i) * ws; }
+      }
+      if (p.g.index) { const ix = p.g.index; for (let i = 0; i < ix.count; i++) IDX[oi + i] = ix.getX(i) + o; oi += ix.count; }
+      else { for (let i = 0; i < n; i++) IDX[oi + i] = o + i; oi += n; }
+      o += n;
+    }
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(P, 3)); g.setAttribute('normal', new T.BufferAttribute(N, 3)); g.setAttribute('uv', new T.BufferAttribute(UV, 2));
+    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
+    return g;
+  }
+
   // ------------------------------------------------------------------ Actor (skinned characters)
   const _tmpEuler = new T.Euler();
   class Actor {
@@ -1944,27 +1985,45 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       // weapons
       if (def.r) this.attach('r', def.r); if (def.l) this.attach('l', def.l);
       if (this.opts.outline !== false && S.Q.outline !== 'none') this.setOutline(true);
-      if (this.meshes.length > 2 && S.Q.mergeSkinned && this.opts.merge !== false && def.type !== 'hero') this._merge();
+      if ((this.meshes.length > 1 || this.slots.r || this.slots.l) && S.Q.mergeSkinned && this.opts.merge !== false && def.type !== 'hero') this._merge();
       S.actors.add(this);
       this.play(this.opts.clip || 'idle', { fade: 0 });
       this.mixer.update(Math.random() * 2);
     }
     findPart(name) { const n = T.PropertyBinding.sanitizeNodeName(name); return this.parts[name] || this.parts[n] || null; }
-    // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material)
+    // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material).
+    // Rigid parts hanging on bones (helmets, hoods, capes, the weapon and shield) that use the same atlas are converted to
+    // skinned geometry bound 100% to their bone and merged too: a KayKit skeleton goes from ~7 draw calls to ~3.
     _merge() {
       if (!T.BufferGeometryUtils) return;
       const groups = new Map();
-      for (const m of this.meshes) { if (!m.isSkinnedMesh || !m.visible || !m.parent.visible) continue; const src = m.userData.evSrcMat; if (!src) continue; if (!groups.has(src)) groups.set(src, []); groups.get(src).push(m); }
-      for (const [src, list] of groups) {
-        if (list.length < 2) continue;
-        const key = this.def.file + '|' + (this.def.hide || []).join(',') + '|' + src.uuid;
+      for (const m of this.meshes) { if (!m.isSkinnedMesh || !m.visible || !m.parent.visible) continue; const src = m.userData.evSrcMat; if (!src) continue; if (!groups.has(src)) groups.set(src, { skin: [], rigid: [] }); groups.get(src).skin.push(m); }
+      const sk0 = this.skeleton;
+      if (sk0 && !this.def.recolor && !this.def.mat && S.Q.mergeRigid !== false) {
+        this.model.updateMatrixWorld(true);
+        const boneIdx = new Map(); sk0.bones.forEach((b, i) => boneIdx.set(b, i));
+        this.model.traverse((o) => {
+          if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o.userData.isOutline || o.userData.evGlow || !o.material || o.material.transparent) return;
+          let vis = true, bone = null; for (let p = o; p && p !== this.model; p = p.parent) { if (!p.visible) vis = false; if (!bone && p !== o && boneIdx.has(p)) bone = p; }
+          if (!vis || !bone || !o.geometry.attributes.position || !o.geometry.attributes.normal || !o.geometry.attributes.uv) return;
+          const map = (o.userData.evSrcMat || o.material).map; if (!map) return;
+          for (const [src, g] of groups) if (src.map === map && !src.userData.emissive && !src.transparent) { g.rigid.push({ o, b: boneIdx.get(bone), bone }); break; }
+        });
+      }
+      for (const [src, G] of groups) {
+        const list = G.skin, rigid = G.rigid;
+        if (list.length + rigid.length < 2) continue;
+        const key = this.def.file + '|' + (this.def.hide || []).join(',') + '|' + src.uuid + (rigid.length ? '|r:' + rigid.map((r) => r.o.name + '@' + r.b).join(',') : '');
         let merged = S.mergeCache[key];
         if (merged === undefined) {
-          const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'];
-          const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
-          const sig = (gg) => Object.keys(gg.attributes).sort().map((k) => k + gg.attributes[k].array.constructor.name + gg.attributes[k].normalized + gg.attributes[k].itemSize).join('|');
-          merged = geos.some((gg) => sig(gg) !== sig(geos[0])) ? null : T.BufferGeometryUtils.mergeBufferGeometries(geos, false);
-          geos.forEach((gg) => gg.dispose());
+          if (rigid.length) merged = mergeFloatSkinned(list, rigid);
+          else {
+            const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'];
+            const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
+            const sig = (gg) => Object.keys(gg.attributes).sort().map((k) => k + gg.attributes[k].array.constructor.name + gg.attributes[k].normalized + gg.attributes[k].itemSize).join('|');
+            merged = geos.some((gg) => sig(gg) !== sig(geos[0])) ? null : T.BufferGeometryUtils.mergeBufferGeometries(geos, false);
+            geos.forEach((gg) => gg.dispose());
+          }
           if (merged) ensureOutlineNormals(merged);
           S.mergeCache[key] = merged;
         }
@@ -1973,18 +2032,23 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const sm = new T.SkinnedMesh(merged, first.material); sm.name = 'merged_' + src.name; sm.frustumCulled = false;
         first.parent.add(sm); sm.bind(first.skeleton, first.bindMatrix);
         for (const m of list) { if (m.userData.evOutline) m.remove(m.userData.evOutline); m.parent.remove(m); }
-        this.meshes = this.meshes.filter((m) => list.indexOf(m) < 0); this.meshes.push(sm);
+        for (const r of rigid) { r.o.visible = false; r.o.userData.evMerged = true; } // stays in the tree: weapon tips / trails still follow it
+        this.meshes = this.meshes.filter((m) => list.indexOf(m) < 0 && !m.userData.evMerged); this.meshes.push(sm);
         if (this._outline) addOutline(sm, { color: this.def.outline });
       }
     }
     setOutline(on) {
       this._outline = on;
       for (const m of this.meshes) {
-        if (on && !m.userData.evOutline && this.def.mat !== 'ghost') addOutline(m, { color: this.def.outline });
+        // tiny parts (eyes, capes, hoods: < 120 skinned / < 300 rigid vertices) get no hull — invisible at game zoom, 1 draw call each
+        if (on && !m.userData.evOutline && this.def.mat !== 'ghost' && (this.def.type === 'hero' || m.geometry.attributes.position.count >= (m.isSkinnedMesh ? 120 : 300))) addOutline(m, { color: this.def.outline });
         if (m.userData.evOutline) m.userData.evOutline.visible = on && m.visible;
       }
-      for (const k in this.slots) this.slots[k] && this.slots[k].traverse((o) => { if (o.isMesh && !o.userData.isOutline) { if (on) addOutline(o); if (o.userData.evOutline) o.userData.evOutline.visible = on; } });
+      const wo = on && this._weaponOutline();
+      for (const k in this.slots) this.slots[k] && this.slots[k].traverse((o) => { if (o.isMesh && !o.userData.isOutline) { if (wo) addOutline(o); if (o.userData.evOutline) o.userData.evOutline.visible = wo; } });
     }
+    // weapon/offhand hulls: high preset for everyone, the hero (always close to the camera) on med too — saves 1–2 draw calls per armed enemy
+    _weaponOutline() { return !!this._outline && (S.Q.outline === 'all' || this.def.type === 'hero'); }
     // clipset: 'medium' | 'large' | 'sword' | 'bow' | 'skeleton+crossbow' ... (layered on the rig clipset)
     setClipset(name) {
       const cs = S.manifest.clipsets; const map = Object.assign({}, cs[this.rig] || cs.medium);
@@ -2019,7 +2083,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const bone = slot === 'r' ? this.handR : slot === 'l' ? this.handL : slot === 'head' ? this.head : this.chest;
       if (this.slots[slot]) { this.slots[slot].parent && this.slots[slot].parent.remove(this.slots[slot]); this.slots[slot] = null; }
       if (!what || !bone) return null;
-      let obj = typeof what === 'string' ? (what === '@orb' ? makeOrb(o.glow || '#c47cff') : makeProp(weaponDef(what), { outline: this._outline })) : what;
+      let obj = typeof what === 'string' ? (what === '@orb' ? makeOrb(o.glow || '#c47cff') : makeProp(weaponDef(what), { outline: this._weaponOutline() })) : what;
       if (o.glow || (typeof what === 'string' && o.glowColor)) glowify(obj, o.glow || o.glowColor);
       obj.scale.multiplyScalar(o.s || 1);
       if (slot === 'back') { obj.position.set(0, 0.3, -0.35); obj.rotation.set(0.3, 0, 0); }
@@ -2038,7 +2102,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     /** update(dt, {far}) — far actors can be stepped less often (quality.animStepFar) */
     update(dt, o) {
       if (this._flashT > 0) { this._flashT -= dt; this.setFlash(Math.max(0, this._flashT / this._flashMax) * 0.85); }
-      const step = o && o.far ? S.Q.animStepFar : 1;
+      const step = o && o.step ? o.step : o && o.far ? S.Q.animStepFar : 1;
       this._acc += dt; if (++this._t % step !== 0) return; this.mixer.update(this._acc); this._acc = 0;
     }
     dispose() {
@@ -2299,7 +2363,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     // high used to run THREE.UnrealBloomPass: its r128 high-pass keeps the WHOLE texel colour above the threshold (not the excess)
     // and the 5-mip composite sums to ~3x strength, added straight onto the frame — bright sunny scenes (the village) blew out to white
     // on real GPUs. Now every preset uses the bounded soft-knee bloom below (excess-only, clamped, shoulder tone-map); high = 1/2-res.
-    high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2 },
+    high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2, blur2: true },
   };
 
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -2406,14 +2470,15 @@ void main(){
         let src = A, dst = B;
         if (P.dof.on && bokeh) { bokeh.render(R, dst, src, dt, false); const t = src; src = dst; dst = t; }
         GU.uHasBloom.value = 0;
-        if (P.preset.bloom === 'cheap' && target.bloom > 0) {
+        if (P.preset.bloom === 'cheap' && target.bloom >= 0.2) { // weak bloom (village .16 at threshold .97) is invisible: skip all 3–5 passes
           mBright.uniforms.tDiffuse.value = src.texture; mBright.uniforms.uTexel.value.set(1 / src.width, 1 / src.height);
           fsq.render(R, mBright, P.rts.q1);
           const tw = 1 / P.rts.q1.width, th = 1 / P.rts.q1.height;
-          mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * 1.5, 0); fsq.render(R, mBlur, P.rts.q2);
-          mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * 1.5); fsq.render(R, mBlur, P.rts.q1);
-          mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * 3, 0); fsq.render(R, mBlur, P.rts.q2);
-          mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * 3); fsq.render(R, mBlur, P.rts.q1);
+          mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * (P.preset.blur2 ? 1.5 : 2.2), 0); fsq.render(R, mBlur, P.rts.q2);
+          mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * (P.preset.blur2 ? 1.5 : 2.2)); fsq.render(R, mBlur, P.rts.q1);
+          if (P.preset.blur2) { // high: second, wider blur pair (medium uses one pair at 1/4 res — 2 fewer full-screen passes)
+            mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * 3, 0); fsq.render(R, mBlur, P.rts.q2);
+            mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * 3); fsq.render(R, mBlur, P.rts.q1); }
           GU.tBloom.value = P.rts.q1.texture; GU.uHasBloom.value = 1; GU.uBloom.value = target.bloom * 1.4;
         } else if (P.preset.bloom === 'unreal' && unreal && target.bloom > 0) {
           unreal.render(R, null, src, dt, false);
@@ -2423,7 +2488,7 @@ void main(){
         else fsq.render(R, mGrade, null);
       },
       dispose() { for (const k in P.rts) P.rts[k].dispose(); [mBright, mBlur, mGrade, mFXAA].forEach((m) => m && m.dispose()); },
-      get passes() { const p = P.preset; return !p.post ? 1 : 1 + (p.bloom === 'cheap' ? 5 : p.bloom === 'unreal' ? 11 : 0) + 1 + (p.fxaa ? 1 : 0) + (P.dof.on && bokeh ? 2 : 0); },
+      get passes() { const p = P.preset; return !p.post ? 1 : 1 + (p.bloom === 'cheap' && target.bloom >= 0.2 ? (p.blur2 ? 5 : 3) : p.bloom === 'unreal' ? 11 : 0) + 1 + (p.fxaa ? 1 : 0) + (P.dof.on && bokeh ? 2 : 0); },
     };
     const v = R.getSize(new T.Vector2()); fx.setSize(v.x, v.y); fx.setQuality(opts.quality || 'med');
     return fx;
@@ -2477,20 +2542,26 @@ void main(){
   /** Spell burst: flash sphere + shock ring + instanced shards. EVFX.burst(scene, pos, {color, radius, duration}); call EVFX.update(dt) each frame. */
   const BURST = { geoS: null, geoR: null, geoK: null };
   EVFX.burst = function (scene, p, o = {}) {
-    const col = new T.Color(o.color || '#ff8a3a'), R = o.radius || 2.2, D = o.duration || 0.6, n = o.shards || 14;
-    if (!BURST.geoS) { BURST.geoS = new T.IcosahedronGeometry(1, 1); BURST.geoR = new T.RingGeometry(0.82, 1, 40, 1); BURST.geoR.rotateX(-Math.PI / 2); BURST.geoK = new T.OctahedronGeometry(0.12, 0); BURST.geoK.scale(0.6, 2.2, 0.6); }
-    const add = (geo, op) => new T.Mesh(geo, new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false }));
-    const g = new T.Group(); g.position.copy(p); const core = add(BURST.geoS, 0.9), ring = add(BURST.geoR, 0.9); ring.position.y = 0.06;
-    const shards = new T.InstancedMesh(BURST.geoK, new T.MeshBasicMaterial({ color: col.clone().lerp(new T.Color(1, 1, 1), 0.35), transparent: true, blending: T.AdditiveBlending, depthWrite: false }), n);
-    const dirs = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + Math.random() * 0.4, u = 0.3 + Math.random() * 0.9; dirs.push(new T.Vector3(Math.cos(a) * u, 0.6 + Math.random() * 0.9, Math.sin(a) * u)); }
-    g.add(core, ring, shards); scene.add(g);
-    const m4 = new T.Matrix4(), q = new T.Quaternion(), up = new T.Vector3(0, 1, 0), v = new T.Vector3(), sc = new T.Vector3();
+    const R = o.radius || 2.2, D = o.duration || 0.6, n = Math.min(16, o.shards || 14);
+    if (!BURST.geoS) { BURST.geoS = new T.IcosahedronGeometry(1, 1); BURST.geoR = new T.RingGeometry(0.82, 1, 40, 1); BURST.geoR.rotateX(-Math.PI / 2); BURST.geoK = new T.OctahedronGeometry(0.12, 0); BURST.geoK.scale(0.6, 2.2, 0.6); BURST.pool = []; }
+    // pooled: a finished burst returns its group/materials/instanced mesh to the pool (no per-cast allocations or GPU buffer churn)
+    let B = BURST.pool.pop();
+    if (!B) {
+      const mk = (geo) => new T.Mesh(geo, new T.MeshBasicMaterial({ transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
+      B = { g: new T.Group(), core: mk(BURST.geoS), ring: mk(BURST.geoR), shards: new T.InstancedMesh(BURST.geoK, new T.MeshBasicMaterial({ transparent: true, blending: T.AdditiveBlending, depthWrite: false }), 16), dirs: [] };
+      B.ring.position.y = 0.06; B.g.add(B.core, B.ring, B.shards); for (let i = 0; i < 16; i++) B.dirs.push(new T.Vector3()); B.nd = B.dirs.map(() => new T.Vector3());
+    }
+    const col = B.core.material.color.set(o.color || '#ff8a3a'); B.ring.material.color.copy(col); B.shards.material.color.copy(col).lerp(BURST.white || (BURST.white = new T.Color(1, 1, 1)), 0.35);
+    const { g, core, ring, shards, dirs, nd } = B; shards.count = n; g.position.copy(p);
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + Math.random() * 0.4, u = 0.3 + Math.random() * 0.9; dirs[i].set(Math.cos(a) * u, 0.6 + Math.random() * 0.9, Math.sin(a) * u); nd[i].copy(dirs[i]).normalize(); }
+    scene.add(g);
+    const m4 = BURST.m4 || (BURST.m4 = new T.Matrix4()), q = BURST.q || (BURST.q = new T.Quaternion()), up = BURST.up || (BURST.up = new T.Vector3(0, 1, 0)), v = BURST.v || (BURST.v = new T.Vector3()), sc = BURST.sc || (BURST.sc = new T.Vector3());
     const fxo = { t: 0, update(dt) { fxo.t += dt; const k = Math.min(1, fxo.t / D), e = 1 - Math.pow(1 - k, 3);
       core.scale.setScalar(0.2 + R * 0.45 * e); core.material.opacity = 0.9 * (1 - k) * (1 - k);
       ring.scale.setScalar(0.3 + R * e); ring.material.opacity = 0.9 * (1 - k);
-      for (let i = 0; i < n; i++) { v.copy(dirs[i]).multiplyScalar(R * 0.9 * e); v.y = dirs[i].y * R * 0.7 * Math.sin(Math.PI * Math.min(1, k * 1.2)); q.setFromUnitVectors(up, dirs[i].clone().normalize()); sc.setScalar(1 - k * 0.8); m4.compose(v, q, sc); shards.setMatrixAt(i, m4); }
+      for (let i = 0; i < n; i++) { v.copy(dirs[i]).multiplyScalar(R * 0.9 * e); v.y = dirs[i].y * R * 0.7 * Math.sin(Math.PI * Math.min(1, k * 1.2)); q.setFromUnitVectors(up, nd[i]); sc.setScalar(1 - k * 0.8); m4.compose(v, q, sc); shards.setMatrixAt(i, m4); }
       shards.instanceMatrix.needsUpdate = true; shards.material.opacity = 1 - k;
-      if (k >= 1) { scene.remove(g); [core, ring, shards].forEach((x) => x.material.dispose()); shards.dispose(); return false; } return true; } };
+      if (k >= 1) { if (g.parent) g.parent.remove(g); if (BURST.pool.length < 12) BURST.pool.push(B); else { [core, ring, shards].forEach((x) => x.material.dispose()); shards.dispose(); } return false; } return true; } };
     FX_LIST.add(fxo); return fxo;
   };
 
@@ -3113,7 +3184,7 @@ function newSave(){
     meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
     // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1}
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false}
   };
 }
 let S=newSave();
@@ -3461,7 +3532,8 @@ function deviceTier(){
   const mem=navigator.deviceMemory||4, cores=navigator.hardwareConcurrency||4, px=screen.width*screen.height*(window.devicePixelRatio||1)**2;
   let t='high';
   if(IS_MOBILE) t='med';
-  if(/SwiftShader|llvmpipe|Software|Mali-[4T][0-9]{1,2}\b|Mali-G(31|51|52|57)|Adreno \(TM\) ?[2-5][0-9]{2}|PowerVR|SGX|Intel\(R\) HD Graphics [2-5]/i.test(gpu)||mem<=2||cores<=2) t='low';
+  if(/Mali-[4T][0-9]{1,2}\b|Adreno \(TM\) ?[2-4][0-9]{2}|SGX|PowerVR Rogue G[EM]?[0-9]/i.test(gpu)||mem<=1.5) t='perf';
+  else if(/SwiftShader|llvmpipe|Software|Mali-G(31|51|52|57)|Adreno \(TM\) ?5[0-9]{2}|PowerVR|Intel\(R\) HD Graphics [2-5]/i.test(gpu)||mem<=2||cores<=2) t='low';
   else if(IS_MOBILE&&(mem>=6&&cores>=8&&/Apple|Adreno \(TM\) ?(6[4-9]|7)\d\d|Mali-G(7[1-9]|71[0-9])|Xclipse/i.test(gpu))) t='high';
   else if(!IS_MOBILE&&(/Intel/i.test(gpu)&&px>4e6)) t='med';
   // «Авто» никогда не выбирает «Выс.» сам: высокое качество — только вручную в настройках (тяжёлые проходы и блум на реальных GPU)
@@ -3469,13 +3541,19 @@ function deviceTier(){
   if(got) DEVICE_TIER=t; DEVICE_GPU=gpu; return t;
 }
 let QL='med';
-function resolveQuality(){ let q=S.set.q; try{ const m=/[?&]q=(low|med|high)\b/.exec(location.search); if(m) q=m[1]; }catch(e){} if(q==='low'||q==='med'||q==='high') return q; if(S.set.qAuto==='low'||S.set.qAuto==='med') return S.set.qAuto; return deviceTier(); }
+// пресеты: perf («Производительность») < low < med < high. URL ?q=perf|low|med|high фиксирует пресет.
+const Q_ORDER=['perf','low','med','high'];
+function resolveQuality(){ let q=S.set.q; try{ const m=/[?&]q=(perf|low|med|high)\b/.exec(location.search); if(m) q=m[1]; }catch(e){} if(Q_ORDER.includes(q)) return q; if(S.set.qAuto==='perf'||S.set.qAuto==='low'||S.set.qAuto==='med') return S.set.qAuto; return deviceTier(); }
 QL=resolveQuality();
+// prMax/prMaxD — потолок плотности пикселей (телефон / компьютер), prMin — нижняя граница динамического разрешения (в CSS px).
+// Разрешение рендера = CSS-размер × PR; интерфейс (DOM) всегда чёткий — меняется только буфер холста.
 const QP={
-  low:{prMax:1.0,props:.55,parts:.5,shadows:false,ambient:.4,grass:.35,aa:false},
-  med:{prMax:1.6,props:.8,parts:.8,shadows:false,ambient:.8,grass:.7,aa:false},
-  high:{prMax:2,props:1,parts:1,shadows:false,ambient:1,grass:1,aa:true}
+  perf:{prMax:.85,prMaxD:1.0,prMin:.5,props:.42,parts:.3,shadows:false,ambient:.2,grass:.15,aa:false,point:false},
+  low:{prMax:1.0,prMaxD:1.25,prMin:.6,props:.55,parts:.5,shadows:false,ambient:.4,grass:.35,aa:false,point:true},
+  med:{prMax:1.5,prMaxD:1.75,prMin:.7,props:.8,parts:.8,shadows:false,ambient:.8,grass:.7,aa:false,point:true},
+  high:{prMax:1.5,prMaxD:2,prMin:.85,props:1,parts:1,shadows:false,ambient:1,grass:1,aa:true,point:true}
 };
+const qLow=()=>QL==='low'||QL==='perf';
 let Q=QP[QL];
 const canvas=$('cv');
 let R;
@@ -3499,7 +3577,10 @@ const LOOK={expo:1.0,zoneExpo:1.0}; // экспозиция зоны (setZoneLoo
 function applyExposure(){ const b=S&&S.set&&S.set.bright!=null?S.set.bright:1; LOOK.expo=LOOK.zoneExpo*clamp(b,.6,1.4); R.toneMappingExposure=LOOK.expo; }
 // общая насыщенность средних тонов для toon-материалов (игровых и KayKit): один uniform на всех
 const SATG={value:1.16};
-let PR=Math.min(window.devicePixelRatio||1,Q.prMax);
+// потолок PR для текущего пресета; ?rs=0.75 в адресе фиксирует PR (замеры), ?drs=0 выключает динамическое разрешение
+function prCap(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(window.devicePixelRatio||1,IS_MOBILE?Q.prMax:Q.prMaxD); }
+function prMin(){ const fx=/[?&]rs=([0-9.]+)/.exec(location.search); if(fx) return +fx[1]; return Math.min(prCap(),Q.prMin); }
+let PR=prCap();
 R.setPixelRatio(PR);
 const scene=new THREE.Scene();
 const cam=new THREE.PerspectiveCamera(36,1,0.5,220);
@@ -3651,11 +3732,11 @@ function makePFX(cap,additive){
   const pts=new THREE.Points(geo,mat); pts.frustumCulled=false; pts.renderOrder=5; scene.add(pts);
   const D={x:new Float32Array(cap),y:new Float32Array(cap),z:new Float32Array(cap),vx:new Float32Array(cap),vy:new Float32Array(cap),vz:new Float32Array(cap),
     life:new Float32Array(cap),max:new Float32Array(cap),s0:new Float32Array(cap),s1:new Float32Array(cap),r:new Float32Array(cap),g:new Float32Array(cap),b:new Float32Array(cap),a:new Float32Array(cap),grav:new Float32Array(cap),drag:new Float32Array(cap)};
-  let n=0;
+  let n=0, n0=-1; const DK=Object.values(D);
   return {
     pts,mat,
     emit(x,y,z,vx,vy,vz,life,s0,s1,col,a,grav,drag){
-      if(n>=cap) return; const i=n++;
+      if(n>=cap||n>=cap*Math.min(1,Q.parts*1.3)) return; const i=n++; // потолок частиц зависит от пресета
       D.x[i]=x;D.y[i]=y;D.z[i]=z;D.vx[i]=vx;D.vy[i]=vy;D.vz[i]=vz;D.life[i]=life;D.max[i]=life;D.s0[i]=s0;D.s1[i]=s1;
       D.r[i]=col.r;D.g[i]=col.g;D.b[i]=col.b;D.a[i]=a===undefined?1:a;D.grav[i]=grav||0;D.drag[i]=drag||0;
     },
@@ -3663,7 +3744,7 @@ function makePFX(cap,additive){
       let w=0;
       for(let i=0;i<n;i++){
         const l=D.life[i]-dt; if(l<=0) continue;
-        if(w!==i){ for(const k in D) D[k][w]=D[k][i]; }
+        if(w!==i){ for(let k=0;k<DK.length;k++) DK[k][w]=DK[k][i]; }
         D.life[w]=l; const dr=1-D.drag[w]*dt;
         D.vx[w]*=dr; D.vz[w]*=dr; D.vy[w]=D.vy[w]*dr-D.grav[w]*dt;
         D.x[w]+=D.vx[w]*dt; D.y[w]+=D.vy[w]*dt; D.z[w]+=D.vz[w]*dt;
@@ -3674,7 +3755,7 @@ function makePFX(cap,additive){
         siz[w]=lerp(D.s0[w],D.s1[w],t);
         w++;
       }
-      n=w; geo.setDrawRange(0,n);
+      n=w; if(n===0&&n0===0) return; n0=n; geo.setDrawRange(0,n);
       geo.attributes.position.needsUpdate=true; geo.attributes.aCol.needsUpdate=true; geo.attributes.aSize.needsUpdate=true;
     },
     clear(){n=0;geo.setDrawRange(0,0);},
@@ -3837,15 +3918,30 @@ const RTT=(()=>{
 })();
 const GAM=(()=>{const a=new Uint8Array(256);for(let i=0;i<256;i++){const v=i/255;a[i]=Math.round(255*(v<=0.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-0.055));}return a;})();
 
-// ---------- adaptive resolution ----------
-const PERF={acc:0,frames:0,fps:60,t:0};
-function perfTick(dt){
+// ---------- dynamic resolution (DRS) ----------
+// Цель — 60 (или 30) кадров/с. Раз в ~0,5 с смотрим среднее время кадра: медленно → PR вниз (сразу, пропорционально),
+// стабильно быстро → PR вверх по 0,05 с гистерезисом (уровень, на котором было медленно, «запоминается» на 20 с).
+// Если упираемся в процессор (JS дольше бюджета), разрешение не трогаем — это не поможет.
+const PERF={acc:0,frames:0,fps:60,t:0,win:0,winN:0,winCpu:0,good:0,ceil:9,ceilT:0,lastSet:0,hist:new Float32Array(240),hi:0,hn:0,js:0,rs:0,gpu:-1,cpuAvg:0};
+function fpsTarget(){ return S&&S.set&&S.set.fps===30?30:60; }
+function setPR(np,why){ np=Math.round(np*20)/20; if(Math.abs(np-PR)<0.01) return; PR=np; R.setPixelRatio(PR); camResize(); PERF.lastSet=performance.now(); }
+function perfTick(dt,raw,cpu){
   PERF.acc+=dt; PERF.frames++;
-  if(PERF.acc>=2){ PERF.fps=PERF.frames/PERF.acc; PERF.acc=0; PERF.frames=0; asAdapt(PERF.fps);
-    const max=Math.min(window.devicePixelRatio||1,Q.prMax);
-    let np=PR; if(PERF.fps<42) np=Math.max(0.75,PR-0.15); else if(PERF.fps>57&&PR<max) np=Math.min(max,PR+0.1);
-    if(Math.abs(np-PR)>0.01){ PR=np; R.setPixelRatio(PR); camResize(); }
-  }
+  if(raw>0&&raw<0.25){ PERF.win+=raw; PERF.winN++; PERF.winCpu+=cpu||0; PERF.hist[PERF.hi]=raw*1000; PERF.hi=(PERF.hi+1)%PERF.hist.length; PERF.hn=Math.min(PERF.hn+1,PERF.hist.length); }
+  if(PERF.acc>=2){ PERF.fps=PERF.frames/PERF.acc; PERF.acc=0; PERF.frames=0; asAdapt(PERF.fps); }
+  if(PERF.win<0.5) return;
+  const ms=PERF.win/PERF.winN*1000, cms=PERF.winCpu/PERF.winN; PERF.win=0; PERF.winN=0; PERF.winCpu=0; PERF.cpuAvg=cms;
+  if(/[?&](rs=|drs=0)/.test(location.search)||PERF.throttled) return;
+  const now=performance.now(), tgt=1000/fpsTarget(), max=prCap(), min=prMin();
+  if(PR>max+.01){ setPR(max); return; }
+  const gpuOk=PERF.gpu>=0&&PERF.gpu<tgt*.6; // по таймеру GPU видно, что видеокарта не узкое место
+  if(ms>tgt*1.18&&PR>min+.01&&!gpuOk&&cms<tgt*.85){
+    PERF.good=0; PERF.ceil=PR; PERF.ceilT=now;
+    setPR(Math.max(min,PR*Math.max(.82,Math.min(.95,Math.sqrt(tgt/ms)))),'down');
+  } else if(ms<tgt*1.06){
+    PERF.good++; if(now-PERF.ceilT>20000) PERF.ceil=9;
+    if(PERF.good>=4&&PR<max-.01&&PR+.05<PERF.ceil-.001&&now-PERF.lastSet>1500){ PERF.good=0; setPR(Math.min(max,PR+.05),'up'); }
+  } else PERF.good=0;
 }
 // ================= p2a: real assets (EVAssets), post-processing, VFX, quality =================
 // Реальные модели KayKit (CC0) подключаются поверх процедурных фабрик: если файл не загрузился,
@@ -3889,7 +3985,7 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:QL,gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
@@ -3903,7 +3999,8 @@ function asPrefetch(){
   if(S.endless&&S.endless.runs>0||stageDone('1-5')) q.push('abyss');
   q.push('companions');
   for(let i=1;i<=6;i++) q.push(asZoneGroup(i));
-  let i=0; const next=()=>{ if(i>=q.length) return; asLoad(q[i++]).then(()=>setTimeout(next,250)); }; next();
+  // разбор .glb идёт в главном потоке: в бою (враги рядом) пакеты догружаются реже, чтобы не было рывков
+  let i=0; const busy=()=>(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid')&&G.enemies&&G.enemies.some(e=>e.alive&&(e.state==='chase'||e.state==='wind'||e.state==='act')); const next=()=>{ if(i>=q.length) return; if(busy()&&i>2){ setTimeout(next,1200); return; } asLoad(q[i++]).then(()=>setTimeout(next,250)); }; next();
 }
 
 // ---------- rigs from actors (same shape the game expects: root, h, r) ----------
@@ -4049,20 +4146,25 @@ function asHeroPortrait(gear){ return asCan('hero')?asPortrait('hero',asHeroGear
 function asDoll(gear){ if(!asCan('hero')) return null; try{ return EVAssets.iconURL('hero',300,{gear:asHeroGear(heroVis(gear)),yaw:.35,roll:0,pad:.62}); }catch(e){ return null; } }
 
 // ---------- post-processing, VFX, quality ----------
-function postQ(){ if(S.set.post==='off') return 'low'; return QL; }
+function postQ(){ if(S.set.post==='off'||QL==='perf') return 'low'; return QL; }
+// пресет для EVAssets (у него своя таблица: perf = без контуров, текстуры 128, анимации дальних — реже)
+const asQ=()=>QL;
 function asFXInit(){
   if(!window.EVPostFX) return;
   try{ AS.FX=EVPostFX.create(R,scene,cam,{quality:postQ()}); AS.post=postQ(); const w=window.innerWidth,h=window.innerHeight; AS.FX.setSize(w,h,PR); }catch(e){ console.warn('postfx',e); AS.FX=null; }
   if(window.EVFX&&!AS.trail){ try{ AS.trail=EVFX.slashTrail({color:'#ffe2a0',segments:14}); scene.add(AS.trail.mesh); }catch(e){ AS.trail=null; } }
 }
 function asSetQuality(){
-  if(window.EVAssets&&EVAssets.manifest) EVAssets.setQuality(QL);
+  if(window.EVAssets&&EVAssets.manifest) EVAssets.setQuality(asQ());
+  emberLight.visible=Q.point!==false; // «Производительность»: без точечного света (дешевле каждый пиксель)
+  try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){}
   if(AS.FX){ AS.FX.setQuality(postQ()); AS.post=postQ(); AS.FX.setSize(window.innerWidth,window.innerHeight,PR); }
   if(AS.amb) AS.amb.count=asAmbCount();
+  for(const a of AS.live) a._olFar=undefined;
 }
 function asResize(w,h){ if(AS.FX) AS.FX.setSize(w,h,PR); if(window.EVAssets&&EVAssets.manifest) EVAssets.setViewport(w*PR,h*PR); }
 const AMB_OF={pollen:'pollen',firefly:'firefly',bubble:'bubble',wisp:'wisp',ash:'ash',ember:'ember'};
-function asAmbCount(){ return QL==='low'?60:QL==='med'?160:280; }
+function asAmbCount(){ return QL==='perf'?24:QL==='low'?60:QL==='med'?160:280; }
 function asZone(Z){
   const key=Z.id===0?'village':ZONE_KEY[Z.id]||'meadow'; AS.zoneKey=key;
   const M=window.EV_MANIFEST; let g=M&&M.zones[key]&&M.zones[key].grade;
@@ -4073,12 +4175,13 @@ function asZone(Z){
   if(g&&Z.title&&G.mode==='title') g=Object.assign({},g,{gain:[1.06,.96,.92],vignette:.55,bloom:.45,bloomTh:.8});
   else if(g&&key==='village') g=Object.assign({},g,{bloom:.16,bloomTh:.97});
   if(AS.FX&&g) AS.FX.setZone(g);
+  LUMA.ok=0;
   // ambient particles
   if(window.EVFX){ let kind=W&&W.kind==='village'?(G.mode==='title'?'firefly':'pollen'):AMB_OF[Z.amb]||null; if(W&&W.kind==='abyss') kind='wisp';
     if(AS.amb&&AS.ambKind!==kind){ scene.remove(AS.amb.mesh); EVFX.remove(AS.amb); AS.amb=null; }
     if(kind&&!AS.amb){ try{ AS.amb=EVFX.ambient({kind,count:320,area:[38,kind==='ash'||kind==='ember'?9:6,32]}); AS.amb.count=asAmbCount(); scene.add(AS.amb.mesh); AS.ambKind=kind; }catch(e){ AS.amb=null; } } }
 }
-function asBurst(x,y,z,col,r,dur){ if(!window.EVFX||QL==='low') return; try{ EVFX.burst(scene,new THREE.Vector3(x,(y||0)+.1,z),{color:col!==undefined?'#'+new THREE.Color(col).getHexString():'#ff8a3a',radius:r||2.4,duration:dur||.55,shards:QL==='high'?16:10}); }catch(e){} }
+function asBurst(x,y,z,col,r,dur){ if(!window.EVFX||qLow()) return; try{ EVFX.burst(scene,new THREE.Vector3(x,(y||0)+.1,z),{color:col!==undefined?'#'+new THREE.Color(col).getHexString():'#ff8a3a',radius:r||2.4,duration:dur||.55,shards:QL==='high'?16:10}); }catch(e){} }
 function asTrailColor(){ const w=S.gear.weapon; const c=w&&w.el?ELC[w.el]:w&&w.rar>=3?RCOL[w.rar]:0xffe2a0; if(AS.trail&&AS.trailC!==c){ AS.trailC=c; AS.trail.mesh.material.uniforms.uColor.value.set(c); } }
 function asHeroTrailBind(){ const P=G.P; if(!AS.trail||!P||!P.rig.actor) { if(AS.trail) AS.trail.target=null; return; } const w=P.rig.actor.slots.r; if(w){ const b=w.userData.evBox, s=w.scale.y||1; AS.trail.follow(w,new THREE.Vector3(0,b?b.max.y/s*.25:.2,0),new THREE.Vector3(0,b?b.max.y/s*.95:1.1,0)); } else AS.trail.target=null; asTrailColor(); }
 
@@ -4094,7 +4197,9 @@ function asTick(dt,rdt){
   cam.updateMatrixWorld(); _fm.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _frus.setFromProjectionMatrix(_fm);
   const adt=dt>0?dt:(G.mode==='village'||G.mode==='title'||G.mode==='raidprep'||G.mode==='result'?rdt:0);
   const cx=CAMR.x, cz=CAMR.z;
-  let vis=0;
+  // анимационный LOD: за кадром — заморожены; близкие — каждый кадр, средние — через кадр, дальние — раз в 3–4 кадра;
+  // одновременно анимируется не больше AS_ANIM_CAP[QL] (остальные — через кадр). Контуры — только у ближних (до 16 м от центра кадра, на «Выс.» — 24 м).
+  let vis=0, anim=0; const cap=AS_ANIM_CAP[QL]||24, olOn=!qLow(), olR2=(QL==='high'?24:16)**2;
   for(const a of AS.live){
     const root=a.root;
     if(!root.parent||!inScene(root)){ if(AS.frame-a._seen>60){ AS.live.delete(a); try{ a.dispose(); }catch(e){} } continue; }
@@ -4104,11 +4209,17 @@ function asTick(dt,rdt){
     const on=_frus.intersectsSphere(_sph);
     root.visible=on; if(!on) { a._acc=(a._acc||0)+adt; continue; }
     vis++;
-    const far=Math.hypot(_awp.x-cx,_awp.z-cz)>30;
-    if(adt>0) a.update(adt,{far});
+    const dx=_awp.x-cx, dz=_awp.z-cz, d2=dx*dx+dz*dz;
+    if(a._olFar!==undefined||olOn){ const far=!olOn||d2>olR2; if(a._olFar!==far){ a._olFar=far; asOutlineVis(a,!far); } }
+    if(adt>0){ const lod=d2>34*34?4:d2>20*20?2:1; a._lod=lod; anim++; _upo.step=anim>cap?Math.max(2,lod):lod; a.update(adt,_upo); }
   }
-  AS.visible=vis;
+  AS.visible=vis; AS.animated=anim;
 }
+const AS_ANIM_CAP={perf:10,low:14,med:22,high:32}, _upo={step:1};
+// показать/спрятать контуры актёра (без пересоздания): дальние актёры без контура — минус 1–2 вызова отрисовки на каждого
+function asOutlineVis(a,on){ if(!a._outline) return; for(const m of a.meshes){ const o=m.userData.evOutline; if(o) o.visible=on&&m.visible; }
+  for(const k in a.slots){ const w=a.slots[k]; if(w) w.traverse(o=>{ if(o.userData&&o.userData.isOutline) o.visible=on&&a._weaponOutline(); }); } }
+
 function asRender(dt){
   if(AS.FX&&AS.post!=='low'){ AS.FX.render(dt); } else { R.setRenderTarget(null); R.render(scene,cam); }
   lumaGuard(dt);
@@ -4116,9 +4227,11 @@ function asRender(dt){
 // safety net against washed-out frames on real GPUs: about once a second read three thin rows of the final frame
 // (right after drawing, before the browser composites) and if the average luminance stays > 0.85 for ~3 s,
 // first drop bloom, then switch post-effects off, and log it. The prologue's white flash is a DOM overlay and is not read.
-const LUMA={t:0,hot:0,buf:null,step:0,last:0,acts:[]};
+const LUMA={t:0,hot:0,buf:null,step:0,last:0,acts:[],ok:0};
+// readPixels останавливает конвейер GPU (рывок на телефонах), поэтому проверка идёт раз в ~2 с и только первые ~10 с в каждой локации
+// (после 5 спокойных замеров подряд — до смены зоны).
 function lumaGuard(dt){
-  LUMA.t+=dt||0; if(LUMA.t<1.1||!AS.FX||AS.post==='low'||!G.P||G.mode==='title'||document.hidden) return; LUMA.t=0;
+  LUMA.t+=dt||0; if(LUMA.t<2||LUMA.ok>=5||!AS.FX||AS.post==='low'||!G.P||G.mode==='title'||document.hidden) return; LUMA.t=0;
   try{ const gl=R.getContext(); const w=gl.drawingBufferWidth, h=gl.drawingBufferHeight; if(!w||!h) return;
     if(!LUMA.buf||LUMA.buf.length!==w*4) LUMA.buf=new Uint8Array(w*4); let sum=0,n=0;
     for(const fy of [.3,.55,.8]){ gl.readPixels(0,Math.floor(h*fy),w,1,gl.RGBA,gl.UNSIGNED_BYTE,LUMA.buf); const b=LUMA.buf; for(let i=0;i<w;i+=6){ const k=i*4; sum+=(.2126*b[k]+.7152*b[k+1]+.0722*b[k+2])/255; n++; } }
@@ -4127,16 +4240,20 @@ function lumaGuard(dt){
         if(LUMA.step===1){ AS.FX.limitBloom&&AS.FX.limitBloom(0); LUMA.acts.push('bloom_off'); console.info('[Эмбервейл] кадр пересвечен (яркость '+L.toFixed(2)+') — свечение выключено'); }
         else if(LUMA.step===2){ S.set.post='off'; AS.post='low'; asSetQuality(); LUMA.acts.push('post_off'); console.info('[Эмбервейл] кадр всё ещё пересвечен ('+L.toFixed(2)+') — постэффекты выключены (Настройки → Постэффекты)'); try{ toast('Картинка была слишком яркой — постэффекты выключены. Вернуть: Настройки → Постэффекты.'); }catch(e){} saveGame(); }
         if(typeof track==='function') track('luma_guard','s'+LUMA.step); } }
-    else LUMA.hot=0;
+    else { LUMA.hot=0; LUMA.ok++; }
   }catch(e){ LUMA.t=-1e9; }
 }
-// adaptive quality: fps < 40 for ~4 s → step down (only in «Авто»)
-const AQ={low:0,t:0};
+// adaptive quality («Авто»): шаг вниз, если при минимальном разрешении (или упираясь в процессор) кадров < 72% цели ~4 с;
+// шаг вверх (не выше «Сред.»), если ~30 с подряд при максимальном разрешении держим цель и с последнего снижения прошло > 90 с.
+const AQ={low:0,hi:0,t:0,downT:-1e9};
+function applyQuality(q,why){ QL=q; Q=QP[QL]; const max=prCap(); if(PR>max||why==='set') PR=max; R.setPixelRatio(PR); asSetQuality(); camResize(); }
 function asAdapt(fps){
-  if(S.set.q!=='auto'||/[?&]q=/.test(location.search)||!G.P||G.mode==='title'||document.hidden) { AQ.low=0; return; }
-  if(fps<40){ AQ.low++; } else AQ.low=0;
-  if(AQ.low>=2){ AQ.low=0; const order=['high','med','low']; const i=order.indexOf(QL);
-    if(i>=0&&i<2&&performance.now()-AQ.t>8000){ AQ.t=performance.now(); QL=order[i+1]; Q=QP[QL]; S.set.qAuto=QL; const max=Math.min(window.devicePixelRatio||1,Q.prMax); if(PR>max){ PR=max; R.setPixelRatio(PR); } asSetQuality(); camResize(); console.log('[Эмбервейл] качество снижено до',QL,'(fps',fps.toFixed(0)+')'); } }
+  if(S.set.q!=='auto'||/[?&]q=/.test(location.search)||!G.P||G.mode==='title'||document.hidden||PERF.throttled||PH.bench) { AQ.low=0; AQ.hi=0; return; }
+  const tgt=fpsTarget(), atMin=PR<=prMin()+.01, atMax=PR>=prCap()-.01, cpuBound=PERF.cpuAvg>1000/tgt*.85, now=performance.now();
+  AQ.low=fps<tgt*.72&&(atMin||cpuBound)?AQ.low+1:0; AQ.hi=fps>=tgt*.93&&atMax?AQ.hi+1:0;
+  const i=Q_ORDER.indexOf(QL);
+  if(AQ.low>=2&&i>0&&now-AQ.t>8000){ AQ.low=0; AQ.t=AQ.downT=now; const nq=Q_ORDER[i-1]; S.set.qAuto=nq; applyQuality(nq); console.log('[Эмбервейл] качество снижено до',nq,'(fps',fps.toFixed(0)+')'); }
+  else if(AQ.hi>=15&&i<2&&now-AQ.downT>90000&&now-AQ.t>30000){ AQ.hi=0; AQ.t=now; const nq=Q_ORDER[i+1]; S.set.qAuto=nq; applyQuality(nq); console.log('[Эмбервейл] качество повышено до',nq,'(fps',fps.toFixed(0)+')'); }
 }
 function asStats(){ const s=window.EVAssets&&EVAssets.manifest?EVAssets.stats():{}; return Object.assign({ok:AS.ok,errors:AS.errors,lastErr:AS.lastErr||'',live:AS.live.size,visible:AS.visible,mb:+(AS.bytes/1048576).toFixed(2),loadMs:Math.round(AS.loadMs),q:QL,post:AS.post,passes:AS.FX?AS.FX.passes:1},s); }
 
@@ -5751,6 +5868,8 @@ function mkObj(kind,x,z,o={}){
 // ---------- unload ----------
 function unloadWorld(){
   if(!W) return;
+  if(W.vbatch){ W.vbatch.geometry.dispose(); W.vbatch=null; }
+  for(const m of (W.propBaked||[])) m.geometry.dispose();
   for(const c of worldRoot.children.slice()){ worldRoot.remove(c); if(c.isMesh&&c===W.ground){ c.geometry.dispose(); } if(c===W.liquid){ c.geometry.dispose(); c.material.dispose(); } if(c.isInstancedMesh){ c.dispose&&c.dispose(); } if(c.userData&&c.userData.evInst){ for(const k of c.children) k.dispose&&k.dispose(); } }
   DECALS.clear(); PA.clear(); PN.clear();
   W=null;
@@ -5928,7 +6047,7 @@ function buildVillageBuildings(){
 }
 function refreshVillagers(){
   for(const v of W.villagers) worldRoot.remove(v.rig.root);
-  W.villagers=[]; const n=Math.min(10,S.bld.houses*2+Math.floor(S.prog.zone/1)+ (stageDone('1-5')?1:0));
+  W.villagers=[]; const n=Math.min({perf:4,low:6}[QL]||10,S.bld.houses*2+Math.floor(S.prog.zone/1)+ (stageDone('1-5')?1:0));
   for(let i=0;i<n;i++){ const rig=buildNPC(['v0','v1','v2'][i%3]); rig.root.scale.setScalar(.92); const a=rand(TAU),r=rand(7,18); const v={x:Math.cos(a)*r,z:Math.sin(a)*r,rig,tx:0,tz:0,wait:rand(3),t:rand(5),face:0}; rig.root.position.set(v.x,0,v.z); worldRoot.add(rig.root); W.villagers.push(v); }
 }
 
@@ -6928,19 +7047,23 @@ function hudQuest(){
   if(G.mode==='abyss'&&G.abyss){ html=`<h4>${ico('abyss')} Бездна · этаж ${G.abyss.floor}</h4><div class="q">${G.abyss.mods.map(m=>`<b>${ABYSS_MODS[m].n}</b>`).join(', ')||'Без особенностей'}</div><div class="q">Осколков: <b>${G.abyss.shards}</b> · рекорд ${S.endless.best}</div>`; }
   el.innerHTML=html; el.style.display=html?'':'none';
 }
+// HUD обновляется каждый кадр, но DOM трогаем только при изменении значения (меньше перерасчёта стилей/перерисовки на телефонах)
+function hudSet(k,v,fn){ const c=hudEl._c||(hudEl._c={}); if(c[k]===v) return; c[k]=v; fn(v); }
 function hudTick(dt){
   const P=G.P; if(!P||!hudEl.hpV) return;
-  const f=clamp(P.hp/P.maxHp,0,1); hudEl.hpV.style.transform=`scaleX(${f})`; hudEl.hpLag.style.transform=`scaleX(${f})`; hudEl.hpT.textContent=`${Math.ceil(P.hp)} / ${P.maxHp}`+(P.shield>1?` +${Math.round(P.shield)}`:'');
-  hudEl.emV.style.transform=`scaleX(${P.ember/100})`; hudEl.emB.classList.toggle('full',P.ember>=100);
-  hudEl.xpV.style.transform=`scaleX(${S.hero.lvl>=MAX_LVL?1:S.hero.xp/xpNeed(S.hero.lvl)})`; hudEl.lvl.textContent=S.hero.lvl;
+  const f=Math.round(clamp(P.hp/P.maxHp,0,1)*400)/400; hudSet('hp',f,v=>{ hudEl.hpV.style.transform=`scaleX(${v})`; hudEl.hpLag.style.transform=`scaleX(${v})`; });
+  hudSet('hpT',`${Math.ceil(P.hp)} / ${P.maxHp}`+(P.shield>1?` +${Math.round(P.shield)}`:''),v=>{ hudEl.hpT.textContent=v; });
+  hudSet('em',Math.round(P.ember),v=>{ hudEl.emV.style.transform=`scaleX(${v/100})`; hudEl.emB.classList.toggle('full',v>=100); });
+  hudSet('xp',Math.round((S.hero.lvl>=MAX_LVL?1:S.hero.xp/xpNeed(S.hero.lvl))*300)/300,v=>{ hudEl.xpV.style.transform=`scaleX(${v})`; }); hudSet('lvl',S.hero.lvl,v=>{ hudEl.lvl.textContent=v; });
   if(G.mode!=='village'){
-    for(const k of ['s1','s2','s3']){ const b=$('b'+k.toUpperCase()); if(!b) continue; const c=P.cds[k], m=(P.cdMax&&P.cdMax[k])||1; b.querySelector('.cd').style.setProperty('--p',(c>0?c/m*100:0)+'%'); b.querySelector('.cdt').textContent=c>0?Math.ceil(c):''; }
-    if(hudEl.ult){ hudEl.ult.classList.toggle('ready',P.ember>=100); hudEl.ult.querySelector('.cd').style.setProperty('--p',(100-P.ember)+'%'); }
-    if(hudEl.dodge) hudEl.dodge.querySelector('.cd').style.setProperty('--p',(P.rollCd>0?P.rollCd/.85*100:0)+'%');
-    if(hudEl.obj&&W&&W.obj){ const o=W.obj; hudEl.obj.innerHTML=`${o.type==='abyss'?'Бездна':STAGE_TYPES[o.type].n}<small>${o.txt}</small>`; }
-    const qe=$('hQuest'); if(qe) qe.style.visibility=(G.boss&&G.boss.alive)?'hidden':'';
-    const B=G.boss; if(B&&hudEl.boss){ hudEl.boss.classList.toggle('hidden',!B.alive&&!B.showDead); if(B.alive){ const bf=clamp(B.hp/B.maxHp,0,1); hudEl.bossV.style.transform=`scaleX(${bf})`; hudEl.bossLag.style.transform=`scaleX(${bf})`; hudEl.bossN.innerHTML=`${B.bossD.n} <small style="font-family:var(--sc);font-size:11px;letter-spacing:.15em;display:block;color:#d8b77a">${B.bossD.t.toUpperCase()}</small>`; hudEl.bossPh.innerHTML=B.bossD.phases.map((t,i)=>`<i class="${i<=B.phase?'':'off'}"></i>`).join(''); } }
-    else if(hudEl.boss) hudEl.boss.classList.add('hidden');
+    if(!hudEl.sk){ hudEl.sk=['s1','s2','s3'].map(k=>{ const b=$('b'+k.toUpperCase()); return b?{k,cd:b.querySelector('.cd'),cdt:b.querySelector('.cdt')}:null; }).filter(Boolean); hudEl.ultCd=hudEl.ult&&hudEl.ult.querySelector('.cd'); hudEl.dodgeCd=hudEl.dodge&&hudEl.dodge.querySelector('.cd'); hudEl.quest=$('hQuest'); }
+    for(const o of hudEl.sk){ const c=P.cds[o.k], m=(P.cdMax&&P.cdMax[o.k])||1; hudSet('cd'+o.k,c>0?Math.round(c/m*100):0,v=>o.cd.style.setProperty('--p',v+'%')); hudSet('ct'+o.k,c>0?Math.ceil(c):'',v=>{ o.cdt.textContent=v; }); }
+    if(hudEl.ult){ hudSet('ultR',P.ember>=100,v=>hudEl.ult.classList.toggle('ready',v)); hudSet('ultP',Math.round(100-P.ember),v=>hudEl.ultCd.style.setProperty('--p',v+'%')); }
+    if(hudEl.dodgeCd) hudSet('dg',P.rollCd>0?Math.round(P.rollCd/.85*100):0,v=>hudEl.dodgeCd.style.setProperty('--p',v+'%'));
+    if(hudEl.obj&&W&&W.obj){ const o=W.obj; hudSet('obj',o.type+'|'+o.txt,()=>{ hudEl.obj.innerHTML=`${o.type==='abyss'?'Бездна':STAGE_TYPES[o.type].n}<small>${o.txt}</small>`; }); }
+    if(hudEl.quest) hudSet('qv',(G.boss&&G.boss.alive)?'hidden':'',v=>{ hudEl.quest.style.visibility=v; });
+    const B=G.boss; if(B&&hudEl.boss){ hudSet('bh',!B.alive&&!B.showDead,v=>hudEl.boss.classList.toggle('hidden',v)); if(B.alive){ const bf=Math.round(clamp(B.hp/B.maxHp,0,1)*500)/500; hudSet('bf',bf,v=>{ hudEl.bossV.style.transform=`scaleX(${v})`; hudEl.bossLag.style.transform=`scaleX(${v})`; }); hudSet('bn',B.bossD.n,()=>{ hudEl.bossN.innerHTML=`${B.bossD.n} <small style="font-family:var(--sc);font-size:11px;letter-spacing:.15em;display:block;color:#d8b77a">${B.bossD.t.toUpperCase()}</small>`; }); hudSet('bp',B.bossD.n+B.phase,()=>{ hudEl.bossPh.innerHTML=B.bossD.phases.map((t,i)=>`<i class="${i<=B.phase?'':'off'}"></i>`).join(''); }); } }
+    else if(hudEl.boss) hudSet('bh',true,()=>hudEl.boss.classList.add('hidden'));
   }
 }
 // ---------- input ----------
@@ -7179,11 +7302,14 @@ function pSettings(pause){
   h+=`<div class="set"><label>Звуки</label><input type="range" min="0" max="1" step="0.05" value="${S.set.sfx}" id="sSfx"></div>
   <div class="set"><label>Музыка</label><input type="range" min="0" max="1" step="0.05" value="${S.set.mus}" id="sMus"></div>
   <div class="set"><label>Яркость <small id="sBriV">${Math.round((S.set.bright==null?1:S.set.bright)*100)}%</small></label><input type="range" min="0.7" max="1.3" step="0.05" value="${S.set.bright==null?1:S.set.bright}" id="sBri"></div>
-  <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
-  <div class="muted" style="margin:-2px 0 6px">«Авто» не выбирает «Выс.» само — высокое качество (сглаживание, мягкое свечение, глубина резкости в диалогах) включается только здесь.</div>
+  <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['perf','Произв.'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">«Произв.» — максимум кадров: без постэффектов и контуров, меньше частиц и разрешение. «Авто» подбирает пресет по замерам кадров (не выше «Сред.»); «Выс.» — только вручную.</div>
+  <div class="set"><label>Частота кадров</label>${seg('fps',[[60,'60'],[30,'30 · экономия']])}</div>
+  <div class="set"><label>Показатели производительности</label>${seg('perfHud',[[true,'Вкл'],[false,'Выкл']])}</div>
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px"><button class="btn woodb small" ${act(()=>perfBenchStart())}>${ico('clock')} Тест производительности</button><button class="btn woodb small" ${act(()=>perfCopy())}>${ico('scroll')} Скопировать отчёт</button></div>
   <div class="set"><label>Постэффекты</label>${seg('post',[['auto','Авто'],['off','Выкл']])}</div>
   <div class="set"><label>Модели</label>${seg('models',[['real','Детальные'],['simple','Простые']])}</div>
-  <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
+  <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({perf:'«Производительность»',low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
   <div class="set"><label>Камера</label>${seg('cam',[[0,'Ближе'],[1,'Обычно'],[2,'Дальше']])}</div>
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
@@ -7202,7 +7328,7 @@ function pSettings(pause){
   setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const br=$('sBri'); if(br) br.oninput=()=>{ S.set.bright=+br.value; applyExposure(); const v=$('sBriV'); if(v) v.textContent=Math.round(S.set.bright*100)+'%'; saveGame(); }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; AQ.downT=performance.now(); applyQuality(resolveQuality(),'set'); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='perfHud') perfHudShow(S.set.perfHud); if(k==='fps'){ PERF.ceil=9; } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
 // ================= p8b: building panels, map, results =================
 function canBuildNow(id){ const lv=S.bld[id]; if(lv>=5) return false; if(bldUnlock(id)>S.bld.hall) return false; if(id!=='hall'&&lv+1>S.bld.hall) return false; return canPay(bldCost(id,lv+1)); }
 function bldTabs(id){
@@ -8875,10 +9001,17 @@ function startGame(fresh){
 }
 
 // ---------- main loop ----------
-let _last=performance.now();
+let _last=performance.now(), _lastR=0, _wasCov=false, _warmW=null;
+// окно на весь экран поверх сцены (панель, карта): 3D рисуется ~10 раз в секунду (сцена видна сквозь затемнение)
+function sceneCovered(){ return G.mode!=='title'&&(!!PANEL.kind||!!G.mapOpen); }
 function loop(now){
-  requestAnimationFrame(loop); R.info.reset();
-  let rdt=Math.min(.05,Math.max(0,(now-_last)/1000)); _last=now; perfTick(rdt);
+  requestAnimationFrame(loop);
+  if(document.hidden){ _last=now; return; } // Telegram/вкладка в фоне: ничего не считаем и не рисуем
+  const cov=sceneCovered(); if(cov!==_wasCov){ _wasCov=cov; PERF.throttled=cov; PERF.acc=0; PERF.frames=0; PERF.win=0; PERF.winN=0; PERF.winCpu=0; }
+  // темп кадров: не чаще цели (60 или 30 — «Экономия батареи»; на 120-Гц экранах тоже 60), под панелью — ~10 к/с
+  const gap=cov?95:1000/fpsTarget()-3; if(now-_lastR<gap) return; _lastR=now;
+  R.info.reset(); const t0=performance.now(); const raw=(now-_last)/1000;
+  let rdt=Math.min(cov?.12:.05,Math.max(0,raw)); _last=now;
   let dt=rdt; if(G.hitstop>0){ G.hitstop-=rdt; dt*=.06; } if(G.slowmo>0){ G.slowmo-=rdt; dt*=.3; }
   const frozen=G.paused||G.dialog||G.mapOpen||G.rotPause;
   if(frozen&&G.mode!=='title') dt=0;
@@ -8901,7 +9034,12 @@ function loop(now){
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;
   wlBegin(); updateDmgNums(rdt); if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid') updateHpBars(); hudTick(rdt); if(typeof sysLabels==='function') sysLabels(rdt); wlEnd();
   asTick(dt,rdt);
-  asRender(rdt);
+  const t1=performance.now();
+  if(W!==_warmW){ _warmW=W; perfWarm(); } // новый мир: все шейдеры компилируются сразу (под затемнением), а не посреди боя
+  gpuBegin(); asRender(rdt); gpuEnd();
+  const t2=performance.now();
+  PERF.js+=(t1-t0-PERF.js)*.1; PERF.rs+=(t2-t1-PERF.rs)*.1;
+  perfTick(rdt,cov?0:raw,t2-t0); if(PH.on) perfHudFrame(raw,t1-t0,t2-t1);
 }
 
 // ---------- bot (balance testing) ----------
@@ -8974,7 +9112,7 @@ function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
   const steps=[
     ['Растираем пергамент…',()=>genCssTextures()],
-    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
+    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; PR=prCap(); R.setPixelRatio(PR); emberLight.visible=Q.point!==false; try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){} perfInit(); computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
     ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
@@ -10984,6 +11122,232 @@ const _bldBodyV6b=bldBody; bldBody=function(id,tab){ const h=_bldBodyV6b(id,tab)
 // ---------- настройки: иконки у пунктов, две колонки в альбомной ориентации ----------
 const SET_IC={'Звуки':'bolt','Музыка':'book','Яркость':'sun','Графика':'eye','Постэффекты':'spark','Модели':'helm','Камера':'map','Джойстик':'dodge','Вибрация':'bolt','Цифры урона':'sword','Полный экран':'up','Уголёк':'flame','Имя героя':'crown','Напоминания бота':'clock'};
 const _pSettingsV6=pSettings; pSettings=function(pause){ let h=_pSettingsV6(pause); h=h.replace(/<label>([^<]+?)(\s*<small|<\/label>)/g,(m,t,rest)=>{ const k=t.trim(); return SET_IC[k]?`<label>${ico(SET_IC[k])} ${t}${rest}`:m; }); return `<div class="setv6">${h}</div>`; };
+// ================= p25: производительность — Perf HUD, таймер GPU, отчёт, 10-секундный тест =================
+// Включение: Настройки → «Показатели производительности» или ?perf=1 в адресе. «Скопировать отчёт» — короткий текст для разработчиков.
+// «Тест производительности» (только в деревне): 4 с облёт деревни + 6 с «толпа» (16 врагов, спутник, вспышки и частицы), затем итог.
+
+// ---------- таймер GPU (EXT_disjoint_timer_query_webgl2; в Safari его нет — тогда GPU оценивается по времени кадра) ----------
+const GT={init:false,gl:null,ext:null,q:[],cur:null,ok:false};
+function gpuBegin(){
+  if(!GT.init){ GT.init=true; try{ const gl=R.getContext(); if(R.capabilities.isWebGL2) GT.ext=gl.getExtension('EXT_disjoint_timer_query_webgl2'); GT.gl=gl; }catch(e){ GT.ext=null; } }
+  if(!GT.ext||GT.cur||GT.q.length>=4) return;
+  try{ const q=GT.gl.createQuery(); GT.gl.beginQuery(GT.ext.TIME_ELAPSED_EXT,q); GT.cur=q; }catch(e){ GT.ext=null; }
+}
+function gpuEnd(){
+  if(!GT.cur) return; const gl=GT.gl;
+  try{ gl.endQuery(GT.ext.TIME_ELAPSED_EXT); GT.q.push(GT.cur); GT.cur=null;
+    while(GT.q.length){ const q=GT.q[0]; if(!gl.getQueryParameter(q,gl.QUERY_RESULT_AVAILABLE)) break; const dis=gl.getParameter(GT.ext.GPU_DISJOINT_EXT); const ns=gl.getQueryParameter(q,gl.QUERY_RESULT); gl.deleteQuery(q); GT.q.shift();
+      if(!dis){ const ms=ns/1e6; PERF.gpu=PERF.gpu<0?ms:PERF.gpu+(ms-PERF.gpu)*.1; GT.ok=true; PH.gpuAcc+=ms; PH.gpuN++; } }
+  }catch(e){ GT.ext=null; GT.cur=null; }
+}
+
+// ---------- сбор показателей ----------
+const PH={on:false,el:null,t:0,compact:false,fr:0,acc:0,js:0,rs:0,gpuAcc:0,gpuN:0,calls:0,tris:0,last:null,bench:null,benchRes:null,dev:null};
+function perfDevice(){
+  if(PH.dev) return PH.dev; let gpu='', vend='', gl2=false;
+  try{ const gl=R.getContext(); gl2=!!R.capabilities.isWebGL2; const e=gl.getExtension('WEBGL_debug_renderer_info'); gpu=e?String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL)):String(gl.getParameter(gl.RENDERER)); vend=e?String(gl.getParameter(e.UNMASKED_VENDOR_WEBGL)):''; }catch(e){}
+  let tg=''; try{ const w=window.Telegram&&Telegram.WebApp; if(w&&w.platform&&w.platform!=='unknown') tg=w.platform+' '+(w.version||''); }catch(e){}
+  return PH.dev={ua:navigator.userAgent,gpu,vend,gl2,tg,mem:navigator.deviceMemory||'?',cores:navigator.hardwareConcurrency||'?',scr:screen.width+'×'+screen.height,dpr:window.devicePixelRatio||1,mobile:IS_MOBILE};
+}
+function perfParticles(){ try{ return PA.count()+PN.count(); }catch(e){ return 0; } }
+function perfLow1(){ // «1% low»: средний FPS худшего 1% кадров за последние ~4 с
+  const n=PERF.hn; if(n<10) return PERF.fps; const a=Array.from(PERF.hist.subarray(0,n)).sort((x,y)=>y-x); const k=Math.max(1,Math.round(n*.01)); let s=0; for(let i=0;i<k;i++) s+=a[i]; return 1000/(s/k); }
+function perfSnap(){
+  const d=PH.fr||1, ms=PH.acc/d*1000, gpuT=PH.gpuN?PH.gpuAcc/PH.gpuN:-1, cpu=(PH.js+PH.rs)/d;
+  const info=R.info; let sk=0; for(const a of AS.live) if(a.root.visible) sk++;
+  return {fps:ms>0?1000/ms:0,low:perfLow1(),ms,js:PH.js/d,rs:PH.rs/d,gpu:gpuT,gpuEst:gpuT<0,cpu,
+    bound:gpuT>=0?(gpuT>cpu*1.1?'GPU':'CPU'):(ms>cpu*1.35+2?'GPU?':'CPU?'),
+    calls:PH.calls,tris:PH.tris,progs:info.programs?info.programs.length:0,tex:info.memory.textures,geo:info.memory.geometries,
+    act:AS.live.size,vis:AS.visible||0,anim:AS.animated||0,parts:perfParticles(),en:G.enemies?G.enemies.filter(e=>e.alive).length:0,
+    pr:PR,prMin:prMin(),prMax:prCap(),dpr:window.devicePixelRatio||1,w:R.domElement.width,h:R.domElement.height,q:QL,qSet:S.set.q,post:AS.post!=='low'&&!!AS.FX,fpsT:fpsTarget(),mode:G.mode,thr:!!PERF.throttled};
+}
+const Q_NAME={perf:'Произв.',low:'Низк.',med:'Сред.',high:'Выс.'};
+const f1=v=>v<0?'—':v<10?v.toFixed(1):Math.round(v)+'';
+function perfHudText(s){
+  const g=s.gpu<0?(s.bound==='GPU?'?'≈'+f1(Math.max(0,s.ms-s.cpu)):'—'):f1(s.gpu);
+  if(PH.compact) return `${Math.round(s.fps)} к/с · ${f1(s.ms)} мс · ×${s.pr.toFixed(2)}`;
+  return `${Math.round(s.fps)} к/с · 1% ${Math.round(s.low)} · кадр ${f1(s.ms)} мс${s.thr?' (меню)':''}
+JS ${f1(s.js)} · отправка ${f1(s.rs)} · GPU ${g}${s.gpu<0&&s.bound==='GPU?'?' (оценка)':''} мс → ${s.bound}
+вызовы ${s.calls} · треуг. ${Math.round(s.tris/1000)}k · прогр. ${s.progs}
+текст. ${s.tex} · геом. ${s.geo} · акт. ${s.vis}/${s.act} (аним. ${s.anim}) · част. ${s.parts}
+PR ${s.pr.toFixed(2)} [${s.prMin.toFixed(2)}–${s.prMax.toFixed(2)}] DPR ${s.dpr} · ${s.w}×${s.h}
+${Q_NAME[s.q]}${s.qSet==='auto'?' (авто)':''} · пост ${s.post?'вкл':'выкл'} · цель ${s.fpsT}`;
+}
+function perfHudShow(on){
+  PH.on=!!on;
+  if(on&&!PH.el){ const st=document.createElement('style'); st.textContent=`#perfHud{position:fixed;z-index:60;left:50%;top:calc(var(--st,0px) + 60px);transform:translateX(-50%);max-width:94vw;padding:3px 7px;border-radius:6px;background:rgba(6,3,1,.72);color:#e8ffd0;font:11px/1.3 ui-monospace,Menlo,Consolas,monospace;white-space:pre;pointer-events:auto;box-shadow:0 0 0 1px rgba(240,204,120,.35);user-select:none;-webkit-user-select:none}#perfHud.c{font-size:11px}#perfHud b{color:#ffd27a;font-weight:700}`;
+    document.head.appendChild(st); PH.el=document.createElement('div'); PH.el.id='perfHud'; PH.el.className='pe'; document.body.appendChild(PH.el);
+    PH.el.addEventListener('pointerdown',ev=>{ ev.stopPropagation(); PH.compact=!PH.compact; PH.el.classList.toggle('c',PH.compact); }); }
+  if(PH.el) PH.el.style.display=on?'':'none';
+  PH.t=0; PH.fr=0; PH.acc=0; PH.js=0; PH.rs=0;
+}
+function perfHudFrame(raw,js,rs){
+  PH.fr++; PH.acc+=Math.min(raw,.5); PH.js+=js; PH.rs+=rs; PH.calls=R.info.render.calls; PH.tris=R.info.render.triangles; PH.t+=raw;
+  if(PH.bench) perfBenchFrame(raw,js,rs);
+  if(PH.t<.5) return;
+  const s=perfSnap(); PH.last=s; if(PH.el&&PH.el.style.display!=='none'){ const t=perfHudText(s); if(PH.el.textContent!==t) PH.el.textContent=t; const hv=PANEL.kind==='perfrep'?'hidden':''; if(PH.el.style.visibility!==hv) PH.el.style.visibility=hv; }
+  PH.t=0; PH.fr=0; PH.acc=0; PH.js=0; PH.rs=0; PH.gpuAcc=0; PH.gpuN=0;
+}
+
+// ---------- отчёт ----------
+function perfReport(){
+  const d=perfDevice(), s=PH.last||perfSnap();
+  const ua=d.ua.replace(/Mozilla\/5\.0 /,'').replace(/ AppleWebKit\/[\d.]+ \(KHTML, like Gecko\)/,'').slice(0,150);
+  const L=[`ЭМБЕРВЕЙЛ · отчёт производительности · ${new Date().toISOString().slice(0,16).replace('T',' ')}`,
+    `UA: ${ua}${d.tg?' · Telegram '+d.tg:''}`,
+    `GPU: ${d.gpu||'?'}${d.vend?' ('+d.vend+')':''} · WebGL${d.gl2?2:1} · таймер GPU: ${GT.ext?(GT.ok?'да':'есть'):'нет'}`,
+    `Экран ${d.scr} · DPR ${d.dpr} · окно ${window.innerWidth}×${window.innerHeight} · память ${d.mem} ГБ · ядер ${d.cores}${d.mobile?' · телефон':''}`,
+    `Качество: ${Q_NAME[QL]}${S.set.q==='auto'?' (авто)':''} · пост: ${s.post?'вкл':'выкл'} · цель ${fpsTarget()} к/с · модели: ${AS.ok?'детальные':'простые'}`,
+    `Сейчас (${s.mode}): ${f1(s.fps)} к/с (1% ${f1(s.low)}) · кадр ${f1(s.ms)} мс · JS ${f1(s.js)} · отпр. ${f1(s.rs)} · GPU ${s.gpu<0?'—':f1(s.gpu)} → ${s.bound}`,
+    `PR ${s.pr.toFixed(2)} [${s.prMin.toFixed(2)}–${s.prMax.toFixed(2)}] · буфер ${s.w}×${s.h} · вызовы ${s.calls} · треуг. ${Math.round(s.tris/1000)}k · прогр. ${s.progs} · текст. ${s.tex} · геом. ${s.geo} · акт. ${s.vis}/${s.act}`];
+  const B=PH.benchRes; if(B) for(const k of ['village','crowd']){ const r=B[k]; if(r) L.push(`Тест ${k==='village'?'деревня':'толпа'}: ${f1(r.fps)} к/с (1% ${f1(r.low)}) · кадр ${f1(r.ms)} · JS ${f1(r.js)} · отпр. ${f1(r.rs)} · GPU ${r.gpu<0?'—':f1(r.gpu)} · PR ${r.pr.toFixed(2)} · вызовы ${r.calls} · треуг. ${Math.round(r.tris/1000)}k`); }
+  return L.join('\n');
+}
+function perfCopy(txt){
+  txt=txt||perfReport(); let ok=false;
+  const fallback=()=>{ try{ const ta=document.createElement('textarea'); ta.value=txt; ta.setAttribute('readonly',''); ta.style.cssText='position:fixed;left:0;top:0;opacity:0'; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,txt.length); ok=document.execCommand('copy'); ta.remove(); }catch(e){} };
+  const done=()=>{ if(ok) toast('Отчёт скопирован — вставьте его в чат разработчикам'); perfShowReport(txt,ok); };
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(()=>{ ok=true; done(); },()=>{ fallback(); done(); }); return; } }catch(e){}
+  fallback(); done();
+}
+// окно с текстом отчёта (если буфер обмена недоступен — текст можно выделить вручную)
+function perfShowReport(txt,copied){
+  openPanel('perfrep',{txt,copied});
+}
+const _renderPanelP25=renderPanel;
+renderPanel=function(){
+  if(PANEL.kind!=='perfrep') return _renderPanelP25();
+  const o=PANEL.opts, B=PH.benchRes;
+  const tbl=B?`<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">${['village','crowd'].map(k=>{ const r=B[k]; if(!r) return ''; return `<div class="card" style="flex:1;min-width:150px;text-align:center"><div class="muted">${k==='village'?'Деревня (облёт)':'Толпа (16 врагов)'}</div><div style="font-family:var(--disp);font-size:34px;color:${r.fps>=50?'#9cff7a':r.fps>=28?'#ffd27a':'#ff7a62'}">${Math.round(r.fps)}<small style="font-size:14px"> к/с</small></div><div class="muted">1% — ${Math.round(r.low)} · кадр ${f1(r.ms)} мс · ×${r.pr.toFixed(2)}</div></div>`; }).join('')}</div>`:'';
+  $('panel').innerHTML=`<div id="pFrame" class="notabs">${frame(`<div id="pHead"><h2>${B?'Тест производительности':'Отчёт производительности'}</h2><button class="hbtn" id="pClose">${ico('close')}</button></div><div id="pBody">${tbl}
+    <div class="muted" style="margin-bottom:6px">${o.copied?'Отчёт скопирован в буфер обмена — вставьте его в чат разработчикам.':'Выделите текст ниже и скопируйте, или нажмите «Скопировать».'}</div>
+    <textarea id="perfTxt" readonly style="width:100%;height:150px;font:11px/1.35 ui-monospace,Menlo,monospace;background:#120904;color:#f4e6c8;border:1px solid var(--line,#6a4a20);border-radius:6px;padding:6px">${esc(o.txt||'')}</textarea>
+    <div class="row" style="gap:8px;margin-top:8px;justify-content:center"><button class="btn leather" ${act(()=>perfCopy(o.txt))}>${ico('scroll')} Скопировать</button><button class="btn woodb" ${act(()=>closePanel())}>Закрыть</button></div></div>`)}</div>`;
+  const c=$('pClose'); if(c) c.onclick=()=>closePanel();
+};
+
+// ---------- 10-секундный тест ----------
+// Стандартная сцена: деревня. 0–4 с — камера облетает деревню; 4–10 с — вокруг героя 16 врагов (модели и анимации как в бою,
+// но без боевой логики — сохранение не меняется), спутник, вспышки заклинаний и частицы. Разрешение и пресет работают как в игре.
+const PB={};
+function perfBenchStart(){
+  if(PH.bench) return;
+  if(G.mode!=='village'||!G.P||!W){ toast('Тест производительности запускается в деревне'); return; }
+  if(PANEL.kind) closePanel();
+  const wasOn=PH.on; if(!wasOn) perfHudShow(true); if(PH.el) PH.el.style.display='none';
+  PH.bench={t:0,phase:'village',wasOn,rigs:[],data:{village:mkAcc(),crowd:mkAcc()},fxT:0,ov:CAMR.override,hud:$('hud')&&$('hud').style.visibility};
+  PERF.hn=0; toast('Тест производительности: 10 секунд…');
+}
+function mkAcc(){ return {n:0,t:0,js:0,rs:0,pr:0,calls:0,tris:0,gpu:0,gn:0,hist:[]}; }
+function perfBenchSpawn(){
+  const B=PH.bench, P=G.P, kinds=['goblin','skelShield','wolf','goblin'];
+  for(let i=0;i<16;i++){ let rig=null; try{ rig=ENEMY_MODELS[kinds[i%kinds.length]](); }catch(e){} if(!rig) continue;
+    const a=i/16*TAU, r=2.6+(i%3)*1.4; rig.root.position.set(P.x+Math.cos(a)*r,0,P.z+Math.sin(a)*r); rig.root.rotation.y=Math.atan2(P.x-rig.root.position.x,P.z-rig.root.position.z);
+    worldRoot.add(rig.root); B.rigs.push({rig,a,r,ph:i*.37}); if(rig.actor) rig.actor.play(i%3===0?'run':'attack',{once:false}); }
+  try{ const c=buildCompanion('bran',S.gear); c.root.position.set(P.x+1.5,0,P.z+.8); worldRoot.add(c.root); B.rigs.push({rig:c,a:0,r:0,comp:1}); if(c.actor) c.actor.play('attack'); }catch(e){}
+}
+function perfBenchFrame(raw,js,rs){
+  const B=PH.bench; B.t+=raw; const P=G.P;
+  if(B.phase==='village'){ const u=B.t/4; CAMR.override={x:Math.sin(u*TAU)*9,z:Math.cos(u*TAU)*7-2,zoom:.9,pitch:.9};
+    if(B.t>=4){ B.phase='crowd'; CAMR.override=null; perfBenchSpawn(); PERF.hn=0; } }
+  else { B.fxT-=raw; const t=B.t;
+    for(const o of B.rigs){ if(o.comp) continue; const a=o.a+t*.35; o.rig.root.position.x=P.x+Math.cos(a)*o.r; o.rig.root.position.z=P.z+Math.sin(a)*o.r; o.rig.root.rotation.y=Math.atan2(P.x-o.rig.root.position.x,P.z-o.rig.root.position.z); }
+    if(B.fxT<=0){ B.fxT=.35; const o=B.rigs[(Math.random()*B.rigs.length)|0]; if(o){ const p=o.rig.root.position; fx('hit',p.x,1,p.z); fx('fire',p.x,.4,p.z,{k:10}); asBurst(p.x,0,p.z,0xff7a2a,2.2,.5); if(Math.random()<.4) dmgNum(p.x,1.8,p.z,String(100+((Math.random()*900)|0)),Math.random()<.2?'crit':''); } }
+    if(B.t>=10){ perfBenchEnd(); return; } }
+  // учёт: пропускаем первые 0,4 с каждой фазы (смена сцены)
+  const ph=B.phase==='village'?B.t:B.t-4; if(ph<.4) return;
+  const A=B.data[B.phase]; A.n++; A.t+=raw; A.js+=js; A.rs+=rs; A.pr+=PR; A.calls=Math.max(A.calls,R.info.render.calls); A.tris=Math.max(A.tris,R.info.render.triangles); A.hist.push(raw*1000);
+  if(PERF.gpu>=0){ A.gpu+=PERF.gpu; A.gn++; }
+}
+function perfBenchEnd(){
+  const B=PH.bench; PH.bench=null; CAMR.override=B.ov||null;
+  for(const o of B.rigs){ if(o.rig.root.parent) o.rig.root.parent.remove(o.rig.root); }
+  const res={};
+  for(const k in B.data){ const A=B.data[k]; if(!A.n) continue; const h=A.hist.sort((x,y)=>y-x), m=Math.max(1,Math.round(h.length*.01)); let w=0; for(let i=0;i<m;i++) w+=h[i];
+    res[k]={fps:A.n/A.t,low:1000/(w/m),ms:A.t/A.n*1000,js:A.js/A.n,rs:A.rs/A.n,gpu:A.gn?A.gpu/A.gn:-1,pr:A.pr/A.n,calls:A.calls,tris:A.tris}; }
+  PH.benchRes=res; if(!B.wasOn) perfHudShow(false); else if(PH.el) PH.el.style.display='';
+  try{ track('perf_bench',QL+':'+Math.round((res.crowd||res.village||{fps:0}).fps)); }catch(e){}
+  perfShowReport(perfReport(),false);
+  return res;
+}
+
+// ---------- запуск и отладочные хуки ----------
+function perfInit(){ try{ if(/[?&]perf=1\b/.test(location.search)) S.set.perfHud=true; if(S.set.perfHud) perfHudShow(true); }catch(e){} }
+Object.assign(window.__game,{
+  perf:{ report:()=>perfReport(), snap:()=>perfSnap(), hud:(v=true)=>{ S.set.perfHud=v; perfHudShow(v); }, bench:()=>perfBenchStart(), benchRes:()=>PH.benchRes, busy:()=>!!PH.bench, gpu:()=>({ext:!!GT.ext,ok:GT.ok,ms:PERF.gpu}) },
+});
+
+// ---------- деревня: процедурные здания (общий материал MT) сливаются в одну сетку — минус 1 вызов на здание ----------
+// Сливаются только здания из W.bmesh (меняются лишь через buildVillageBuildings, который пересобирает пакет). Башни стены (t0..t3)
+// не трогаем — в набеге на соседа они разрушаемы. Настоящие модели KayKit (группы) остаются как есть (у них «призрак» при заслоне).
+function villageBatch(){
+  if(!W||!W.bmesh) return;
+  if(W.vbatch){ worldRoot.remove(W.vbatch); W.vbatch.geometry.dispose(); W.vbatch=null; }
+  const list=[]; for(const k in W.bmesh){ const m=W.bmesh[k]; if(/^t\d/.test(k)||!m||!m.isMesh||m.isInstancedMesh||m.material!==MT||m.parent!==worldRoot) continue; const g=m.geometry; if(g.index||!g.attributes.aE||!g.attributes.color||!g.attributes.normal) continue; list.push(m); }
+  if(list.length<2) return;
+  let n=0; for(const m of list) n+=m.geometry.attributes.position.count;
+  const P=new Float32Array(n*3), N=new Float32Array(n*3), C=new Float32Array(n*3), E=new Float32Array(n), nm=new THREE.Matrix3(), v=new THREE.Vector3();
+  let o=0;
+  for(const m of list){ m.updateMatrix(); const mw=m.matrix; nm.getNormalMatrix(mw); const g=m.geometry, pa=g.attributes.position, na=g.attributes.normal, ca=g.attributes.color, ea=g.attributes.aE, cnt=pa.count;
+    for(let i=0;i<cnt;i++){ const k=(o+i)*3; v.fromBufferAttribute(pa,i).applyMatrix4(mw); P[k]=v.x; P[k+1]=v.y; P[k+2]=v.z; v.fromBufferAttribute(na,i).applyMatrix3(nm).normalize(); N[k]=v.x; N[k+1]=v.y; N[k+2]=v.z; C[k]=ca.getX(i); C[k+1]=ca.getY(i); C[k+2]=ca.getZ(i); E[o+i]=ea.getX(i); }
+    o+=cnt; m.visible=false; m.userData.batched=1; }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(P,3)); g.setAttribute('normal',new THREE.BufferAttribute(N,3)); g.setAttribute('color',new THREE.BufferAttribute(C,3)); g.setAttribute('aE',new THREE.BufferAttribute(E,1)); g.computeBoundingSphere();
+  const mesh=new THREE.Mesh(g,MT); mesh.name='village_batch'; mesh.matrixAutoUpdate=false; worldRoot.add(mesh); W.vbatch=mesh;
+}
+const _bvbP25=buildVillageBuildings; buildVillageBuildings=function(){ _bvbP25(); try{ villageBatch(); }catch(e){ console.error(e); } };
+
+// ---------- прогрев шейдеров: при смене мира компилируем всё сразу; один раз — вспышку заклинания и частицы ----------
+let _warmFx=false;
+function perfWarm(){
+  try{ R.compile(scene,cam); }catch(e){}
+  if(!_warmFx&&window.EVFX&&AS.ok){ _warmFx=true; try{ const b=EVFX.burst(scene,new THREE.Vector3(0,-50,0),{color:'#ff8a3a',radius:.1,duration:.05,shards:4}); b.update(0.001); R.compile(scene,cam); }catch(e){} }
+}
+
+// ---------- деревня: статичные пропсы (лес, трава, частокол, фонари…) запекаются в одну сетку на материал ----------
+// В деревне пропсы не двигаются и не ломаются, а InstancedMesh давал по 1–2 вызова на каждый тип. Отсечение по видимой области
+// для запечённых не нужно: вся деревня — несколько десятков тысяч вершин без скиннинга.
+function nscale(a){ if(!a.normalized) return 1; const A=a.array; return A instanceof Int8Array?1/127:A instanceof Uint8Array?1/255:A instanceof Int16Array?1/32767:A instanceof Uint16Array?1/65535:1; }
+function villageBakeProps(){
+  if(!W||W.kind!=='village'||!W.propIM) return;
+  for(const m of (W.propBaked||[])){ worldRoot.remove(m); m.geometry.dispose(); } W.propBaked=[];
+  const byMat=new Map(), m4=new THREE.Matrix4(), q=new THREE.Quaternion(), pv=new THREE.Vector3(), ps=new THREE.Vector3(), Y=new THREE.Vector3(0,1,0);
+  const place=p=>{ q.setFromAxisAngle(Y,p.ry); ps.set(p.s,p.s*(p.sy||1),p.s); pv.set(p.x,p.y||0,p.z); return m4.compose(pv,q,ps).clone(); };
+  const push=(mat,geo,M)=>{ let L=byMat.get(mat); if(!L) byMat.set(mat,L=[]); L.push({geo,M}); };
+  const done=[];
+  for(const t in W.propIM){ const e=W.propIM[t]; if(!e.list.length) continue;
+    if(e.im){ if(e.im.material!==MT) continue; for(const p of e.list) push(MT,e.im.geometry,place(p)); done.push([t,e.im]); }
+    else if(e.grp){ const g=e.grp, L=g.userData.local, S4=g.userData.scale; let ok=true;
+      g.children.forEach((im,k)=>{ if(!im.isInstancedMesh) return; if(im.material.transparent) ok=false; });
+      if(!ok) continue;
+      g.children.forEach((im,k)=>{ if(!im.isInstancedMesh) return; for(const p of e.list) push(im.material,im.geometry,place(p).multiply(S4).multiply(L[k])); });
+      done.push([t,g]); } }
+  const ATT=['position','normal','uv','color','aE'];
+  for(const [mat,list] of byMat){
+    const g0=list[0].geo, att=ATT.filter(k=>g0.attributes[k]);
+    if(!att.includes('position')||!att.includes('normal')||list.some(x=>att.some(k=>!x.geo.attributes[k])||!!x.geo.index!==!!g0.index)){ continue; }
+    let nv=0, ni=0; for(const x of list){ nv+=x.geo.attributes.position.count; if(x.geo.index) ni+=x.geo.index.count; }
+    const out={}; for(const k of att) out[k]=new Float32Array(nv*g0.attributes[k].itemSize);
+    const IDX=g0.index?(nv>65535?new Uint32Array(ni):new Uint16Array(ni)):null;
+    const v=new THREE.Vector3(), nm=new THREE.Matrix3(); let o=0, oi=0;
+    for(const x of list){ const A=x.geo.attributes, n=A.position.count; nm.getNormalMatrix(x.M);
+      const pS=nscale(A.position), nS=nscale(A.normal);
+      for(let i=0;i<n;i++){ const k=(o+i)*3;
+        v.set(A.position.getX(i)*pS,A.position.getY(i)*pS,A.position.getZ(i)*pS).applyMatrix4(x.M); out.position[k]=v.x; out.position[k+1]=v.y; out.position[k+2]=v.z;
+        v.set(A.normal.getX(i)*nS,A.normal.getY(i)*nS,A.normal.getZ(i)*nS).applyMatrix3(nm).normalize(); out.normal[k]=v.x; out.normal[k+1]=v.y; out.normal[k+2]=v.z; }
+      for(const key of att){ if(key==='position'||key==='normal') continue; const a=A[key], s=nscale(a), it=a.itemSize, dst=out[key];
+        for(let i=0;i<n;i++){ dst[(o+i)*it]=a.getX(i)*s; if(it>1) dst[(o+i)*it+1]=a.getY(i)*s; if(it>2) dst[(o+i)*it+2]=a.getZ(i)*s; } }
+      if(IDX){ const ix=x.geo.index; for(let i=0;i<ix.count;i++) IDX[oi+i]=ix.getX(i)+o; oi+=ix.count; }
+      o+=n; }
+    const g=new THREE.BufferGeometry(); for(const k of att) g.setAttribute(k,new THREE.BufferAttribute(out[k],g0.attributes[k].itemSize)); if(IDX) g.setIndex(new THREE.BufferAttribute(IDX,1)); g.computeBoundingSphere();
+    const mesh=new THREE.Mesh(g,mat); mesh.name='village_props'; mesh.matrixAutoUpdate=false; worldRoot.add(mesh); W.propBaked.push(mesh);
+    for(const x of list) x.baked=true; mat.userData.bakedOk=true;
+  }
+  // убираем запечённые типы из отсечения (если хоть один материал типа не запёкся — тип остаётся инстансом целиком)
+  for(const [t,obj] of done){ let all=true; const mats=obj.isInstancedMesh?[obj.material]:obj.children.filter(c=>c.isInstancedMesh).map(c=>c.material); for(const m of mats) if(!m.userData.bakedOk) all=false;
+    if(all){ worldRoot.remove(obj); delete W.propIM[t]; } }
+  for(const m of byMat.keys()) delete m.userData.bakedOk;
+}
+const _bpmP25=buildPropMeshes; buildPropMeshes=function(){ _bpmP25(); try{ villageBakeProps(); }catch(e){ console.error(e); } };
 // ================= pz: boot =================
 boot();
 })();

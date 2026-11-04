@@ -92,19 +92,23 @@ function hudQuest(){
   if(G.mode==='abyss'&&G.abyss){ html=`<h4>${ico('abyss')} Бездна · этаж ${G.abyss.floor}</h4><div class="q">${G.abyss.mods.map(m=>`<b>${ABYSS_MODS[m].n}</b>`).join(', ')||'Без особенностей'}</div><div class="q">Осколков: <b>${G.abyss.shards}</b> · рекорд ${S.endless.best}</div>`; }
   el.innerHTML=html; el.style.display=html?'':'none';
 }
+// HUD обновляется каждый кадр, но DOM трогаем только при изменении значения (меньше перерасчёта стилей/перерисовки на телефонах)
+function hudSet(k,v,fn){ const c=hudEl._c||(hudEl._c={}); if(c[k]===v) return; c[k]=v; fn(v); }
 function hudTick(dt){
   const P=G.P; if(!P||!hudEl.hpV) return;
-  const f=clamp(P.hp/P.maxHp,0,1); hudEl.hpV.style.transform=`scaleX(${f})`; hudEl.hpLag.style.transform=`scaleX(${f})`; hudEl.hpT.textContent=`${Math.ceil(P.hp)} / ${P.maxHp}`+(P.shield>1?` +${Math.round(P.shield)}`:'');
-  hudEl.emV.style.transform=`scaleX(${P.ember/100})`; hudEl.emB.classList.toggle('full',P.ember>=100);
-  hudEl.xpV.style.transform=`scaleX(${S.hero.lvl>=MAX_LVL?1:S.hero.xp/xpNeed(S.hero.lvl)})`; hudEl.lvl.textContent=S.hero.lvl;
+  const f=Math.round(clamp(P.hp/P.maxHp,0,1)*400)/400; hudSet('hp',f,v=>{ hudEl.hpV.style.transform=`scaleX(${v})`; hudEl.hpLag.style.transform=`scaleX(${v})`; });
+  hudSet('hpT',`${Math.ceil(P.hp)} / ${P.maxHp}`+(P.shield>1?` +${Math.round(P.shield)}`:''),v=>{ hudEl.hpT.textContent=v; });
+  hudSet('em',Math.round(P.ember),v=>{ hudEl.emV.style.transform=`scaleX(${v/100})`; hudEl.emB.classList.toggle('full',v>=100); });
+  hudSet('xp',Math.round((S.hero.lvl>=MAX_LVL?1:S.hero.xp/xpNeed(S.hero.lvl))*300)/300,v=>{ hudEl.xpV.style.transform=`scaleX(${v})`; }); hudSet('lvl',S.hero.lvl,v=>{ hudEl.lvl.textContent=v; });
   if(G.mode!=='village'){
-    for(const k of ['s1','s2','s3']){ const b=$('b'+k.toUpperCase()); if(!b) continue; const c=P.cds[k], m=(P.cdMax&&P.cdMax[k])||1; b.querySelector('.cd').style.setProperty('--p',(c>0?c/m*100:0)+'%'); b.querySelector('.cdt').textContent=c>0?Math.ceil(c):''; }
-    if(hudEl.ult){ hudEl.ult.classList.toggle('ready',P.ember>=100); hudEl.ult.querySelector('.cd').style.setProperty('--p',(100-P.ember)+'%'); }
-    if(hudEl.dodge) hudEl.dodge.querySelector('.cd').style.setProperty('--p',(P.rollCd>0?P.rollCd/.85*100:0)+'%');
-    if(hudEl.obj&&W&&W.obj){ const o=W.obj; hudEl.obj.innerHTML=`${o.type==='abyss'?'Бездна':STAGE_TYPES[o.type].n}<small>${o.txt}</small>`; }
-    const qe=$('hQuest'); if(qe) qe.style.visibility=(G.boss&&G.boss.alive)?'hidden':'';
-    const B=G.boss; if(B&&hudEl.boss){ hudEl.boss.classList.toggle('hidden',!B.alive&&!B.showDead); if(B.alive){ const bf=clamp(B.hp/B.maxHp,0,1); hudEl.bossV.style.transform=`scaleX(${bf})`; hudEl.bossLag.style.transform=`scaleX(${bf})`; hudEl.bossN.innerHTML=`${B.bossD.n} <small style="font-family:var(--sc);font-size:11px;letter-spacing:.15em;display:block;color:#d8b77a">${B.bossD.t.toUpperCase()}</small>`; hudEl.bossPh.innerHTML=B.bossD.phases.map((t,i)=>`<i class="${i<=B.phase?'':'off'}"></i>`).join(''); } }
-    else if(hudEl.boss) hudEl.boss.classList.add('hidden');
+    if(!hudEl.sk){ hudEl.sk=['s1','s2','s3'].map(k=>{ const b=$('b'+k.toUpperCase()); return b?{k,cd:b.querySelector('.cd'),cdt:b.querySelector('.cdt')}:null; }).filter(Boolean); hudEl.ultCd=hudEl.ult&&hudEl.ult.querySelector('.cd'); hudEl.dodgeCd=hudEl.dodge&&hudEl.dodge.querySelector('.cd'); hudEl.quest=$('hQuest'); }
+    for(const o of hudEl.sk){ const c=P.cds[o.k], m=(P.cdMax&&P.cdMax[o.k])||1; hudSet('cd'+o.k,c>0?Math.round(c/m*100):0,v=>o.cd.style.setProperty('--p',v+'%')); hudSet('ct'+o.k,c>0?Math.ceil(c):'',v=>{ o.cdt.textContent=v; }); }
+    if(hudEl.ult){ hudSet('ultR',P.ember>=100,v=>hudEl.ult.classList.toggle('ready',v)); hudSet('ultP',Math.round(100-P.ember),v=>hudEl.ultCd.style.setProperty('--p',v+'%')); }
+    if(hudEl.dodgeCd) hudSet('dg',P.rollCd>0?Math.round(P.rollCd/.85*100):0,v=>hudEl.dodgeCd.style.setProperty('--p',v+'%'));
+    if(hudEl.obj&&W&&W.obj){ const o=W.obj; hudSet('obj',o.type+'|'+o.txt,()=>{ hudEl.obj.innerHTML=`${o.type==='abyss'?'Бездна':STAGE_TYPES[o.type].n}<small>${o.txt}</small>`; }); }
+    if(hudEl.quest) hudSet('qv',(G.boss&&G.boss.alive)?'hidden':'',v=>{ hudEl.quest.style.visibility=v; });
+    const B=G.boss; if(B&&hudEl.boss){ hudSet('bh',!B.alive&&!B.showDead,v=>hudEl.boss.classList.toggle('hidden',v)); if(B.alive){ const bf=Math.round(clamp(B.hp/B.maxHp,0,1)*500)/500; hudSet('bf',bf,v=>{ hudEl.bossV.style.transform=`scaleX(${v})`; hudEl.bossLag.style.transform=`scaleX(${v})`; }); hudSet('bn',B.bossD.n,()=>{ hudEl.bossN.innerHTML=`${B.bossD.n} <small style="font-family:var(--sc);font-size:11px;letter-spacing:.15em;display:block;color:#d8b77a">${B.bossD.t.toUpperCase()}</small>`; }); hudSet('bp',B.bossD.n+B.phase,()=>{ hudEl.bossPh.innerHTML=B.bossD.phases.map((t,i)=>`<i class="${i<=B.phase?'':'off'}"></i>`).join(''); }); } }
+    else if(hudEl.boss) hudSet('bh',true,()=>hudEl.boss.classList.add('hidden'));
   }
 }
 // ---------- input ----------
@@ -343,11 +347,14 @@ function pSettings(pause){
   h+=`<div class="set"><label>Звуки</label><input type="range" min="0" max="1" step="0.05" value="${S.set.sfx}" id="sSfx"></div>
   <div class="set"><label>Музыка</label><input type="range" min="0" max="1" step="0.05" value="${S.set.mus}" id="sMus"></div>
   <div class="set"><label>Яркость <small id="sBriV">${Math.round((S.set.bright==null?1:S.set.bright)*100)}%</small></label><input type="range" min="0.7" max="1.3" step="0.05" value="${S.set.bright==null?1:S.set.bright}" id="sBri"></div>
-  <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
-  <div class="muted" style="margin:-2px 0 6px">«Авто» не выбирает «Выс.» само — высокое качество (сглаживание, мягкое свечение, глубина резкости в диалогах) включается только здесь.</div>
+  <div class="set"><label>Графика</label>${seg('q',[['auto','Авто'],['perf','Произв.'],['low','Низк.'],['med','Сред.'],['high','Выс.']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">«Произв.» — максимум кадров: без постэффектов и контуров, меньше частиц и разрешение. «Авто» подбирает пресет по замерам кадров (не выше «Сред.»); «Выс.» — только вручную.</div>
+  <div class="set"><label>Частота кадров</label>${seg('fps',[[60,'60'],[30,'30 · экономия']])}</div>
+  <div class="set"><label>Показатели производительности</label>${seg('perfHud',[[true,'Вкл'],[false,'Выкл']])}</div>
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px"><button class="btn woodb small" ${act(()=>perfBenchStart())}>${ico('clock')} Тест производительности</button><button class="btn woodb small" ${act(()=>perfCopy())}>${ico('scroll')} Скопировать отчёт</button></div>
   <div class="set"><label>Постэффекты</label>${seg('post',[['auto','Авто'],['off','Выкл']])}</div>
   <div class="set"><label>Модели</label>${seg('models',[['real','Детальные'],['simple','Простые']])}</div>
-  <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
+  <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({perf:'«Производительность»',low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
   <div class="set"><label>Камера</label>${seg('cam',[[0,'Ближе'],[1,'Обычно'],[2,'Дальше']])}</div>
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
@@ -366,4 +373,4 @@ function pSettings(pause){
   setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const br=$('sBri'); if(br) br.oninput=()=>{ S.set.bright=+br.value; applyExposure(); const v=$('sBriV'); if(v) v.textContent=Math.round(S.set.bright*100)+'%'; saveGame(); }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }
-function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; QL=resolveQuality(); Q=QP[QL]; PR=Math.min(window.devicePixelRatio||1,Q.prMax); R.setPixelRatio(PR); asSetQuality(); camResize(); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }
+function applySettings(k){ if(k==='fs'){ try{ if(S.set.fs){ _orientTried=false; tryOrientationLock(); } else if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){} } if(k==='q'){ S.set.qAuto=null; AQ.downT=performance.now(); applyQuality(resolveQuality(),'set'); toast('Графика изменена. Полностью применится при смене локации.'); } if(k==='post'){ asSetQuality(); } if(k==='perfHud') perfHudShow(S.set.perfHud); if(k==='fps'){ PERF.ceil=9; } if(k==='models'){ toast('Модели сменятся после перезапуска игры'); } if(k==='cam') camResize(); if(k==='joy'&&$('hud')&&!$('hud').classList.contains('hidden')) hudBuild(); }

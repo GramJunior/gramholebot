@@ -917,7 +917,7 @@ html.port .gear2,html.port .prof,html.port .forge2,html.port .magic{grid-templat
 .hbtn:hover{filter:brightness(1.2)}
 /* бейдж «можно забрать» */
 .v-badge,.hbtn .dot,#hMenu .hbtn .dot,.tab .v-dot{position:absolute;top:-2px;right:-2px;min-width:14px;height:14px;border-radius:8px;background:radial-gradient(circle at 40% 35%,#ff9a6a,#e33a1c 60%,#8a1a08);box-shadow:0 0 0 2px #1a0d05,0 0 10px #ff5a2a;animation:vBadge 1.2s ease-in-out infinite}
-@keyframes vBadge{50%{transform:scale(1.25);box-shadow:0 0 0 2px #1a0d05,0 0 18px #ff7a3a}}
+@keyframes vBadge{50%{transform:scale(1.25)}}
 
 /* ---------- окно-панель ---------- */
 #panel{background:radial-gradient(ellipse at 50% 45%,rgba(20,10,4,.55),rgba(3,1,0,.86) 80%)}
@@ -1545,6 +1545,11 @@ html.land .setv6>*{break-inside:avoid}
 html.land.short #chestW .lc{width:calc(64px*var(--k))}
 html.land.short #chestW .chstage{height:min(44vh,220px)}
 html.land.short #chestW .chloot{gap:7px;margin-top:4px}
+/* perf: на «Произв.»/«Низк.» бесконечные анимации поверх 3D-сцены (HUD) проигрываются один раз — меньше перерисовки над холстом */
+html.qlow #hud *,html.qlow #hud *::before,html.qlow #hud *::after,html.qlow #hEvent,html.qlow #spirit img{animation-iteration-count:1!important}
+/* HUD: подсветка события без анимации тени (тень перерисовывается каждый кадр) */
+@keyframes evGlowT{50%{transform:scale(1.04)}}
+#hEvent{animation-name:evGlowT}
 </style>
 </head>
 <body>

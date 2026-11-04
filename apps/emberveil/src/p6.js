@@ -134,6 +134,8 @@ function mkObj(kind,x,z,o={}){
 // ---------- unload ----------
 function unloadWorld(){
   if(!W) return;
+  if(W.vbatch){ W.vbatch.geometry.dispose(); W.vbatch=null; }
+  for(const m of (W.propBaked||[])) m.geometry.dispose();
   for(const c of worldRoot.children.slice()){ worldRoot.remove(c); if(c.isMesh&&c===W.ground){ c.geometry.dispose(); } if(c===W.liquid){ c.geometry.dispose(); c.material.dispose(); } if(c.isInstancedMesh){ c.dispose&&c.dispose(); } if(c.userData&&c.userData.evInst){ for(const k of c.children) k.dispose&&k.dispose(); } }
   DECALS.clear(); PA.clear(); PN.clear();
   W=null;
@@ -311,7 +313,7 @@ function buildVillageBuildings(){
 }
 function refreshVillagers(){
   for(const v of W.villagers) worldRoot.remove(v.rig.root);
-  W.villagers=[]; const n=Math.min(10,S.bld.houses*2+Math.floor(S.prog.zone/1)+ (stageDone('1-5')?1:0));
+  W.villagers=[]; const n=Math.min({perf:4,low:6}[QL]||10,S.bld.houses*2+Math.floor(S.prog.zone/1)+ (stageDone('1-5')?1:0));
   for(let i=0;i<n;i++){ const rig=buildNPC(['v0','v1','v2'][i%3]); rig.root.scale.setScalar(.92); const a=rand(TAU),r=rand(7,18); const v={x:Math.cos(a)*r,z:Math.sin(a)*r,rig,tx:0,tz:0,wait:rand(3),t:rand(5),face:0}; rig.root.position.set(v.x,0,v.z); worldRoot.add(rig.root); W.villagers.push(v); }
 }
 

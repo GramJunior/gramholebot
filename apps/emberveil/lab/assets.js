@@ -23,6 +23,7 @@
 
   // ------------------------------------------------------------------ quality presets
   const QUALITY = {
+    perf: { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 4, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
     low:  { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 3, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
     med:  { maxTex: 256, outline: 'chars', outlinePx: 1.6, animStepFar: 2, maxAnisotropy: 1, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true },
     high: { maxTex: 256, outline: 'all',   outlinePx: 2.0, animStepFar: 1, maxAnisotropy: 4, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true }, // hullProps:true also outlines InstancedMesh scatter (≈2× env triangles)
@@ -305,6 +306,41 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return Promise.all(list.map((f) => loadFile(f).then((r) => { done++; onProgress && onProgress(done, list.length, f); return r; }))).then(() => list);
   }
 
+  // float skinned geometry from skinned parts (as-is) + rigid bone children (rebased into bind space, weight 1 on their bone).
+  // world(rest) of a rigid vertex = meshWorld·v; skinned (attached mode) gives boneWorld·boneInverse·bindMatrix·v', so
+  // v' = bindMatrix⁻¹ · boneInverse⁻¹ · boneWorld⁻¹ · meshWorld · v — then it follows the bone in every pose.
+  function mergeFloatSkinned(skin, rigid) {
+    const first = skin[0], sk = first.skeleton, bindInv = new T.Matrix4().copy(first.bindMatrix).invert();
+    const parts = skin.map((m) => ({ g: m.geometry, M: null })).concat(rigid.map((r) => {
+      const M = new T.Matrix4().copy(bindInv).multiply(new T.Matrix4().copy(sk.boneInverses[r.b]).invert()).multiply(new T.Matrix4().copy(r.bone.matrixWorld).invert()).multiply(r.o.matrixWorld);
+      return { g: r.o.geometry, M, b: r.b }; }));
+    let nv = 0, ni = 0; for (const p of parts) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
+    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4);
+    const IDX = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+    const v = new T.Vector3(), nm = new T.Matrix3(); let o = 0, oi = 0;
+    for (const p of parts) {
+      const A = p.g.attributes, pos = A.position, nor = A.normal, uv = A.uv, n = pos.count;
+      const ps = normScale(pos), ns = normScale(nor), us = uv ? normScale(uv) : 1;
+      if (p.M) nm.getNormalMatrix(p.M);
+      for (let i = 0; i < n; i++) {
+        const k = (o + i) * 3, k4 = (o + i) * 4;
+        v.set(pos.getX(i) * ps, pos.getY(i) * ps, pos.getZ(i) * ps); if (p.M) v.applyMatrix4(p.M); P[k] = v.x; P[k + 1] = v.y; P[k + 2] = v.z;
+        v.set(nor.getX(i) * ns, nor.getY(i) * ns, nor.getZ(i) * ns); if (p.M) v.applyMatrix3(nm); v.normalize(); N[k] = v.x; N[k + 1] = v.y; N[k + 2] = v.z;
+        if (uv) { UV[(o + i) * 2] = uv.getX(i) * us; UV[(o + i) * 2 + 1] = uv.getY(i) * us; }
+        if (p.M) { SI[k4] = p.b; SW[k4] = 1; }
+        else { const si = A.skinIndex, sw = A.skinWeight, ws = normScale(sw); SI[k4] = si.getX(i); SI[k4 + 1] = si.getY(i); SI[k4 + 2] = si.getZ(i); SI[k4 + 3] = si.getW(i);
+          SW[k4] = sw.getX(i) * ws; SW[k4 + 1] = sw.getY(i) * ws; SW[k4 + 2] = sw.getZ(i) * ws; SW[k4 + 3] = sw.getW(i) * ws; }
+      }
+      if (p.g.index) { const ix = p.g.index; for (let i = 0; i < ix.count; i++) IDX[oi + i] = ix.getX(i) + o; oi += ix.count; }
+      else { for (let i = 0; i < n; i++) IDX[oi + i] = o + i; oi += n; }
+      o += n;
+    }
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(P, 3)); g.setAttribute('normal', new T.BufferAttribute(N, 3)); g.setAttribute('uv', new T.BufferAttribute(UV, 2));
+    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
+    return g;
+  }
+
   // ------------------------------------------------------------------ Actor (skinned characters)
   const _tmpEuler = new T.Euler();
   class Actor {
@@ -357,27 +393,45 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       // weapons
       if (def.r) this.attach('r', def.r); if (def.l) this.attach('l', def.l);
       if (this.opts.outline !== false && S.Q.outline !== 'none') this.setOutline(true);
-      if (this.meshes.length > 2 && S.Q.mergeSkinned && this.opts.merge !== false && def.type !== 'hero') this._merge();
+      if ((this.meshes.length > 1 || this.slots.r || this.slots.l) && S.Q.mergeSkinned && this.opts.merge !== false && def.type !== 'hero') this._merge();
       S.actors.add(this);
       this.play(this.opts.clip || 'idle', { fade: 0 });
       this.mixer.update(Math.random() * 2);
     }
     findPart(name) { const n = T.PropertyBinding.sanitizeNodeName(name); return this.parts[name] || this.parts[n] || null; }
-    // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material)
+    // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material).
+    // Rigid parts hanging on bones (helmets, hoods, capes, the weapon and shield) that use the same atlas are converted to
+    // skinned geometry bound 100% to their bone and merged too: a KayKit skeleton goes from ~7 draw calls to ~3.
     _merge() {
       if (!T.BufferGeometryUtils) return;
       const groups = new Map();
-      for (const m of this.meshes) { if (!m.isSkinnedMesh || !m.visible || !m.parent.visible) continue; const src = m.userData.evSrcMat; if (!src) continue; if (!groups.has(src)) groups.set(src, []); groups.get(src).push(m); }
-      for (const [src, list] of groups) {
-        if (list.length < 2) continue;
-        const key = this.def.file + '|' + (this.def.hide || []).join(',') + '|' + src.uuid;
+      for (const m of this.meshes) { if (!m.isSkinnedMesh || !m.visible || !m.parent.visible) continue; const src = m.userData.evSrcMat; if (!src) continue; if (!groups.has(src)) groups.set(src, { skin: [], rigid: [] }); groups.get(src).skin.push(m); }
+      const sk0 = this.skeleton;
+      if (sk0 && !this.def.recolor && !this.def.mat && S.Q.mergeRigid !== false) {
+        this.model.updateMatrixWorld(true);
+        const boneIdx = new Map(); sk0.bones.forEach((b, i) => boneIdx.set(b, i));
+        this.model.traverse((o) => {
+          if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o.userData.isOutline || o.userData.evGlow || !o.material || o.material.transparent) return;
+          let vis = true, bone = null; for (let p = o; p && p !== this.model; p = p.parent) { if (!p.visible) vis = false; if (!bone && p !== o && boneIdx.has(p)) bone = p; }
+          if (!vis || !bone || !o.geometry.attributes.position || !o.geometry.attributes.normal || !o.geometry.attributes.uv) return;
+          const map = (o.userData.evSrcMat || o.material).map; if (!map) return;
+          for (const [src, g] of groups) if (src.map === map && !src.userData.emissive && !src.transparent) { g.rigid.push({ o, b: boneIdx.get(bone), bone }); break; }
+        });
+      }
+      for (const [src, G] of groups) {
+        const list = G.skin, rigid = G.rigid;
+        if (list.length + rigid.length < 2) continue;
+        const key = this.def.file + '|' + (this.def.hide || []).join(',') + '|' + src.uuid + (rigid.length ? '|r:' + rigid.map((r) => r.o.name + '@' + r.b).join(',') : '');
         let merged = S.mergeCache[key];
         if (merged === undefined) {
-          const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'];
-          const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
-          const sig = (gg) => Object.keys(gg.attributes).sort().map((k) => k + gg.attributes[k].array.constructor.name + gg.attributes[k].normalized + gg.attributes[k].itemSize).join('|');
-          merged = geos.some((gg) => sig(gg) !== sig(geos[0])) ? null : T.BufferGeometryUtils.mergeBufferGeometries(geos, false);
-          geos.forEach((gg) => gg.dispose());
+          if (rigid.length) merged = mergeFloatSkinned(list, rigid);
+          else {
+            const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'];
+            const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
+            const sig = (gg) => Object.keys(gg.attributes).sort().map((k) => k + gg.attributes[k].array.constructor.name + gg.attributes[k].normalized + gg.attributes[k].itemSize).join('|');
+            merged = geos.some((gg) => sig(gg) !== sig(geos[0])) ? null : T.BufferGeometryUtils.mergeBufferGeometries(geos, false);
+            geos.forEach((gg) => gg.dispose());
+          }
           if (merged) ensureOutlineNormals(merged);
           S.mergeCache[key] = merged;
         }
@@ -386,18 +440,23 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const sm = new T.SkinnedMesh(merged, first.material); sm.name = 'merged_' + src.name; sm.frustumCulled = false;
         first.parent.add(sm); sm.bind(first.skeleton, first.bindMatrix);
         for (const m of list) { if (m.userData.evOutline) m.remove(m.userData.evOutline); m.parent.remove(m); }
-        this.meshes = this.meshes.filter((m) => list.indexOf(m) < 0); this.meshes.push(sm);
+        for (const r of rigid) { r.o.visible = false; r.o.userData.evMerged = true; } // stays in the tree: weapon tips / trails still follow it
+        this.meshes = this.meshes.filter((m) => list.indexOf(m) < 0 && !m.userData.evMerged); this.meshes.push(sm);
         if (this._outline) addOutline(sm, { color: this.def.outline });
       }
     }
     setOutline(on) {
       this._outline = on;
       for (const m of this.meshes) {
-        if (on && !m.userData.evOutline && this.def.mat !== 'ghost') addOutline(m, { color: this.def.outline });
+        // tiny parts (eyes, capes, hoods: < 120 skinned / < 300 rigid vertices) get no hull — invisible at game zoom, 1 draw call each
+        if (on && !m.userData.evOutline && this.def.mat !== 'ghost' && (this.def.type === 'hero' || m.geometry.attributes.position.count >= (m.isSkinnedMesh ? 120 : 300))) addOutline(m, { color: this.def.outline });
         if (m.userData.evOutline) m.userData.evOutline.visible = on && m.visible;
       }
-      for (const k in this.slots) this.slots[k] && this.slots[k].traverse((o) => { if (o.isMesh && !o.userData.isOutline) { if (on) addOutline(o); if (o.userData.evOutline) o.userData.evOutline.visible = on; } });
+      const wo = on && this._weaponOutline();
+      for (const k in this.slots) this.slots[k] && this.slots[k].traverse((o) => { if (o.isMesh && !o.userData.isOutline) { if (wo) addOutline(o); if (o.userData.evOutline) o.userData.evOutline.visible = wo; } });
     }
+    // weapon/offhand hulls: high preset for everyone, the hero (always close to the camera) on med too — saves 1–2 draw calls per armed enemy
+    _weaponOutline() { return !!this._outline && (S.Q.outline === 'all' || this.def.type === 'hero'); }
     // clipset: 'medium' | 'large' | 'sword' | 'bow' | 'skeleton+crossbow' ... (layered on the rig clipset)
     setClipset(name) {
       const cs = S.manifest.clipsets; const map = Object.assign({}, cs[this.rig] || cs.medium);
@@ -432,7 +491,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const bone = slot === 'r' ? this.handR : slot === 'l' ? this.handL : slot === 'head' ? this.head : this.chest;
       if (this.slots[slot]) { this.slots[slot].parent && this.slots[slot].parent.remove(this.slots[slot]); this.slots[slot] = null; }
       if (!what || !bone) return null;
-      let obj = typeof what === 'string' ? (what === '@orb' ? makeOrb(o.glow || '#c47cff') : makeProp(weaponDef(what), { outline: this._outline })) : what;
+      let obj = typeof what === 'string' ? (what === '@orb' ? makeOrb(o.glow || '#c47cff') : makeProp(weaponDef(what), { outline: this._weaponOutline() })) : what;
       if (o.glow || (typeof what === 'string' && o.glowColor)) glowify(obj, o.glow || o.glowColor);
       obj.scale.multiplyScalar(o.s || 1);
       if (slot === 'back') { obj.position.set(0, 0.3, -0.35); obj.rotation.set(0.3, 0, 0); }
@@ -451,7 +510,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     /** update(dt, {far}) — far actors can be stepped less often (quality.animStepFar) */
     update(dt, o) {
       if (this._flashT > 0) { this._flashT -= dt; this.setFlash(Math.max(0, this._flashT / this._flashMax) * 0.85); }
-      const step = o && o.far ? S.Q.animStepFar : 1;
+      const step = o && o.step ? o.step : o && o.far ? S.Q.animStepFar : 1;
       this._acc += dt; if (++this._t % step !== 0) return; this.mixer.update(this._acc); this._acc = 0;
     }
     dispose() {

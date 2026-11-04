@@ -51,7 +51,7 @@ function newSave(){
     meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
     // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1}
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false}
   };
 }
 let S=newSave();

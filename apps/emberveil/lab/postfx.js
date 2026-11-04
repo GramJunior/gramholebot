@@ -20,7 +20,7 @@
     // high used to run THREE.UnrealBloomPass: its r128 high-pass keeps the WHOLE texel colour above the threshold (not the excess)
     // and the 5-mip composite sums to ~3x strength, added straight onto the frame — bright sunny scenes (the village) blew out to white
     // on real GPUs. Now every preset uses the bounded soft-knee bloom below (excess-only, clamped, shoulder tone-map); high = 1/2-res.
-    high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2 },
+    high: { post: true,  bloom: 'cheap', fxaa: true,  dof: true,  scale: 1, bq: 2, blur2: true },
   };
 
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -127,14 +127,15 @@ void main(){
         let src = A, dst = B;
         if (P.dof.on && bokeh) { bokeh.render(R, dst, src, dt, false); const t = src; src = dst; dst = t; }
         GU.uHasBloom.value = 0;
-        if (P.preset.bloom === 'cheap' && target.bloom > 0) {
+        if (P.preset.bloom === 'cheap' && target.bloom >= 0.2) { // weak bloom (village .16 at threshold .97) is invisible: skip all 3–5 passes
           mBright.uniforms.tDiffuse.value = src.texture; mBright.uniforms.uTexel.value.set(1 / src.width, 1 / src.height);
           fsq.render(R, mBright, P.rts.q1);
           const tw = 1 / P.rts.q1.width, th = 1 / P.rts.q1.height;
-          mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * 1.5, 0); fsq.render(R, mBlur, P.rts.q2);
-          mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * 1.5); fsq.render(R, mBlur, P.rts.q1);
-          mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * 3, 0); fsq.render(R, mBlur, P.rts.q2);
-          mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * 3); fsq.render(R, mBlur, P.rts.q1);
+          mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * (P.preset.blur2 ? 1.5 : 2.2), 0); fsq.render(R, mBlur, P.rts.q2);
+          mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * (P.preset.blur2 ? 1.5 : 2.2)); fsq.render(R, mBlur, P.rts.q1);
+          if (P.preset.blur2) { // high: second, wider blur pair (medium uses one pair at 1/4 res — 2 fewer full-screen passes)
+            mBlur.uniforms.tDiffuse.value = P.rts.q1.texture; mBlur.uniforms.uDir.value.set(tw * 3, 0); fsq.render(R, mBlur, P.rts.q2);
+            mBlur.uniforms.tDiffuse.value = P.rts.q2.texture; mBlur.uniforms.uDir.value.set(0, th * 3); fsq.render(R, mBlur, P.rts.q1); }
           GU.tBloom.value = P.rts.q1.texture; GU.uHasBloom.value = 1; GU.uBloom.value = target.bloom * 1.4;
         } else if (P.preset.bloom === 'unreal' && unreal && target.bloom > 0) {
           unreal.render(R, null, src, dt, false);
@@ -144,7 +145,7 @@ void main(){
         else fsq.render(R, mGrade, null);
       },
       dispose() { for (const k in P.rts) P.rts[k].dispose(); [mBright, mBlur, mGrade, mFXAA].forEach((m) => m && m.dispose()); },
-      get passes() { const p = P.preset; return !p.post ? 1 : 1 + (p.bloom === 'cheap' ? 5 : p.bloom === 'unreal' ? 11 : 0) + 1 + (p.fxaa ? 1 : 0) + (P.dof.on && bokeh ? 2 : 0); },
+      get passes() { const p = P.preset; return !p.post ? 1 : 1 + (p.bloom === 'cheap' && target.bloom >= 0.2 ? (p.blur2 ? 5 : 3) : p.bloom === 'unreal' ? 11 : 0) + 1 + (p.fxaa ? 1 : 0) + (P.dof.on && bokeh ? 2 : 0); },
     };
     const v = R.getSize(new T.Vector2()); fx.setSize(v.x, v.y); fx.setQuality(opts.quality || 'med');
     return fx;
@@ -198,20 +199,26 @@ void main(){
   /** Spell burst: flash sphere + shock ring + instanced shards. EVFX.burst(scene, pos, {color, radius, duration}); call EVFX.update(dt) each frame. */
   const BURST = { geoS: null, geoR: null, geoK: null };
   EVFX.burst = function (scene, p, o = {}) {
-    const col = new T.Color(o.color || '#ff8a3a'), R = o.radius || 2.2, D = o.duration || 0.6, n = o.shards || 14;
-    if (!BURST.geoS) { BURST.geoS = new T.IcosahedronGeometry(1, 1); BURST.geoR = new T.RingGeometry(0.82, 1, 40, 1); BURST.geoR.rotateX(-Math.PI / 2); BURST.geoK = new T.OctahedronGeometry(0.12, 0); BURST.geoK.scale(0.6, 2.2, 0.6); }
-    const add = (geo, op) => new T.Mesh(geo, new T.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false }));
-    const g = new T.Group(); g.position.copy(p); const core = add(BURST.geoS, 0.9), ring = add(BURST.geoR, 0.9); ring.position.y = 0.06;
-    const shards = new T.InstancedMesh(BURST.geoK, new T.MeshBasicMaterial({ color: col.clone().lerp(new T.Color(1, 1, 1), 0.35), transparent: true, blending: T.AdditiveBlending, depthWrite: false }), n);
-    const dirs = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + Math.random() * 0.4, u = 0.3 + Math.random() * 0.9; dirs.push(new T.Vector3(Math.cos(a) * u, 0.6 + Math.random() * 0.9, Math.sin(a) * u)); }
-    g.add(core, ring, shards); scene.add(g);
-    const m4 = new T.Matrix4(), q = new T.Quaternion(), up = new T.Vector3(0, 1, 0), v = new T.Vector3(), sc = new T.Vector3();
+    const R = o.radius || 2.2, D = o.duration || 0.6, n = Math.min(16, o.shards || 14);
+    if (!BURST.geoS) { BURST.geoS = new T.IcosahedronGeometry(1, 1); BURST.geoR = new T.RingGeometry(0.82, 1, 40, 1); BURST.geoR.rotateX(-Math.PI / 2); BURST.geoK = new T.OctahedronGeometry(0.12, 0); BURST.geoK.scale(0.6, 2.2, 0.6); BURST.pool = []; }
+    // pooled: a finished burst returns its group/materials/instanced mesh to the pool (no per-cast allocations or GPU buffer churn)
+    let B = BURST.pool.pop();
+    if (!B) {
+      const mk = (geo) => new T.Mesh(geo, new T.MeshBasicMaterial({ transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
+      B = { g: new T.Group(), core: mk(BURST.geoS), ring: mk(BURST.geoR), shards: new T.InstancedMesh(BURST.geoK, new T.MeshBasicMaterial({ transparent: true, blending: T.AdditiveBlending, depthWrite: false }), 16), dirs: [] };
+      B.ring.position.y = 0.06; B.g.add(B.core, B.ring, B.shards); for (let i = 0; i < 16; i++) B.dirs.push(new T.Vector3()); B.nd = B.dirs.map(() => new T.Vector3());
+    }
+    const col = B.core.material.color.set(o.color || '#ff8a3a'); B.ring.material.color.copy(col); B.shards.material.color.copy(col).lerp(BURST.white || (BURST.white = new T.Color(1, 1, 1)), 0.35);
+    const { g, core, ring, shards, dirs, nd } = B; shards.count = n; g.position.copy(p);
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + Math.random() * 0.4, u = 0.3 + Math.random() * 0.9; dirs[i].set(Math.cos(a) * u, 0.6 + Math.random() * 0.9, Math.sin(a) * u); nd[i].copy(dirs[i]).normalize(); }
+    scene.add(g);
+    const m4 = BURST.m4 || (BURST.m4 = new T.Matrix4()), q = BURST.q || (BURST.q = new T.Quaternion()), up = BURST.up || (BURST.up = new T.Vector3(0, 1, 0)), v = BURST.v || (BURST.v = new T.Vector3()), sc = BURST.sc || (BURST.sc = new T.Vector3());
     const fxo = { t: 0, update(dt) { fxo.t += dt; const k = Math.min(1, fxo.t / D), e = 1 - Math.pow(1 - k, 3);
       core.scale.setScalar(0.2 + R * 0.45 * e); core.material.opacity = 0.9 * (1 - k) * (1 - k);
       ring.scale.setScalar(0.3 + R * e); ring.material.opacity = 0.9 * (1 - k);
-      for (let i = 0; i < n; i++) { v.copy(dirs[i]).multiplyScalar(R * 0.9 * e); v.y = dirs[i].y * R * 0.7 * Math.sin(Math.PI * Math.min(1, k * 1.2)); q.setFromUnitVectors(up, dirs[i].clone().normalize()); sc.setScalar(1 - k * 0.8); m4.compose(v, q, sc); shards.setMatrixAt(i, m4); }
+      for (let i = 0; i < n; i++) { v.copy(dirs[i]).multiplyScalar(R * 0.9 * e); v.y = dirs[i].y * R * 0.7 * Math.sin(Math.PI * Math.min(1, k * 1.2)); q.setFromUnitVectors(up, nd[i]); sc.setScalar(1 - k * 0.8); m4.compose(v, q, sc); shards.setMatrixAt(i, m4); }
       shards.instanceMatrix.needsUpdate = true; shards.material.opacity = 1 - k;
-      if (k >= 1) { scene.remove(g); [core, ring, shards].forEach((x) => x.material.dispose()); shards.dispose(); return false; } return true; } };
+      if (k >= 1) { if (g.parent) g.parent.remove(g); if (BURST.pool.length < 12) BURST.pool.push(B); else { [core, ring, shards].forEach((x) => x.material.dispose()); shards.dispose(); } return false; } return true; } };
     FX_LIST.add(fxo); return fxo;
   };
 

@@ -246,10 +246,17 @@ function startGame(fresh){
 }
 
 // ---------- main loop ----------
-let _last=performance.now();
+let _last=performance.now(), _lastR=0, _wasCov=false, _warmW=null;
+// окно на весь экран поверх сцены (панель, карта): 3D рисуется ~10 раз в секунду (сцена видна сквозь затемнение)
+function sceneCovered(){ return G.mode!=='title'&&(!!PANEL.kind||!!G.mapOpen); }
 function loop(now){
-  requestAnimationFrame(loop); R.info.reset();
-  let rdt=Math.min(.05,Math.max(0,(now-_last)/1000)); _last=now; perfTick(rdt);
+  requestAnimationFrame(loop);
+  if(document.hidden){ _last=now; return; } // Telegram/вкладка в фоне: ничего не считаем и не рисуем
+  const cov=sceneCovered(); if(cov!==_wasCov){ _wasCov=cov; PERF.throttled=cov; PERF.acc=0; PERF.frames=0; PERF.win=0; PERF.winN=0; PERF.winCpu=0; }
+  // темп кадров: не чаще цели (60 или 30 — «Экономия батареи»; на 120-Гц экранах тоже 60), под панелью — ~10 к/с
+  const gap=cov?95:1000/fpsTarget()-3; if(now-_lastR<gap) return; _lastR=now;
+  R.info.reset(); const t0=performance.now(); const raw=(now-_last)/1000;
+  let rdt=Math.min(cov?.12:.05,Math.max(0,raw)); _last=now;
   let dt=rdt; if(G.hitstop>0){ G.hitstop-=rdt; dt*=.06; } if(G.slowmo>0){ G.slowmo-=rdt; dt*=.3; }
   const frozen=G.paused||G.dialog||G.mapOpen||G.rotPause;
   if(frozen&&G.mode!=='title') dt=0;
@@ -272,7 +279,12 @@ function loop(now){
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid) W.liquid.material.uniforms.uT.value=now/1000;
   wlBegin(); updateDmgNums(rdt); if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid') updateHpBars(); hudTick(rdt); if(typeof sysLabels==='function') sysLabels(rdt); wlEnd();
   asTick(dt,rdt);
-  asRender(rdt);
+  const t1=performance.now();
+  if(W!==_warmW){ _warmW=W; perfWarm(); } // новый мир: все шейдеры компилируются сразу (под затемнением), а не посреди боя
+  gpuBegin(); asRender(rdt); gpuEnd();
+  const t2=performance.now();
+  PERF.js+=(t1-t0-PERF.js)*.1; PERF.rs+=(t2-t1-PERF.rs)*.1;
+  perfTick(rdt,cov?0:raw,t2-t0); if(PH.on) perfHudFrame(raw,t1-t0,t2-t1);
 }
 
 // ---------- bot (balance testing) ----------
@@ -345,7 +357,7 @@ function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
   const steps=[
     ['Растираем пергамент…',()=>genCssTextures()],
-    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
+    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; PR=prCap(); R.setPixelRatio(PR); emberLight.visible=Q.point!==false; try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){} perfInit(); computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
     ['Разжигаем очаг…',()=>{ R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
