@@ -201,3 +201,132 @@ vec3 evTerrain(){
   return col;
 }
 `;
+
+// ---------- сплат-карта уровня (из генератора) + сетка земли ----------
+const sm01=t=>{ t=t<0?0:t>1?1:t; return t*t*(3-2*t); };
+function terBins(list,rf,bs){ const m=new Map(); for(const e of list){ const r=rf(e); const i0=Math.floor((e.x-r)/bs), i1=Math.floor((e.x+r)/bs), j0=Math.floor((e.z-r)/bs), j1=Math.floor((e.z+r)/bs);
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ const k=i+','+j; let a=m.get(k); if(!a) m.set(k,a=[]); a.push(e); } } return k=>m.get(k)||null; }
+function terBuildGround(Z,b,opts={}){
+  const t0=performance.now(); const K=W.kind, stageLike=K==='stage'||K==='abyss'||K==='prologue', vil=K==='village', zid=Z.id;
+  const cs=qLow()?.5:.35, x0=b.minX, z0=b.minZ, w=b.maxX-b.minX, h=b.maxZ-b.minZ, nx=Math.ceil(w/cs), nz=Math.ceil(h/cs);
+  // coarse fields (1 m), bilinear: walk SDF, distance to the trodden path centre line, to nook paths
+  const cg=1, gx=Math.ceil(w/cg)+2, gz=Math.ceil(h/cg)+2, SD=new Float32Array(gx*gz), PC=new Float32Array(gx*gz), PN=new Float32Array(gx*gz);
+  const nookSegs=(W.nooks||[]).map(n=>({ax:n.from.x,az:n.from.z,bx:n.room.x,bz:n.room.z}));
+  for(let j=0;j<gz;j++) for(let i=0;i<gx;i++){ const x=x0+i*cg, z=z0+j*cg, k=j*gx+i; SD[k]=sdfW(x,z); PC[k]=opts.noPath?99:pathCenterDist(x,z); let dn=99; for(const s of nookSegs){ const v=segDist(x,z,s)[0]; if(v<dn) dn=v; } PN[k]=dn; }
+  const bl=(A,x,z)=>{ const fx=(x-x0)/cg, fz=(z-z0)/cg; let i=Math.floor(fx), j=Math.floor(fz); if(i<0)i=0; if(j<0)j=0; if(i>gx-2)i=gx-2; if(j>gz-2)j=gz-2; const u=Math.min(1,Math.max(0,fx-i)), v=Math.min(1,Math.max(0,fz-j)), k=j*gx+i;
+    return (A[k]*(1-u)+A[k+1]*u)*(1-v)+(A[k+gx]*(1-u)+A[k+gx+1]*u)*v; };
+  const paints=(W.paint||[]).map(p=>Object.assign({},p,{kind:p.tiles?'pave':p.ring?'shore':'soil'}));
+  const pb=terBins(paints,p=>p.r+2.5,4), pools=W.pools||[], qb=terBins(pools,p=>p.r+2.2,4);
+  const C1=new Uint8Array(nx*nz*4), C2=new Uint8Array(nx*nz*4);
+  const pw0=opts.pathW||W.pathW||1.8, rutO=pw0*.3, plaza=opts.plaza||0;
+  const mossK=vil?.35:[0,.45,.85,.9,.25,.15,.1][zid]||.4, wetK=zid===3?.55:zid===2?.2:0;
+  for(let j=0;j<nz;j++){ const z=z0+(j+.5)*cs; for(let i=0;i<nx;i++){ const x=x0+(i+.5)*cs, o=(j*nx+i)*4;
+    const d=bl(SD,x,z), n1=vnoise(x*.23,z*.23), n2=vnoise(x*.9+7,z*.9), n3=vnoise(x*2.7,z*2.7+5), nM=fbm(x*.045+11,z*.045);
+    let path=0, soil=0, pave=0, acc=0, rut=0, wet=0, moss=0;
+    if(!opts.noPath&&d<.4){ const pc=bl(PC,x,z), pw=pw0*(.82+.36*n1)+(n2-.5)*.75+(n3-.5)*.3;
+      path=1-sm01((pc-pw+.45)/.55); soil=Math.max(soil,(1-sm01((pc-pw-.25-n2*1.6)/.9))*.9);
+      if(stageLike&&path>.5){ const rd=Math.abs(pc-rutO); if(rd<.32&&n1>.3) rut=(1-sm01(rd/.32))*sm01((n1-.3)*5)*(.6+n3*.4); }
+      const pn=bl(PN,x,z); if(pn<3){ const p2=1-sm01((pn-1.05-(n2-.5)*.6)/.45); path=Math.max(path,p2*.95); soil=Math.max(soil,(1-sm01((pn-1.7-n2)/.8))*.8); } }
+    if(plaza){ const r=Math.hypot(x,z), e=r+(n2-.5)*1.2+(n3-.5)*.4; pave=Math.max(pave,1-sm01((e-plaza+.3)/.5)); soil=Math.max(soil,(1-sm01((e-plaza-1.2)/.8))*.8); }
+    const L=pb(Math.floor(x/4)+','+Math.floor(z/4));
+    if(L) for(const p of L){ const dd=Math.hypot(x-p.x,z-p.z); if(dd>p.r+2.5) continue; if(p.ring&&dd<p.ring*.92) continue; const e=dd+(n2-.5)*2.2+(n3-.5)*.7;
+      if(p.kind==='pave'){ const t=1-sm01((e-p.r*.95)/.6); pave=Math.max(pave,t*Math.min(1,p.k*1.7)); if(t>0) soil=Math.max(soil,(1-sm01((e-p.r-.9)/.9))*.7); }
+      else if(p.kind==='shore'){ const t=1-sm01((e-p.r*.88)/.8); acc=Math.max(acc,t*Math.min(1,p.k*1.6)); wet=Math.max(wet,(1-sm01((dd-p.ring-.5)/.6))*.55); }
+      else { const t=1-sm01((e-p.r*.92)/(.7+p.r*.08)); soil=Math.max(soil,t*Math.min(1,p.k*1.9+.15)); } }
+    const Q=qb(Math.floor(x/4)+','+Math.floor(z/4));
+    if(Q) for(const p of Q){ const dd=Math.hypot(x-p.x,z-p.z)-p.r, e=dd+(n2-.5)*.9; if(e>2.2) continue;
+      if(p.kind==='wet'){ wet=Math.max(wet,1-sm01((e+.15)/.35)); soil=Math.max(soil,(1-sm01((e-.55)/.5))*.85); }
+      else if(p.kind==='haz'){ acc=Math.max(acc,1-sm01((e-.8)/.6)); if(p.haz==='slow') wet=Math.max(wet,(1-sm01((e-.3)/.6))*.6); }
+      else if(p.lava){ acc=Math.max(acc,1-sm01((e-1.2)/.8)); }
+      else { acc=Math.max(acc,(1-sm01((e-1.1)/.7))*(p.kind==='stream'?.9:1)); wet=Math.max(wet,(1-sm01((e-.2)/.5))*.6); } }
+    if(stageLike&&d>-2.2){ const t=sm01((d+1.8-n2*1.3)/.9); soil=Math.max(soil,t*.85); moss=Math.max(moss,t*sm01((n1-.45)*4)*mossK); }
+    if(vil&&d>-.5){ const t=sm01((d+.3)/1.2); soil=Math.max(soil,t*(.5+n1*.45)); moss=Math.max(moss,t*sm01((n2-.4)*3)*.6); }
+    if(zid===3){ const a=sm01((fbm(x*.13+3,z*.13)-.5)*7); acc=Math.max(acc,a*(1-path)*.9); wet=Math.max(wet,a*.45); }
+    if(zid===4){ const a=sm01((fbm(x*.16+5,z*.16)-.56)*7); acc=Math.max(acc,a*(1-path)*.85); }
+    if(zid>=5){ const a=sm01((fbm(x*.11+9,z*.11)-.58)*6); soil=Math.max(soil,a*.8); }
+    if(zid===2&&!vil){ const a=sm01((fbm(x*.12+1,z*.12)-.5)*5); soil=Math.max(soil,a*.75*(1-path)); }
+    moss=Math.max(moss,sm01((fbm(x*.2+4,z*.2+2)-.58)*5)*mossK*.6*(1-path)); if(wetK) wet=Math.max(wet,sm01((n1-.66)*6)*wetK*(1-path*.5));
+    if(pave>.05){ path*=1-pave*.85; rut*=1-pave; }
+    C1[o]=path*255; C1[o+1]=soil*(1-path*.6)*255; C1[o+2]=pave*255; C1[o+3]=acc*255;
+    C2[o]=rut*255; C2[o+1]=Math.min(1,wet)*255; C2[o+2]=Math.min(1,moss)*255; C2[o+3]=sm01((nM-.3)*2.5)*255; } }
+  const mk=A=>{ const t=new THREE.DataTexture(A,nx,nz,THREE.RGBAFormat); t.magFilter=t.minFilter=THREE.LinearFilter; t.generateMipmaps=false; t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; t.needsUpdate=true; return t; };
+  const ctl={t1:mk(C1),t2:mk(C2),C1,C2,nx,nz,cs,x0,z0,w:nx*cs,h:nz*cs};
+  // mesh: regular grid (row-major) so props can stamp contact shadows onto it later
+  const seg=Q.props<.6?1.4:1.0, vx=Math.max(8,Math.round(w/seg))+1, vz=Math.max(8,Math.round(h/seg))+1, n=vx*vz;
+  const P=new Float32Array(n*3), Cc=new Float32Array(n*3), Rk=new Float32Array(n), E=new Float32Array(n);
+  for(let j=0;j<vz;j++) for(let i=0;i<vx;i++){ const k=j*vx+i, x=x0+i*w/(vx-1), z=z0+j*h/(vz-1); const d=sdfW(x,z), nn=fbm(x*.15,z*.15);
+    P[k*3]=x; P[k*3+1]=groundH(x,z); P[k*3+2]=z;
+    let a=1; if(d>-1.2&&d<1.5) a*=.86+.14*sm01(Math.abs(d-.2)/1.3); if(d>0) a*=.9+nn*.16;
+    for(const p of pools){ const pd=Math.hypot(x-p.x,z-p.z)-p.r; if(pd<1.4&&pd>-1){ a*=.8+.2*sm01(pd/1.4); break; } }
+    Cc[k*3]=Cc[k*3+1]=Cc[k*3+2]=a;
+    Rk[k]=stageLike?sm01((d-.5-(vnoise(x*.6,z*.6)-.5)*1.4)/1.7):0; }
+  const I=[]; for(let j=0;j<vz-1;j++) for(let i=0;i<vx-1;i++){ const a=j*vx+i, b2=a+1, c=a+vx, d2=c+1; I.push(a,c,b2,b2,c,d2); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(P,3)); g.setAttribute('color',new THREE.BufferAttribute(Cc,3)); g.setAttribute('aRock',new THREE.BufferAttribute(Rk,1)); g.setAttribute('aE',new THREE.BufferAttribute(E,1));
+  g.setIndex(n>65535?new THREE.Uint32BufferAttribute(I,1):new THREE.Uint16BufferAttribute(I,1)); g.computeVertexNormals(); g.computeBoundingSphere();
+  const mat=terMat(Z,ctl); const m=new THREE.Mesh(g,mat); m.receiveShadow=false; worldRoot.add(m); W.ground=m; W.ter={ctl,vx,vz,x0,z0,w,h,ms:Math.round(performance.now()-t0),pathW:pw0};
+}
+
+// ---------- геометрия мелочи (процедурная, без контура; aWind — 0 у основания, 1 на кончике) ----------
+function CGB(){ const P=[],N=[],C=[],Wd=[],E=[]; const b={P,N,C,Wd,E};
+  b.tri=(a,bb,c,ca,cb,cc,wa,wb,wc,e,up)=>{ P.push(...a,...bb,...c); let nx=0,ny=1,nz=0; if(!up){ const ux=bb[0]-a[0],uy=bb[1]-a[1],uz=bb[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; nx=uy*vz-uz*vy; ny=uz*vx-ux*vz; nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l; if(ny<-.2){ nx=-nx; ny=-ny; nz=-nz; } }
+    for(let i=0;i<3;i++) N.push(nx,ny,nz); C.push(...ca,...cb,...cc); Wd.push(wa||0,wb||0,wc||0); E.push(e||0,e||0,e||0); return b; };
+  // three.js geometry merged in (rocks, stems): colour, transform, emissive, wind
+  b.geo=(g,col,o={})=>{ g=g.index?g.toNonIndexed():g; if(o.flat){ g.deleteAttribute('normal'); g.computeVertexNormals(); } const m=new THREE.Matrix4().compose(new THREE.Vector3(...(o.p||[0,0,0])),new THREE.Quaternion().setFromEuler(new THREE.Euler(...(o.r||[0,0,0]))),new THREE.Vector3(...(o.s||[1,1,1]))); g.applyMatrix4(m);
+    const pa=g.attributes.position.array, na=g.attributes.normal.array, c=tgCol(col); for(let i=0;i<pa.length;i+=3){ const j=o.j?1+(Math.random()*2-1)*o.j:1, sh=o.grad?(.6+.4*Math.min(1,Math.max(0,(pa[i+1]-(o.p?o.p[1]:0))/(o.grad)+.5))):1;
+      P.push(pa[i],pa[i+1],pa[i+2]); N.push(na[i],na[i+1],na[i+2]); C.push(c[0]*j*sh,c[1]*j*sh,c[2]*j*sh); Wd.push(o.w?Math.max(0,pa[i+1])*o.w:0); E.push(o.e||0); } return b; };
+  b.done=()=>{ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
+    g.setAttribute('aWind',new THREE.Float32BufferAttribute(Wd,1)); g.setAttribute('aE',new THREE.Float32BufferAttribute(E,1)); g.computeBoundingSphere(); return g; };
+  return b; }
+const CL_GEO={}, CLR=rng32(77);
+function clRand(a,b){ return a+(b-a)*CLR(); }
+// blades: thin triangles with an "up" normal (lit like the ground), dark root → light tip
+function clBlades(b,n,r,h0,h1,w,lean,c0,c1){ for(let i=0;i<n;i++){ const a=clRand(0,TAU), rr=Math.sqrt(CLR())*r, x=Math.cos(a)*rr, z=Math.sin(a)*rr, la=clRand(0,TAU), L=clRand(lean*.4,lean), h=clRand(h0,h1), ww=w*clRand(.8,1.2), pa=la+PI/2;
+  const tx=x+Math.cos(la)*L, tz=z+Math.sin(la)*L; const k=clRand(.85,1.1);
+  b.tri([x-Math.cos(pa)*ww,0,z-Math.sin(pa)*ww],[x+Math.cos(pa)*ww,0,z+Math.sin(pa)*ww],[tx,h,tz],c0.map(v=>v*k),c0.map(v=>v*k),c1.map(v=>v*k),0,0,h,0,true); } }
+const CLG={
+  tuft:()=>{ const b=CGB(); clBlades(b,9,.16,.2,.42,.035,.16,[.42,.45,.4],[1,1,1]); return b.done(); },
+  tall:()=>{ const b=CGB(); clBlades(b,8,.22,.45,.85,.045,.28,[.4,.42,.38],[1,1,.95]); return b.done(); },
+  dead:()=>{ const b=CGB(); clBlades(b,7,.18,.18,.4,.03,.2,[.5,.48,.45],[1,.97,.9]); return b.done(); },
+  fern:()=>{ const b=CGB(); for(let i=0;i<7;i++){ const a=i/7*TAU+clRand(-.2,.2), L=clRand(.35,.55), ca=Math.cos(a), sa=Math.sin(a), px=-sa, pz=ca; const g0=[.25,.45,.15], g1=[.42,.7,.26];
+      const p0=[0,0,0], p1=[ca*L*.5,.22,sa*L*.5], p2=[ca*L,.12,sa*L];
+      b.tri([p0[0]+px*.03,0,p0[2]+pz*.03],[p0[0]-px*.03,0,p0[2]-pz*.03],[p1[0]+px*.09,p1[1],p1[2]+pz*.09],g0,g0,g1,0,0,.6,0,true).tri([p0[0]-px*.03,0,p0[2]-pz*.03],[p1[0]-px*.09,p1[1],p1[2]-pz*.09],[p1[0]+px*.09,p1[1],p1[2]+pz*.09],g0,g1,g1,0,.6,.6,0,true)
+       .tri([p1[0]+px*.09,p1[1],p1[2]+pz*.09],[p1[0]-px*.09,p1[1],p1[2]-pz*.09],p2,g1,g1,g1.map(v=>v*1.15),.6,.6,1,0,true); } return b.done(); },
+  flowY:()=>CLG._flow([[1,.86,.25],[1,1,.9],[1,.7,.2]]), flowP:()=>CLG._flow([[.95,.35,.45],[.75,.4,.9],[1,.55,.7]]), flowB:()=>CLG._flow([[.45,.55,1],[.7,.75,1],[.55,.4,.9]]),
+  _flow:(cols)=>{ const b=CGB(); clBlades(b,6,.14,.14,.28,.03,.12,[.25,.42,.16],[.45,.7,.28]);
+    for(let i=0;i<5;i++){ const a=clRand(0,TAU), r=clRand(0,.16), x=Math.cos(a)*r, z=Math.sin(a)*r, h=clRand(.2,.36), c=cols[i%cols.length], s=clRand(.05,.075);
+      b.tri([x-.008,0,z],[x+.008,0,z],[x,h,z],[.25,.42,.16],[.25,.42,.16],[.4,.6,.25],0,0,h,0,true);
+      for(let p=0;p<4;p++){ const pa=p/4*TAU+a, pb=pa+TAU/4; b.tri([x,h,z],[x+Math.cos(pa)*s,h+.01,z+Math.sin(pa)*s],[x+Math.cos(pb)*s,h+.01,z+Math.sin(pb)*s],[1,.95,.6],c,c,h,h,h,0,true); } } return b.done(); },
+  pebbles:()=>{ const b=CGB(); const n=4; for(let i=0;i<n;i++){ const a=clRand(0,TAU), r=i?clRand(.12,.3):0, s=i?clRand(.05,.1):clRand(.1,.14); b.geo(new THREE.IcosahedronGeometry(1,0),0xffffff,{p:[Math.cos(a)*r,s*.25,Math.sin(a)*r],s:[s*clRand(1,1.4),s*clRand(.5,.75),s*clRand(.9,1.2)],r:[clRand(-.3,.3),clRand(0,TAU),clRand(-.3,.3)],flat:1,j:.08}); } return b.done(); },
+  stone:()=>{ const b=CGB(); b.geo(new THREE.IcosahedronGeometry(1,0),0xffffff,{p:[0,.06,0],s:[.3,.16,.24],r:[.1,0,.08],flat:1,j:.05}); b.geo(new THREE.IcosahedronGeometry(1,0),0xe8e8e8,{p:[.26,.03,.12],s:[.1,.07,.09],flat:1}); return b.done(); },
+  flag:()=>{ const b=CGB(); const n=7, rs=[]; for(let i=0;i<n;i++) rs.push(clRand(.78,1.05)); const top=.05, c=[1,1,1], cs=[.62,.6,.58];
+    for(let i=0;i<n;i++){ const a0=i/n*TAU, a1=(i+1)/n*TAU, r0=rs[i], r1=rs[(i+1)%n]; const A=[Math.cos(a0)*r0,top,Math.sin(a0)*r0], B=[Math.cos(a1)*r1,top,Math.sin(a1)*r1];
+      b.tri([0,top+.012,0],B,A,c,c.map(v=>v*.93),c.map(v=>v*.93),0,0,0,0,true); b.tri(A,B,[B[0]*1.04,-.03,B[2]*1.04],cs,cs,cs.map(v=>v*.8)); b.tri(A,[B[0]*1.04,-.03,B[2]*1.04],[A[0]*1.04,-.03,A[2]*1.04],cs,cs.map(v=>v*.8),cs.map(v=>v*.8)); } return b.done(); },
+  leaves:()=>{ const b=CGB(); const LC=[[.62,.38,.12],[.78,.52,.16],[.55,.6,.2],[.7,.25,.1],[.82,.66,.25]]; for(let i=0;i<9;i++){ const a=clRand(0,TAU), r=Math.sqrt(CLR())*.55, x=Math.cos(a)*r, z=Math.sin(a)*r, ra=clRand(0,TAU), L=clRand(.06,.1), W2=L*.55, y=.015+i*.002, c=LC[(CLR()*LC.length)|0];
+      const ux=Math.cos(ra), uz=Math.sin(ra); b.tri([x-ux*L,y,z-uz*L],[x+uz*W2,y+.01,z-ux*W2],[x+ux*L,y,z+uz*L],c,c,c,0,.1,0,0,true).tri([x-ux*L,y,z-uz*L],[x+ux*L,y,z+uz*L],[x-uz*W2,y+.01,z+ux*W2],c.map(v=>v*.85),c.map(v=>v*.85),c.map(v=>v*.85),0,0,.1,0,true); } return b.done(); },
+  twigs:()=>{ const b=CGB(); for(let i=0;i<3;i++) b.geo(new THREE.CylinderGeometry(.018,.025,clRand(.4,.75),4),0x5a3a20,{p:[clRand(-.2,.2),.025,clRand(-.2,.2)],r:[PI/2,clRand(0,TAU),0],j:.1}); return b.done(); },
+  shroom:()=>CLG._shroom([0xd84a2a,0xf0e0c0,0xa0603a],0), shroomG:()=>CLG._shroom([0x8affb0,0xb0ffd0,0x6ad8ff],.75),
+  _shroom:(cols,e)=>{ const b=CGB(); for(let i=0;i<3;i++){ const x=clRand(-.18,.18), z=clRand(-.18,.18), h=clRand(.08,.2), r=clRand(.05,.1); b.geo(new THREE.CylinderGeometry(r*.35,r*.45,h,5),0xece0c8,{p:[x,h/2,z]}); b.geo(new THREE.SphereGeometry(r,6,3,0,TAU,0,PI/2),cols[i%3],{p:[x,h*.92,z],s:[1,.7,1],e}); } return b.done(); },
+  roots:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const a=i/3*TAU+clRand(-.4,.4), L=clRand(.7,1.15); b.geo(new THREE.CylinderGeometry(.03,.11,L,5,1),0x4a3220,{p:[Math.cos(a)*L*.5,.03,Math.sin(a)*L*.5],r:[0,-a,PI/2+.12],j:.06}); } return b.done(); },
+  reeds:()=>{ const b=CGB(); clBlades(b,8,.2,.6,1.1,.03,.12,[.3,.36,.18],[.62,.68,.36]); for(let i=0;i<2;i++){ const x=clRand(-.1,.1), z=clRand(-.1,.1), h=clRand(.85,1.05); b.geo(new THREE.CylinderGeometry(.03,.03,.18,5),0x5a3a1a,{p:[x,h,z],w:.5}); } return b.done(); },
+  lily:()=>{ const b=CGB(); for(let k=0;k<2;k++){ const ox=k?clRand(.25,.4):0, oz=k?clRand(-.3,.3):0, r=k?clRand(.14,.2):clRand(.22,.3), n=9, c=[.3,.55,.22]; for(let i=0;i<n-1;i++){ const a0=i/n*TAU+.35, a1=(i+1)/n*TAU+.35; b.tri([ox,0,oz],[ox+Math.cos(a1)*r,0,oz+Math.sin(a1)*r],[ox+Math.cos(a0)*r,0,oz+Math.sin(a0)*r],c.map(v=>v*1.15),c,c,0,0,0,0,true); } }
+    if(CLR()<.5) b.geo(new THREE.ConeGeometry(.06,.07,5),0xffa8c8,{p:[0,.035,0],e:.25}); return b.done(); },
+  bones:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const x=clRand(-.25,.25), z=clRand(-.25,.25), a=clRand(0,TAU), L=clRand(.22,.4); b.geo(new THREE.CylinderGeometry(.022,.022,L,4),0xd8d0b8,{p:[x,.025,z],r:[PI/2,a,0]}); for(const sg of [-1,1]) b.geo(new THREE.IcosahedronGeometry(.04,0),0xe8e0c8,{p:[x+Math.sin(a)*L*.5*sg,.03,z+Math.cos(a)*L*.5*sg],flat:1}); }
+    if(CLR()<.5) b.geo(new THREE.SphereGeometry(.09,6,4),0xe8e0c8,{p:[clRand(-.15,.15),.07,clRand(-.15,.15)],s:[1,.85,1.15]}); return b.done(); },
+  candles:()=>{ const b=CGB(); b.geo(new THREE.CircleGeometry(.2,7),0xe8dcc0,{p:[0,.012,0],r:[-PI/2,0,0]}); for(let i=0;i<3;i++){ const x=clRand(-.12,.12), z=clRand(-.12,.12), h=clRand(.1,.28); b.geo(new THREE.CylinderGeometry(.03,.035,h,6),0xf0e6cc,{p:[x,h/2,z]}); b.geo(new THREE.OctahedronGeometry(.03,0),0xffc860,{p:[x,h+.04,z],s:[1,1.7,1],e:1}); } return b.done(); },
+  cinders:()=>{ const b=CGB(); for(let i=0;i<6;i++){ const a=clRand(0,TAU), r=i?clRand(.08,.32):0, s=clRand(.04,.09), hot=i%2===0; b.geo(new THREE.IcosahedronGeometry(1,0),hot?0xff6a1a:0x2a2220,{p:[Math.cos(a)*r,s*.3,Math.sin(a)*r],s:[s,s*.6,s],flat:1,e:hot?.9:0}); } return b.done(); },
+  shards:()=>{ const b=CGB(); for(let i=0;i<3;i++){ const a=clRand(0,TAU), r=i?clRand(.12,.25):0, h=clRand(.15,.35); b.geo(new THREE.OctahedronGeometry(1,0),i?0xc83040:0xff5a6a,{p:[Math.cos(a)*r,h*.4,Math.sin(a)*r],s:[.06,h,.06],r:[clRand(-.4,.4),0,clRand(-.4,.4)],flat:1,e:.55}); } return b.done(); }
+};
+function clGeo(t){ return CL_GEO[t]||(CL_GEO[t]=CLG[t]()); }
+// one shared material: toon ramp + wind sway in the vertex shader (sin of time + instance position; ~6 ALU per vertex)
+let CL_MAT=null;
+function clMat(){ if(CL_MAT) return CL_MAT; const m=toonMat(); m.side=THREE.DoubleSide; const base=m.onBeforeCompile;
+  m.onBeforeCompile=(sh,r)=>{ base(sh,r); sh.uniforms.uTime=TER_U.uTime;
+    sh.vertexShader='attribute float aWind;\nuniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+#ifdef USE_INSTANCING
+ vec2 ip=vec2(instanceMatrix[3][0],instanceMatrix[3][2]);
+#else
+ vec2 ip=vec2(0.0);
+#endif
+ float wph=uTime*1.7+ip.x*0.31+ip.y*0.23; float wk=aWind*(0.7+0.3*sin(uTime*0.43+ip.x*0.05));
+ transformed.x+=(sin(wph)*0.09+sin(wph*2.7)*0.025)*wk; transformed.z+=cos(wph*0.83)*0.06*wk;`); };
+  m.customProgramCacheKey=()=>'evcl'; return CL_MAT=m; }
