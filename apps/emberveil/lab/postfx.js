@@ -254,6 +254,7 @@ void main(){
     firefly: { color: '#d8ff7a', size: 0.08, rise: 0.1, sway: 1.2, glow: 1.0, blend: 'add', blink: 1 },
     wisp:    { color: '#9ab8ff', size: 0.14, rise: 0.25, sway: 1.0, glow: 1.0, blend: 'add', blink: 1 },
     bubble:  { color: '#b8e8a0', size: 0.07, rise: 0.5, sway: 0.3, glow: 0.3, blend: 'add' },
+    butterfly: { color: '#ffd27a', size: 0.2, rise: 0.04, sway: 1.8, glow: 0.0, blend: 'normal', flap: 1 },
   };
   EVFX.ambient = function (o = {}) {
     const K = Object.assign({}, AMB[o.kind || 'ember'], o), n = o.count || 240, area = o.area || [40, 8, 40];
@@ -263,18 +264,22 @@ void main(){
     g.setAttribute('aSeed', new T.InstancedBufferAttribute(seed, 4));
     const m = new T.ShaderMaterial({
       uniforms: { uTime: { value: 0 }, uCenter: { value: new T.Vector3() }, uArea: { value: new T.Vector3().fromArray(area) }, uColor: { value: new T.Color(K.color) }, uSize: { value: K.size },
-        uRise: { value: K.rise }, uSway: { value: K.sway }, uGlow: { value: K.glow }, uBlink: { value: K.blink || 0 }, uOpacity: { value: o.opacity === undefined ? 1 : o.opacity } },
-      vertexShader: `attribute vec4 aSeed; uniform float uTime; uniform vec3 uCenter; uniform vec3 uArea; uniform float uSize; uniform float uRise; uniform float uSway; uniform float uBlink; varying vec2 vUv; varying float vA;
+        uRise: { value: K.rise }, uSway: { value: K.sway }, uGlow: { value: K.glow }, uBlink: { value: K.blink || 0 }, uOpacity: { value: o.opacity === undefined ? 1 : o.opacity }, uSpot: { value: new T.Vector4(0, 0, 1, 0) }, uFlap: { value: K.flap || 0 } },
+      vertexShader: `attribute vec4 aSeed; uniform float uTime; uniform vec3 uCenter; uniform vec3 uArea; uniform float uSize; uniform float uRise; uniform float uSway; uniform float uBlink; uniform vec4 uSpot; uniform float uFlap; varying vec2 vUv; varying float vA; varying vec3 vTint;
         void main(){ vUv = uv; float t = uTime * (0.6 + aSeed.w*0.8) + aSeed.x*100.0;
           vec3 p = vec3(aSeed.x*uArea.x + sin(t*0.9 + aSeed.z*6.28)*uSway, mod(aSeed.y*uArea.y + uRise*t, uArea.y), aSeed.z*uArea.z + cos(t*0.7 + aSeed.x*6.28)*uSway);
           vec3 w = vec3(uCenter.x + mod(p.x - uCenter.x, uArea.x) - uArea.x*0.5, uCenter.y + p.y, uCenter.z + mod(p.z - uCenter.z, uArea.z) - uArea.z*0.5);
           float edge = smoothstep(0.0, 0.15, p.y/uArea.y) * (1.0 - smoothstep(0.8, 1.0, p.y/uArea.y));
           vA = edge * mix(1.0, 0.5 + 0.5*sin(t*3.0 + aSeed.z*20.0), uBlink);
-          vec4 mv = modelViewMatrix * vec4(w, 1.0); mv.xy += position.xy * uSize * (0.6 + aSeed.w*0.8);
+          if (uSpot.w > 0.5) vA *= 1.0 - smoothstep(uSpot.z*0.55, uSpot.z, length(w.xz - uSpot.xy)); // v9: живность у места (цветы, вода, поляна), а не «вокруг камеры»
+          vTint = mix(vec3(1.0), mix(vec3(1.0,0.55,0.3), mix(vec3(0.6,0.75,1.0), vec3(1.0,1.0,0.85), step(0.66, aSeed.y)), step(0.33, aSeed.y)), uFlap);
+          vec4 mv = modelViewMatrix * vec4(w, 1.0); vec2 q = position.xy; if (uFlap > 0.5) { q.x *= 0.25 + 0.75*abs(sin(uTime*14.0 + aSeed.x*40.0)); w.y += 0.0; }
+          mv.xy += q * uSize * (0.6 + aSeed.w*0.8);
           gl_Position = projectionMatrix * mv; }`,
-      fragmentShader: `uniform vec3 uColor; uniform float uGlow; uniform float uOpacity; varying vec2 vUv; varying float vA;
+      fragmentShader: `uniform vec3 uColor; uniform float uGlow; uniform float uOpacity; uniform float uFlap; varying vec2 vUv; varying float vA; varying vec3 vTint;
         void main(){ float d = length(vUv - 0.5) * 2.0; float a = smoothstep(1.0, 0.0, d); a = mix(step(d, 0.75), a*a, 0.6 + 0.4*uGlow);
-          gl_FragColor = vec4(uColor * (1.0 + uGlow*(1.0 - d)), a * vA * uOpacity); if (gl_FragColor.a < 0.01) discard; }`,
+          if (uFlap > 0.5) { vec2 p = (vUv - 0.5) * 2.0; float wl = length((p - vec2(-0.45, 0.1)) * vec2(1.6, 1.0)), wr = length((p - vec2(0.45, 0.1)) * vec2(1.6, 1.0)); a = step(min(wl, wr), 0.62) + step(abs(p.x), 0.08) * step(abs(p.y), 0.6); d = 0.0; }
+          gl_FragColor = vec4(uColor * vTint * (1.0 + uGlow*(1.0 - d)), min(a, 1.0) * vA * uOpacity); if (gl_FragColor.a < 0.01) discard; }`,
       transparent: true, depthWrite: false, blending: K.blend === 'add' ? T.AdditiveBlending : T.NormalBlending });
     const mesh = new T.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 6;
     const amb = { mesh, center: m.uniforms.uCenter.value, update(dt) { m.uniforms.uTime.value += dt; return true; }, set count(c) { g.instanceCount = Math.min(n, c); }, dispose() { g.dispose(); m.dispose(); } };

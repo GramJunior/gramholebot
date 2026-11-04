@@ -7,8 +7,10 @@ function vnoise(x,z){ const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi; c
   return lerp(lerp(hash2(xi,zi),hash2(xi+1,zi),u),lerp(hash2(xi,zi+1),hash2(xi+1,zi+1),u),v); }
 const fbm=(x,z)=>vnoise(x,z)*.6+vnoise(x*2.3,z*2.3)*.3+vnoise(x*5.1,z*5.1)*.1;
 function segDist(px,pz,s){ const dx=s.bx-s.ax,dz=s.bz-s.az; const l2=dx*dx+dz*dz||1; let t=((px-s.ax)*dx+(pz-s.az)*dz)/l2; t=clamp(t,0,1); const cx=s.ax+dx*t,cz=s.az+dz*t; return [Math.hypot(px-cx,pz-cz),cx,cz,t]; }
-function sdfW(x,z,walk){ walk=walk||W.walk; let d=1e9; for(const n of walk.nodes){ const v=Math.hypot(x-n.x,z-n.z)-n.r; if(v<d)d=v; } for(const s of walk.segs){ const v=segDist(x,z,s)[0]-s.w/2; if(v<d)d=v; } return d; }
-function pathCenterDist(x,z){ let d=1e9; for(const s of (W.paths||W.walk.segs)){ if(s.side) continue; const v=segDist(x,z,s)[0]; if(v<d)d=v; } return d; }
+// segD — то же, что segDist(...)[0], без выделения массива (горячие циклы: рельеф, сплат-карта, валидатор)
+function segD(px,pz,s){ const dx=s.bx-s.ax,dz=s.bz-s.az; const l2=dx*dx+dz*dz||1; let t=((px-s.ax)*dx+(pz-s.az)*dz)/l2; t=t<0?0:t>1?1:t; const ex=px-s.ax-dx*t, ez=pz-s.az-dz*t; return Math.sqrt(ex*ex+ez*ez); }
+function sdfW(x,z,walk){ walk=walk||W.walk; let d=1e9; for(const n of walk.nodes){ const ex=x-n.x, ez=z-n.z, v=Math.sqrt(ex*ex+ez*ez)-n.r; if(v<d)d=v; } for(const s of walk.segs){ const v=segD(x,z,s)-s.w/2; if(v<d)d=v; } return d; }
+function pathCenterDist(x,z){ let d=1e9; for(const s of (W.paths||W.walk.segs)){ if(s.side) continue; const v=segD(x,z,s); if(v<d)d=v; } return d; }
 function constrain(e,rad){
   if(W.lock){ const L=W.lock; const dx=e.x-L.x,dz=e.z-L.z,d=Math.hypot(dx,dz); if(d>L.r-rad){ e.x=L.x+dx/d*(L.r-rad); e.z=L.z+dz/d*(L.r-rad); } }
   const walk=W.walk; let best=1e9,bx=0,bz=0,br=0;

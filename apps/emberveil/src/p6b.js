@@ -92,9 +92,9 @@ function fpAdd(x,z,r,k,ref){ const e={x,z,r,k,ref}; const key=Math.floor(x/FPC)+
 function fpHit(x,z,r,gap,test){ const R=r+gap+FPMAX, i0=Math.floor((x-R)/FPC),i1=Math.floor((x+R)/FPC),j0=Math.floor((z-R)/FPC),j1=Math.floor((z+R)/FPC);
   for(let i=i0;i<=i1;i++) for(let j=j0;j<=j1;j++){ const b=W.fp.get(i+','+j); if(!b) continue; for(const e of b){ if(test&&!test(e)) continue; if(Math.hypot(e.x-x,e.z-z)<e.r+r+gap) return e; } } return null; }
 // walk SDF without closed (secret) corridors — what the hero can actually reach right now
-function sdfOpen(x,z){ let d=1e9; for(const n of W.walk.nodes){ const v=Math.hypot(x-n.x,z-n.z)-n.r; if(v<d)d=v; } for(const s of W.walk.segs){ if(s.closed) continue; const v=segDist(x,z,s)[0]-s.w/2; if(v<d)d=v; } return d; }
+function sdfOpen(x,z){ let d=1e9; for(const n of W.walk.nodes){ const v=Math.hypot(x-n.x,z-n.z)-n.r; if(v<d)d=v; } for(const s of W.walk.segs){ if(s.closed) continue; const v=segD(x,z,s)-s.w/2; if(v<d)d=v; } return d; }
 // distance to corridor centre lines (route band); every seg carries its own band half-width
-function bandDist(x,z){ let d=1e9; for(const s of (W.band||[])){ const v=segDist(x,z,s)[0]-s.hw; if(v<d) d=v; } return d; }
+function bandDist(x,z){ let d=1e9; for(const s of (W.band||[])){ const v=segD(x,z,s)-s.hw; if(v<d) d=v; } return d; }
 function poolHit(x,z,r,gap){ for(const p of W.pools){ if(Math.hypot(x-p.x,z-p.z)<p.r+r+gap) return p; } return null; }
 function resHit(x,z,r){ for(const q of (W.reserve||[])){ if(Math.hypot(x-q.x,z-q.z)<q.r+r) return q; } return null; }
 function reserve(x,z,r,tag){ (W.reserve=W.reserve||[]).push({x,z,r,tag}); }
@@ -122,6 +122,13 @@ function putProp(type,x,z,o={}){
   return p;
 }
 function tryProp(type,fn,n,o){ for(let i=0;i<(n||12);i++){ const [x,z]=fn(); const p=putProp(type,x,z,o); if(p) return p; } return null; }
+// v9: валун — не «горошина», а композиция: крупный камень (присыпан землёй) + 1–3 мелких у подножия; мелочь вокруг (камешки, мох) — в p6t
+const ROCK_SMALL={1:['n:rock_small','n:rock_pebble'],2:['n:rock_small','n:rock_pebble'],3:['n:rock_small','n:rock_pebble'],4:['d:rubble_half','n:rock_pebble'],5:['n:rock_pebble','d:rocks'],6:['n:rock_pebble','d:rocks'],0:['n:rock_small','n:rock_pebble']};
+function rockGroup(type,x,z,o={}){ const s=(o.s||1)*rand(1.1,1.4); const p=putProp(type,x,z,Object.assign({},o,{s})); if(!p) return null;
+  p.y-=.1*s; const zid=W.zone&&W.zone.id||1, f=pfoot(type,s), fr=o.out?Math.max(f.c,f.v*.55):Math.max(f.c,f.v*.8), sm=kitOf(W.zone).small?ROCK_SMALL[zid]||ROCK_SMALL[1]:ROCK_SMALL[1]; const n=randi(1,3);
+  for(let i=0;i<n;i++){ const a=rand(TAU); for(let k=0;k<3;k++){ const r=fr+rand(.3,.75), t=pick(sm); if(putProp(t,x+Math.cos(a+k*.4)*r,z+Math.sin(a+k*.4)*r,{s:rand(.7,1.05),out:o.out,edge:o.edge,poolGap:o.poolGap,gap:0})) break; } }
+  return p; }
+const isRockT=t=>/rock|stone2|obsidian|basalt|lavaRock|bogRock/.test(t);
 function ringPt(c,r0,r1,a0,a1){ const a=a0===undefined?rand(TAU):rand(a0,a1), r=rand(r0,r1); return [c.x+Math.cos(a)*r,c.z+Math.sin(a)*r]; }
 // free spot for an object (chest, totem…): inside area c, off the route band, away from everything
 function spotIn(c,r0,r1,r,o={}){ for(let i=0;i<40;i++){ const [x,z]=ringPt(c,r0,r1,o.a0,o.a1); if(canStand(x,z,r,Object.assign({k:'o',gap:.4},o))) return [x,z]; } return null; }
@@ -261,7 +268,7 @@ function themeAreas(info){ const K=kitOf(info.zone); const th=K.themes.slice().s
 function rimWalls(Z){ const K=kitOf(Z); const keep=.55+.45*Q.props; const pts=[];
   for(const n of W.walk.nodes){ if(n.joint) continue; const C=TAU*(n.r+1.2), m=Math.ceil(C/2.1); for(let i=0;i<m;i++){ const a=i/m*TAU+rand(-.08,.08), rr=n.r+rand(.8,1.6); pts.push([n.x+Math.cos(a)*rr,n.z+Math.sin(a)*rr]); } }
   for(const s of W.walk.segs){ const L=Math.hypot(s.bx-s.ax,s.bz-s.az), ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L; for(let t=0;t<L;t+=2.2) for(const sd of [-1,1]){ const o=s.w/2+rand(.8,1.6); pts.push([s.ax+ux*t-uz*o*sd,s.az+uz*t+ux*o*sd]); } }
-  for(const [x,z] of pts){ if(Math.random()>keep) continue; if(sdfW(x,z)<.55) continue; const south=sdfW(x,z-2.5)<-.5; putProp(chance(.5)||south?pick(K.rock):pick(K.edge),x,z,{out:true,edge:.55,s:rand(.9,1.35)*(south?.85:1),poolGap:.4,gap:0}); } }
+  for(const [x,z] of pts){ if(Math.random()>keep) continue; if(sdfW(x,z)<.55) continue; const south=sdfW(x,z-2.5)<-.5; const t=chance(.5)||south?pick(K.rock):pick(K.edge); const o={out:true,edge:.55,s:rand(.9,1.35)*(south?.85:1),poolGap:.4,gap:0}; if(isRockT(t)&&chance(.45)) rockGroup(t,x,z,o); else putProp(t,x,z,o); } }
 function dressArea(a,Z){
   const K=kitOf(Z), M=ZMAT[Z.id]||ZMAT[1], th=a.theme;
   const ringFn=(f0,f1)=>()=>ringPt(a,a.r*f0,a.r*f1);
@@ -297,29 +304,34 @@ function dressArea(a,Z){
   else if(th==='bones'){ for(let i=0;i<3;i++) tryProp('rib',ringFn(.6,.85),8,{s:rand(1.4,2)}); for(let i=0;i<6;i++) tryProp('skulls',ringFn(.3,.9),5); }
   // soft frame: trees/rocks in the outer ring of every area (keeps the middle open for combat)
   // camera looks north (−z): no tall trees on the south rim, so they never hide the hero
-  const nb=Math.round(a.r*.55*(Q.props*.5+.5)); for(let i=0;i<nb;i++){ for(let k=0;k<6;k++){ const [x,z]=ringPt(a,a.r*.74,a.r*.97); const south=(z-a.z)/a.r>.3; const t=south?(chance(.5)?pick(K.rock):pick(K.shrub)):(chance(.62)?pick(K.trees):pick(K.rock)); if(putProp(t,x,z,{s:rand(.85,1.2)})) break; } }
+  const nb=Math.round(a.r*.55*(Q.props*.5+.5)); for(let i=0;i<nb;i++){ for(let k=0;k<6;k++){ const [x,z]=ringPt(a,a.r*.74,a.r*.97); const south=(z-a.z)/a.r>.3; const t=south?(chance(.5)?pick(K.rock):pick(K.shrub)):(chance(.66)?pick(K.trees):pick(K.rock)); if(isRockT(t)?rockGroup(t,x,z,{s:rand(.8,1.1)}):putProp(t,x,z,{s:rand(.85,1.2)})) break; } }
   for(let i=0;i<Math.round(4*Q.props);i++) tryProp(pick(K.shrub),ringFn(.6,.98),5,{s:rand(.8,1.2)});
 }
-function dressCorridors(Z){ const K=kitOf(Z);
+const ZGATE={1:'h:lantern_standing',2:'h:lantern_standing',3:'h:post_skull',4:'d:column',5:'obsidian',6:'crystal'};
+function dressGates(Z){ const t=ZGATE[Z.id]; if(!t) return; for(const L of W.links){ for(const [a,pt] of [[L.a,L.pts[1]],[L.b,L.pts[L.pts.length-2]]]){ if(!a||a.role==='arena') continue; const dx=pt[0]-a.x, dz=pt[1]-a.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d;
+    const cx=a.x+ux*(a.r+.6), cz=a.z+uz*(a.r+.6), o=L.w/2-1.0; for(const sd of [-1,1]) putProp(t,cx-uz*o*sd,cz+ux*o*sd,{s:Z.id===6?1.1:1,ry:Math.atan2(ux,uz)}); } } }
+function dressCorridors(Z){ const K=kitOf(Z); dressGates(Z);
   for(const L of W.links) for(const s of L.segs){ const len=Math.hypot(s.bx-s.ax,s.bz-s.az), ux=(s.bx-s.ax)/len, uz=(s.bz-s.az)/len;
-    for(let t=0;t<len;t+=rand(3.5,5.5)){ for(const side of [-1,1]){ if(!chance(.45)) continue; const o=s.w/2-rand(.7,1.4); const x=s.ax+ux*t-uz*o*side, z=s.az+uz*t+ux*o*side; putProp(chance(.55)?pick(K.rock):pick(K.trees.concat(K.shrub)),x,z,{s:rand(.7,1)}); } } }
+    for(let t=0;t<len;t+=rand(3.5,5.5)){ for(const side of [-1,1]){ if(!chance(.45)) continue; const o=s.w/2-rand(.7,1.4); const x=s.ax+ux*t-uz*o*side, z=s.az+uz*t+ux*o*side; if(chance(.3)) rockGroup(pick(K.rock),x,z,{s:rand(.75,1)}); else putProp(pick(K.trees.concat(K.shrub,K.shrub)),x,z,{s:rand(.7,1)}); } } }
 }
 // path edges: pebbles and tufts along the trodden path; shorelines around lakes
 function dressEdges(Z){ const K=kitOf(Z); const pw=W.pathW||2.6;
   for(const s of W.paths){ const len=Math.hypot(s.bx-s.ax,s.bz-s.az); if(len<.5) continue; const ux=(s.bx-s.ax)/len, uz=(s.bz-s.az)/len;
     for(let t=0;t<len;t+=rand(1.1,1.9)) for(const side of [-1,1]){ const o=pw+rand(.1,.7); const x=s.ax+ux*t-uz*o*side, z=s.az+uz*t+ux*o*side; const r=Math.random();
-      if(r<.22*Q.grass+.08) putProp(K.small[1],x,z,{s:rand(.6,1.1)}); else if(r<.6*Q.grass+.1) putProp(K.tuft[0],x,z,{s:rand(.8,1.2)}); } }
+      if(r<.18*Q.grass+.05&&!isRockT(K.tuft[0])) putProp(K.tuft[0],x,z,{s:rand(.8,1.2)}); } }
   for(const p of W.pools){ if(p.kind!=='lake') continue; const n=Math.round(p.r*3.2); for(let i=0;i<n;i++){ const ang=i/n*TAU+rand(-.2,.2), rr=p.r+rand(.3,1.0); putProp(pick(K.shore),p.x+Math.cos(ang)*rr,p.z+Math.sin(ang)*rr,{s:rand(.7,1.1),poolGap:-.2,band:false}); }
     W.paint.push({x:p.x,z:p.z,r:p.r+1.9,c:(ZMAT[Z.id]||ZMAT[1]).sand,k:.55,ring:p.r}); }
 }
 function scatterTufts(Z,n){ const K=kitOf(Z); const areas=(W.areas&&W.areas.length?W.areas:W.walk.nodes).concat((W.nooks||[]).map(s=>s.room));
-  for(let i=0;i<n;i++){ const a=pick(areas); const [x,z]=ringPt(a,0,a.r); if(pathCenterDist(x,z)<(W.pathW||2.6)) continue; putProp(pick(K.tuft),x,z,{s:rand(.8,1.25)}); } }
+  const tu=K.tuft.filter(t=>!isRockT(t)&&t!=='d:rocks'); if(!tu.length) return; n=Math.round(n*.3); // v9: трава/мелочь — в p6t (инстансы), здесь только крупные кусты-«акценты»
+  for(let i=0;i<n;i++){ const a=pick(areas); const [x,z]=ringPt(a,0,a.r); if(pathCenterDist(x,z)<(W.pathW||2.6)) continue; putProp(pick(tu),x,z,{s:rand(.8,1.25)}); } }
 // cliffs & forest outside the walkable space: no overlaps (trunk spacing), not in streams/lakes
 function scatterWallsV8(Z,b,dens){ const K=kitOf(Z); const step=2.1/Math.sqrt(dens);
   for(let x=b.minX;x<=b.maxX;x+=step) for(let z=b.minZ;z<=b.maxZ;z+=step){
     const px=x+rand(-step*.45,step*.45), pz=z+rand(-step*.45,step*.45); const d=sdfW(px,pz);
     if(d<.7) continue; if(d>16&&chance(.8)) continue; if(d>8&&chance(.35)) continue;
-    const south=d<5&&sdfW(px,pz-4)<d-3; const t=(d<2.2&&chance(.3))||south?pick(K.rock):pick(K.edge); putProp(t,px,pz,{out:true,s:rand(.85,1.3)*(d>5?1.15:1),edge:.7,poolGap:.6,gap:.05});
+    const south=d<5&&sdfW(px,pz-4)<d-3; const t=(d<2.2&&chance(.3))||south?pick(K.rock):pick(K.edge); const p=putProp(t,px,pz,{out:true,s:rand(.85,1.3)*(d>5?1.15:1),edge:.7,poolGap:.6,gap:.05});
+    if(p&&!isRockT(t)&&d<7&&K.shrub.length&&chance(.55*Math.min(1,dens+.2))){ const a=rand(TAU); putProp(pick(K.shrub),px+Math.cos(a)*rand(1,1.6),pz+Math.sin(a)*rand(1,1.6),{out:true,s:rand(.9,1.4),edge:.5,poolGap:.6,gap:0}); }
   }
 }
 
@@ -359,6 +371,8 @@ function makeStage(info){
 function stageBuild(info){
   const Z=info.zone, T=info.type, L=info.lvl; W.paint=[]; W.reserve=[]; fpReset(); W.pathW=2.4+(T==='escort'?.4:0);
   const A=W.areas, mids=A.filter(a=>a.role==='mid'), last=A[A.length-1];
+  // v9: the route itself (start → area centres → exit) is a band too: near the start it runs off the centre-to-centre corridor band
+  for(const p of (W.paths||[])) W.band.push({ax:p.ax,az:p.az,bx:p.bx,bz:p.bz,hw:2.2});
   // reserved: start, exit, camp centres, corridor patrol spots, objective spots
   reserve(W.start.x,W.start.z,3.5,'start'); reserve(W.exit.x,W.exit.z,3.2,'exit');
   for(const a of A){ if(a.role==='mid'||a.role==='arena') reserve(a.x,a.z,a.role==='arena'?a.r*.97:4.4,'camp'); }

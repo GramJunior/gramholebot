@@ -110,6 +110,18 @@ function validateWorld(opt={}){
     for(const n of (W.npcs||[])) if(!navReach(N,D,n.x,n.z,1.5)) add('unreachable',`NPC ${n.kind} недостижим`,n.x,n.z);
     if(W.gate&&!navReach(N,D,W.gate.x,W.gate.z,2)) add('unreachable','ворота недостижимы',W.gate.x,W.gate.z);
   }
+  // 9. мелочь v9 (трава, камешки, листья…, p6t): не на осевой тропы (кроме плоских камней-ступеней), не в воде (кроме камыша/кувшинок),
+  //    не внутри коллайдеров пропсов/объектов (кроме корней у ствола), кувшинки — только на воде
+  if(W.clutter){ const pwC=(W.ter&&W.ter.pathW||W.pathW||1.8)*.5; let nc=0; const cnt={}; const lim={}; const addC=(rule,msg,x,z)=>{ lim[rule]=(lim[rule]||0)+1; if(lim[rule]<=15) add(rule,msg,x,z); else V.push({rule,msg}); };
+    const bl2=[]; for(const o of live){ if(!o.water) bl2.push({x:o.x,z:o.z,r:o.r,n:o.prop||o.grp||'obst'}); } for(const p of P){ const f=pfoot(p.type,p.s); if(f.k==='b'&&f.c>0) bl2.push({x:p.x,z:p.z,r:f.c,n:p.type}); } for(const o of solidObjs) bl2.push({x:o.x,z:o.z,r:Math.max(.35,(o.r||.5)*.8),n:o.kind});
+    const g2=new Map(); for(const e of bl2){ const k=Math.floor(e.x/4)+','+Math.floor(e.z/4); (g2.get(k)||g2.set(k,[]).get(k)).push(e); }
+    const near2=(x,z)=>{ const out=[]; const i=Math.floor(x/4), j=Math.floor(z/4); for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const q=g2.get(a+','+b); if(q) for(const e of q) out.push(e); } return out; };
+    for(const t in W.clutter){ const L=W.clutter[t], M=L.M; cnt[t]=L.n; nc+=L.n;
+      for(let i=0;i<L.n;i++){ const x=M[i*16+12], z=M[i*16+14];
+        if(t!=='flag'&&W.paths&&W.paths.length&&pathCenterDist(x,z)<pwC) addC('clutterOnPath',`${t} на осевой тропы`,x,z);
+        const pp=inPool(x,z,-.1); if(t==='lily'){ if(!pp) addC('clutterLily','кувшинка не на воде',x,z); } else if(t!=='reeds'&&pp) addC('clutterInWater',`${t} в воде (${pp.kind})`,x,z);
+        if(t!=='roots'&&t!=='lily'){ for(const e of near2(x,z)) if(Math.hypot(x-e.x,z-e.z)<e.r-.05){ addC('clutterInProp',`${t} внутри ${e.n}`,x,z); break; } } } }
+    stats.clutter=nc; }
   if(W.puzzle) stats.puzzle=W.puzzle.type; stats.props=P.length; stats.obst=live.length; stats.objs=W.objs.length; stats.pools=pools.length; stats.areas=(W.areas||[]).length; stats.nooks=(W.nooks||[]).length; stats.seedTry=W.seedTry;
   if(W.route){ let L=0; for(let i=0;i<W.route.length-1;i++) L+=Math.hypot(W.route[i+1].x-W.route[i].x,W.route[i+1].z-W.route[i].z); stats.routeLen=Math.round(L); }
   const by={}; for(const v of V) by[v.rule]=(by[v.rule]||0)+1;
