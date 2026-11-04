@@ -539,7 +539,7 @@ function keyParts(b,col,o={}){ const dk=_dk(col,.35); b.tor(.12,.032,col,{p:[0,.
   if(o.gem) b.gem(.045,o.gem,{p:[0,.24,.02],r:[PI/2,0,0],e:.9}); if(o.wing) for(const s of [1,-1]) b.zprof([[0,0],[.16,.08],[.22,0],[.14,-.02],[.18,-.08],[.06,-.04]].map(p=>[s*p[0],p[1]]),.02,col,{p:[s*.12,.26,0],bev:.004}); }
 function supGeo(k,sub){ return cgeo('sup_'+k+'_'+(sub||''),b=>{
   switch(k){
-    case 'potion': { b.lathe([[0,-.24],[.17,-.22],[.22,-.08],[.2,.06],[.08,.14],[.06,.22],[0,.22]],0xd8e8f0,{seg:14}); b.lathe([[0,-.22],[.155,-.2],[.2,-.08],[.18,.03],[0,.03]],0xe0283a,{seg:14,e:.35,ol:0});
+    case 'potion': { b.lathe([[0,-.24],[.17,-.22],[.22,-.08],[.21,.02],[0,.02]],0xd8283a,{seg:14,e:.25}); b.lathe([[0,.0],[.2,.02],[.19,.07],[.08,.14],[.06,.22],[0,.22]],0xd8e8f0,{seg:14}); b.sph(.05,0xff8a8a,{p:[-.1,-.06,.14],e:.8,ol:0});
       b.cyl(.065,.055,.08,0x8a5a32,{p:[0,.26,0],seg:8}); b.tor(.07,.012,0xc8963a,{p:[0,.17,0],r:[PI/2,0,0],ol:0}); b.rbox(.18,.1,.02,0xf0e2c0,{p:[0,-.08,.19],r:[-.15,0,0],bev:.005}); b.sph(.035,0xffffff,{p:[-.08,-.02,.15],e:1,ol:0}); break; }
     case 'bomb': { b.sph(.2,0x2a2a32,{ws:14,hs:10}); b.cyl(.06,.07,.06,0x5a5a62,{p:[0,.2,0],seg:8}); b.cyl(.012,.012,.14,0xc8a868,{p:[.03,.28,0],r:[0,0,-.4],ol:0}); b.oct(.04,0xffd060,{p:[.07,.35,0],e:1,ol:0}); b.sph(.04,0xffffff,{p:[-.08,.08,.15],e:.6,ol:0}); break; }
     case 'prot': { b.cyl(.09,.09,.5,0xf0e0b0,{r:[0,0,PI/2],seg:10}); b.rbox(.42,.28,.012,0xf0e0b0,{p:[0,-.15,.07],r:[.25,0,0],bev:.004}); for(const s of [1,-1]) b.cyl(.11,.11,.05,0x6a4a2a,{p:[s*.27,0,0],r:[0,0,PI/2],seg:10});
@@ -563,7 +563,7 @@ function supGeo(k,sub){ return cgeo('sup_'+k+'_'+(sub||''),b=>{
     case 'sparks': { b.gem(.2,0x4ae0ff,{e:.75,seg:6}); b.gem(.08,0x8af0ff,{p:[.2,-.08,.05],r:[0,0,-.5],e:.8,seg:6}); break; }
     default: b.sph(.15,0xd8c8a0,{});
   } },.02); }
-const SUP_POSE={gold:[.5,.3,0],wood:[.3,.6,0],ore:[.2,.5,0],potion:[.1,.4,0],bomb:[.1,.4,0],prot:[.3,.4,.2],tome:[.15,.5,0],tomeS:[.15,.5,0],stome:[.15,.5,0],gem:[.35,.5,0],iron:[0,.3,-.6],gold_key:[0,.3,-.6],leg_key:[0,.3,-.6],frag:[0,.3,-.4]};
+const SUP_POSE={gold:[.5,.3,0],wood:[.3,.6,0],ore:[.2,.5,0],potion:[.1,.4,0],bomb:[.1,.4,0],prot:[.3,.4,.2],tome:[.15,.5,0],tomeS:[.15,.5,0],stome:[.15,.5,0],gem:[1.15,.4,0],iron:[0,.3,-.6],gold_key:[0,.3,-.6],leg_key:[0,.3,-.6],frag:[0,.3,-.4]};
 const SUP_ART={};
 function supKind(s){ const k=s.k; return k===CRYS?'sparks':k==='gem'?'gem':k; }
 function supArt(s,sz){ sz=sz||128; const k=supKind(s), sub=k==='gem'?(s.gem?s.gem.replace(/\d$/,''):'ruby'):''; const key=k+sub+'@'+sz; if(SUP_ART[key]) return SUP_ART[key];
