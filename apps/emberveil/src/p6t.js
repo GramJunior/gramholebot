@@ -224,8 +224,8 @@ function terBuildGround(Z,b,opts={}){
   for(let j=0;j<nz;j++){ const z=z0+(j+.5)*cs; for(let i=0;i<nx;i++){ const x=x0+(i+.5)*cs, o=(j*nx+i)*4;
     const d=bl(SD,x,z), n1=vnoise(x*.23,z*.23), n2=vnoise(x*.9+7,z*.9), n3=vnoise(x*2.7,z*2.7+5), nM=fbm(x*.045+11,z*.045);
     let path=0, soil=0, pave=0, acc=0, rut=0, wet=0, moss=0;
-    if(!opts.noPath&&d<.4){ const pc=bl(PC,x,z), pw=pw0*(.82+.36*n1)+(n2-.5)*.75+(n3-.5)*.3;
-      path=1-sm01((pc-pw+.45)/.55); soil=Math.max(soil,(1-sm01((pc-pw-.05-n2*1.1)/.55))*.8);
+    if(!opts.noPath&&d<.4){ const pc=bl(PC,x,z), pw=pw0*(.6+.3*n1)+(n2-.5)*.7+(n3-.5)*.3;
+      path=1-sm01((pc-pw+.45)/.55); soil=Math.max(soil,(1-sm01((pc-pw-.1-n2*1.2)/.6))*.78);
       if(stageLike&&path>.5){ const rd=Math.abs(pc-rutO); if(rd<.32&&n1>.3) rut=(1-sm01(rd/.32))*sm01((n1-.3)*5)*(.6+n3*.4); }
       const pn=bl(PN,x,z); if(pn<3){ const p2=1-sm01((pn-1.05-(n2-.5)*.6)/.45); path=Math.max(path,p2*.95); soil=Math.max(soil,(1-sm01((pn-1.7-n2)/.8))*.8); } }
     if(plaza){ const r=Math.hypot(x,z), e=r+(n2-.5)*1.2+(n3-.5)*.4; pave=Math.max(pave,1-sm01((e-plaza+.3)/.5)); soil=Math.max(soil,(1-sm01((e-plaza-1.2)/.8))*.8); }
@@ -233,7 +233,7 @@ function terBuildGround(Z,b,opts={}){
     if(L) for(const p of L){ const dd=Math.hypot(x-p.x,z-p.z); if(dd>p.r+2.5) continue; if(p.ring&&dd<p.ring*.92) continue; const e=dd+(n2-.5)*2.2+(n3-.5)*.7;
       if(p.kind==='pave'){ const t=1-sm01((e-p.r*.95)/.6); pave=Math.max(pave,t*Math.min(1,p.k*1.7)); if(t>0) soil=Math.max(soil,(1-sm01((e-p.r-.9)/.9))*.7); }
       else if(p.kind==='shore'){ const t=1-sm01((e-p.r*.88)/.8); acc=Math.max(acc,t*Math.min(1,p.k*1.6)); wet=Math.max(wet,(1-sm01((dd-p.ring-.5)/.6))*.55); }
-      else { const t=1-sm01((e-p.r*.92)/(.7+p.r*.08)); soil=Math.max(soil,t*Math.min(1,p.k*1.9+.15)); } }
+      else { const t=1-sm01((e-p.r*.92)/(.7+p.r*.08)); soil=Math.max(soil,t*Math.min(1,p.k*1.9+.15)*(.35+.65*sm01((fbm(x*.33+2,z*.33)-.38)*4))); } }
     const Q=qb(Math.floor(x/4)+','+Math.floor(z/4));
     if(Q) for(const p of Q){ const dd=Math.hypot(x-p.x,z-p.z)-p.r, e=dd+(n2-.5)*.9; if(e>2.2) continue;
       if(p.kind==='wet'){ wet=Math.max(wet,1-sm01((e+.15)/.35)); soil=Math.max(soil,(1-sm01((e-.55)/.5))*.85); }
@@ -424,7 +424,7 @@ function terFinish(){
   // stepping stones flush with the trodden path: in stretches (noise along the path), always where the path enters ruins
   if(cfg.path&&W.paths) for(const s of W.paths){ const L=Math.hypot(s.bx-s.ax,s.bz-s.az); if(L<2) continue; const ux=(s.bx-s.ax)/L, uz=(s.bz-s.az)/L; let side=1;
     for(let t=rr(0,1);t<L;t+=rr(.75,1.05)){ const x=s.ax+ux*t, z=s.az+uz*t, o=cAt(x,z); const nearPave=o!==null&&ctl.C1[o+2]>40; if(!nearPave&&vnoise(x*.09+5,z*.09+1)<.6) continue; side=-side; const lo=side*rr(.12,.5);
-      put('flag',x-uz*lo,z+ux*lo,{s:rr(.36,.52),sy:1,c:pickC(pebC),dy:-.025}); } }
+      put('flag',x-uz*lo,z+ux*lo,{s:rr(.36,.52),sy:1,c:pickC(cfg.flagC||[0xb0a894,0xa09884,0x989080]),dy:-.012}); } }
   W.clutter={}; for(const t in OUT) W.clutter[t]=clBuild(t,OUT[t]);
   W.ter.clMs=Math.round(performance.now()-t0); W.ter.cl=Object.fromEntries(Object.entries(OUT).map(([k,v])=>[k,v.length/8]));
 }
