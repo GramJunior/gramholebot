@@ -1596,6 +1596,8 @@ html.land .tab.on::after{left:auto;right:0;top:6px;bottom:6px;width:3px;height:a
 .ic-st .si .ico.ic{width:20px;height:20px}
 .rchip .ico.ic{width:19px;height:19px;filter:drop-shadow(0 0 2px rgba(0,0,0,.7))}
 #hRes .rchip .ico.ic{width:21px;height:21px}
+html.land.short #hRes .rchip .ico.ic{width:19px;height:19px}
+html.land.xshort #hRes .rchip .ico.ic{width:17px;height:17px}
 .btn .ico.ic{width:1.3em;height:1.3em;vertical-align:-.3em}
 /* ---- бейдж «можно забрать»: на ободке кнопки, не на иконке; число при нескольких поводах; кольцо-пульс ---- */
 .hbtn .dot,#hMenu .hbtn .dot{top:-4px;right:-4px;min-width:16px;height:16px;border-radius:9px;padding:0 4px;box-sizing:border-box;z-index:3;
@@ -3676,6 +3678,7 @@ const ICO_DEFS=icoG('gG','#fff4c0','#f2c14a','#a8620f')+icoG('gS','#ffffff','#c3
  +icoG('gK','#f0ece4','#a29b90','#534c45')+icoG('gD','#8e8898','#3e3a46','#141218')+icoG('gE','#ffffff','#efe4ca','#a49474')
  +icoG('gT','#f8b088','#c8582e','#6a220e')+icoG('gM','#ffd6de','#ff5c7e','#88102e')+icoG('gV','#d8c0ff','#6a34c8','#1e0a44')
  +icoG('gU','#ffffff','#d2c2ff','#7a5ad0')
+ +'<linearGradient id="gSh" x1=".15" y1="0" x2=".85" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".45" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></linearGradient>'
  +icoRG('rF','#fffbd2','#ffd23a','#ff761a','#b8240a',.78)+icoRG('rB','#ffffff','#a6e4ff','#2f7fe6','#122c78')+icoRG('rP','#ffffff','#e4b8ff','#8a3ae0','#2a0c58');
 // ---- reusable parts ----
 const _SW_B='<path d="M27.5 4.5L26.2 10.3L12.6 23.9L8.1 19.4L21.7 5.8Z" fill="url(#gS)"/><path d="M5 18.6L7.4 16.2L15.8 24.6L13.4 27Z" fill="url(#gG)"/><path d="M9.2 23.1L10.9 24.8L7.4 28.3L5.7 26.6Z" fill="url(#gL)"/><circle cx="5.2" cy="28.8" r="2.2" fill="url(#gG)"/>';
@@ -3775,6 +3778,10 @@ const ICONS={
    '<path d="M6.6 13L15 20.6M25 9L17 16.6M16 4.6V10.6" stroke="#e2ffae" stroke-opacity=".7" stroke-width=".9" fill="none"/>'],
  dust:[`<path d="${icoStar(13,15,10.4,2.8,4)}" fill="url(#gU)"/><path d="${icoStar(24.4,7.4,5.2,1.4,4)}" fill="url(#gU)"/><path d="${icoStar(23.6,24.4,5.6,1.5,4)}" fill="url(#gU)"/>`,'<circle cx="6" cy="26" r="1.2" fill="#d2c2ff"/><circle cx="28" cy="15.4" r="1" fill="#d2c2ff"/>'],
  core:[`<path d="${icoPoly(16,16,14,6)}" fill="url(#gT)"/><path d="${icoPoly(16,16,8,6)}" fill="url(#rF)" stroke-width="1"/>`,'<path d="M16 2V8M28.1 9L22.9 12M28.1 23L22.9 20M16 30V24M3.9 23L9.1 20M3.9 9L9.1 12" stroke="#ffd0b0" stroke-opacity=".55" stroke-width=".9"/>'+icoH('M5.6 10.6L14.4 5.2',.6,1.1)],
+ // тонируемые варианты (цвет задаёт родитель через color): ключи разных сундуков, камни-самоцветы в гнёздах
+ keyT:(()=>{ const K='<path fill-rule="evenodd" d="M10 3.4a6.6 6.6 0 1 1 0 13.2a6.6 6.6 0 1 1 0-13.2ZM10 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6Z" fill="F"/><path d="M13.2 15.6L15.6 13.2L28.4 26L26 28.4Z" fill="F"/><path d="M21.8 23.4L24.6 20.6L26.8 22.8L24 25.6ZM18 19.6L20.8 16.8L22.4 18.4L19.6 21.2Z" fill="F"/>';
+   return [K.replace(/fill="F"/g,'fill="currentColor"'),K.replace(/fill="F"/g,'fill="url(#gSh)"')+icoH('M5.2 8.6A5 5 0 0 1 8.4 4.8',.85,1.2)]; })(),
+ gemT:['<path d="M16 3L26 9V20L16 29L6 20V9Z" fill="currentColor"/>','<path d="M16 3L26 9V20L16 29L6 20V9Z" fill="url(#gSh)"/><path d="M16 8.2L21.4 11.4V18L16 22.8L10.6 18V11.4Z" fill="#fff" fill-opacity=".16" stroke="#fff" stroke-opacity=".5" stroke-width=".8"/><path d="M16 3V8.2M26 9L21.4 11.4M26 20L21.4 18M16 29V22.8M6 20L10.6 18M6 9L10.6 11.4" stroke="#fff" stroke-opacity=".4" stroke-width=".8"/>'+icoH('M8.4 10.4L13.4 7.4',.85,1.2)],
  // ---------- стихии и умения ----------
  flame:[_FLAME_B,_FLAME_D],
  snow:[[0,60,120].map(a=>`<g transform="rotate(${a} 16 16)">${icoL('M16 3V29M12.6 5.8L16 9.2L19.4 5.8M12.6 26.2L16 22.8L19.4 26.2','#c4f0ff',2)}</g>`).join(''),'<circle cx="16" cy="16" r="2.4" fill="#fff"/>'],
@@ -8927,12 +8934,12 @@ function forgeBody(tab){
     h+=`<div class="sect">Шкатулка камней</div><div class="card">`;
     let any=false;
     for(const g in GEMS) for(let t=0;t<3;t++){ const id=g+t, n=S.gems[id]||0; if(!n) continue; any=true; const G0=GEMS[g];
-      h+=`<div class="row" style="padding:3px 0"><span style="color:${G0.c};font-size:20px">${ico('gem')}</span><b class="grow">${GEM_TIER[t]} ${G0.n.toLowerCase()} ×${n}</b><span class="muted">${G0.t.replace('{v}',G0.v[t])}</span>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
+      h+=`<div class="row" style="padding:3px 0"><span style="color:${G0.c};font-size:20px">${ico('gemT')}</span><b class="grow">${GEM_TIER[t]} ${G0.n.toLowerCase()} ×${n}</b><span class="muted">${G0.t.replace('{v}',G0.v[t])}</span>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
     if(!any) h+='<span class="muted">Камней нет. Ищите их в сундуках, у элиты и в рудных жилах.</span>';
     h+='</div>';
     if(it){ h+=itemTip(it,'');
       it.sock.forEach((g,si)=>{ if(g) h+=`<button class="btn woodb small" ${act(()=>{ S.gems[g]=(S.gems[g]||0)+1; it.sock[si]=null; after(); })}>Извлечь ${GEMS[g.slice(0,-1)].n.toLowerCase()}</button> `;
-        else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); h+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gem')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
+        else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); h+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gemT')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
       if(it.sock.length<2){ const c=socketCost(it); h+=`<div class="card row"><div class="grow"><b>Пробить гнездо</b> ${lv<3?'<span class="muted">(кузница 3 ур.)</span>':''}<div>${costHtml(c)}</div></div><button class="btn leather small" ${lv>=3&&canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ it.sock.push(null); AU.sfx('build'); after(); } })}>Пробить</button></div>`; } }
     h+=`<div class="sect">Выберите предмет</div>`+pickerGrid();
   }
@@ -12054,14 +12061,14 @@ function cardHtml(it,ctx){
   const B=ITEM_BASES[it.base]; const isEq=Object.values(S.gear).includes(it); const eq=isEq?null:S.gear[equipSlotFor(it)]; const dP=itemPower(it)-itemPower(eq); const req=itemReq(it);
   let h=`<div class="ic-l"><div class="it ic-big r${it.rar}"><i class="rg"></i><img data-ik="${iconKeyHQ(it)}" src="${iconHQ(it,true)}" alt="">${it.up?`<b class="up">+${it.up}</b>`:''}</div>
     <div class="ic-pow"><small>Сила</small><b>${itemPower(it)}</b>${!isEq&&eq!==undefined?`<em class="${dP>=0?'u':'d'}">${dP>=0?'▲':'▼'} ${Math.abs(dP)}</em>`:''}</div>
-    ${it.sock.length?`<div class="ic-sock">${it.sock.map(g=>g?`<span class="g" style="--g:${GEMS[g.slice(0,-1)].c}" title="${GEMS[g.slice(0,-1)].n}">${ico('gem')}</span>`:'<span class="g0"></span>').join('')}</div>`:''}
+    ${it.sock.length?`<div class="ic-sock">${it.sock.map(g=>g?`<span class="g" style="--g:${GEMS[g.slice(0,-1)].c}" title="${GEMS[g.slice(0,-1)].n}">${ico('gemT')}</span>`:'<span class="g0"></span>').join('')}</div>`:''}
     ${eq?`<div class="ic-vs">vs ${itHtml(eq,{cmp:false,lv:false,cls:'mini'})}<small class="r${eq.rar}">${esc(eq.name)}</small></div>`:''}</div>`;
   h+=`<div class="ic-r"><h3 class="r${it.rar}">${esc(it.name)}${it.up?` <span class="upt">+${it.up}</span>`:''}</h3><div class="ic-ty"><span class="rp r${it.rar}">${RAR[it.rar].n}</span> ${itemSlotName(it)} · ур. ${it.ilvl}</div>`;
   if(req) h+=`<div class="ic-req ${reqOk(it)?'ok':'no'}">${ico(ATTR[req.a].ic)} Требуется: ${ATTR[req.a].n} ${req.v} (у вас ${attrTotal(req.a)})</div>`;
   h+=`<ul class="ic-st">${mainRows(it,eq)}`;
   if(it.el) h+=`<li><span class="si" style="color:${STAT_COL[it.el]}">${ico(STAT_IC[it.el])}</span><span class="st">Стихия: ${EL_NAME[it.el]}</span></li>`;
   for(const a of it.aff){ const ev2=eq&&eq.aff.find(x=>x.k===a.k); const d=eq?(ev2?Math.sign(a.v*upMul(it)-ev2.v*upMul(eq)):1):0; h+=statRow(a.k,a.v*upMul(it),d); }
-  for(const g of it.sock) if(g){ const G0=GEMS[g.slice(0,-1)]; h+=`<li><span class="si" style="color:${G0.c}">${ico('gem')}</span><span class="st">${G0.t.replace('{v}',G0.v[+g.slice(-1)])}</span></li>`; }
+  for(const g of it.sock) if(g){ const G0=GEMS[g.slice(0,-1)]; h+=`<li><span class="si" style="color:${G0.c}">${ico('gemT')}</span><span class="st">${G0.t.replace('{v}',G0.v[+g.slice(-1)])}</span></li>`; }
   h+='</ul>';
   if(it.uniq){ const u=Object.values(UNIQUES).find(u=>u.id===it.uniq); h+=`<div class="ic-uni">${ico('spark')} <b>${u.n}.</b> ${u.t}</div>`; }
   if(it.set){ const S0=SETS[it.set]; const c=setCount()[it.set]||0; h+=`<div class="ic-set"><b>${ico('crown')} ${S0.n} (${c}/4)</b><div class="${c>=2?'on':''}">(2) ${S0.b2.t}</div><div class="${c>=4?'on':''}">(4) ${S0.b4.t}</div></div>`; }
@@ -12126,7 +12133,7 @@ function pGear2(){
   let R=`<div class="invbar"><div class="chips">${Object.keys(INV_FILT).map(f=>`<button class="chip ${INV_F===f?'on':''}" ${act(()=>{ INV_F=f; rerender(); })}>${ico(INV_FILT[f][1])}<span>${INV_FILT[f][0]}</span></button>`).join('')}</div><span class="cap ${S.inv.length>=invCap()?'full':''}">${S.inv.length}/${invCap()}</span></div>`;
   R+=`<div class="invgrid">${list.map(it=>itHtml(it,{act:act(()=>{ PANEL.sel=it; it.nw=false; cardOpen(it,'inv'); }),sel:sel===it,cmpDn:true})).join('')}${list.length?'':`<div class="empty-note">${INV_F==='up'?'Ничего лучше надетого нет':'Пусто'}</div>`}</div>`;
   R+=`<div class="row invact"><button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button><button class="btn woodb small" ${act(()=>{ let n=0; const tot={}; for(const it of S.inv.slice()){ if(!it.lock&&it.rar<=1&&cmpVal(it)<=0){ const v=salvage(it); if(v){ n++; for(const k in v) tot[k]=(tot[k]||0)+v[k]; } } } toast(n?`Разобрано: <b>${n}</b> · ${Object.keys(tot).filter(k=>tot[k]).map(k=>tot[k]+' '+RES_NAME[k].toLowerCase()).join(', ')}`:'Нечего разбирать'); AU.sfx('hit'); rerender(); })}>${ico('salvage')} Хлам</button><button class="btn leather small" ${act(()=>{ botEquipBest(); AU.sfx('pick'); rerender(); hudPortrait(); })}>${ico('check')} Лучшее</button></div>`;
-  R+=`<div class="consrow">${['potion','bomb','elixir_str','elixir_def','elixir_spd','scroll','prot','tome'].filter(k=>S.cons[k]>0||k==='potion').map(k=>`<span class="cons" title="${CONS[k].n}">${ico(CONS[k].ic)}<b>${S.cons[k]||0}</b></span>`).join('')}${['iron','gold','leg'].filter(k=>keyCount(k)>0).map(k=>`<span class="cons" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('key')}<b>${keyCount(k)}</b></span>`).join('')}${S.ck.f?`<span class="cons" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('key')}<b>${S.ck.f}/${GOLD_FRAG}</b></span>`:''}</div>`;
+  R+=`<div class="consrow">${['potion','bomb','elixir_str','elixir_def','elixir_spd','scroll','prot','tome'].filter(k=>S.cons[k]>0||k==='potion').map(k=>`<span class="cons" title="${CONS[k].n}">${ico(CONS[k].ic)}<b>${S.cons[k]||0}</b></span>`).join('')}${['iron','gold','leg'].filter(k=>keyCount(k)>0).map(k=>`<span class="cons" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('keyT')}<b>${keyCount(k)}</b></span>`).join('')}${S.ck.f?`<span class="cons" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('keyT')}<b>${S.ck.f}/${GOLD_FRAG}</b></span>`:''}</div>`;
   return `<div class="gear2"><div class="g-l">${L}</div><div class="g-r">${R}</div></div>`;
 }
 // equip the best item per slot (by power, respecting requirements) — button «Лучшее» and the test bot
@@ -12240,10 +12247,10 @@ forgeBody=function(tab){
   }
   if(tab==='gems'){
     let box=''; for(const g in GEMS) for(let t=0;t<3;t++){ const id=g+t, n=S.gems[id]||0; if(!n) continue; const G0=GEMS[g];
-      box+=`<div class="gemc"><span style="color:${G0.c}" class="gi t${t}">${ico('gem')}</span><b>${GEM_TIER[t]} ${G0.n.toLowerCase()}</b><small>${G0.t.replace('{v}',G0.v[t])}</small><i>×${n}</i>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
+      box+=`<div class="gemc"><span style="color:${G0.c}" class="gi t${t}">${ico('gemT')}</span><b>${GEM_TIER[t]} ${G0.n.toLowerCase()}</b><small>${G0.t.replace('{v}',G0.v[t])}</small><i>×${n}</i>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
     R+=`<div class="sect">Шкатулка камней</div><div class="gembox">${box||'<span class="muted">Камней нет. Ищите их в сундуках, у элиты и в рудных жилах.</span>'}</div>`;
     if(it){ R+=big; it.sock.forEach((g,si)=>{ if(g) R+=`<button class="btn woodb small" ${act(()=>{ S.gems[g]=(S.gems[g]||0)+1; it.sock[si]=null; after(); })}>Извлечь ${GEMS[g.slice(0,-1)].n.toLowerCase()}</button> `;
-        else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); R+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gem')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
+        else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); R+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gemT')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
       const maxS=it.rar>=3?3:2; if(it.sock.length<maxS){ const c=socketCost(it); if(it.sock.length>=2) c.core=2; R+=`<div class="card row"><div class="grow"><b>Пробить гнездо</b> ${lv<3?'<span class="muted">(кузница 3 ур.)</span>':''}<div>${costHtml(c)}</div></div><button class="btn leather small" ${lv>=3&&canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ it.sock.push(null); AU.sfx('build'); after(); } })}>Пробить</button></div>`; } }
     L=pickGrid();
   }
@@ -12281,7 +12288,7 @@ templeBody=function(tab){
 // ---------- «Лавка» ----------
 const SHOP_TABS=[['deals','Предложения дня','deal'],['chests','Сундуки','chest'],['packs','Наборы','gifts'],['boosts','Бусты','boost'],['crys','Самоцветы','crys'],['skins','Облики','cloak']];
 function openShop(tab){ openPanel('shop',{tab:tab||'deals'}); }
-function shopHead(){ return `<div class="shophead">${resChip('gold',S.res.gold)}${resChip(CRYS,S.res[CRYS]||0)}${['iron','gold','leg'].map(k=>`<span class="rchip" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('key')}<span style="color:#f3dcb0">${keyCount(k)}</span></span>`).join('')}<span class="rchip" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('key')}<span style="color:#f3dcb0">${S.ck.f}/${GOLD_FRAG}</span></span></div>`; }
+function shopHead(){ return `<div class="shophead">${resChip('gold',S.res.gold)}${resChip(CRYS,S.res[CRYS]||0)}${['iron','gold','leg'].map(k=>`<span class="rchip" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('keyT')}<span style="color:#f3dcb0">${keyCount(k)}</span></span>`).join('')}<span class="rchip" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('keyT')}<span style="color:#f3dcb0">${S.ck.f}/${GOLD_FRAG}</span></span></div>`; }
 const chestImgCache={};
 function chestImg(tier,open){ const k=tier+(open?'o':''); if(chestImgCache[k]) return chestImgCache[k]; try{ const g=chestGroup(tier,open?1:0); return chestImgCache[k]=RTT.shot(g,192,[1.5,1.25,2.1],[0,.42,0]); }catch(e){ return ''; } }
 const CHEST_MUL={wood:0xffffff,iron:0x9aa6b4,gold:0xfff0c0,leg:0xf0a090};
@@ -12300,7 +12307,7 @@ PANEL_EXT.shop=()=>{ const tab=PANEL.tab||'deals'; PANEL.tab=tab; let body=shopH
         ${C.pity?`<div class="pity"><i style="width:${Math.round((S.pity[t]||0)/C.pity.n*100)}%"></i><span>Гарантия ${S.pity[t]||0}/${C.pity.n}</span></div>`:''}
         <div class="cbtns"><button class="btn leather small" ${n>0&&kc>0?'':'disabled'} ${act(()=>{ const o=chestOpen(t); if(o) chestShow([o]); })}>${ico('chest')} Открыть</button>${price?`<button class="btn woodb small" ${lim>0?'':'disabled'} ${act(()=>{ if(SHOP_LIM[t]!==undefined&&!shopLimLeft(t)) return toast('На сегодня лимит покупок'); if(!crysSpend(price,'chest_'+t)) return; if(SHOP_LIM[t]!==undefined) shopLimUse(t); chestShow([chestOpen(t,{free:1,src:'crys'})]); })}>${crysHtml(price)}${SHOP_LIM[t]!==undefined?` <small>${lim}/${SHOP_LIM[t]}</small>`:''}</button>`:''}</div>
         <details class="rates"><summary>Шансы</summary><div class="rtab">${C.rates.map((r,i)=>r?`<span class="r${i}">${RAR[i].n}<b>${r}%</b></span>`:'').join('')}</div><small class="muted">Шансы для каждой вещи. Припасы: ${CHEST_SUP[t].map(x=>supLabel({k:x[0],sch:'fire'})).join(', ')}.</small></details></div>`; }
-    body+=`</div><div class="sect">Ключи</div><div class="sgrid">${['iron','gold'].map(k=>`<div class="sitem"><span class="sic" style="color:${KEY_COL[k]}">${ico('key')}</span><b>${KEY_NAME[k]}</b><small>у вас ${keyCount(k)}</small><button class="btn leather small" ${act(()=>{ if(!crysSpend(SHOP_CRYS.key[k],'key_'+k)) return; keyAdd(k,1); AU.sfx('loot'); rerender(); })}>${crysHtml(SHOP_CRYS.key[k])}</button></div>`).join('')}<div class="sitem"><span class="sic" style="color:${KEY_COL.gold}">${ico('key')}</span><b>Обломки ключа</b><small>${GOLD_FRAG} обломков = золотой ключ. Падают у чемпионов, в Бездне, за владык и контракты.</small><span class="pill">${S.ck.f}/${GOLD_FRAG}</span></div></div>`; }
+    body+=`</div><div class="sect">Ключи</div><div class="sgrid">${['iron','gold'].map(k=>`<div class="sitem"><span class="sic" style="color:${KEY_COL[k]}">${ico('keyT')}</span><b>${KEY_NAME[k]}</b><small>у вас ${keyCount(k)}</small><button class="btn leather small" ${act(()=>{ if(!crysSpend(SHOP_CRYS.key[k],'key_'+k)) return; keyAdd(k,1); AU.sfx('loot'); rerender(); })}>${crysHtml(SHOP_CRYS.key[k])}</button></div>`).join('')}<div class="sitem"><span class="sic" style="color:${KEY_COL.gold}">${ico('keyT')}</span><b>Обломки ключа</b><small>${GOLD_FRAG} обломков = золотой ключ. Падают у чемпионов, в Бездне, за владык и контракты.</small><span class="pill">${S.ck.f}/${GOLD_FRAG}</span></div></div>`; }
   if(tab==='packs'){ body+=`<div class="sgrid wide">`; for(const p of starProducts().filter(p=>p.type==='bundle')) body+=starCard(p); body+=`</div><div class="muted">Покупки за Telegram Stars восстанавливаются при входе. Наборы — удобство и косметика: в набегах на соседей и рейтинге Бездны сила выравнивается (см. «Честный бой»).</div>`; }
   if(tab==='crys'){ body+=`<div class="sgrid">`; for(const p of starProducts().filter(p=>p.type==='currency')) body+=starCard(p); body+=`</div><div class="card"><b>${ico('crys')} Самоцветы</b> — валюта для ускорений, сундуков, ключей и обликов. Бесплатно: календарь, Путь Угля, достижения, контракты, реклама, золотые сундуки.</div>`; }
   if(tab==='boosts'){ body+=`<div class="sgrid">`; for(const k in BOOSTS){ const B=BOOSTS[k]; const on=boostOn(k); body+=`<div class="sitem ${on?'on':''}"><span class="sic" style="color:#ffd27a">${ico(B.ic)}</span><b>${B.n}</b><small>${B.d}</small>${on?`<div class="pill">ещё <b data-end="${S.boost[k]}">${fmtTimer(S.boost[k]-Date.now())}</b></div>`:''}<button class="btn leather small" ${act(()=>{ if(!crysSpend(B.price,'boost_'+k)) return; boostAdd(k,B.min); AU.sfx('lvl',.6); toast(`${B.n} — на ${B.min} мин`); rerender(); })}>${crysHtml(B.price)}</button></div>`; }
@@ -12551,7 +12558,7 @@ const DEAL_COL={potion:'#ff5a5a',bomb:'#ffb04a',ess:'#6fe0d6',ore:'#b8c4cc',wood
 function grantChips(g){ const out=[]; for(const k in g){ const v=g[k]; if(!v) continue;
     if(k==='sparks') out.push(`<span><span style="color:#5fe3ff">${ico('crys')}</span>${v}</span>`);
     else if(k.startsWith('open_')||k.startsWith('chest_')) out.push(`<span><span style="color:${(CHESTS[k.split('_')[1]]||{col:'#ffcf4a'}).col}">${ico('chest')}</span>×${v}</span>`);
-    else if(k.startsWith('key_')) out.push(`<span><span style="color:${KEY_COL[k.slice(4)]||'#ffcf4a'}">${ico('key')}</span>×${v}</span>`);
+    else if(k.startsWith('key_')) out.push(`<span><span style="color:${KEY_COL[k.slice(4)]||'#ffcf4a'}">${ico('keyT')}</span>×${v}</span>`);
     else if(k==='slot2') out.push(`<span>${ico('help')} строитель</span>`);
     else if(CONS[k]) out.push(`<span><span style="color:${BREW_COL[k]||'#ffd27a'}">${ico(CONS[k].ic)}</span>×${v}</span>`);
     else if(RES_IC[k]) out.push(`<span><span style="color:${RES_COL[k]}">${ico(RES_IC[k])}</span>${fmt(v)}</span>`); }

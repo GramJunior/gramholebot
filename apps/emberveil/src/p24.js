@@ -141,7 +141,7 @@ const DEAL_COL={potion:'#ff5a5a',bomb:'#ffb04a',ess:'#6fe0d6',ore:'#b8c4cc',wood
 function grantChips(g){ const out=[]; for(const k in g){ const v=g[k]; if(!v) continue;
     if(k==='sparks') out.push(`<span><span style="color:#5fe3ff">${ico('crys')}</span>${v}</span>`);
     else if(k.startsWith('open_')||k.startsWith('chest_')) out.push(`<span><span style="color:${(CHESTS[k.split('_')[1]]||{col:'#ffcf4a'}).col}">${ico('chest')}</span>×${v}</span>`);
-    else if(k.startsWith('key_')) out.push(`<span><span style="color:${KEY_COL[k.slice(4)]||'#ffcf4a'}">${ico('key')}</span>×${v}</span>`);
+    else if(k.startsWith('key_')) out.push(`<span><span style="color:${KEY_COL[k.slice(4)]||'#ffcf4a'}">${ico('keyT')}</span>×${v}</span>`);
     else if(k==='slot2') out.push(`<span>${ico('help')} строитель</span>`);
     else if(CONS[k]) out.push(`<span><span style="color:${BREW_COL[k]||'#ffd27a'}">${ico(CONS[k].ic)}</span>×${v}</span>`);
     else if(RES_IC[k]) out.push(`<span><span style="color:${RES_COL[k]}">${ico(RES_IC[k])}</span>${fmt(v)}</span>`); }

@@ -74,12 +74,12 @@ function forgeBody(tab){
     h+=`<div class="sect">Шкатулка камней</div><div class="card">`;
     let any=false;
     for(const g in GEMS) for(let t=0;t<3;t++){ const id=g+t, n=S.gems[id]||0; if(!n) continue; any=true; const G0=GEMS[g];
-      h+=`<div class="row" style="padding:3px 0"><span style="color:${G0.c};font-size:20px">${ico('gem')}</span><b class="grow">${GEM_TIER[t]} ${G0.n.toLowerCase()} ×${n}</b><span class="muted">${G0.t.replace('{v}',G0.v[t])}</span>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
+      h+=`<div class="row" style="padding:3px 0"><span style="color:${G0.c};font-size:20px">${ico('gemT')}</span><b class="grow">${GEM_TIER[t]} ${G0.n.toLowerCase()} ×${n}</b><span class="muted">${G0.t.replace('{v}',G0.v[t])}</span>${t<2&&n>=3?`<button class="btn woodb small" ${act(()=>{ const c={gold:Math.round(50*(t+1)*(t+1)*F(S.hero.lvl)*.5)}; if(!pay(c)) return; S.gems[id]-=3; S.gems[g+(t+1)]=(S.gems[g+(t+1)]||0)+1; AU.sfx('loot'); saveGame(); rerender(); })}>3→1</button>`:''}</div>`; }
     if(!any) h+='<span class="muted">Камней нет. Ищите их в сундуках, у элиты и в рудных жилах.</span>';
     h+='</div>';
     if(it){ h+=itemTip(it,'');
       it.sock.forEach((g,si)=>{ if(g) h+=`<button class="btn woodb small" ${act(()=>{ S.gems[g]=(S.gems[g]||0)+1; it.sock[si]=null; after(); })}>Извлечь ${GEMS[g.slice(0,-1)].n.toLowerCase()}</button> `;
-        else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); h+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gem')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
+        else { const avail=Object.keys(S.gems).filter(k=>S.gems[k]>0); h+=`<div class="card">Гнездо ${si+1}: ${avail.map(k=>`<button class="btn woodb small" ${act(()=>{ S.gems[k]--; it.sock[si]=k; AU.sfx('loot'); after(); })}><span style="color:${GEMS[k.slice(0,-1)].c}">${ico('gemT')}</span> ${GEM_TIER[+k.slice(-1)]} ${GEMS[k.slice(0,-1)].n.toLowerCase()}</button>`).join(' ')||'<span class="muted">нет камней</span>'}</div>`; } });
       if(it.sock.length<2){ const c=socketCost(it); h+=`<div class="card row"><div class="grow"><b>Пробить гнездо</b> ${lv<3?'<span class="muted">(кузница 3 ур.)</span>':''}<div>${costHtml(c)}</div></div><button class="btn leather small" ${lv>=3&&canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ it.sock.push(null); AU.sfx('build'); after(); } })}>Пробить</button></div>`; } }
     h+=`<div class="sect">Выберите предмет</div>`+pickerGrid();
   }

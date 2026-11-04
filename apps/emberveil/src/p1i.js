@@ -24,6 +24,7 @@ const ICO_DEFS=icoG('gG','#fff4c0','#f2c14a','#a8620f')+icoG('gS','#ffffff','#c3
  +icoG('gK','#f0ece4','#a29b90','#534c45')+icoG('gD','#8e8898','#3e3a46','#141218')+icoG('gE','#ffffff','#efe4ca','#a49474')
  +icoG('gT','#f8b088','#c8582e','#6a220e')+icoG('gM','#ffd6de','#ff5c7e','#88102e')+icoG('gV','#d8c0ff','#6a34c8','#1e0a44')
  +icoG('gU','#ffffff','#d2c2ff','#7a5ad0')
+ +'<linearGradient id="gSh" x1=".15" y1="0" x2=".85" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".45" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></linearGradient>'
  +icoRG('rF','#fffbd2','#ffd23a','#ff761a','#b8240a',.78)+icoRG('rB','#ffffff','#a6e4ff','#2f7fe6','#122c78')+icoRG('rP','#ffffff','#e4b8ff','#8a3ae0','#2a0c58');
 // ---- reusable parts ----
 const _SW_B='<path d="M27.5 4.5L26.2 10.3L12.6 23.9L8.1 19.4L21.7 5.8Z" fill="url(#gS)"/><path d="M5 18.6L7.4 16.2L15.8 24.6L13.4 27Z" fill="url(#gG)"/><path d="M9.2 23.1L10.9 24.8L7.4 28.3L5.7 26.6Z" fill="url(#gL)"/><circle cx="5.2" cy="28.8" r="2.2" fill="url(#gG)"/>';
@@ -123,6 +124,10 @@ const ICONS={
    '<path d="M6.6 13L15 20.6M25 9L17 16.6M16 4.6V10.6" stroke="#e2ffae" stroke-opacity=".7" stroke-width=".9" fill="none"/>'],
  dust:[`<path d="${icoStar(13,15,10.4,2.8,4)}" fill="url(#gU)"/><path d="${icoStar(24.4,7.4,5.2,1.4,4)}" fill="url(#gU)"/><path d="${icoStar(23.6,24.4,5.6,1.5,4)}" fill="url(#gU)"/>`,'<circle cx="6" cy="26" r="1.2" fill="#d2c2ff"/><circle cx="28" cy="15.4" r="1" fill="#d2c2ff"/>'],
  core:[`<path d="${icoPoly(16,16,14,6)}" fill="url(#gT)"/><path d="${icoPoly(16,16,8,6)}" fill="url(#rF)" stroke-width="1"/>`,'<path d="M16 2V8M28.1 9L22.9 12M28.1 23L22.9 20M16 30V24M3.9 23L9.1 20M3.9 9L9.1 12" stroke="#ffd0b0" stroke-opacity=".55" stroke-width=".9"/>'+icoH('M5.6 10.6L14.4 5.2',.6,1.1)],
+ // тонируемые варианты (цвет задаёт родитель через color): ключи разных сундуков, камни-самоцветы в гнёздах
+ keyT:(()=>{ const K='<path fill-rule="evenodd" d="M10 3.4a6.6 6.6 0 1 1 0 13.2a6.6 6.6 0 1 1 0-13.2ZM10 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6Z" fill="F"/><path d="M13.2 15.6L15.6 13.2L28.4 26L26 28.4Z" fill="F"/><path d="M21.8 23.4L24.6 20.6L26.8 22.8L24 25.6ZM18 19.6L20.8 16.8L22.4 18.4L19.6 21.2Z" fill="F"/>';
+   return [K.replace(/fill="F"/g,'fill="currentColor"'),K.replace(/fill="F"/g,'fill="url(#gSh)"')+icoH('M5.2 8.6A5 5 0 0 1 8.4 4.8',.85,1.2)]; })(),
+ gemT:['<path d="M16 3L26 9V20L16 29L6 20V9Z" fill="currentColor"/>','<path d="M16 3L26 9V20L16 29L6 20V9Z" fill="url(#gSh)"/><path d="M16 8.2L21.4 11.4V18L16 22.8L10.6 18V11.4Z" fill="#fff" fill-opacity=".16" stroke="#fff" stroke-opacity=".5" stroke-width=".8"/><path d="M16 3V8.2M26 9L21.4 11.4M26 20L21.4 18M16 29V22.8M6 20L10.6 18M6 9L10.6 11.4" stroke="#fff" stroke-opacity=".4" stroke-width=".8"/>'+icoH('M8.4 10.4L13.4 7.4',.85,1.2)],
  // ---------- стихии и умения ----------
  flame:[_FLAME_B,_FLAME_D],
  snow:[[0,60,120].map(a=>`<g transform="rotate(${a} 16 16)">${icoL('M16 3V29M12.6 5.8L16 9.2L19.4 5.8M12.6 26.2L16 22.8L19.4 26.2','#c4f0ff',2)}</g>`).join(''),'<circle cx="16" cy="16" r="2.4" fill="#fff"/>'],
