@@ -5,6 +5,7 @@ const {open,serve}=require('./harness.js');
 const args=process.argv.slice(2); const arg=(k,d)=>{ const a=args.find(x=>x.startsWith('--'+k)); if(!a) return d; const v=a.split('=')[1]; return v===undefined?true:v; };
 const SHOTS=arg('shots',false), Q=arg('q','med'), NAB=+arg('abyss',10), ONLY=arg('stages',''), PAGE=arg('page','index.html'), VERB=arg('v',false);
 (async()=>{ const base=await serve(); const H=await open({vp:SHOTS?{width:900,height:1300}:{width:844,height:390},mobile:false,dpr:1,url:base+'/emberveil/'+PAGE+'?q='+Q+'&noprologue'}); const {ev,wait,shot}=H; await H.quick();
+  for(let i=0;i<4;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); }); await wait(400); } // v18: сцена пробуждения не должна держать камеру
   await ev(()=>{ __game.S.seen.ftue_done=1; __game.mapTo(7); });
   const keys=[]; if(ONLY) keys.push(...ONLY.split(',')); else for(let z=1;z<=7;z++) for(let s=1;s<=5;s++) keys.push(z+'-'+s);
   let total=0; const sum={}; const rows=[];

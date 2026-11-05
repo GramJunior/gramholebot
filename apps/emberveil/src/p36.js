@@ -258,3 +258,6 @@ objText=function(){ const wait=W&&W.a2wait, bd=W&&W.bossDead; if(wait) W.bossDea
 // asWrapFactories() runs at load in p3c — wrap the Act II factories the same way (asset model first, procedural fallback)
 (function a2WrapFactories(){ for(const k of ['frostRanker','driftWolf','rimeWailer','frostSapper']){ const f=ENEMY_MODELS[k]; ENEMY_PROC[k]=f; ENEMY_MODELS[k]=()=>{ if(asCan(k)){ const m=asMeta('en:'+k,f); const r=asRig(k,m); if(r) return r; } return f(); }; }
   for(const k of ['stuzhen','belava']){ const f=BOSS_MODELS[k]; BOSS_PROC[k]=f; BOSS_MODELS[k]=()=>{ if(asCan(k)){ const m=asMeta('boss:'+k,f); const r=asRig(k,m); if(r) return r; } return f(); }; } })();
+// «Стойкость владыки» Белавы: порог 2%/с и ослабление ×0,25 (§8.3: перекачанный герой не должен «растапливать» её быстрее 45 с)
+const _bossSoakA2=bossSoak;
+bossSoak=function(e,amt){ if(e.kind!=='belava') return _bossSoakA2(e,amt); const s=e.soak; if(G.time-s.t>=1){ s.t=G.time; s.dmg=0; } const cap=e.maxHp*.02; const free=Math.max(0,cap-s.dmg); const a=amt<=free?amt:free+(amt-free)*.25; s.dmg+=amt; return a; };
