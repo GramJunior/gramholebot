@@ -72,7 +72,7 @@ function startStage2(z,s){
     show('hud'); hudBuild(); AU.music(info.zone.mus); cullProps(W.start.x,W.start.z,true);
     banner(info.name,`${info.zone.n} · ${STAGE_TYPES[info.type].n}`); track('stage_start',info.key);
     if(Object.keys(RUNBUF).length) toast('Эликсир выпит — сила разливается по жилам');
-    if(!S.seen.tut1){ S.seen.tut1=1; later(2.5,()=>toast('<b>Атака</b> — большая кнопка справа: цель выбирается сама. Удерживайте для серии.')); later(7,()=>toast('<b>Красные зоны</b> на земле — сюда сейчас ударят. Уходите или делайте <b>кувырок</b>.')); later(12,()=>toast('Бочки, ящики и жилы руды тоже можно бить. Ищите <b>треснувшие стены и баррикады</b> (искрятся) — за ними тайники; рунную дверь открывает рычаг рядом.')); }
+    if(!S.seen.tut1){ S.seen.tut1=1; later(2.5,()=>toast('<b>Атака</b> — большая кнопка справа: цель выбирается сама. Касания — серия, удержание — заряженный удар.')); later(7,()=>toast('<b>Красные зоны</b> на земле — сюда сейчас ударят. Уходите или делайте <b>кувырок</b>.')); later(12,()=>toast('Бочки, ящики и жилы руды тоже можно бить. Ищите <b>треснувшие стены и баррикады</b> (искрятся) — за ними тайники; рунную дверь открывает рычаг рядом.')); }
     if(info.z>=2&&!S.seen['zone'+info.z]){ S.seen['zone'+info.z]=1; later(3,()=>toast(`<b>${info.zone.n}</b>: враги сильнее. Улучшайте снаряжение в кузнице и не забывайте о питомцах.`)); }
     saveGame();
   });
@@ -136,9 +136,9 @@ function onBossDeath(e){
     return;
   }
   later(.8,()=>{
-    const L=e.lvl; const n=first?4:3;
+    const L=e.lvl; const n=first?3:2; // v20: «честная добыча» — меньше, но весомее (первая победа: легендарка + 2 эпика)
     for(let i=0;i<n;i++) later(i*.18,()=>spawnDrop('item',e.x,e.z,{item:genItem(L+1,{mf:PS.mf+200,rmin:i===0&&first?3:2,set:i===1&&chance(.5)?pick(['warden','ash','owl']):undefined})}));
-    if(first&&chance(.2)) spawnDrop('item',e.x,e.z,{item:genItem(L+1,{rar:4})});
+    if(first&&chance(.1)) spawnDrop('item',e.x,e.z,{item:genItem(L+1,{rar:4})});
     for(let i=0;i<14;i++) spawnDrop('gold',e.x,e.z,{v:Math.round(rand(8,16)*F(L)*(1+PS.gold/100))});
     spawnDrop('mat',e.x,e.z,{res:'ess',v:randi(5,10)+z*2}); spawnDrop('key',e.x,e.z); spawnDrop('gem',e.x,e.z,{gem:pick(Object.keys(GEMS))+(z>=4?'1':'0')});
     if(first&&(z===2||z===4||z===3||z===5)){ const k=randomEggKind(z); S.pets.eggs.push({kind:k,start:0}); toast(`Трофей: яйцо — <b>${PET_DEFS[k].t}</b>!`,iconForGeo('egg'+k,eggGeo(k)),PET_DEFS[k].rar); }

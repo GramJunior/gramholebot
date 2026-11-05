@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=7;
+const SAVE_V=8;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -38,7 +38,7 @@ function newSave(){
       ingot:6,steel:0,mithril:0,cloth:4,leather:4,thread:4,silk:0,dhide:0,sinew:3,ironwood:0,gshard:3,gdust:2,efire:3,eice:0,epoison:0,elight:0,scrap:0,
       // v19 (save v7): материалы Акта II
       ice:0,pearl:0,sun:0,mem:0,blade:0},
-    gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0,prot:0,tome:0}, keys:0, potMax:3,
+    gems:{}, cons:{potion:3,bomb:2,bomb_ice:0,bomb_poison:0,bomb_thunder:0,bomb_smoke:1,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0,prot:0,tome:0}, keys:0, potMax:3,
     // v5: chests & keys (S.keys = iron keys), pity counters, spells/runes, recipes, build & craft queues, boosts, shop state
     ck:{g:0,f:0,l:0}, chests:{wood:0,iron:0,gold:0,leg:0}, pity:{}, spell:{known:{},tomes:{},slot:'',runes:{},rune:{}}, rec:{}, bq:{list:[],slot2:false}, craft:{list:[]}, boost:{xp:0,gold:0,drop:0}, shop:{day:'',ref:0,bought:{},lim:{},free:0,adRef:0},
     pets:{owned:{},active:[null,null],eggs:[]},
@@ -57,7 +57,9 @@ function newSave(){
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
     // v7 (игра v19): Акт II — открыт ли акт, цепочка STORY2, «Память Уголька», милосердие, «Летопись Глубин»
     act2:{on:0,qi:0,qb:{},mem:0,mercy:0,flashDebt:0,perm:{},seen:{}}, lore2:[],
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',chars:'auto',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false,sharp:'auto'}
+    // v8 (игра v20): «честная добыча» — счётчик невезения (blp) и статистика выпадений
+    loot:{blp:0,n:0,up:0,conv:0},
+    set:{diff:'norm',dmgN:'merge',hold:'charge',autoSalv:'common',bombT:'fire',sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',chars:'auto',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false,sharp:'auto'}
   };
 }
 let S=newSave();
@@ -103,6 +105,10 @@ function migrateSave(d){
     try{ matMigrate(d); }catch(e){ console.error(e); } d.v=6; }
   if(d.v<7){ // v6 → v7 (игра v19): Акт II — материалы ice/pearl/sun/mem/blade, S.act2, S.lore2. Акт закрыт до концовки и 30 ур. (src/p35.js)
     try{ if(typeof a2Migrate==='function') a2Migrate(d); }catch(e){ console.error(e); } d.v=7; }
+  if(d.v<8){ // v7 → v8 (игра v20): сложность, бомбы пяти видов (старые бомбы = огненные), «честная добыча», цифры урона, удержание атаки
+    d.set=d.set||{}; if(!d.set.diff) d.set.diff='norm'; if(!d.set.dmgN) d.set.dmgN=d.set.dmg===false?'off':'merge'; if(!d.set.hold) d.set.hold='charge'; if(!d.set.autoSalv) d.set.autoSalv='off'; if(!d.set.bombT) d.set.bombT='fire';
+    d.cons=d.cons||{}; for(const k of ['bomb_ice','bomb_poison','bomb_thunder','bomb_smoke']) if(d.cons[k]===undefined) d.cons[k]=0; if((d.cons.bomb|0)>5) d.cons.bomb=5;
+    d.loot=d.loot||{blp:0,n:0,up:0,conv:0}; d.v=8; }
   return d;
 }
 let _saveT=0;
@@ -295,6 +301,8 @@ const AU=(()=>{
     }
   }
   A.init=init; A.sfx=sfx; A.music=music; A.setVol=setVol; A.ctx=()=>ctx;
+  // v20: свои звуки модулей (src/p37.js и дальше) — тот же синтез, общая громкость и реверберация
+  A.synth=(name,fn)=>{ if(!ctx||ctx.state!=='running') return; const now=ctx.currentTime; if(name){ if(lastPlay[name]&&now-lastPlay[name]<0.03) return; lastPlay[name]=now; } try{ fn({t:now+0.005,osc,noise,ctx}); }catch(e){} };
   return A;
 })();
 

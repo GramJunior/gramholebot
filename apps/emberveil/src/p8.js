@@ -366,7 +366,12 @@ function pSettings(pause){
   <div class="set"><label>Камера</label>${seg('cam',[[0,'Ближе'],[1,'Обычно'],[2,'Дальше']])}</div>
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
-  <div class="set"><label>Цифры урона</label>${seg('dmg',[[true,'Вкл'],[false,'Выкл']])}</div>
+  <div class="set"><label>Сложность</label>${seg('diff',[['story','История'],['norm','Норма'],['night','Кошмар']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">${typeof V20D!=='undefined'?V20D[diffK()].d:''} Здоровье и урон врагов меняются со следующего этапа.</div>
+  <div class="set"><label>Цифры урона</label>${seg('dmgN',[['merge','Сливать'],['big','Крупные'],['all','Все'],['off','Выкл']])}</div>
+  <div class="set"><label>Удержание атаки</label>${seg('hold',[['charge','Заряд'],['combo','Серия']])}</div>
+  <div class="set"><label>Хлам → материалы</label>${seg('autoSalv',[['off','Нет'],['common','Обычные'],['rare','До редких']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">Подобранные вещи не лучше надетых (без комплектов и уникальных) сразу разбираются в материалы.</div>
   <div class="set"><label>Полный экран</label>${seg('fs',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="set"><label>Уголёк</label>${seg('spirit',[[true,'Говорит'],[false,'Молчит']])}</div>
   ${!pause?`<div class="set"><label>Имя героя</label><div class="row" style="gap:6px;flex:1"><input id="sName" maxlength="20" placeholder="${esc(heroName()||'Искроносец')}" value="${esc(metaS().name||'')}" class="tinput"><button class="btn leather small" id="sNameOk">${ico('check')}</button></div></div>
