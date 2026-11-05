@@ -95,7 +95,7 @@ function computeStats(){
   PS=s; return s;
 }
 const xpNeed=l=>Math.round(55*Math.pow(l,1.6)+45);
-const MAX_LVL=40;
+const MAX_LVL=50; // v19: Акт II поднимает предел с 40 до 50
 function addXp(n){
   n=Math.round(n*(1+(PS.xp||0)/100)); if(S.hero.lvl>=MAX_LVL) return;
   S.hero.xp+=n;

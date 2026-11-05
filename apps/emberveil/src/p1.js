@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=6;
+const SAVE_V=7;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -35,7 +35,9 @@ function newSave(){
     inv:[], uid:1,
     res:{gold:120,wood:40,ore:20,ess:5,shards:0,marks:0,sparks:0,herb:3,dust:0,core:0,
       // v16: материалы разбора (src/p31.js → MAT); стартовый запас — на первую ковку без разбора
-      ingot:6,steel:0,mithril:0,cloth:4,leather:4,thread:4,silk:0,dhide:0,sinew:3,ironwood:0,gshard:3,gdust:2,efire:3,eice:0,epoison:0,elight:0,scrap:0},
+      ingot:6,steel:0,mithril:0,cloth:4,leather:4,thread:4,silk:0,dhide:0,sinew:3,ironwood:0,gshard:3,gdust:2,efire:3,eice:0,epoison:0,elight:0,scrap:0,
+      // v19 (save v7): материалы Акта II
+      ice:0,pearl:0,sun:0,mem:0,blade:0},
     gems:{}, cons:{potion:3,bomb:2,elixir_str:0,elixir_def:0,elixir_spd:0,scroll:0,prot:0,tome:0}, keys:0, potMax:3,
     // v5: chests & keys (S.keys = iron keys), pity counters, spells/runes, recipes, build & craft queues, boosts, shop state
     ck:{g:0,f:0,l:0}, chests:{wood:0,iron:0,gold:0,leg:0}, pity:{}, spell:{known:{},tomes:{},slot:'',runes:{},rune:{}}, rec:{}, bq:{list:[],slot2:false}, craft:{list:[]}, boost:{xp:0,gold:0,drop:0}, shop:{day:'',ref:0,bought:{},lim:{},free:0,adRef:0},
@@ -53,6 +55,8 @@ function newSave(){
     meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
     // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
+    // v7 (игра v19): Акт II — открыт ли акт, цепочка STORY2, «Память Уголька», милосердие, «Летопись Глубин»
+    act2:{on:0,qi:0,qb:{},mem:0,mercy:0,flashDebt:0,perm:{},seen:{}}, lore2:[],
     set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',chars:'auto',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false,sharp:'auto'}
   };
 }
@@ -97,6 +101,8 @@ function migrateSave(d){
     d.v=5; }
   if(d.v<6){ // v5 → v6 (игра v16): материалы разбора по типу предметов. Часть руды → слитки, часть эссенции → эссенции стихий, подарок по уровню — см. matMigrate (p31.js)
     try{ matMigrate(d); }catch(e){ console.error(e); } d.v=6; }
+  if(d.v<7){ // v6 → v7 (игра v19): Акт II — материалы ice/pearl/sun/mem/blade, S.act2, S.lore2. Акт закрыт до концовки и 30 ур. (src/p35.js)
+    try{ if(typeof a2Migrate==='function') a2Migrate(d); }catch(e){ console.error(e); } d.v=7; }
   return d;
 }
 let _saveT=0;
@@ -221,7 +227,10 @@ const AU=(()=>{
     abyss:{root:44,scale:[0,1,3,6,7,8,10],tempo:112,pad:[0,6,13],arp:'pulse',drum:3,lead:'bell',mood:.25,prog:[0,6,1,4]},
     legend:{root:50,scale:[0,2,4,7,9],tempo:64,pad:[0,7,12,16],arp:'bell',drum:0,lead:'flute',mood:.75,prog:[0,3,4,0]},
     dread:{root:43,scale:[0,1,3,5,7,8,10],tempo:58,pad:[0,7,13],arp:'slow',drum:2,lead:'choir',mood:.22,prog:[0,1,5,0]},
-    boss:{root:45,scale:[0,1,3,5,7,8,10],tempo:142,pad:[0,7,13],arp:'pulse',drum:4,lead:'reed',mood:.2,prog:[0,1,6,4]}
+    boss:{root:45,scale:[0,1,3,5,7,8,10],tempo:142,pad:[0,7,13],arp:'pulse',drum:4,lead:'reed',mood:.2,prog:[0,1,6,4]},
+    // v19: Ледяной Предел — ре минор, челеста, бурдон, хор на вдохе; каждые ~30 с — два такта только ветра; бой — марш легиона
+    z7:{root:50,scale:[0,2,3,5,7,8,10],tempo:72,pad:[0,7,12],arp:'celesta',drum:5,lead:'choir',mood:.45,prog:[0,5,3,6],rest:1},
+    boss2:{root:50,scale:[0,1,3,5,7,8,10],tempo:128,pad:[0,7,13],arp:'celesta',drum:6,lead:'choir',mood:.3,prog:[0,5,1,4]}
   };
   let cur=null, curKey='', step=0, nextT=0, timer=null, melIdx=2, barChord=0;
   const mtof=m=>440*Math.pow(2,(m-69)/12);
@@ -242,6 +251,7 @@ const AU=(()=>{
     while(nextT<ctx.currentTime+0.3){
       const t=nextT, s=step%32, bar=Math.floor(step/32)%cur.prog.length;
       const chord=cur.prog[bar];
+      if(cur.rest&&Math.floor(step/32)%8>=6){ if(s===0) noise(t,spb*30,.05,'bandpass',500,musG,{to:1400,q:.6,a:1.2,rv:1}); if(s===16) noise(t,spb*14,.04,'bandpass',900,musG,{to:400,q:.7,a:.8}); nextT+=spb; step++; continue; }
       if(s===0){ // pad
         const dur=spb*32;
         cur.pad.forEach((iv,i)=>{ const m=deg(chord,0)-12+iv; const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
@@ -255,6 +265,7 @@ const AU=(()=>{
       if(ar==='lute'&&(s%2===0)){ const pat=[0,2,4,2,7,4,2,4]; pluck(deg(chord+pat[(s/2)%8]),t,.07,.6); }
       else if(ar==='slow'&&s%4===0){ pluck(deg(chord+[0,2,4,7][(s/4)%4]),t,.06,1.4); }
       else if(ar==='bell'&&s%6===0){ const m=deg(chord+[0,4,2,7,5][(s/6)%5],1); osc('sine',mtof(m),t,1.8,.05,musG,{rv:1}); osc('sine',mtof(m)*2.76,t,.6,.015,musG,{rv:1}); }
+      else if(ar==='celesta'&&s%3===0){ const m=deg(chord+[0,2,4,6,4,2,7,5][(s/3|0)%8],1); osc('sine',mtof(m),t,1.4,.045,musG,{rv:1}); osc('triangle',mtof(m)*2,t,.5,.018,musG,{rv:1}); if(s%12===0) osc('sine',mtof(deg(chord,-2)),t,spb*12,.07,musG,{a:.8}); }
       else if(ar==='pulse'&&s%2===0){ osc('sawtooth',mtof(deg(chord,-1)+(s%8===6?12:0)),t,spb*.9,.045,musG,{lp:700+cur.mood*500}); }
       // drums
       const dr=cur.drum;
@@ -263,8 +274,9 @@ const AU=(()=>{
         if(dr===1&&s%8===4) noise(t,.06,.06,'highpass',4000,musG);
         if(dr===1&&(s%16===6||s%16===14)) noise(t,.09,.08,'bandpass',1200,musG,{q:1.5});
         if(dr===2&&s%16===12) noise(t,.4,.07,'lowpass',500,musG,{rv:1});
-        if(dr>=3){ if(s%4===2) noise(t,.05,.06,'highpass',5000,musG); if(s%16===8||s%16===11) osc('sine',90,t,.3,.25,musG,{to:40}); if(s%8===4) noise(t,.15,.12,'bandpass',900,musG,{q:1}); }
-        if(dr>=4){ if(s%2===1) noise(t,.03,.04,'highpass',6000,musG); if(s%4===0) osc('sine',70,t,.2,.2,musG,{to:35}); }
+        if(dr>=3&&dr<5){ if(s%4===2) noise(t,.05,.06,'highpass',5000,musG); if(s%16===8||s%16===11) osc('sine',90,t,.3,.25,musG,{to:40}); if(s%8===4) noise(t,.15,.12,'bandpass',900,musG,{q:1}); }
+        if(dr>=4&&dr<5){ if(s%2===1) noise(t,.03,.04,'highpass',6000,musG); if(s%4===0) osc('sine',70,t,.2,.2,musG,{to:35}); }
+        if(dr>=5){ const stop=(s>=24); if(!stop&&(s%4===0||s%8===6)) noise(t,.07,dr>=6?.11:.06,'bandpass',1800,musG,{q:1.2}); if(!stop&&s%8===7) noise(t,.05,.05,'bandpass',2200,musG,{q:1.2}); if(s%16===0) osc('sine',62,t,.35,dr>=6?.26:.16,musG,{to:38}); if(dr>=6&&s%4===2) noise(t,.03,.04,'highpass',6000,musG); }
       }
       // lead melody (sparse, random walk)
       const dens=cur.lead==='choir'?8:4;

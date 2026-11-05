@@ -149,6 +149,20 @@ E['ashKing'] = npc('ubc_m', ['head', 'eyes', 'brows', 'hair_long', 'beard', 'nob
 E['cultist'] = npc('ubc_m', ['head', 'eyes', 'brows', 'ranger_hood', 'wizard_body', 'wizard_belt', 'wizard_legs', 'peasant_arms', 'peasant_feet'],
   {'skin': {'mul': '#d8c8c0', 'v': 0.85}, 'wizard': {'h': 150, 's': 0.85, 'v': 0.55}, 'ranger': {'h': -95, 's': 0.9, 'v': 0.45}, 'peasant': {'s': 0.4, 'v': 0.5}},
   h=2.1, clips='u_caster', r='w_dagger', tint=['#6a1a1a', 0.12], glow='#ff6a1a', glowA=0.25)
+
+# --- v19 (Act II, zone 7 «Ледяной Предел»): legion soldiers, sapper, wailer, bosses Stuzhen & Belava, companion Irga
+E['frostRanker'] = npc('ubc_m', ['head', 'eyes', 'brows', 'knight_armet', 'knight_armor', 'knight_legs', 'knight_arms', 'knight_feet', 'knight_pauldrons'],
+  {'knight': {'mul': '#b8d4f0', 's': 0.45}, 'skin': {'mul': '#b8d0e8', 'v': 0.85}}, h=2.15, clips='u_sword', r='w_sword_long', l='w_shield_tower', tint=['#9ac8f0', 0.35], glow='#7ad0ff', glowA=0.15, note='Стылый ратник: латник легиона во льду')
+E['frostSapper'] = npc('ubc_m', ['head', 'eyes', 'brows', 'beard', 'ranger_hood', 'peasant_body', 'ranger_arms', 'peasant_legs', 'ranger_boots', 'ranger_pauldron'],
+  {'hair': HAIR['grey'], 'skin': {'mul': '#c8d4e0', 'v': 0.9}, 'ranger': {'h': 110, 's': 0.5, 'v': 0.75}, 'peasant': {'h': 180, 's': 0.55, 'v': 0.8}}, h=2.05, clips='u_caster', r='t_pickaxe', ws=0.8, tint=['#6a8ab0', 0.2], note='Стылый сапёр: шуба, кирка, бочонок морозного пороха')
+E['rimeWailer'] = npc('ubc_f', ['head', 'eyes', 'brows', 'hair_long', 'peasant_body', 'peasant_arms', 'peasant_legs', 'peasant_feet', 'cape'],
+  {'hair': {'mul': '#eef6ff'}, 'skin': {'mul': '#c8dcf0', 'v': 0.95}, 'peasant': {'h': 195, 's': 0.45, 'v': 1.15}, 'cape': {'mul': '#a8d8ff'}}, h=2.0, clips='u_caster', tint=['#a8d8ff', 0.4], glow='#a8d8ff', glowA=0.35, note='Плакальщица Инея: вдова легиона, призрачная')
+E['stuzhen'] = npc('ubc_m', ['head', 'eyes', 'brows', 'beard', 'knight_horns', 'knight_armor', 'knight_legs', 'knight_arms', 'knight_feet', 'knight_pauldrons', 'knight_spikes', 'knight_scarf', 'cape'],
+  {'knight': {'mul': '#7a96c0', 's': 0.6}, 'skin': {'mul': '#a8c0d8', 'v': 0.85}, 'hair': {'mul': '#e8eef6'}, 'cape': {'mul': '#e8eef6'}}, h=3.4, clips='u_brute', r='w_sword_long', ws=0.95, boss=True, tint=['#8ab0d8', 0.25], glow='#7ad0ff', note='Воевода Стужень')
+E['belava'] = npc('ubc_f', ['head', 'eyes', 'brows', 'hair_long', 'peasant_body', 'peasant_arms', 'peasant_legs', 'peasant_feet', 'knight_scarf', 'cape'],
+  {'hair': {'mul': '#eef6ff'}, 'skin': {'mul': '#dce8f6'}, 'peasant': {'h': 205, 's': 0.7, 'v': 0.95}, 'knight': {'mul': '#cfe6ff'}, 'cape': {'mul': '#7aa8d8'}}, h=3.0, clips='u_caster', boss=True, tint=['#9ac8f0', 0.15], glow='#7ad0ff', note='Белава, Царевна Стужи')
+E['comp:irga'] = comp('ubc_f', ['head', 'eyes', 'brows', 'hair_long', 'knight_armor', 'knight_legs', 'knight_arms', 'knight_feet', 'knight_pauldrons', 'knight_scarf', 'cape'],
+  {'hair': {'mul': '#d8c8a8'}, 'skin': SKIN['fair'], 'knight': {'mul': '#b0c8e4', 's': 0.6}, 'cape': {'mul': '#e8e0d0'}}, 'u_sword', r='w_sword_1h', l='w_shield_tower', h=2.0, note='Ирга Стылая: сотница легиона')
 M['ubcEntities'] = E
 G = M['groups']
 def without(lst, rm): return [x for x in lst if x not in rm]
@@ -158,5 +172,6 @@ M['ubcGroups'] = {
   'village_late': without(G['village_late'], ['necromancer', 'lorekeeper']),
   'companions': without(G['companions'], ['knight', 'barbarian', 'mage', 'ranger', 'rogue', 'druid', 'cleric', 'paladin']) + ['ubc_f'],
 }
+if 'z7' in G: M['ubcGroups']['z7'] = without(G['z7'], ['knight', 'mage', 'engineer', 'paladin']) + ['ubc_f']
 json.dump(M, open(P, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print('ok', len(E), 'ubc entities')

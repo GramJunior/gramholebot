@@ -226,6 +226,17 @@
    "vampire",
    "werewolf",
    "witch"
+  ],
+  "z7": [
+   "kit_nature",
+   "kit_dungeon",
+   "knight",
+   "werewolf",
+   "mage",
+   "engineer",
+   "paladin",
+   "kit_weapons2",
+   "anim_large"
   ]
  },
  "rigs": {
@@ -3752,6 +3763,120 @@
    ],
    "plot": "building_stage_A",
    "scaffold": "building_scaffolding"
+  },
+  "frostRanker": {
+   "type": "char",
+   "file": "knight",
+   "rig": "medium",
+   "h": 2.1,
+   "clips": "sword",
+   "r": "w_sword_long",
+   "l": "w_shield_tower",
+   "tint": [
+    "#9ac8f0",
+    0.45
+   ],
+   "glow": "#7ad0ff",
+   "note": "v19: frozen legion soldier"
+  },
+  "driftWolf": {
+   "type": "char",
+   "file": "werewolf",
+   "rig": "medium",
+   "h": 1.75,
+   "clips": "unarmed",
+   "tint": [
+    "#eef4fa",
+    0.62
+   ],
+   "glow": "#7ad0ff",
+   "recolor": [
+    {
+     "h": [
+      340,
+      20
+     ],
+     "s": [
+      0.4,
+      1
+     ],
+     "hShift": 200,
+     "sMul": 0.1,
+     "lMul": 1.3
+    }
+   ],
+   "note": "v19: white snow wolf"
+  },
+  "rimeWailer": {
+   "type": "char",
+   "file": "mage",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "caster",
+   "mat": "ghost",
+   "tint": [
+    "#a8d8ff",
+    0.5
+   ],
+   "glow": "#a8d8ff",
+   "hover": 0.3,
+   "note": "v19: frost widow ghost"
+  },
+  "frostSapper": {
+   "type": "char",
+   "file": "engineer",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "caster",
+   "tint": [
+    "#6a8ab0",
+    0.3
+   ],
+   "note": "v19: frost sapper"
+  },
+  "stuzhen": {
+   "type": "char",
+   "file": "paladin",
+   "rig": "medium",
+   "h": 3.4,
+   "clips": "axe",
+   "r": "w_sword_long",
+   "boss": true,
+   "tint": [
+    "#8ab0d8",
+    0.35
+   ],
+   "glow": "#7ad0ff",
+   "note": "v19: voevoda Stuzhen"
+  },
+  "belava": {
+   "type": "char",
+   "file": "mage",
+   "rig": "medium",
+   "h": 3.0,
+   "clips": "caster",
+   "boss": true,
+   "tint": [
+    "#bfe6ff",
+    0.45
+   ],
+   "glow": "#7ad0ff",
+   "hover": 0.6,
+   "note": "v19: tsarevna Belava"
+  },
+  "comp:irga": {
+   "type": "char",
+   "file": "knight",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_sword_1h",
+   "l": "w_shield_tower",
+   "tint": [
+    "#9ab8d8",
+    0.3
+   ],
+   "note": "v19: Irga"
   }
  },
  "ubc": {
@@ -4873,6 +4998,260 @@
    ],
    "glow": "#ff6a1a",
    "glowA": 0.25
+  },
+  "frostRanker": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.15,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "knight_armet",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons"
+   ],
+   "cols": {
+    "knight": {
+     "mul": "#b8d4f0",
+     "s": 0.45
+    },
+    "skin": {
+     "mul": "#b8d0e8",
+     "v": 0.85
+    }
+   },
+   "r": "w_sword_long",
+   "l": "w_shield_tower",
+   "tint": [
+    "#9ac8f0",
+    0.35
+   ],
+   "glow": "#7ad0ff",
+   "glowA": 0.15,
+   "note": "Стылый ратник: латник легиона во льду"
+  },
+  "frostSapper": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "beard",
+    "ranger_hood",
+    "peasant_body",
+    "ranger_arms",
+    "peasant_legs",
+    "ranger_boots",
+    "ranger_pauldron"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c8c4bc"
+    },
+    "skin": {
+     "mul": "#c8d4e0",
+     "v": 0.9
+    },
+    "ranger": {
+     "h": 110,
+     "s": 0.5,
+     "v": 0.75
+    },
+    "peasant": {
+     "h": 180,
+     "s": 0.55,
+     "v": 0.8
+    }
+   },
+   "r": "t_pickaxe",
+   "ws": 0.8,
+   "tint": [
+    "#6a8ab0",
+    0.2
+   ],
+   "note": "Стылый сапёр: шуба, кирка, бочонок морозного пороха"
+  },
+  "rimeWailer": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eef6ff"
+    },
+    "skin": {
+     "mul": "#c8dcf0",
+     "v": 0.95
+    },
+    "peasant": {
+     "h": 195,
+     "s": 0.45,
+     "v": 1.15
+    },
+    "cape": {
+     "mul": "#a8d8ff"
+    }
+   },
+   "tint": [
+    "#a8d8ff",
+    0.4
+   ],
+   "glow": "#a8d8ff",
+   "glowA": 0.35,
+   "note": "Плакальщица Инея: вдова легиона, призрачная"
+  },
+  "stuzhen": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.4,
+   "clips": "u_brute",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "beard",
+    "knight_horns",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "knight_spikes",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "knight": {
+     "mul": "#7a96c0",
+     "s": 0.6
+    },
+    "skin": {
+     "mul": "#a8c0d8",
+     "v": 0.85
+    },
+    "hair": {
+     "mul": "#e8eef6"
+    },
+    "cape": {
+     "mul": "#e8eef6"
+    }
+   },
+   "r": "w_sword_long",
+   "ws": 0.95,
+   "boss": true,
+   "tint": [
+    "#8ab0d8",
+    0.25
+   ],
+   "glow": "#7ad0ff",
+   "note": "Воевода Стужень"
+  },
+  "belava": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eef6ff"
+    },
+    "skin": {
+     "mul": "#dce8f6"
+    },
+    "peasant": {
+     "h": 205,
+     "s": 0.7,
+     "v": 0.95
+    },
+    "knight": {
+     "mul": "#cfe6ff"
+    },
+    "cape": {
+     "mul": "#7aa8d8"
+    }
+   },
+   "boss": true,
+   "tint": [
+    "#9ac8f0",
+    0.15
+   ],
+   "glow": "#7ad0ff",
+   "note": "Белава, Царевна Стужи"
+  },
+  "comp:irga": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#d8c8a8"
+    },
+    "skin": {
+     "mul": "#fff2ea"
+    },
+    "knight": {
+     "mul": "#b0c8e4",
+     "s": 0.6
+    },
+    "cape": {
+     "mul": "#e8e0d0"
+    }
+   },
+   "note": "Ирга Стылая: сотница легиона",
+   "r": "w_sword_1h",
+   "l": "w_shield_tower"
   }
  },
  "ubcGroups": {
@@ -4899,6 +5278,14 @@
    "avian",
    "tiefling",
    "barbarian_large",
+   "kit_weapons2",
+   "anim_large",
+   "ubc_f"
+  ],
+  "z7": [
+   "kit_nature",
+   "kit_dungeon",
+   "werewolf",
    "kit_weapons2",
    "anim_large",
    "ubc_f"
