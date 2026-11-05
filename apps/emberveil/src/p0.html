@@ -1703,6 +1703,41 @@ kbd+kbd{margin-left:3px}
 html.land.short #yard h3{font-size:18px;margin-bottom:4px} html.land.short #yard p{font-size:13.5px;margin:3px 0} html.land.short #yard .yBtns{margin-top:7px}
 html.land.xshort #yard .yCard{padding:9px 11px} html.land.xshort #yard .yIc{width:28px;height:28px;flex-basis:28px;font-size:16px}
 @media (prefers-reduced-motion:reduce){ #yard .yHole,#yard .yFinger,#yard .yFinger::after,.yGlow{animation:none!important} }
+/* ===== v18: предыстория и сцены пролога — субтитры «рукопись», титры, касание/удержание ===== */
+#cutUI{position:fixed;inset:0;z-index:40;pointer-events:none}
+#cutTap{position:fixed;inset:0;z-index:39;display:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+#cutTap.on{display:block}
+#cutSub{position:absolute;left:50%;bottom:calc(9vh + 6px + var(--sb));transform:translate(-50%,10px);width:min(780px,calc(100vw - var(--sl) - var(--sr) - 24px));opacity:0;transition:opacity .45s,transform .45s}
+#cutSub.on{opacity:1;transform:translate(-50%,0)}
+#cutSub .cs{position:relative;display:flex;align-items:center;gap:12px;padding:9px 18px 10px;border-radius:7px;background:linear-gradient(180deg,rgba(18,10,5,.78),rgba(12,6,3,.9));box-shadow:0 0 0 1px rgba(201,151,63,.45),0 6px 22px rgba(0,0,0,.55)}
+#cutSub .cs::before{content:'';position:absolute;left:12%;right:12%;top:-1px;height:1px;background:linear-gradient(90deg,transparent,#f0cc78,transparent)}
+#cutSub .cs::after{content:'';position:absolute;left:50%;top:-5px;width:8px;height:8px;margin-left:-4px;transform:rotate(45deg);background:#ff8a2b;box-shadow:0 0 0 1px #f0cc78,0 0 8px #ff8a2b}
+#cutSub .csP{width:58px;height:58px;flex:0 0 58px;border-radius:50%;object-fit:cover;background:#2a160a;box-shadow:0 0 0 2px #c9973f,0 0 10px rgba(255,138,43,.35)}
+#cutSub .csB{flex:1;min-width:0}
+#cutSub .csN{font-family:var(--disp);font-size:clamp(14px,1.2vw + 8px,18px);color:#ffd79a;line-height:1.1;margin-bottom:2px;text-shadow:0 1px 0 #000}
+#cutSub .csN small{font-family:var(--sc);font-size:.72em;color:#c9a874;letter-spacing:.06em;margin-left:8px}
+#cutSub .csT{font-family:var(--body);font-size:clamp(15.5px,1.15vw + 10px,21px);line-height:1.36;color:#f8ead0;text-shadow:0 1px 2px #000}
+#cutSub .csT em{color:#ffc46b;font-style:normal}
+#cutSub.narr .cs{justify-content:center;text-align:center;padding:10px 22px 11px}
+#cutSub.narr .csT{font-style:italic;font-size:clamp(16px,1.25vw + 10.5px,22px)}
+#cutSub.narr .csT::first-letter{font-family:var(--disp);font-style:normal;font-size:1.6em;line-height:.8;color:#ffc46b;text-shadow:0 0 10px rgba(255,138,43,.6),0 1px 0 #000;margin-right:1px}
+#cutSub.bark{bottom:auto;top:calc(var(--st) + 64px);width:min(560px,calc(100vw - var(--sl) - var(--sr) - 180px))}
+#cutSub.bark .cs{padding:6px 12px;gap:9px} #cutSub.bark .csP{width:40px;height:40px;flex-basis:40px} #cutSub.bark .csT{font-size:clamp(14px,1vw + 8px,17px)}
+#cutCard{position:absolute;left:50%;top:17%;transform:translateX(-50%);width:min(720px,90vw);text-align:center;opacity:0;transition:opacity .9s;color:#f3dcb0;text-shadow:0 2px 14px #000,0 0 2px #000}
+#cutCard.on{opacity:1}
+#cutCard small{display:block;font-family:var(--sc);letter-spacing:.35em;font-size:clamp(11px,.8vw + 6px,14px);color:var(--emberL)}
+#cutCard h2{font-family:var(--disp);font-size:clamp(30px,4.2vw + 12px,58px);margin:.08em 0 .05em;color:#ffe2a8;letter-spacing:.06em;text-shadow:0 0 22px rgba(255,120,40,.55),0 3px 0 #2a0e04}
+#cutCard i{display:block;font-family:var(--body);font-size:clamp(14px,1vw + 9px,19px);color:#e8cfa0}
+#cutCard .orn{display:block;width:min(240px,50vw);height:14px;margin:.25em auto}
+#cutHint{position:absolute;left:calc(var(--sl) + 14px);top:calc(var(--st) + 12px);font-family:var(--sc);font-size:12px;letter-spacing:.06em;color:rgba(243,220,176,.82);text-shadow:0 1px 3px #000;opacity:0;transition:opacity .6s}
+#cutHint.on{opacity:1} #cutHint b{color:#ffc46b}
+body.cut #proSkip{right:calc(var(--sr) + 12px)}
+body.cut #wlbl,body.cut #dmg{visibility:hidden}
+html.land.xshort #cutSub .csP,html.short #cutSub .csP{width:46px;height:46px;flex-basis:46px}
+html.land.xshort #cutSub{bottom:calc(9vh + 2px + var(--sb))}
+html.short #cutCard{top:13%} html.short #cutCard h2{font-size:clamp(28px,3.4vw + 12px,46px)}
+@media (max-height:340px){ #cutSub .cs{padding:6px 14px 7px} #cutSub .csT{font-size:15px} #cutSub.narr .csT{font-size:15.5px} #cutCard{top:18%} }
+@media (prefers-reduced-motion:reduce){ #cutSub,#cutCard{transition:none} }
 </style>
 </head>
 <body>

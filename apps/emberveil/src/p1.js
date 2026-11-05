@@ -199,6 +199,12 @@ const AU=(()=>{
       case 'bite': noise(t,.06,.35*v,'bandpass',1400*p,null,{q:2}); osc('square',300*p,t,.05,.08*v,null,{lp:1500}); break;
       case 'heal': [523,659,784].forEach((f,i)=>osc('sine',f*p,t+i*.06,.5,.08*v,null,{rv:1})); break;
       case 'win': [392,494,587,784,587,784,988].forEach((f,i)=>osc('triangle',f,t+i*.11,.6,.12*v,null,{rv:1})); osc('sine',98,t,1.4,.2*v); break;
+      // v18: предыстория — колокол столицы, удар сердца, порыв, искра, боевой рог
+      case 'bell': [[220,.22],[440,.12],[528,.08],[660,.06],[880,.04]].forEach(([f,a])=>osc('sine',f*p,t,3.2,a*v,null,{rv:1,a:.004})); osc('triangle',110*p,t,2.2,.1*v,null,{rv:1}); break;
+      case 'heart': osc('sine',62,t,.18,.5*v,null,{to:40}); osc('sine',58,t+.22,.22,.36*v,null,{to:38}); break;
+      case 'whoosh': noise(t,1.1,.35*v,'bandpass',300*p,null,{to:2400*p,q:.9,a:.35,rv:1}); break;
+      case 'chime': [1568,2093,2637].forEach((f,i)=>osc('sine',f*p,t+i*.05,1.1,.05*v,null,{rv:1})); break;
+      case 'horn': osc('sawtooth',98*p,t,1.8,.18*v,null,{lp:700,a:.25,to:110*p,glide:.6}); osc('sawtooth',147*p,t+.05,1.6,.1*v,null,{lp:600,a:.3,det:8}); noise(t,1.5,.06*v,'lowpass',400,null,{a:.3,rv:1}); break;
       case 'lose': [392,370,330,262].forEach((f,i)=>osc('triangle',f,t+i*.25,.8,.12*v,null,{rv:1,lp:1500})); break;
     }
   }
@@ -213,6 +219,8 @@ const AU=(()=>{
     z5:{root:43,scale:[0,1,4,5,7,8,10],tempo:118,pad:[0,7,13],arp:'pulse',drum:3,lead:'reed',mood:.3,prog:[0,1,5,4]},
     z6:{root:41,scale:[0,1,3,5,6,8,10],tempo:126,pad:[0,6,12],arp:'pulse',drum:3,lead:'choir',mood:.2,prog:[0,1,4,1]},
     abyss:{root:44,scale:[0,1,3,6,7,8,10],tempo:112,pad:[0,6,13],arp:'pulse',drum:3,lead:'bell',mood:.25,prog:[0,6,1,4]},
+    legend:{root:50,scale:[0,2,4,7,9],tempo:64,pad:[0,7,12,16],arp:'bell',drum:0,lead:'flute',mood:.75,prog:[0,3,4,0]},
+    dread:{root:43,scale:[0,1,3,5,7,8,10],tempo:58,pad:[0,7,13],arp:'slow',drum:2,lead:'choir',mood:.22,prog:[0,1,5,0]},
     boss:{root:45,scale:[0,1,3,5,7,8,10],tempo:142,pad:[0,7,13],arp:'pulse',drum:4,lead:'reed',mood:.2,prog:[0,1,6,4]}
   };
   let cur=null, curKey='', step=0, nextT=0, timer=null, melIdx=2, barChord=0;

@@ -1054,7 +1054,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     if (typeof what === 'string') {
       const d = S.manifest.entities[what];
       if (!d || d.type === 'prop') obj = makeProp(d || weaponDef(what), { outline: true });
-      else if (d.type === 'char' || d.type === 'hero') { actor = spawn(what, { outline: true, merge: false }); if (o.gear && actor.setGear) actor.setGear(o.gear); if (actor.ubc && o.portrait) actor.play('Idle_Loop', { fade: 0 }); actor.mixer.update(0.4); obj = actor.root; }
+      else if (d.type === 'char' || d.type === 'hero') { actor = spawn(what, { outline: true, merge: false }); if (o.gear && actor.setGear) actor.setGear(o.gear); if (o.look !== undefined && actor.setLook) actor.setLook(o.look); if (actor.ubc && o.portrait) actor.play('Idle_Loop', { fade: 0 }); actor.mixer.update(0.4); obj = actor.root; }
       else obj = building(what.replace('bld:', ''), o.level || 1);
     } else obj = what;
     const holder = new T.Group(); holder.add(obj); ICON.scene.add(holder);
