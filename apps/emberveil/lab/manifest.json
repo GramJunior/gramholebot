@@ -51,7 +51,10 @@
   "pet_wolf": "chars/pet_wolf.glb",
   "pet_drake": "chars/pet_drake.glb",
   "pet_mush": "chars/pet_mush.glb",
-  "pet_owl": "chars/pet_owl.glb"
+  "pet_owl": "chars/pet_owl.glb",
+  "ubc_m": "chars/ubc_m.glb",
+  "ubc_f": "chars/ubc_f.glb",
+  "anim_ual": "anim/anim_ual.glb"
  },
  "groups": {
   "core": [
@@ -235,6 +238,11 @@
   "large": {
    "anims": [
     "anim_large"
+   ]
+  },
+  "ubc": {
+   "anims": [
+    "anim_ual"
    ]
   }
  },
@@ -467,6 +475,170 @@
    "happy": "Dance",
    "ability": "Jump",
    "hit": "HitRecieve"
+  },
+  "ubc": {
+   "idle": "Idle_Loop",
+   "idle2": "Idle_FoldArms_Loop",
+   "walk": "Walk_Loop",
+   "walkB": "Walk_Formal_Loop",
+   "run": "Jog_Fwd_Loop",
+   "runB": "Sprint_Loop",
+   "sprint": "Sprint_Loop",
+   "hit": "Hit_Chest",
+   "hit2": "Hit_Head",
+   "knock": "Hit_Knockback",
+   "death": "Death01",
+   "death2": "Death01",
+   "roll": "Roll",
+   "dodgeBack": "Roll",
+   "interact": "Interact",
+   "pickup": "PickUp_Table",
+   "use": "Consume",
+   "throw": "OverhandThrow",
+   "jump": "NinjaJump_Start",
+   "land": "NinjaJump_Land",
+   "spawn": "LayToIdle",
+   "spawnAir": "NinjaJump_Land",
+   "rise": "LayToIdle",
+   "skelSpawn": "LayToIdle",
+   "cast": "Spell_Simple_Shoot",
+   "castLoop": "Spell_Simple_Idle_Loop",
+   "castLong": "Spell_Simple_Idle_Loop",
+   "summon": "Spell_Simple_Enter",
+   "shoot": "Spell_Simple_Shoot",
+   "block": "Sword_Block",
+   "blocking": "Idle_Shield_Loop",
+   "blockHit": "Idle_Shield_Break",
+   "blockAttack": "Shield_OneShot",
+   "punch": "Punch_Jab",
+   "attack": [
+    "Punch_Jab",
+    "Punch_Cross"
+   ],
+   "heavy": "Melee_Hook",
+   "stab": "Punch_Jab",
+   "spin": "Sword_Regular_C",
+   "cheer": "Yes",
+   "wave": "Idle_Rail_Call",
+   "sit": "Sitting_Idle_Loop",
+   "sitFloor": "Crouch_Idle_Loop",
+   "hammer": "TreeChopping_Loop",
+   "work": "Fixing_Kneeling",
+   "chop": "TreeChopping_Loop",
+   "mine": "TreeChopping_Loop",
+   "hold": "Idle_Lantern_Loop",
+   "taunt": "Idle_No_Loop",
+   "talk": "Idle_Talking_Loop",
+   "backpedal": "Walk_Loop",
+   "dash": "Sword_Dash",
+   "leap": "NinjaJump_Start",
+   "skill": "Sword_Regular_C",
+   "aim": "Pistol_Aim_Neutral",
+   "harvest": "Farm_Harvest",
+   "plant": "Farm_PlantSeed",
+   "water": "Farm_Watering",
+   "carry": "Walk_Carry_Loop",
+   "torch": "Idle_Torch_Loop",
+   "push": "Push_Loop",
+   "yes": "Yes",
+   "no": "Idle_No_Loop"
+  },
+  "u_sword": {
+   "idle": "Sword_Idle",
+   "attack": [
+    "Sword_Regular_A",
+    "Sword_Regular_B",
+    "Sword_Attack"
+   ],
+   "heavy": "Sword_Attack",
+   "skill": "Sword_Regular_C",
+   "dash": "Sword_Dash",
+   "block": "Sword_Block"
+  },
+  "u_axe": {
+   "idle": "Sword_Idle",
+   "attack": [
+    "Axe_1",
+    "Axe_2",
+    "Axe_3"
+   ],
+   "heavy": "Slam",
+   "skill": "Sword_Heavy_Combo",
+   "leap": "NinjaJump_Start",
+   "dash": "Shield_Dash"
+  },
+  "u_bow": {
+   "idle": "Idle_Loop",
+   "attack": [
+    "Bow_Shot"
+   ],
+   "aim": "Bow_Draw",
+   "aimIdle": "Bow_Hold",
+   "heavy": "Bow_Shot",
+   "skill": "Bow_Shot"
+  },
+  "u_staff": {
+   "idle": "Idle_Loop",
+   "attack": [
+    "Spell_Simple_Shoot"
+   ],
+   "heavy": "Spell_Simple_Enter",
+   "skill": "Spell_Simple_Shoot",
+   "cast": "Spell_Simple_Shoot"
+  },
+  "u_caster": {
+   "attack": [
+    "Spell_Simple_Shoot"
+   ],
+   "heavy": "Spell_Simple_Enter",
+   "idle": "Spell_Simple_Idle_Loop"
+  },
+  "u_npc": {
+   "idle": "Idle_Loop",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_smith": {
+   "idle": "Idle_Loop",
+   "work": "TreeChopping_Loop",
+   "hammer": "TreeChopping_Loop",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_alch": {
+   "idle": "Idle_Loop",
+   "work": "Consume",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_farmer": {
+   "idle": "Idle_Loop",
+   "work": "Farm_Harvest",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_guard": {
+   "idle": "Idle_Torch_Loop",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_king": {
+   "idle": "Idle_FoldArms_Loop",
+   "talk": "Idle_Talking_Loop",
+   "cast": "Spell_Simple_Shoot"
+  },
+  "u_brute": {
+   "idle": "Sword_Idle",
+   "attack": [
+    "Sword_Regular_A",
+    "Sword_Attack",
+    "Axe_2"
+   ],
+   "heavy": "Slam",
+   "spin": "Axe_1",
+   "taunt": "Idle_No_Loop"
+  },
+  "u_archer": {
+   "attack": [
+    "Bow_Shot"
+   ],
+   "idle": "Idle_Loop",
+   "aim": "Bow_Draw"
   }
  },
  "glow": {
@@ -3581,5 +3753,1155 @@
    "plot": "building_stage_A",
    "scaffold": "building_scaffolding"
   }
+ },
+ "ubc": {
+  "headScale": 1.14,
+  "slots": {
+   "r": {
+    "p": [
+     -0.035,
+     0.105,
+     -0.003
+    ],
+    "y": [
+     0.0,
+     -0.25,
+     0.97
+    ],
+    "x": [
+     -0.978,
+     0.207,
+     0.0
+    ],
+    "s": 0.6
+   },
+   "l": {
+    "p": [
+     0.035,
+     0.105,
+     -0.003
+    ],
+    "y": [
+     0.0,
+     0.256,
+     0.967
+    ],
+    "x": [
+     0.978,
+     0.207,
+     0.0
+    ],
+    "s": 0.6
+   },
+   "back": {
+    "p": [
+     0.0,
+     0.05,
+     -0.2
+    ],
+    "r": [
+     0.25,
+     0.0,
+     0.0
+    ],
+    "s": 0.7
+   },
+   "head": {
+    "p": [
+     0.0,
+     0.1,
+     0.0
+    ]
+   }
+  },
+  "cuts": {
+   "Axe_1": [
+    "Sword_Heavy_Combo",
+    0.0,
+    0.95
+   ],
+   "Axe_2": [
+    "Sword_Heavy_Combo",
+    0.95,
+    1.95
+   ],
+   "Axe_3": [
+    "Sword_Heavy_Combo",
+    1.95,
+    3.35
+   ],
+   "Bow_Draw": [
+    "OverhandThrow",
+    0.0,
+    0.24
+   ],
+   "Bow_Shot": [
+    "OverhandThrow",
+    0.06,
+    0.34
+   ],
+   "Bow_Hold": [
+    "OverhandThrow",
+    0.2,
+    0.24
+   ],
+   "Slam": [
+    "Sword_Regular_C",
+    0.2,
+    1.3
+   ]
+  }
+ },
+ "ubcEntities": {
+  "hero": {
+   "type": "hero",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.25,
+   "clipPrefix": "u_",
+   "base": [
+    "head",
+    "eyes",
+    "brows"
+   ],
+   "cols": {
+    "skin": {}
+   },
+   "looks": [
+    {
+     "hair": "hair_slick",
+     "hairCol": {
+      "mul": "#a0461e"
+     }
+    },
+    {
+     "hair": "hair_buzzed",
+     "beard": [
+      "beard"
+     ],
+     "hairCol": {
+      "mul": "#2e2420"
+     }
+    },
+    {
+     "hair": "hair_long",
+     "hairCol": {
+      "mul": "#e2c487"
+     },
+     "skin": {
+      "mul": "#fff2ea"
+     }
+    }
+   ],
+   "chest": {
+    "ch_cloth0": {
+     "parts": [
+      "peasant_body",
+      "peasant_legs"
+     ],
+     "arms": [
+      "peasant_arms"
+     ],
+     "feet": [
+      "peasant_feet"
+     ],
+     "cape": {
+      "mul": "#a8322a"
+     }
+    },
+    "ch_cloth": {
+     "parts": [
+      "ranger_body",
+      "ranger_legs",
+      "ranger_pauldron"
+     ],
+     "arms": [
+      "ranger_arms"
+     ],
+     "feet": [
+      "ranger_boots"
+     ],
+     "cape": {
+      "mul": "#2f5f8a"
+     }
+    },
+    "ch_mail": {
+     "parts": [
+      "knight_cloth",
+      "knight_legs",
+      "knight_spikes"
+     ],
+     "arms": [
+      "knight_arms"
+     ],
+     "feet": [
+      "knight_feet"
+     ],
+     "cape": {
+      "mul": "#a8322a"
+     }
+    },
+    "ch_plate": {
+     "parts": [
+      "knight_armor",
+      "knight_legs",
+      "knight_pauldrons",
+      "knight_scarf"
+     ],
+     "arms": [
+      "knight_arms"
+     ],
+     "feet": [
+      "knight_feet"
+     ],
+     "cape": {
+      "mul": "#c8b48a"
+     },
+     "capePart": "cape"
+    },
+    "ch_robe": {
+     "parts": [
+      "wizard_body",
+      "wizard_belt",
+      "wizard_orn",
+      "wizard_legs"
+     ],
+     "arms": [
+      "wizard_arms"
+     ],
+     "feet": [
+      "wizard_feet"
+     ],
+     "cape": {
+      "mul": "#4a2a6a"
+     }
+    },
+    "ch_bare": {
+     "parts": [
+      "peasant_body",
+      "peasant_legs"
+     ],
+     "cape": false
+    }
+   },
+   "gloves": {
+    "_": [
+     "peasant_arms"
+    ],
+    "gl_leather": [
+     "ranger_arms"
+    ],
+    "gl_plate": [
+     "knight_arms"
+    ],
+    "gl_mage": [
+     "wizard_arms"
+    ],
+    "gl_mail": [
+     "noble_arms",
+     "noble_guards"
+    ]
+   },
+   "boots": {
+    "_": [
+     "peasant_feet"
+    ],
+    "bt_leather": [
+     "ranger_boots"
+    ],
+    "bt_plate": [
+     "knight_feet"
+    ],
+    "bt_cloth": [
+     "wizard_feet"
+    ],
+    "bt_heavy": [
+     "noble_feet"
+    ]
+   },
+   "helm": {
+    "hm_hood": {
+     "parts": [
+      "ranger_hood"
+     ],
+     "hide": [
+      "hair"
+     ]
+    },
+    "hm_guard": {
+     "parts": [
+      "knight_armet"
+     ],
+     "hide": [
+      "hair",
+      "beard",
+      "brows"
+     ]
+    },
+    "hm_horn": {
+     "parts": [
+      "knight_horns"
+     ],
+     "hide": [
+      "hair"
+     ]
+    },
+    "hm_circ": {
+     "parts": [
+      "noble_crown"
+     ],
+     "cols": {
+      "noble_crown": {
+       "s": 0.05,
+       "v": 1.25
+      }
+     }
+    },
+    "hm_crown": {
+     "parts": [
+      "noble_crown"
+     ]
+    },
+    "hm_wizard": {
+     "parts": [
+      "ranger_hood"
+     ],
+     "hide": [
+      "hair"
+     ],
+     "cols": {
+      "ranger_hood": {
+       "h": 150,
+       "s": 0.8,
+       "v": 0.8
+      }
+     }
+    },
+    "hm_paladin": {
+     "parts": [
+      "knight_armet"
+     ],
+     "hide": [
+      "hair",
+      "beard",
+      "brows"
+     ],
+     "cols": {
+      "knight_armet": {
+       "mul": "#ffe2a0"
+      }
+     }
+    },
+    "hm_bear": {
+     "parts": [
+      "knight_horns"
+     ],
+     "hide": [
+      "hair"
+     ],
+     "cols": {
+      "knight_horns": {
+       "mul": "#c8a070"
+      }
+     }
+    }
+   },
+   "weapons": {
+    "sw0": {
+     "cls": "sword",
+     "r": "w_sword_wood"
+    },
+    "sw1": {
+     "cls": "sword",
+     "r": "w_sword_1h"
+    },
+    "sw2": {
+     "cls": "sword",
+     "r": "w_sword_broad"
+    },
+    "sw3": {
+     "cls": "sword",
+     "r": "w_sword_flame",
+     "glow": "fire"
+    },
+    "ax1": {
+     "cls": "axe",
+     "r": "w_axe_2h"
+    },
+    "ax2": {
+     "cls": "axe",
+     "r": "w_hammer"
+    },
+    "ax3": {
+     "cls": "axe",
+     "r": "w_axe_spiked",
+     "glow": "fire"
+    },
+    "bw1": {
+     "cls": "bow",
+     "l": "w_bow_short"
+    },
+    "bw2": {
+     "cls": "bow",
+     "l": "w_bow_long"
+    },
+    "bw3": {
+     "cls": "bow",
+     "l": "w_bow_horn"
+    },
+    "st1": {
+     "cls": "staff",
+     "r": "w_staff_branch"
+    },
+    "st2": {
+     "cls": "staff",
+     "r": "w_staff_crystal",
+     "glow": "ice"
+    },
+    "st3": {
+     "cls": "staff",
+     "r": "w_staff_skull",
+     "glow": "poison"
+    }
+   },
+   "offhand": {
+    "sh1": {
+     "l": "w_shield_round"
+    },
+    "sh2": {
+     "l": "w_shield_kite"
+    },
+    "sh3": {
+     "l": "w_shield_tower"
+    },
+    "qv1": {
+     "backProp": "w_quiver"
+    },
+    "tm1": {
+     "l": "w_tome"
+    },
+    "or1": {
+     "l": "@orb"
+    }
+   }
+  },
+  "elder": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_npc",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c8c4bc"
+    },
+    "skin": {
+     "mul": "#fff2ea"
+    },
+    "peasant": {
+     "h": 70,
+     "s": 0.55,
+     "v": 0.95
+    },
+    "cape": {
+     "mul": "#6a7a5a"
+    }
+   },
+   "note": "Ведана: седая знахарка, зелёная накидка"
+  },
+  "smith": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.15,
+   "clips": "u_smith",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_buzzed",
+    "beard",
+    "moustache",
+    "peasant_body",
+    "peasant_legs",
+    "knight_arms",
+    "knight_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c04a1c"
+    },
+    "skin": {},
+    "peasant": {
+     "s": 0.7,
+     "v": 0.8
+    }
+   },
+   "r": "t_hammer",
+   "ws": 0.55,
+   "note": "Горан: рыжая борода, кузнечные наручи"
+  },
+  "alch": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_alch",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_belt",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#7a4aa0"
+    },
+    "skin": {
+     "mul": "#fff2ea"
+    },
+    "ranger": {
+     "h": 200,
+     "s": 0.7
+    }
+   },
+   "r": "w_wand_orb",
+   "note": "Мира: алхимик, фиолетовые волосы"
+  },
+  "beast": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_npc",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots",
+    "ranger_pauldron"
+   ],
+   "cols": {
+    "skin": {
+     "mul": "#e8d2b8"
+    }
+   },
+   "note": "Ойка: следопытка в капюшоне"
+  },
+  "stranger": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.2,
+   "clips": "u_npc",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots",
+    "cape_dark"
+   ],
+   "cols": {
+    "skin": {},
+    "ranger": {
+     "s": 0.08,
+     "v": 0.7
+    },
+    "cape": {
+     "mul": "#8a8a8a"
+    }
+   },
+   "note": "Серый: странник в сером капюшоне и плаще"
+  },
+  "king": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.35,
+   "clips": "u_king",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "noble_lion",
+    "noble_crown",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eeeae4"
+    },
+    "skin": {
+     "mul": "#cfc6c0",
+     "v": 0.9
+    },
+    "noble": {
+     "s": 0.35,
+     "v": 0.55
+    },
+    "cape": {
+     "mul": "#5a1414"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "tint": [
+    "#3a1010",
+    0.2
+   ],
+   "glow": "#ff6a1a",
+   "glowA": 0.22,
+   "note": "Пепельный Король"
+  },
+  "v0": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_balding",
+    "moustache",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#5a3a26"
+    },
+    "peasant": {
+     "h": -15
+    }
+   }
+  },
+  "v1": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.9,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e2c487"
+    },
+    "peasant": {
+     "h": 25,
+     "s": 1.1
+    }
+   }
+  },
+  "v2": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_slick",
+    "beard",
+    "peasant_body",
+    "ranger_arms",
+    "peasant_legs",
+    "ranger_boots"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2e2420"
+    },
+    "skin": {
+     "mul": "#e8d2b8"
+    },
+    "peasant": {
+     "h": 170,
+     "s": 0.6
+    }
+   }
+  },
+  "v3": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.9,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2e2420"
+    },
+    "skin": {
+     "mul": "#a87c64",
+     "v": 0.9
+    },
+    "peasant": {
+     "h": 300,
+     "s": 0.8
+    }
+   }
+  },
+  "comp:knight": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_slick",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e2c487"
+    },
+    "cape": {
+     "mul": "#2f5f8a"
+    }
+   },
+   "r": "w_sword_1h",
+   "l": "w_shield_kite"
+  },
+  "comp:ranger": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_bow",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_bracer",
+    "ranger_legs",
+    "ranger_boots",
+    "ranger_pauldron",
+    "ranger_belt",
+    "ranger_belt2"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#a0461e"
+    }
+   },
+   "l": "w_bow_long"
+  },
+  "comp:druid": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_staff",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "wizard_body",
+    "wizard_belt",
+    "wizard_legs",
+    "peasant_arms",
+    "ranger_boots",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#5a3a26"
+    },
+    "wizard": {
+     "h": -110,
+     "s": 0.6,
+     "v": 0.9
+    },
+    "cape": {
+     "mul": "#5a7a3a"
+    }
+   },
+   "r": "w_staff_branch"
+  },
+  "comp:mage": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_staff",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "ranger_body",
+    "peasant_arms",
+    "ranger_legs",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#1c1a1c"
+    },
+    "ranger": {
+     "h": 160,
+     "s": 0.9
+    },
+    "peasant": {
+     "h": 200,
+     "s": 0.6
+    },
+    "cape": {
+     "mul": "#4a3a8a"
+    }
+   },
+   "r": "w_staff_crystal"
+  },
+  "comp:rogue": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots"
+   ],
+   "cols": {
+    "ranger": {
+     "h": -40,
+     "s": 0.45,
+     "v": 0.7
+    }
+   },
+   "r": "w_dagger",
+   "l": "w_dagger"
+  },
+  "comp:barbarian": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.2,
+   "clips": "u_axe",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "moustache",
+    "peasant_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_spikes",
+    "peasant_body"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c04a1c"
+    },
+    "peasant": {
+     "h": -10,
+     "s": 0.6,
+     "v": 0.75
+    }
+   },
+   "r": "w_axe_2h"
+  },
+  "comp:cleric": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "knight_armor",
+    "knight_legs",
+    "peasant_arms",
+    "knight_feet",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e2c487"
+    },
+    "knight": {
+     "mul": "#fff4d8"
+    },
+    "cape": {
+     "mul": "#e8e0c8"
+    }
+   },
+   "r": "w_cleric_mace",
+   "l": "w_shield_round"
+  },
+  "comp:paladin": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.2,
+   "clips": "u_axe",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "knight_armet",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "cape"
+   ],
+   "cols": {
+    "knight": {
+     "mul": "#ffe6b0"
+    },
+    "cape": {
+     "mul": "#c8b48a"
+    }
+   },
+   "r": "w_hammer"
+  },
+  "morven": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_brute",
+   "parts": [
+    "head",
+    "eyes",
+    "knight_horns",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_spikes",
+    "cape_dark"
+   ],
+   "cols": {
+    "knight": {
+     "s": 0.4,
+     "v": 0.5
+    },
+    "skin": {
+     "mul": "#9ab0c8",
+     "v": 0.8
+    },
+    "cape": {
+     "mul": "#2a4a5a"
+    }
+   },
+   "r": "e_bk_sword",
+   "l": "e_bk_shield",
+   "ws": 0.6,
+   "boss": true,
+   "tint": [
+    "#9ab8ff",
+    0.16
+   ],
+   "glow": "#6fd8ff"
+  },
+  "ashKing": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "noble_lion",
+    "noble_crown",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eeeae4"
+    },
+    "skin": {
+     "mul": "#c8bab0",
+     "v": 0.85
+    },
+    "noble": {
+     "s": 0.4,
+     "v": 0.5
+    },
+    "cape": {
+     "mul": "#5a1414"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "boss": true,
+   "tint": [
+    "#ff6a1a",
+    0.16
+   ],
+   "glow": "#ff6a1a"
+  },
+  "cultist": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.1,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "wizard_body",
+    "wizard_belt",
+    "wizard_legs",
+    "peasant_arms",
+    "peasant_feet"
+   ],
+   "cols": {
+    "skin": {
+     "mul": "#d8c8c0",
+     "v": 0.85
+    },
+    "wizard": {
+     "h": 150,
+     "s": 0.85,
+     "v": 0.55
+    },
+    "ranger": {
+     "h": -95,
+     "s": 0.9,
+     "v": 0.45
+    },
+    "peasant": {
+     "s": 0.4,
+     "v": 0.5
+    }
+   },
+   "r": "w_dagger",
+   "tint": [
+    "#6a1a1a",
+    0.12
+   ],
+   "glow": "#ff6a1a",
+   "glowA": 0.25
+  }
+ },
+ "ubcGroups": {
+  "core": [
+   "anim_medium",
+   "kit_weapons",
+   "kit_items",
+   "anim_ual",
+   "ubc_m"
+  ],
+  "village": [
+   "kit_village",
+   "kit_nature",
+   "rogue_hooded",
+   "ubc_f"
+  ],
+  "village_late": [
+   "kit_village2",
+   "kit_items2",
+   "anim_medium_extra"
+  ],
+  "companions": [
+   "ninja",
+   "avian",
+   "tiefling",
+   "barbarian_large",
+   "kit_weapons2",
+   "anim_large",
+   "ubc_f"
+  ]
  }
 }

@@ -1,6 +1,6 @@
 # Credits / Источники ассетов
 
-All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay Lousberg (KayKit, www.kaylousberg.com)** and are licensed **CC0 1.0 Universal** (public domain dedication — free for commercial use, attribution not required but appreciated). License texts: `assets/LICENSES/`.
+Most 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay Lousberg (KayKit, www.kaylousberg.com)**; since v17 the detailed characters are by **Quaternius** (also CC0, section «v17» below) and are licensed **CC0 1.0 Universal** (public domain dedication — free for commercial use, attribution not required but appreciated). License texts: `assets/LICENSES/`.
 
 Все модели — KayKit (Kay Lousberg), лицензия CC0. Указание автора не обязательно, но мы его указываем.
 
@@ -9,6 +9,21 @@ All 3D models, textures and animations in `apps/emberveil/assets/` are by **Kay 
 - Official KayKit GitHub repos (`raw.githubusercontent.com/KayKit-Game-Assets/...`): Character Pack Adventures 1.0, Skeletons 1.0, Dungeon Remastered 1.0, Medieval Hexagon 1.0, Halloween Bits 1.0 (used to verify licences and rigs).
 - Newer pack versions (Adventurers 2.0, Skeletons 1.1, Character Animations 1.1, Forest Nature Pack, Fantasy Weapons Bits, Resource Bits, RPG Tools Bits, Mystery Monthly Series 4–6) come from the CC0 mirror of *The Complete KayKit Collection v6*: `github.com/GeorgeQLe/assets-kaykit-3d-characters`, `-environments`, `-props` (their `LICENSES/KayKit-CC0-License.txt`, copied to `assets/LICENSES/`, states CC0 for the whole collection). The Mystery Monthly characters are Patreon releases; the collection licence covers them as CC0 — re-verify with Kay Lousberg if you want certainty before a commercial launch (fallbacks for each are listed in `lab/INTEGRATION.md`).
 - Processing: gltf-transform 4.5 (dedup/prune/textureCompress 256px/meshopt+quantize), custom scripts merge props into themed kits, rebind hero parts onto one skeleton, and pack animation libraries (int16 rotations).
+
+## v17: детальные персонажи — Quaternius (CC0) / Detailed characters
+
+Files `chars/ubc_m.glb`, `chars/ubc_f.glb`, `anim/anim_ual.glb` are built from **Quaternius** packs, all **CC0 1.0** (licence texts in `assets/LICENSES/Quaternius-*`):
+
+| file | pack (quaternius.com) | mirror used to fetch the CC0 files |
+|---|---|---|
+| ubc_m / ubc_f — heads, eyes, eyebrows, hairstyles, skin | Universal Base Characters (Aug 2025) | https://github.com/kirbycope/godot-npc-village (`assets/quaternius/heads`, `hair`), https://github.com/Flesymeb/aelors-adventure (`product/Characters/QuaterniusBase`, 2K hair textures) |
+| ubc_m / ubc_f — Peasant, Ranger outfits | Modular Character Outfits – Fantasy [Standard] (Nov 2025) | https://github.com/Mesh2Motion/mesh2motion-assets (`CC0-packs/Quaternius/Modular Character Outfits - Fantasy[Standard]`) |
+| ubc_m / ubc_f — Knight, Noble, Wizard outfits | Modular Character Outfits – Fantasy [Source] (CC0 per its License_Source.txt) | https://github.com/kirbycope/godot-npc-village (`assets/quaternius/characters`), knight armour/helmet/pauldron/scarf pieces from https://github.com/abcdmku/Corealm (`game/public/assets/models/outfit`) |
+| anim_ual — 47 clips | Universal Animation Library 1 [Source] + Universal Animation Library 2 [Standard] | https://github.com/kirbycope/godot-npc-village (`assets/quaternius/animations/UAL1.glb`), https://github.com/Flesymeb/aelors-adventure (`product/Characters/QuaterniusAnimations/UAL2_Standard.glb`) |
+
+Processing (`lab/build/build_ubc.mjs`, `build_ual.mjs`, `ubc_manifest.py`): all parts rebased onto one skeleton per body, one 2048×1024 JPEG atlas (base colour only), simplified with meshoptimizer, meshopt-compressed; a cape mesh is generated; finger tracks removed (grip pose baked into the rest pose), root motion removed.
+
+**Игнар (дракон)** — no third-party asset: procedural skinned model written for this game (`src/p32.js`). The dragon pet stays the Quaternius «Ultimate Monsters» Dragon_Evolved (see above).
 
 ## Characters (`assets/chars/`)
 

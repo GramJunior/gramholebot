@@ -53,7 +53,7 @@ function newSave(){
     meta:{name:'',nameSent:'',cos:{own:{},skin:'',glow:'',pet:'',frame:'',deco:{}},cal:{n:0,last:'',spin:'',spinAd:''},wk:{week:'',list:[]},pass:{season:'',xp:0,srvXp:0,cl:[],prem:false},ads:{day:'',n:{}},tk:{},days:{last:'',n:0},ent:{},notify:false,evSeen:{},ref:0},
     // v4: story choices & consequences, NPC/companion arcs, ghost echoes, endings, spirit «Уголёк»
     story:{ch:{},arcs:{},loyal:{},echo:{},end:'',ends:{},sp:{}},
-    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false,sharp:'auto'}
+    set:{sfx:.8,mus:.55,q:'auto',joy:'left',vib:true,dmg:true,cam:1,fs:true,post:'auto',models:'real',chars:'auto',qAuto:null,spirit:true,bright:1,fps:60,perfHud:false,sharp:'auto'}
   };
 }
 let S=newSave();
@@ -70,7 +70,7 @@ function loadGame(){
 // миграции старых сохранений: каждая ступень поднимает версию на 1, новые поля заполняются значениями из newSave()
 function migrateSave(d){
   if(d.v<3){ // v2 → v3: реальные модели, постэффекты, онлайн. Новые поля необязательные; адаптивное качество сбрасываем
-    d.set=d.set||{}; if(d.set.post===undefined) d.set.post='auto'; if(d.set.models===undefined) d.set.models='real'; d.set.qAuto=null;
+    d.set=d.set||{}; if(d.set.post===undefined) d.set.post='auto'; if(d.set.models===undefined) d.set.models='real'; if(d.set.chars===undefined) d.set.chars='auto'; d.set.qAuto=null;
     if(d.syn&&typeof d.syn==='object'&&d.syn.unread===undefined) d.syn.unread=0;
   }
   if(d.v<2){ // v1 → v2: набеги, спутники, походы, синергии, загадки, знаки доблести

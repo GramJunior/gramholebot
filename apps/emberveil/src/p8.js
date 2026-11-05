@@ -167,7 +167,7 @@ function portraitFor(sp){
     if(sp!=='narrator'&&sp!=='dragon'){ const ap=sp==='hero'?asHeroPortrait(S.gear):asPortrait(sp); if(ap) return ap; }
     if(sp==='hero'){ const r=buildHeroProc(); dressHeroProc(r,S.gear); return portraitOf(r,'hero_'+JSON.stringify(heroVis(S.gear)),{hy:1.62,dist:1.25,x:.3,bg:0x3a2416}); }
     if(['elder','smith','alch','beast','stranger','king'].includes(sp)){ const r=buildNPCProc(sp); return portraitOf(r,sp,{hy:r.h*.82+(sp==='king'?.1:0),dist:sp==='smith'?1.6:1.5,x:.3,bg:sp==='king'?0x2a0a0a:0x3a2416}); }
-    if(sp==='dragon'){ const r=BOSS_PROC.dragon(); r.root.rotation.y=-.5; return portraitOf(r,'dragon',{hy:5.4,dist:5.5,x:2,bg:0x2a0a0a}); }
+    if(sp==='dragon'){ if(typeof drgPortrait==='function') return drgPortrait(); const r=BOSS_PROC.dragon(); r.root.rotation.y=-.5; return portraitOf(r,'dragon',{hy:5.4,dist:5.5,x:2,bg:0x2a0a0a}); }
     if(sp==='bogMother'){ const r=BOSS_PROC.bogMother(); return portraitOf(r,'bogm',{hy:2.6,dist:4.2,x:1,bg:0x1a2a1a}); }
     if(sp==='morven'){ const r=BOSS_PROC.morven(); return portraitOf(r,'morv',{hy:3.4,dist:2.2,x:.4,bg:0x1a1a2a}); }
   }catch(e){}
@@ -360,6 +360,8 @@ function pSettings(pause){
   <div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px"><button class="btn woodb small" ${act(()=>perfBenchStart())}>${ico('clock')} Тест производительности</button><button class="btn woodb small" ${act(()=>perfCopy())}>${ico('scroll')} Скопировать отчёт</button></div>
   <div class="set"><label>Постэффекты</label>${seg('post',[['auto','Авто'],['off','Выкл']])}</div>
   <div class="set"><label>Модели</label>${seg('models',[['real','Детальные'],['simple','Простые']])}</div>
+  <div class="set"><label>Модели персонажей</label>${seg('chars',[['auto','Авто'],['detail','Детальные'],['classic','Классические (KayKit)']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">«Детальные» — высокодетальные герои, жители и спутники (Quaternius); «Классические» — прежние фигурки KayKit, легче для слабых телефонов. «Авто»: детальные, кроме пресета «Произв.». Сейчас: ${window.EVAssets&&EVAssets.chars==='classic'?'классические':'детальные'}.</div>
   <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({perf:'«Производительность»',low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
   <div class="set"><label>Камера</label>${seg('cam',[[0,'Ближе'],[1,'Обычно'],[2,'Дальше']])}</div>
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>

@@ -23,10 +23,10 @@
 
   // ------------------------------------------------------------------ quality presets
   const QUALITY = {
-    perf: { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 4, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
-    low:  { maxTex: 128, outline: 'none',  outlinePx: 0,   animStepFar: 3, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
-    med:  { maxTex: 256, outline: 'chars', outlinePx: 1.6, animStepFar: 2, maxAnisotropy: 1, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true },
-    high: { maxTex: 256, outline: 'all',   outlinePx: 2.0, animStepFar: 1, maxAnisotropy: 4, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true }, // hullProps:true also outlines InstancedMesh scatter (≈2× env triangles)
+    perf: { maxTex: 128, maxTexUbc: 512,  outline: 'none',  outlinePx: 0,   animStepFar: 4, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
+    low:  { maxTex: 128, maxTexUbc: 512,  outline: 'none',  outlinePx: 0,   animStepFar: 3, maxAnisotropy: 1, texMip: false, shadow: false, hullProps: false, mergeSkinned: true },
+    med:  { maxTex: 256, maxTexUbc: 1024, outline: 'chars', outlinePx: 1.6, animStepFar: 2, maxAnisotropy: 1, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true },
+    high: { maxTex: 256, maxTexUbc: 2048, outline: 'all',   outlinePx: 2.0, animStepFar: 1, maxAnisotropy: 4, texMip: true,  shadow: false, hullProps: false, mergeSkinned: true }, // hullProps:true also outlines InstancedMesh scatter (≈2× env triangles)
   };
 
   const S = {
@@ -38,7 +38,7 @@
     mats: {},                         // shared static materials
     templates: {},                    // fileKey|node -> template Object3D
     grad: null, rim: null, res: new T.Vector2(1280, 720),
-    actors: new Set(), linear: true, nodeIndex: {}, mergeCache: {}, sat: { value: 1.0 },
+    actors: new Set(), linear: true, nodeIndex: {}, mergeCache: {}, sat: { value: 1.0 }, ubc: {}, ubcKeys: [], ubcPelvis: 0.917,
   };
 
   // ------------------------------------------------------------------ helpers
@@ -169,11 +169,12 @@
     c *= m;
     c = mix( c, c * vec3( 1.06, 0.98, 0.9 ), skin * 0.5 );                    // тёплая кожа
     if ( vFx.w < 0.5 ) { // глаза: блик, тёплая радужка снизу, веки (моргание, прищур, «радость»)
-      vec2 e = vFx.yz; evEye = 1.0;
-      vec3 ec = mix( vec3( 0.03, 0.025, 0.04 ), vec3( 0.2, 0.12, 0.08 ), smoothstep( 0.6, 0.05, e.y ) );
-      float h1 = smoothstep( 0.24, 0.13, length( ( e - vec2( 0.64, 0.7 ) ) * vec2( 1.0, 1.15 ) ) );
-      float h2 = smoothstep( 0.11, 0.05, length( ( e - vec2( 0.33, 0.28 ) ) * vec2( 1.0, 1.15 ) ) );
-      evHL = max( h1, h2 * 0.8 );
+      vec2 e = vFx.yz; evEye = 1.0; bool texEye = vFx.w > 0.15; // v17: глазное яблоко с текстурой (UBC): своя радужка, видимая часть ~ середина
+      if ( texEye ) e.y = clamp( ( e.y - 0.22 ) / 0.56, 0.0, 1.0 );
+      vec3 ec = texEye ? diffuseColor.rgb : mix( vec3( 0.03, 0.025, 0.04 ), vec3( 0.2, 0.12, 0.08 ), smoothstep( 0.6, 0.05, e.y ) );
+      float h1 = texEye ? smoothstep( 0.16, 0.08, length( ( e - vec2( 0.6, 0.62 ) ) * vec2( 1.0, 1.15 ) ) ) : smoothstep( 0.24, 0.13, length( ( e - vec2( 0.64, 0.7 ) ) * vec2( 1.0, 1.15 ) ) );
+      float h2 = smoothstep( 0.11, 0.05, length( ( e - vec2( 0.33, 0.28 ) ) * vec2( 1.0, 1.15 ) ) ) * ( texEye ? 0.0 : 1.0 );
+      evHL = max( h1, h2 * 0.8 ) * ( texEye ? 0.55 : 1.0 );
       float top = 1.0 - uBlink.x * 1.1, bot = uBlink.y * 1.1;
       float lid = clamp( step( top, e.y ) + step( e.y, bot ), 0.0, 1.0 );
       evHL *= 1.0 - lid;
@@ -188,12 +189,22 @@
   outgoingLight += vec3( 1.0, 0.95, 0.86 ) * evMetal * smoothstep( 0.3, 0.62, rimF ) * 0.16;   // металл: светлая кромка
   outgoingLight += uRim * smoothstep( 0.62, 0.8, rimF ) * 0.22 * diffuseColor.rgb * ( 1.0 - evEye );  // тёплый контровой свет персонажа
   outgoingLight = mix( outgoingLight, vec3( 1.0, 0.98, 0.95 ), evHL * 0.9 );`;
+  // v17 UBC: per-vertex part colour (aMul = multiply, aHsv = hue shift (turns) / saturation / value), see ubcMerge()
+  const UBC_VS_PARS = 'attribute vec3 aMul; attribute vec3 aHsv; varying vec3 vMul; varying vec3 vHsv;\n';
+  const UBC_VS = '\n vMul = aMul; vHsv = aHsv;\n';
+  const UBC_FS_PARS = `varying vec3 vMul; varying vec3 vHsv;
+vec3 evRgb2Hsv( vec3 c ) { vec4 K = vec4( 0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0 ); vec4 p = mix( vec4( c.bg, K.wz ), vec4( c.gb, K.xy ), step( c.b, c.g ) ); vec4 q = mix( vec4( p.xyw, c.r ), vec4( c.r, p.yzx ), step( p.x, c.r ) ); float d = q.x - min( q.w, q.y ); return vec3( abs( q.z + ( q.w - q.y ) / ( 6.0 * d + 1e-10 ) ), d / ( q.x + 1e-10 ), q.x ); }
+vec3 evHsv2Rgb( vec3 c ) { vec3 p = abs( fract( c.xxx + vec3( 1.0, 2.0 / 3.0, 1.0 / 3.0 ) ) * 6.0 - 3.0 ); return c.z * mix( vec3( 1.0 ), clamp( p - 1.0, 0.0, 1.0 ), c.y ); }
+`;
+  const UBC_FS = `
+  if ( abs( vHsv.x ) > 1e-4 || abs( vHsv.y - 1.0 ) > 1e-3 || abs( vHsv.z - 1.0 ) > 1e-3 ) { vec3 hc = evRgb2Hsv( diffuseColor.rgb ); hc.x = fract( hc.x + vHsv.x ); hc.y = clamp( hc.y * vHsv.y, 0.0, 1.0 ); hc.z *= vHsv.z; diffuseColor.rgb = evHsv2Rgb( hc ); }
+  diffuseColor.rgb *= vMul;`;
   // Toon material compatible with the game's toonMat(): userData.U = {uFlash, uTint}; rim uniform shared (S.rim).
   function toonMat(map, o = {}) {
     const m = new T.MeshToonMaterial({ map: map || null, gradientMap: S.grad, color: 0xffffff,
       transparent: !!o.transparent, opacity: o.opacity === undefined ? 1 : o.opacity, depthWrite: o.depthWrite !== false, side: T.FrontSide });
     m.skinning = !!o.skinning;
-    const ch = !!(o.skinning && S.charFX && o.char !== false);
+    const ch = !!(o.skinning && S.charFX && o.char !== false), ub = !!o.ubc;
     const U = { uFlash: { value: 0 }, uTint: { value: new T.Vector4(0, 0, 0, 0) }, uGlow: { value: new T.Vector4(0, 0, 0, 0) }, uMode: { value: o.mode || 0 }, uTime: EVAssets.time };
     if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush, uDQ: { value: new T.Matrix4() }, uDQi: { value: new T.Matrix4() }, uDQn: { value: new T.Matrix3() } });
     if (o.tint) { const c = C3(o.tint[0]); U.uTint.value.set(c.r, c.g, c.b, o.tint[1]); }
@@ -201,10 +212,10 @@
     m.userData.U = U; m.userData.char = ch;
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, m.userData.U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
-      sh.vertexShader = 'varying vec3 vObjPos;\n' + (ch ? 'uniform float uTime;\n' + CHAR_VS_PARS : '') + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (ch ? CHAR_VS : '') + '\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
+      sh.vertexShader = 'varying vec3 vObjPos;\n' + (ub ? UBC_VS_PARS : '') + (ch ? 'uniform float uTime;\n' + CHAR_VS_PARS : '') + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (ub ? UBC_VS : '') + (ch ? CHAR_VS : '') + '\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
       if (ch) sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = normalize( mix( vec3( normal ), onormal, uSoft ) );');
       sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' + (ch ? CHAR_FS_PARS : '') +
-        sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + (ch ? CHAR_FS : '')).replace(OUT_RE, (m0) => `
+        (ub ? UBC_FS_PARS : '') + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + (ub ? UBC_FS : '') + (ch ? CHAR_FS : '')).replace(OUT_RE, (m0) => `
   float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
   float rim = smoothstep(0.55, 0.72, rimF);
   outgoingLight += uRim * rim * ${ch ? '0.2' : '0.32'} * diffuseColor.rgb;${ch ? CHAR_OUT : ''}
@@ -228,7 +239,8 @@
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
-    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '') + (ch ? 'c' : '');
+    m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '') + (ch ? 'c' : '') + (ub ? 'u' : '');
+    m.userData.ubc = ub;
     if (o.paint && S.paint) { const base = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { base(sh, r); S.paint(sh); }; m.userData.paint = 1; }
     return m;
   }
@@ -318,21 +330,28 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   // drift of the hips position track (keep the vertical bob and the sway around the start point).
   function stripRootMotion(c) {
     for (const t of c.tracks) {
-      if (!/hips\.position$/i.test(t.name) || t.getValueSize() !== 3) continue;
-      const v = t.values, n = v.length / 3; if (n < 2) continue;
-      const dx = v[(n - 1) * 3] - v[0], dz = v[(n - 1) * 3 + 2] - v[2];
-      let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, Math.hypot(v[i * 3] - v[0], v[i * 3 + 2] - v[2]));
+      // KayKit: hips (y up); v17 UAL/UBC: pelvis under the Z-up 'root' (z up, x/y horizontal)
+      const ubc = /pelvis\.position$/i.test(t.name);
+      if ((!ubc && !/hips\.position$/i.test(t.name)) || t.getValueSize() !== 3) continue;
+      const v = t.values, n = v.length / 3; if (n < 2) continue; const A = 0, B = ubc ? 1 : 2;
+      const dx = v[(n - 1) * 3 + A] - v[A], dz = v[(n - 1) * 3 + B] - v[B];
+      let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, Math.hypot(v[i * 3 + A] - v[A], v[i * 3 + B] - v[B]));
       if (mx < 0.12 && Math.hypot(dx, dz) < 0.08) continue;
-      for (let i = 0; i < n; i++) { v[i * 3] = v[0]; v[i * 3 + 2] = v[2]; }
+      for (let i = 0; i < n; i++) { v[i * 3 + A] = v[A]; v[i * 3 + B] = v[B]; }
       c.userData = c.userData || {}; c.userData.rootStripped = +mx.toFixed(3);
     }
   }
   function prepFile(key, g) {
     if (key.indexOf('anim_') === 0) {
-      const rig = key.indexOf('large') >= 0 ? 'large' : 'medium';
+      const rig = key.indexOf('large') >= 0 ? 'large' : key.indexOf('ual') >= 0 ? 'ubc' : 'medium'; S.clips[rig] = S.clips[rig] || {};
       for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); stripRootMotion(c); S.clips[rig][c.name] = c; }
+      if (rig === 'ubc') { const pv = g.animations.find((c) => c.name === 'Idle_Loop'); const tr = pv && pv.tracks.find((t) => /pelvis\.position$/.test(t.name)); if (tr) S.ubcPelvis = tr.values[2];
+        // нарезка: из длинных клипов UAL — отдельные удары (Axe_1..3 из Sword_Heavy_Combo, натяжение лука из OverhandThrow и т.п.)
+        const cuts = (S.manifest.ubc && S.manifest.ubc.cuts) || {};
+        for (const k in cuts) { const [src, t0, t1] = cuts[k], c = S.clips.ubc[src]; if (!c) continue; try { const sc = T.AnimationUtils.subclip(c, k, Math.round(t0 * 30), Math.round(t1 * 30), 30); S.clips.ubc[k] = sc; } catch (e) { console.warn('EVAssets cut ' + k, e); } } }
       return;
     }
+    if (UBC_FILE.test(key)) { ubcPrepFile(key, g); return; }
     // v13: creatures with their own clips (pets): clips live under rig = file key (entity.rig), names without the armature prefix
     if (g.animations && g.animations.length) { S.clips[key] = S.clips[key] || {}; for (const c of g.animations) { c.name = c.name.replace(/^.*\|/, ''); S.clips[key][c.name] = c; } }
     const skinnedFile = key.indexOf('kit_') !== 0;
@@ -516,6 +535,100 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return g;
   }
 
+  // ------------------------------------------------------------------ v17 «детальные персонажи»: UBC (Quaternius Universal Base Characters + Modular Outfits)
+  // ubc_m.glb / ubc_f.glb: все части костюмов, голова, глаза, брови, причёски и плащ — на ОДНОМ скелете, ОДИН материал, ОДИН атлас.
+  // Актёр собирает видимый набор частей в одну SkinnedMesh (1 вызов отрисовки + 1 контур), цвет частей — вершинные атрибуты
+  // (aMul — умножение, aHsv — сдвиг тона/насыщенность/яркость), поэтому одинаково одетые NPC делят одну геометрию.
+  const UBC_FILE = /^ubc_/;
+  // атлас 2048×1024 (см. lab/build/build_ubc.mjs): прямоугольники слотов в UV
+  const UBC_SLOT = { skin: [0, 0, 0.25, 0.5], hair: [0.25, 0, 0.5, 0.5], hair2: [0.5, 0, 0.625, 0.25], eyes: [0.625, 0, 0.75, 0.25], cape: [0.5, 0.25, 0.75, 0.5] };
+  const inSlot = (r, u, v) => u >= r[0] && u < r[2] && v >= r[1] && v < r[3];
+  function ubcTex(t) {
+    if (!t) return null; const key = t.name || (t.name = texFingerprint(t)); if (S.tex[key]) return S.tex[key];
+    const im = t.image, mx = S.Q.maxTexUbc || 1024;
+    if (im && im.width > mx) { const cv = document.createElement('canvas'); cv.width = mx; cv.height = Math.round(im.height * mx / im.width); const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, cv.width, cv.height); t.image = cv; if (im.close) im.close(); }
+    t.encoding = S.linear ? T.LinearEncoding : T.sRGBEncoding; t.anisotropy = S.Q.maxAnisotropy; t.flipY = false;
+    if (!S.Q.texMip) { t.generateMipmaps = false; t.minFilter = T.LinearFilter; }
+    t.needsUpdate = true; S.tex[key] = t; return t;
+  }
+  function ubcPrepFile(key, g) {
+    g.scene.updateMatrixWorld(true);
+    const F = { parts: new Map(), order: [], mat: null }; S.ubc[key] = F;
+    let D = null;
+    g.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      const src = o.material; if (!F.mat) F.mat = toonMat(ubcTex(src.map), { skinning: true, ubc: true }); o.material = F.mat; if (src !== F.mat) src.dispose();
+      o.frustumCulled = false; o.visible = false; F.parts.set(o.name, o); F.order.push(o.name);
+      if (!D && o.isSkinnedMesh) { const sk = o.skeleton; sk.bones[0].updateMatrixWorld(true); D = new T.Matrix4().multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]); D.premultiply(new T.Matrix4().copy(g.scene.matrixWorld).invert()); }
+    });
+    F.D = D; g.scene.userData.evDQ = D ? D.toArray() : null;
+    // привязочная поза в метрах модели: v = D · bindMatrix · v_quant
+    const met = (o) => { const P = o.geometry.attributes.position, ps = normScale(P), n = P.count, B = new Float32Array(n * 3), v = new T.Vector3(), M = new T.Matrix4().multiplyMatrices(D, o.bindMatrix);
+      for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(M); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; } return B; };
+    const head = F.parts.get('head'); let y0 = 0, y1 = 1.8;
+    if (head && D) { const B = met(head); y0 = 1e9; y1 = -1e9; for (let i = 1; i < B.length; i += 3) { y1 = Math.max(y1, B[i]); } y0 = 0; }
+    F.rest = new T.Box3(new T.Vector3(-0.3, y0, -0.2), new T.Vector3(0.3, y1, 0.2)); g.scene.userData.evRest = F.rest;
+    // глаза: координаты внутри каждого глазного яблока (u слева направо, v снизу вверх), w = 0.3 — «текстурный глаз»
+    const eyes = F.parts.get('eyes');
+    if (eyes && D) { const B = met(eyes), n = B.length / 3, fx = new Float32Array(n * 4);
+      for (const side of [-1, 1]) { let x0 = 1e9, x1 = -1e9, ya = 1e9, yb = -1e9; for (let i = 0; i < n; i++) { if (Math.sign(B[i * 3] || 1e-9) !== side) continue; x0 = Math.min(x0, B[i * 3]); x1 = Math.max(x1, B[i * 3]); ya = Math.min(ya, B[i * 3 + 1]); yb = Math.max(yb, B[i * 3 + 1]); }
+        for (let i = 0; i < n; i++) { if (Math.sign(B[i * 3] || 1e-9) !== side) continue; fx[i * 4 + 1] = (B[i * 3] - x0) / Math.max(1e-4, x1 - x0); fx[i * 4 + 2] = (B[i * 3 + 1] - ya) / Math.max(1e-4, yb - ya); fx[i * 4 + 3] = 0.3; } }
+      eyes.geometry.userData.evFx = fx; }
+    // плащ: качание растёт от воротника к подолу
+    for (const nm of F.order) { if (!/^cape/.test(nm) || !D) continue; const o = F.parts.get(nm), B = met(o), n = B.length / 3, fx = new Float32Array(n * 4); let a = 1e9, b = -1e9;
+      for (let i = 0; i < n; i++) { a = Math.min(a, B[i * 3 + 1]); b = Math.max(b, B[i * 3 + 1]); }
+      for (let i = 0; i < n; i++) { fx[i * 4] = Math.max(0.001, Math.min(1, (b - B[i * 3 + 1]) / Math.max(1e-3, b - a))); fx[i * 4 + 3] = 1; }
+      o.geometry.userData.evFx = fx; o.geometry.userData.evCape = 1; }
+  }
+  const C_ID = { m: [1, 1, 1], h: 0, s: 1, v: 1 };
+  function colOp(c) { if (!c) return C_ID; if (c._op) return c._op; const m = c.mul !== undefined ? C3(c.mul) : null;
+    return (c._op = { m: m ? [m.r, m.g, m.b] : [1, 1, 1], h: (c.h || 0) / 360, s: c.s === undefined ? 1 : c.s, v: c.v === undefined ? 1 : c.v }); }
+  const HAIR_DEF = { mul: '#5a3a26' }, CAPE_DEF = { mul: '#a8322a' };
+  // слияние видимых частей в одну геометрию (кэш по файлу + набору частей + цветам)
+  function ubcMerge(key, parts, cols) {
+    const F = S.ubc[key]; cols = cols || {};
+    const list = parts.map((p) => F.parts.get(p)).filter(Boolean);
+    let n = 0, ni = 0; for (const m of list) { n += m.geometry.attributes.position.count; ni += m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count; }
+    const P = new Float32Array(n * 3), N = new Float32Array(n * 3), UV = new Float32Array(n * 2), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4), FX = new Float32Array(n * 4), MU = new Float32Array(n * 3), HS = new Float32Array(n * 3);
+    const IDX = n > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+    let o = 0, oi = 0;
+    const skin = colOp(cols.skin), hair = colOp(cols.hair || HAIR_DEF), eye = colOp(cols.eyes), cape = colOp(cols.cape || CAPE_DEF);
+    for (const m of list) {
+      const A = m.geometry.attributes, pos = A.position, nor = A.normal, uv = A.uv, si = A.skinIndex, sw = A.skinWeight, cnt = pos.count;
+      const ps = normScale(pos), ns = normScale(nor), us = normScale(uv), ws = normScale(sw), fx = m.geometry.userData.evFx;
+      const nm = m.name, pre = nm.split('_')[0], own = colOp(cols[nm] || cols[pre] || cols.all);
+      for (let i = 0; i < cnt; i++) {
+        const k = o + i, k3 = k * 3, k4 = k * 4;
+        P[k3] = pos.getX(i) * ps; P[k3 + 1] = pos.getY(i) * ps; P[k3 + 2] = pos.getZ(i) * ps;
+        N[k3] = nor.getX(i) * ns; N[k3 + 1] = nor.getY(i) * ns; N[k3 + 2] = nor.getZ(i) * ns;
+        const u = uv.getX(i) * us, v = uv.getY(i) * us; UV[k * 2] = u; UV[k * 2 + 1] = v;
+        SI[k4] = si.getX(i); SI[k4 + 1] = si.getY(i); SI[k4 + 2] = si.getZ(i); SI[k4 + 3] = si.getW(i);
+        SW[k4] = sw.getX(i) * ws; SW[k4 + 1] = sw.getY(i) * ws; SW[k4 + 2] = sw.getZ(i) * ws; SW[k4 + 3] = sw.getW(i) * ws;
+        if (fx) { FX[k4] = fx[i * 4]; FX[k4 + 1] = fx[i * 4 + 1]; FX[k4 + 2] = fx[i * 4 + 2]; FX[k4 + 3] = fx[i * 4 + 3]; } else FX[k4 + 3] = 1;
+        const c = inSlot(UBC_SLOT.skin, u, v) ? skin : (inSlot(UBC_SLOT.hair, u, v) || inSlot(UBC_SLOT.hair2, u, v)) ? hair : inSlot(UBC_SLOT.eyes, u, v) ? eye : inSlot(UBC_SLOT.cape, u, v) ? (cols[nm] ? own : cape) : own;
+        MU[k3] = c.m[0]; MU[k3 + 1] = c.m[1]; MU[k3 + 2] = c.m[2]; HS[k3] = c.h; HS[k3 + 1] = c.s; HS[k3 + 2] = c.v;
+      }
+      const ix = m.geometry.index; if (ix) { for (let i = 0; i < ix.count; i++) IDX[oi + i] = ix.getX(i) + o; oi += ix.count; } else { for (let i = 0; i < cnt; i++) IDX[oi + i] = o + i; oi += cnt; }
+      o += cnt;
+    }
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(P, 3)); g.setAttribute('normal', new T.BufferAttribute(N, 3)); g.setAttribute('uv', new T.BufferAttribute(UV, 2));
+    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setAttribute('aFx', new T.BufferAttribute(FX, 4));
+    g.setAttribute('aMul', new T.BufferAttribute(MU, 3)); g.setAttribute('aHsv', new T.BufferAttribute(HS, 3)); g.setIndex(new T.BufferAttribute(IDX, 1));
+    ensureOutlineNormals(g); g.userData.evUbc = 1; g.userData.users = 0; g.userData.verts = n;
+    return g;
+  }
+  const UBC_CACHE_MAX = 36;
+  function ubcGeo(key, parts, cols) {
+    const ck = key + '|' + parts.join(',') + '|' + JSON.stringify(cols || {}, (k, v) => (k === '_op' ? undefined : v));
+    let g = S.mergeCache[ck];
+    if (!g) {
+      g = S.mergeCache[ck] = ubcMerge(key, parts, cols); g.userData.ck = ck; S.ubcKeys.push(ck);
+      if (S.ubcKeys.length > UBC_CACHE_MAX) { for (let i = 0; i < S.ubcKeys.length && S.ubcKeys.length > UBC_CACHE_MAX; i++) { const k = S.ubcKeys[i], gg = S.mergeCache[k]; if (gg && gg.userData.users <= 0 && gg !== g) { gg.dispose(); delete S.mergeCache[k]; S.ubcKeys.splice(i, 1); i--; } } }
+    }
+    return g;
+  }
+
   // ------------------------------------------------------------------ Actor (skinned characters)
   const _tmpEuler = new T.Euler();
   class Actor {
@@ -538,29 +651,33 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const a = this.skeleton, b = m.skeleton;
         if (a.bones.length === b.bones.length && a.bones.every((x, i) => x === b.bones[i]) && a.boneInverses[1].equals(b.boneInverses[1])) { b.dispose(); m.bind(a, m.bindMatrix); }
       }
+      this.ubc = UBC_FILE.test(def.file);
+      if (this.ubc) this._ubcRig(); else {
       this.handR = this.bones.handslotr || this.bones['handslot.r']; this.handL = this.bones.handslotl || this.bones['handslot.l'];
-      this.chest = this.bones.chest; this.head = this.bones.head;
+      this.chest = this.bones.chest; this.head = this.bones.head; }
       // per-actor materials (flash/tint independent per actor; programs are shared)
       const matCache = new Map();
       for (const m of this.meshes) {
         const src = m.material; let mm = matCache.get(src);
         if (!mm) {
-          let map = src.map; if (def.recolor) map = recolorTex(map, def.recolor);
+          let map = src.map; if (def.recolor && !this.ubc) map = recolorTex(map, def.recolor);
           const mode = { lava: 1, ghost: 2, stone: 3 }[def.mat] || 0;
-          mm = toonMat(map, { skinning: m.isSkinnedMesh, tint: def.tint, glow: def.glow, glowA: def.glow ? (def.glowA === undefined ? 0.3 : def.glowA) : 0, mode, transparent: def.mat === 'ghost', opacity: def.mat === 'ghost' ? 0.72 : 1, depthWrite: def.mat !== 'ghost' });
+          mm = toonMat(map, { skinning: m.isSkinnedMesh, ubc: this.ubc, tint: def.tint, glow: def.glow, glowA: def.glow ? (def.glowA === undefined ? 0.3 : def.glowA) : 0, mode, transparent: def.mat === 'ghost', opacity: def.mat === 'ghost' ? 0.72 : 1, depthWrite: def.mat !== 'ghost' });
           if (src.userData.emissive) { mm.userData.U.uGlow.value.set(src.userData.emissive.r, src.userData.emissive.g, src.userData.emissive.b, 0.9); }
           matCache.set(src, mm); this.matList.push(mm);
         }
         m.userData.evSrcMat = src; m.material = mm;
       }
-      if (def.hide) for (const n of def.hide) { const p = this.findPart(n); if (p) p.visible = false; }
+      if (def.hide && !this.ubc) for (const n of def.hide) { const p = this.findPart(n); if (p) p.visible = false; }
       // scale to game height
       const rest = g.scene.userData.evRest; const h0 = rest ? rest.max.y - Math.max(0, rest.min.y) : 2;
+      if (this.ubc) { this._ubcSrc = this.meshes; this.meshes = []; for (const m of this._ubcSrc) m.visible = false; }
       this._charInit(rest, h0);
       this.baseScale = (def.h || 2) / (h0 || 2) * (this.opts.scale || 1);
       this.model.scale.setScalar(this.baseScale);
       this.height = def.h || 2; this.radius = (rest ? Math.max(rest.max.x - rest.min.x, rest.max.z - rest.min.z) * 0.5 * this.baseScale : 0.5);
       if (def.hover) this.model.position.y = def.hover;
+      if (this.ubc) { const pv = this.bones.pelvis; if (pv) this.model.position.y += (pv.position.z - S.ubcPelvis) * this.baseScale; } // ноги UBC длиннее манекена UAL: поднять на разницу высоты таза
       if (def.yaw) this.model.rotation.y = def.yaw;
       // animation
       this.mixer = new T.AnimationMixer(this.model);
@@ -568,9 +685,10 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this.setClipset(def.clips || this.rig);
       this.mixer.addEventListener('finished', (e) => { const a = e.action; if (a._evOnEnd) { const f = a._evOnEnd; a._evOnEnd = null; f(this); } if (a._evReturn && this.current === a) this.play(a._evReturn, { fade: a._evRetFade || 0.22 }); });
       // weapons
-      if (def.r) this.attach('r', def.r); if (def.l) this.attach('l', def.l);
+      if (def.r) this.attach('r', def.r, { s: def.ws }); if (def.l) this.attach('l', def.l, { s: def.ws });
+      if (this.ubc && def.type !== 'hero') this.compose(def.parts || [], def.cols || {});
       if (this.opts.outline !== false && S.Q.outline !== 'none') this.setOutline(true);
-      if ((this.meshes.length > 1 || this.slots.r || this.slots.l) && S.Q.mergeSkinned && this.opts.merge !== false && def.type !== 'hero') this._merge();
+      if (!this.ubc && (this.meshes.length > 1 || this.slots.r || this.slots.l) && S.Q.mergeSkinned && this.opts.merge !== false && def.type !== 'hero') this._merge();
       S.actors.add(this);
       this.play(this.opts.clip || 'idle', { fade: 0 });
       this.mixer.update(Math.random() * 2);
@@ -579,8 +697,10 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     _charInit(rest, h0) {
       this._fx = { blinkT: 1 + Math.random() * 3, blink: 0, expr: null, exprT: 0, lid: [0, 0], px: null, pz: 0, spd: 0, turn: 0, yaw: null };
       let skin = null, eyes = false; for (const m of this.meshes) { if (m.userData.evSkin && !skin) skin = m.userData.evSkin; if (m.userData.evEyes) eyes = true; }
+      if (this.ubc) { const c = colOp(this.def.cols && this.def.cols.skin), b = [0.86, 0.64, 0.52]; skin = [b[0] * c.m[0] * c.v, b[1] * c.m[1] * c.v, b[2] * c.m[2] * c.v]; eyes = true; }
       this._fx.eyes = eyes && this.def.mat !== 'ghost' && this.def.mat !== 'lava' && this.def.mat !== 'stone';
       let dq = null; for (const m of this.meshes) if (m.isSkinnedMesh && m.geometry.userData.evDQ) { dq = m.geometry.userData.evDQ; break; }
+      if (this.ubc) { const gs = S.files[this.def.file].gltf.scene; dq = gs.userData.evDQ; }
       for (const mm of this.matList) { const U = mm.userData.U; if (!U.uCH) continue; U.uCH.value.set(rest ? rest.min.y : 0, h0 || 2); if (skin) U.uSkin.value.setRGB(skin[0], skin[1], skin[2]);
         if (dq) { U.uDQ.value.fromArray(dq); U.uDQi.value.copy(U.uDQ.value).invert(); U.uDQn.value.getNormalMatrix(U.uDQ.value); } }
     }
@@ -605,6 +725,31 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       F.px = r.position.x; F.pz = r.position.z; F.yaw = r.rotation.y;
       const ks = Math.min(1, dt * 5); F.spd += (Math.min(1, spd / 6) - F.spd) * ks; F.turn += (Math.max(-1, Math.min(1, -turn / 8)) - F.turn) * ks;
       for (const mm of this.matList) { const U = mm.userData.U; if (!U.uBlink) continue; if (F.eyes) U.uBlink.value.set(F.lid[0], F.lid[1]); U.uSway.value.x = F.spd; U.uSway.value.y = F.turn; }
+    }
+    // v17 UBC: оружие — на «гнёздах» (Object3D) у костей кистей со смещением под хват; голова чуть крупнее (стилизация, читаемость с камеры)
+    _ubcRig() {
+      const U = S.manifest.ubc || {}, SL = U.slots || {};
+      const mk = (bone, o) => { const b = this.bones[bone]; if (!b) return null; o = o || {}; const s = new T.Object3D(); s.name = 'slot_' + bone;
+        if (o.p) s.position.fromArray(o.p); if (o.r) s.quaternion.setFromEuler(new T.Euler(o.r[0], o.r[1], o.r[2], 'XYZ'));
+        if (o.y) { // ось оружия (+Y) и ребро (+X) в осях кости — из позы пальцев хвата (см. INTEGRATION.md §13)
+          const y = new T.Vector3().fromArray(o.y).normalize(), x0 = new T.Vector3().fromArray(o.x || [1, 0, 0]), z = new T.Vector3().crossVectors(x0, y).normalize(), x = new T.Vector3().crossVectors(y, z).normalize();
+          s.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x, y, z)); }
+        if (o.s) s.scale.setScalar(o.s); b.add(s); return s; };
+      this.handR = mk('hand_r', SL.r); this.handL = mk('hand_l', SL.l); this.chest = mk('spine_03', SL.back); this.head = mk('Head', SL.head);
+      const hs = this.def.headScale !== undefined ? this.def.headScale : U.headScale; if (hs && this.bones.Head) this.bones.Head.scale.setScalar(hs);
+    }
+    /** v17 UBC: показать набор частей (имена из ubc_*.glb) с цветами {skin, hair, eyes, cape, <часть>|<костюм>: {mul, h, s, v}} — одна SkinnedMesh */
+    compose(parts, cols) {
+      if (!this.ubc) return;
+      const geo = ubcGeo(this.def.file, parts, cols); this._parts = parts.slice(); this._cols = cols;
+      const first = this._ubcSrc.find((m) => m.isSkinnedMesh); if (!first) return;
+      if (this._cm) { if (this._cm.geometry === geo) return; this._cm.geometry.userData.users--; if (this._cm.userData.evOutline) this._cm.remove(this._cm.userData.evOutline); this._cm.parent && this._cm.parent.remove(this._cm); }
+      const sm = new T.SkinnedMesh(geo, this.matList[0] || first.material); sm.name = 'ubc_' + this.id; sm.frustumCulled = false;
+      first.parent.add(sm); sm.bind(this.skeleton, first.bindMatrix); geo.userData.users++;
+      this._cm = sm; this.meshes = [sm]; this.vertexCount = geo.userData.verts;
+      if (this._outline) { addOutline(sm, { color: this.def.outline }); if (sm.userData.evOutline) sm.userData.evOutline.visible = true; }
+      const skin = cols && cols.skin ? colOp(cols.skin) : null;
+      if (skin) for (const mm of this.matList) { const U = mm.userData.U; if (U.uSkin) U.uSkin.value.setRGB(0.86 * skin.m[0] * skin.v, 0.64 * skin.m[1] * skin.v, 0.52 * skin.m[2] * skin.v); }
     }
     findPart(name) { const n = T.PropertyBinding.sanitizeNodeName(name); return this.parts[name] || this.parts[n] || null; }
     // merge visible skinned parts sharing a material into one SkinnedMesh (1 draw call / material).
@@ -705,7 +850,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       let obj = typeof what === 'string' ? (what === '@orb' ? makeOrb(o.glow || '#c47cff') : makeProp(weaponDef(what), { outline: this._weaponOutline() })) : what;
       if (o.glow || (typeof what === 'string' && o.glowColor)) glowify(obj, o.glow || o.glowColor);
       obj.scale.multiplyScalar(o.s || 1);
-      if (slot === 'back') { obj.position.set(0, 0.3, -0.35); obj.rotation.set(0.3, 0, 0); }
+      if (slot === 'back' && !this.ubc) { obj.position.set(0, 0.3, -0.35); obj.rotation.set(0.3, 0, 0); }
       bone.add(obj); this.slots[slot] = obj; return obj;
     }
     /** tint everything (e.g. elite / elemental): color + amount 0..1 ; null clears */
@@ -725,6 +870,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       this._acc += dt; if (++this._t % step !== 0) return; this._charTick(this._acc); this.mixer.update(this._acc); this._acc = 0;
     }
     dispose() {
+      if (this._cm) { this._cm.geometry.userData.users--; this._cm = null; }
       this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.model);
       for (const m of this.matList) m.dispose();
       const sks = new Set(); this.model.traverse((o) => { if (o.isSkinnedMesh && o.skeleton) sks.add(o.skeleton); }); sks.forEach((k) => k.dispose());
@@ -737,8 +883,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     constructor(id, def, opts) {
       super(id, def, Object.assign({ merge: false }, opts));
       this.gear = {}; this.cls = 'sword';
+      if (this.ubc) this.look = (opts && opts.look || 0) % def.looks.length;
       this.setGear(opts && opts.gear || {});
-      this.setLook(opts && opts.look || 0);
+      if (!this.ubc) this.setLook(opts && opts.look || 0);
     }
     _partNames() {
       if (this._pn) return this._pn; const D = this.def, set = new Set(Object.values(D.base));
@@ -756,6 +903,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     /** gear = {helm:'hm_guard', chest:'ch_plate', gloves:'gl_plate', boots:'bt_plate', weapon:'sw2', offhand:'sh1', cape:true, wpGlow:'fire'}
      *  values are the game's ITEM_BASES[*].vis ids (see heroVis() in src/p3.js) */
     setGear(gear) {
+      if (this.ubc) return this._ubcGear(gear);
       const D = this.def, B = D.base; this.gear = Object.assign({}, gear);
       for (const m of this.meshes) { m.visible = false; if (m.userData.evOutline) m.userData.evOutline.visible = false; }
       const chest = gear.chest && D.chest[gear.chest] ? gear.chest : 'ch_cloth0';
@@ -776,8 +924,32 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (this.currentName) this.play(this.currentName, { fade: 0.1, restart: true });
       return this;
     }
+    // v17 UBC: шлем/нагрудник/перчатки/сапоги -> части костюмов; облик (S.look) -> причёска, борода, цвет волос и кожи
+    _ubcGear(gear) {
+      const D = this.def; this.gear = Object.assign({}, gear); const L = D.looks[this.look | 0] || D.looks[0];
+      const chest = D.chest[gear.chest] || D.chest.ch_cloth0, helm = gear.helm && D.helm[gear.helm] ? D.helm[gear.helm] : null;
+      const hide = new Set((helm && helm.hide) || []);
+      let parts = D.base.slice(); if (L.hair) parts.push(L.hair); if (L.beard) parts.push(...[].concat(L.beard));
+      parts = parts.filter((p) => !hide.has(p) && !(hide.has('hair') && /^(hair_|beard|moustache)/.test(p)) && !(hide.has('beard') && /^(beard|moustache)/.test(p)));
+      parts.push(...chest.parts);
+      parts.push(...(gear.gloves && D.gloves[gear.gloves] ? D.gloves[gear.gloves] : chest.arms || D.gloves._));
+      parts.push(...(gear.boots && D.boots[gear.boots] ? D.boots[gear.boots] : chest.feet || D.boots._));
+      if (helm) parts.push(...helm.parts);
+      const cols = Object.assign({}, D.cols || {}, chest.cols || {}, helm && helm.cols || {}, { hair: L.hairCol || D.cols && D.cols.hair, skin: L.skin || D.cols && D.cols.skin });
+      if (gear.cape !== false && chest.cape !== false) { parts.push(chest.capePart || 'cape'); cols.cape = gear.capeCol || chest.cape || CAPE_DEF; }
+      this.compose([...new Set(parts)], cols);
+      const w = D.weapons[gear.weapon] || D.weapons.sw1; this.cls = w.cls;
+      this.attach('r', w.r || null, { glow: gear.wpGlow ? S.manifest.glow[gear.wpGlow] : (w.glow && gear.wpGlow !== false ? S.manifest.glow[w.glow] : null) });
+      const oh = D.offhand[gear.offhand];
+      this.attach('l', w.l || (oh && oh.l) || null, { glow: oh && oh.l === '@orb' ? '#c47cff' : null });
+      this.attach('back', oh && oh.backProp || null);
+      this.setClipset(D.clipPrefix ? D.clipPrefix + this.cls : this.cls);
+      if (this.currentName) this.play(this.currentName, { fade: 0.1, restart: true });
+      return this;
+    }
     /** skin look index (S.look in the game: 0..2) */
     setLook(i) {
+      if (this.ubc) { if ((i | 0) === this.look && this._parts) return; this.look = (i | 0) % this.def.looks.length; if (this.gear) this._ubcGear(this.gear); return; }
       const L = this.def.looks[i | 0]; if (!L) return; this.look = i | 0;
       const only = new Set(); for (const n of this.def.lookParts || []) { const p = this.findPart(n); if (p) p.traverse((o) => o.isMesh && only.add(o)); }
       for (const m of this.meshes) {
@@ -882,14 +1054,15 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     if (typeof what === 'string') {
       const d = S.manifest.entities[what];
       if (!d || d.type === 'prop') obj = makeProp(d || weaponDef(what), { outline: true });
-      else if (d.type === 'char' || d.type === 'hero') { actor = spawn(what, { outline: true, merge: false }); if (o.gear && actor.setGear) actor.setGear(o.gear); actor.mixer.update(0.4); obj = actor.root; }
+      else if (d.type === 'char' || d.type === 'hero') { actor = spawn(what, { outline: true, merge: false }); if (o.gear && actor.setGear) actor.setGear(o.gear); if (actor.ubc && o.portrait) actor.play('Idle_Loop', { fade: 0 }); actor.mixer.update(0.4); obj = actor.root; }
       else obj = building(what.replace('bld:', ''), o.level || 1);
     } else obj = what;
     const holder = new T.Group(); holder.add(obj); ICON.scene.add(holder);
     holder.rotation.set(o.pitch || 0, o.yaw === undefined ? -0.6 : o.yaw, o.roll === undefined ? (actor ? 0 : -0.5) : o.roll);
     holder.updateMatrixWorld(true);
     const ah = actor ? actor.height : 0;
-    const box = actor ? (o.portrait ? new T.Box3().setFromCenterAndSize(new T.Vector3(0, ah * 0.7, 0), new T.Vector3(ah * 0.5, ah * 0.56, ah * 0.5))
+    const ub = actor && actor.ubc; // v17: у детальных персонажей голова — верхние ~12% роста
+    const box = actor ? (o.portrait ? (ub ? new T.Box3().setFromCenterAndSize(new T.Vector3(0, ah * 0.875, 0), new T.Vector3(ah * 0.3, ah * 0.3, ah * 0.3)) : new T.Box3().setFromCenterAndSize(new T.Vector3(0, ah * 0.7, 0), new T.Vector3(ah * 0.5, ah * 0.56, ah * 0.5)))
                                     : new T.Box3().setFromCenterAndSize(new T.Vector3(0, ah * 0.55, 0), new T.Vector3(ah * 0.6, ah * 1.05, ah * 0.6))) : new T.Box3().setFromObject(holder);
     const c = box.getCenter(new T.Vector3()), sz = box.getSize(new T.Vector3()); const r = Math.max(sz.x, sz.y, sz.z) * (o.pad || 0.62);
     const d = r / Math.tan(14 * deg);
@@ -933,7 +1106,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     let texBytes = 0; const seen = new Set();
     const add = (t) => { if (!t || seen.has(t)) return; seen.add(t); const im = t.image; if (im && im.width) texBytes += im.width * im.height * 4 * (t.generateMipmaps ? 1.33 : 1); };
     for (const k in S.tex) add(S.tex[k]); for (const k in S.recolored) add(S.recolored[k]);
-    return { files: Object.keys(S.files).length, textures: seen.size, textureMB: +(texBytes / 1048576).toFixed(2), actors: S.actors.size, clips: Object.keys(S.clips.medium).length + Object.keys(S.clips.large).length };
+    return { files: Object.keys(S.files).length, textures: seen.size, textureMB: +(texBytes / 1048576).toFixed(2), actors: S.actors.size, clips: Object.keys(S.clips.medium).length + Object.keys(S.clips.large).length + Object.keys(S.clips.ubc || {}).length, chars: S.chars };
   }
   function init(o = {}) {
     S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.paint = o.paint || null; S.paintU = o.paintU || null;
@@ -945,7 +1118,11 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     if (S.renderer) { const v = S.renderer.getSize(new T.Vector2()); S.res.set(v.x * S.renderer.getPixelRatio(), v.y * S.renderer.getPixelRatio()); }
     const ready = mo && mo.ready ? mo.ready : Promise.resolve();
     const man = typeof o.manifest === 'object' ? Promise.resolve(o.manifest) : fetch(o.manifest || 'manifest.json').then((r) => r.json());
-    return Promise.all([ready, man]).then(([, m]) => { S.manifest = m; if (!o.base && m.base) S.base = m.base; return EVAssets; });
+    return Promise.all([ready, man]).then(([, m]) => {
+      // v17: «Модели персонажей: Детальные» — сущности/группы UBC поверх классических KayKit (те остаются в манифесте для «Классических»)
+      S.chars = o.chars === 'classic' || !m.ubcEntities ? 'classic' : 'detail';
+      if (S.chars === 'detail' && !m._ubcApplied) { m.entitiesClassic = m.entities; m.groupsClassic = m.groups; m.entities = Object.assign({}, m.entities, m.ubcEntities); m.groups = Object.assign({}, m.groups, m.ubcGroups || {}); m._ubcApplied = 1; }
+      S.manifest = m; if (!o.base && m.base) S.base = m.base; return EVAssets; });
   }
   function tick(dt) { EVAssets.time.value += dt; }
 
@@ -953,7 +1130,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     version: '1.0.0', QUALITY, time: { value: 0 },
     init, load, spawn, prop, instanced, building, icon, iconURL, portrait, setQuality, setViewport, stats, tick,
     addOutline, toonMat, recolorTex, makeOrb, glowify,
-    get manifest() { return S.manifest; }, get quality() { return S.q; },
+    get manifest() { return S.manifest; }, get quality() { return S.q; }, get chars() { return S.chars; },
     has: (id) => !!(S.manifest && S.manifest.entities[id] && S.manifest.entities[id].type !== 'procedural'),
     info: (id) => S.manifest && S.manifest.entities[id],
     clips: (rig) => Object.keys(S.clips[rig || 'medium']),

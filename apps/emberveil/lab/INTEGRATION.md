@@ -219,3 +219,23 @@ Offline pipeline in `lab/build/` (Node 18+, Python 3; `npm i` there). Directory 
 bind-pose AO, soft normals, cape sway (`aFx.x`), eyes with highlights/blinking/expressions (`aFx.yzw`, found at load per head) and a warm rim.
 `actor.setExpr('squint'|'hurt'|'happy'|'dead'|null, seconds)`; clip names drive expressions automatically. KayKit capes are made double-sided
 at load. Positions are de-quantized in the shader with `uDQ` (bone(rest) × inverse bind of bone 0) so brush/sway work in model metres.
+
+## 13. v17: detailed characters (UBC rig) — how to add a character / enemy (for Act II)
+
+**Pipeline.** `assets/chars/ubc_m.glb` and `ubc_f.glb` hold *every* body part (heads, eyes, brows, hair, Peasant/Ranger/Knight/Noble/Wizard outfit pieces, a generated cape) of one body on **one UE-style skeleton** (65 joints: `root, pelvis, spine_01..03, neck_01, Head, clavicle/upperarm/lowerarm/hand_l|r, thigh/calf/foot/ball_l|r`, fingers), with **one material and one 2048×1024 atlas**. `assets/anim/anim_ual.glb` = 47 Quaternius UAL clips (no finger tracks, pelvis-only translation). Rebuild: `lab/build/build_ubc.mjs`, `build_ual.mjs` (sources: `assets/CREDITS.md`, section v17), then `python3 lab/build/ubc_manifest.py lab/manifest.json` and `sh build.sh`.
+
+**Runtime.** `EVAssets.init({..., chars:'detail'|'classic'})` overlays `manifest.ubcEntities` / `ubcGroups` over the classic KayKit entities (classic stays intact → setting «Модели персонажей», `?chars=classic`, and «Авто» = classic on the Performance preset). An Actor whose `file` starts with `ubc_` **composes** its visible parts into ONE SkinnedMesh (`actor.compose(parts, cols)`): 1 draw call + 1 outline per character; geometry is cached per (file, parts, colours), so identical NPCs share it. Part colours are vertex attributes (`aMul` multiply, `aHsv` hue-shift/sat/value) — no texture copies. Skin/hair/eyes/cape are recognised by atlas slot, everything else by part name or outfit prefix (`peasant`, `ranger`, `knight`, `noble`, `wizard`).
+
+**Add a humanoid (NPC, enemy, boss)** — one entry in `lab/build/ubc_manifest.py` (`E['myId'] = npc(...)`):
+```python
+E['bandit'] = npc('ubc_m', ['head','eyes','brows','hair_buzzed','beard','ranger_hood','peasant_body','ranger_arms','peasant_legs','ranger_boots'],
+  {'skin': {'mul':'#e8d2b8'}, 'hair': {'mul':'#2e2420'}, 'peasant': {'h':-20,'s':.6,'v':.7}, 'ranger': {'s':.3,'v':.6}},
+  h=2.05, clips='u_brute', r='w_dagger', ws=1.0, tint=None)
+```
+Fields: `parts` (names printed by `build_ubc.mjs`), `cols` {skin, hair, eyes, cape, <part>, <outfit prefix>, all: {mul:'#hex', h:deg, s:mul, v:mul}}, `h` game height, `clips` (`u_npc|u_smith|u_alch|u_farmer|u_guard|u_king|u_caster|u_brute|u_archer|u_sword|u_axe|u_bow|u_staff` layered on the base `ubc` set), `r`/`l` kit weapon node ids (any KayKit kit node; `ws` scales them), optional `headScale`, `tint`, `glow`, `boss`. Then add the id to the game tables as before (`ENEMIES`/`BOSSES`/`NPC` in `src/`) — `ENEMY_MODELS[id]` is wrapped automatically (`asWrapFactories`) and falls back to the procedural model when assets are off.
+New semantic clip keys: add to `M['clipsets']`; sub-clips can be cut from long UAL clips in `M['ubc']['cuts']` (`'Axe_1': ['Sword_Heavy_Combo', 0, .95]`). Weapon sockets (`M['ubc']['slots']`) are derived from the grip pose of the fingers (blade axis `y`, edge `x` in hand-bone space).
+**Hero gear** maps item `vis` ids → parts in `ubcEntities.hero` (`chest`/`gloves`/`boots`/`helm` with `hide: ['hair','beard','brows']`, `looks` = hairstyle/beard/hair & skin colour). A new armour look = new mapping row; a new outfit pack = add its parts to `BODY` in `build_ubc.mjs` and a slot in its atlas.
+**Monsters** (non-humanoid) keep their own rigs (KayKit `medium`/`large`, Quaternius pets with own clips): add a file + entity as in §4; the toon material, outline and brush are shared, which keeps both families in one look.
+**Perf rules**: keep a UBC character ≤ ~10k vertices (hero ~11–12k, NPCs 6–9k), crowds of UBC enemies ≤ 8 on screen; `actor.vertexCount` reports the merged size. Animation LOD/culling is the same as KayKit (`asTick`).
+
+**Игнар** (`src/p32.js`): procedural skinned dragon (≈5k vertices, 46 bones, 1 draw + outline), poses synced to boss pattern names/times (`e.cur.n`, `e.cur.t`: breath inhale→fire at 1.0 s, bite lunge at 1.1 s, tail swipe at 0.9 s, stomp, gust, sky/landing, phase roar, death). It exposes a minimal actor (`setFlash/setTint/setOpacity`) so `setMat()` flashes work on the skinned mesh. Camera keeps hero + dragon in frame during the fight.

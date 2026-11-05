@@ -15,7 +15,7 @@ function asCan(id){
   if(d.type==='building'){ return EVAssets.isLoaded(d.file); }
   if(!EVAssets.isLoaded(d.file)) return false;
   if(d.type==='prop') return true;
-  if(!EVAssets.isLoaded(d.rig==='large'?'anim_large':'anim_medium')) return false;
+  const rg=EVAssets.manifest.rigs[d.rig]; if(rg&&rg.anims&&rg.anims.length&&!EVAssets.isLoaded(rg.anims[0])) return false; if(!rg&&d.rig!=='large'&&!EVAssets.isLoaded('anim_medium')) return false;
   if(d.type==='hero') return EVAssets.isLoaded('kit_weapons');
   return asNodeOk(d.r)&&asNodeOk(d.l);
 }
@@ -40,13 +40,17 @@ function asZoneGroup(z){ return 'z'+clamp(z|0,1,6); }
 function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
-  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint,brush:PAINT_U.tBrush.value,charFX:!/[?&]cfx=0/.test(location.search)}); }catch(e){ console.warn(e); return Promise.resolve(false); }
+  try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint,brush:PAINT_U.tBrush.value,charFX:!/[?&]cfx=0/.test(location.search),chars:asCharsMode()}); }catch(e){ console.warn(e); return Promise.resolve(false); }
   const first=['core','village'];
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
-  return Promise.race([initP.then(()=>asLoad(first,onProg)).then(()=>{ AS.ok=EVAssets.isLoaded('anim_medium')&&EVAssets.isLoaded('hero_parts'); asTintInit(); return AS.ok; },e=>{ console.warn(e); AS.failed=true; return false; }),
-    new Promise(r=>setTimeout(()=>r('timeout'),30000))]).then(v=>{ if(v==='timeout'){ AS.ok=window.EVAssets&&EVAssets.manifest&&EVAssets.isLoaded('anim_medium')&&EVAssets.isLoaded('hero_parts'); asTintInit(); } if(AS.ok) setTimeout(asPrefetch,1500); return AS.ok; });
+  return Promise.race([initP.then(()=>asLoad(first,onProg)).then(()=>{ AS.ok=asCoreOk(); asTintInit(); return AS.ok; },e=>{ console.warn(e); AS.failed=true; return false; }),
+    new Promise(r=>setTimeout(()=>r('timeout'),30000))]).then(v=>{ if(v==='timeout'){ AS.ok=window.EVAssets&&EVAssets.manifest&&asCoreOk(); asTintInit(); } if(AS.ok) setTimeout(asPrefetch,1500); return AS.ok; });
 }
+// v17: какие модели персонажей: детальные (UBC, Quaternius) или классические (KayKit). «Авто» — детальные, кроме пресета «Производительность».
+function asCharsMode(){ const q=(location.search.match(/[?&]chars=(\w+)/)||[])[1]; if(q==='classic'||q==='detail') return q; const c=S.set.chars||'auto'; return c==='auto'?(QL==='perf'?'classic':'detail'):c; }
+// ядро готово: анимации + герой (детальные — UBC, классические — KayKit hero_parts)
+function asCoreOk(){ const H=asInfo('hero'); if(!H) return false; const rg=EVAssets.manifest.rigs[H.rig]; return EVAssets.isLoaded(H.file)&&EVAssets.isLoaded(rg&&rg.anims?rg.anims[0]:'anim_medium')&&EVAssets.isLoaded('kit_weapons'); }
 // background streaming: next zones, late village, companions in use
 function asPrefetch(){
   if(!asOn()) return; const z=clamp(S.prog.zone||1,1,6); const q=[asZoneGroup(z),'village_late',asZoneGroup(z+1),'pets'];
