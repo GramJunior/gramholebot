@@ -65,22 +65,23 @@ forgeBody=function(tab){
   const lv=S.bld.forge; const it=PANEL.sel&&allItems().includes(PANEL.sel)?PANEL.sel:null;
   const after=()=>{ refreshPlayer(false); _dollKey=''; saveGame(); questCheck(); rerender(); };
   if(tab==='up'){ let R='';
-    if(it){ const u=it.up||0, cap=enhCap(); const c=enhCost(it); const rate=ENH_RATE[u]||0; const nx=Object.assign({},it,{up:u+1}); const fx=ENH_FX;
+    if(it){ const u=it.up||0, cap=enhCap(); const c=enhCost(it); const base=ENH_RATE[u]||0; const useP=!!PANEL.prot&&S.cons.prot>0&&base<1; const rate=typeof enhChance==='function'?enhChance(it,useP):base; const nx=Object.assign({},it,{up:u+1}); const fx=ENH_FX;
       const col=rate>=1?'#7ce35c':rate>=.6?'#ffd24a':rate>=.4?'#ff9d2e':'#ff5a3a';
       R+=`<div class="anv ${fx==='ok'?'fx-ok':fx?'fx-fail':''}">`;
       if(fx==='ok') R+=`<div class="anv-fx"><span class="ham">${ico('hammer')}</span><span class="boom"></span>${Array.from({length:12},(_,i)=>{ const a=i/12*TAU+Math.random()*.3, d=60+Math.random()*60; return `<i style="--x:${Math.cos(a)*d|0}px;--y:${Math.sin(a)*d*.8-20|0}px"></i>`; }).join('')}</div>`;
       else if(fx) R+=`<div class="anv-fx"><span class="ham">${ico('hammer')}</span></div>`;
-      if(fx) R+=`<div class="anv-res ${fx}">${fx==='ok'?'Успех!':fx==='saved'?'Спасено свитком':fx==='down'?'Откат!':'Неудача'}</div>`;
+      if(fx) R+=`<div class="anv-res ${fx}">${fx==='ok'?'Успех!':'Неудача — удача кузнеца +10%'}</div>`;
       R+=`<div class="anv-top">${u<ENH_MAX&&u<cap?matTiles(c):'<div></div>'}<div class="anv-it">${itHtml(it,{cmp:false,lv:false})}</div>${u<ENH_MAX&&u<cap?`<div class="dial" style="--p:${Math.round(rate*100)};--c:${col}"><b>${Math.round(rate*100)}%</b><small>шанс</small></div>`:'<div></div>'}</div>`;
       R+=`<div class="anv-name r${it.rar}">${esc(it.name)}</div><div class="anv-sub">${RAR[it.rar].n} · ${itemSlotName(it)} · ${ico('star')} ${itemPower(it)}${u<ENH_MAX&&u<cap?` → <b style="color:#9cff7a">${itemPower(nx)}</b>`:''}</div>`;
       const lvh=`<div class="anv-lv"><b>+${u}</b>${ico('up')}<b class="nx">+${Math.min(ENH_MAX,u+1)}</b></div>`;
       if(u>=ENH_MAX) R+=lvh+`<div class="muted" style="text-align:center">Предел заточки.</div>`;
       else if(u>=cap) R+=lvh+`<div class="muted" style="text-align:center">Предел кузницы: +${cap}. ${cap<ENH_SAFE?'Улучшайте кузницу (+2 за уровень).':'+11…+15 — кузница 5 ур. и герой 20 ур.'}</div>`;
-      else { if(rate<1) R+=`<label class="tog" style="justify-content:center"><input type="checkbox" id="useProt" ${PANEL.prot&&S.cons.prot>0?'checked':''} ${S.cons.prot>0?'':'disabled'}> ${ico('scroll')} Свиток защиты (${S.cons.prot||0})</label>`;
-        R+=`<div class="anv-row">${lvh}<button class="btn leather big" ${canPay(c)?'':'disabled'} ${act(()=>{ const cb=$('useProt'); PANEL.prot=!!(cb&&cb.checked); const r=enhTry(it,PANEL.prot); if(!r) return; ENH_FX=r;
-          if(r==='ok'){ AU.sfx('build'); setTimeout(()=>AU.sfx('legend',.45),420); vib('success'); toast(`<b class="r${it.rar}">${esc(it.name)}</b> +${it.up}`,iconFor(it),it.rar); } else { AU.sfx('hit'); setTimeout(()=>AU.sfx('deny'),420); vib('error'); toast(r==='saved'?'Неудача — свиток защиты спас уровень':r==='down'?`Неудача: предмет откатился до +${it.up}`:'Неудача'); }
+      else { if(base<1){ const lk=Math.round((it.luck||0)*(typeof ENH_PITY!=='undefined'?ENH_PITY:.1)*100); R+=`<div class="anv-luck">Основа ${Math.round(base*100)}%${lk?` · удача кузнеца <b>+${lk}%</b>`:''}${useP?' · свиток <b>+25%</b>':''} — неудача не снимает ступень</div>`;
+          R+=`<div class="row" style="justify-content:center;position:relative;z-index:1"><button class="btn ${useP?'leather':'woodb'} small" ${S.cons.prot>0?'':'disabled'} ${act(()=>{ PANEL.prot=!PANEL.prot; rerender(); })}>${ico('scroll')} Свиток удачи +25% (${S.cons.prot||0})${useP?' ✓':''}</button></div>`; }
+        R+=`<div class="anv-row">${lvh}<button class="btn leather big" ${canPay(c)?'':'disabled'} ${act(()=>{ const r=enhTry(it,PANEL.prot&&S.cons.prot>0); if(!r) return; ENH_FX=r; if(!(S.cons.prot>0)) PANEL.prot=false;
+          if(r==='ok'){ AU.sfx('build'); setTimeout(()=>AU.sfx('legend',.45),420); vib('success'); toast(`<b class="r${it.rar}">${esc(it.name)}</b> +${it.up}`,iconFor(it),it.rar); } else { AU.sfx('hit'); setTimeout(()=>AU.sfx('deny'),420); vib('error'); toast(`Неудача — ступень сохранена, удача кузнеца: <b>+${Math.round((it.luck||0)*10)}%</b>`); }
           after(); setTimeout(()=>{ ENH_FX=null; },60); })}>${ico('hammer')} Заточить</button></div>`; }
-      R+=`<details class="rates" style="position:relative;z-index:1;margin-top:6px"><summary>Таблица заточки</summary><div class="rtab">${ENH_RATE.map((r,i)=>`<span class="${i===u?'cur':''}">+${i}→+${i+1}<b>${Math.round(r*100)}%</b></span>`).join('')}</div></details></div>`; }
+      R+=`<details class="rates" style="position:relative;z-index:1;margin-top:6px"><summary>Таблица заточки</summary><div class="rtab">${ENH_RATE.map((r,i)=>`<span class="${i===u?'cur':''}">+${i}→+${i+1}<b>${Math.round(r*100)}%</b></span>`).join('')}</div><div class="muted" style="font-size:11.5px;margin-top:4px">Неудача не снимает ступень: каждая даёт +10% «удачи кузнеца» к следующей попытке этой вещи (сброс при успехе). Свиток удачи — ещё +25%.</div></details></div>`; }
     else R+=`<div class="anv"><div class="fempty" style="position:relative;z-index:1;padding-top:30px">${ico('anvil')}<b>Положите предмет на наковальню</b><small>Выберите вещь слева. Каждая ступень: +7% ко всем свойствам (после +10 — +5%). Предел кузницы: +${enhCap()}.</small></div></div>`;
     return `<div class="forge2 up"><div class="f-l">${pickGrid(x=>(x.up||0)<ENH_MAX)}</div><div class="f-r">${R}</div></div>`; }
   // ковка
