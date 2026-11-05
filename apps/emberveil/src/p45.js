@@ -47,7 +47,7 @@ function a8ArenaVisuals(){ const M=W.bossMech, A=W.arenaNode; if(!M||!A) return;
   if(M.tiles&&!M.floor){ const S0=M.tileS; const g=new THREE.PlaneGeometry(S0*3,S0*3); const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({map:a8BallTex(),color:0xdfeee8})); m.rotation.x=-PI/2; m.position.set(A.x,.03,A.z); m.renderOrder=1; worldRoot.add(m); M.floor=m;
     const og=new THREE.PlaneGeometry(S0*.96,S0*.96); og.rotateX(-PI/2); const om=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}); const im=new THREE.InstancedMesh(og,om,9); im.frustumCulled=false; im.renderOrder=3;
     const c=new THREE.Color(0,0,0); const m4=new THREE.Matrix4(); M.tiles.forEach((t,i)=>{ m4.makeTranslation(t.x,.06,t.z); im.setMatrixAt(i,m4); im.setColorAt(i,c); }); worldRoot.add(im); M.glow=im;
-    M.chands=[]; for(let j=0;j<3;j++){ const t=M.tiles[j*3+1]; const g2=new THREE.Group(); g2.position.set(t.x,0,t.z); worldRoot.add(g2); const cm=pmesh(A8C.chand(),g2,0,5.6,0); cm.material=MTP; const ch=pmesh(A8C.chain(),g2,0,5.95,0); ch.material=MTP; M.chands.push({j,g:g2,m:cm,ch,st:'hang',x:t.x,z:t.z}); } }
+    M.chands=[]; for(let j=0;j<3;j++){ const t=M.tiles[j*3+1]; const g2=new THREE.Group(); g2.position.set(t.x,0,t.z); worldRoot.add(g2); const cm=pmesh(A8C.chand(),g2,0,4.6,0); cm.material=MTP; cm.scale.setScalar(.75); const ch=pmesh(A8C.chain(),g2,0,4.9,0); ch.material=MTP; M.chands.push({j,g:g2,m:cm,ch,st:'hang',x:t.x,z:t.z}); } }
   if(W.deep&&W.deep.some(d=>d.pit)&&!M.pit){ const d=W.deep.find(d=>d.pit); const m=new THREE.Mesh(new THREE.CircleGeometry(d.r+.6,40),new THREE.MeshBasicMaterial({map:DEEP_TEX,color:0x02060e,transparent:true,opacity:.8,depthWrite:false})); m.rotation.x=-PI/2; m.position.set(d.x,.04,d.z); m.renderOrder=1; worldRoot.add(m); M.pit=m;
     M.books=[]; for(let i=0;i<9;i++){ const g=new THREE.Group(); worldRoot.add(g); pmesh(A8B.bookFloat(),g).material=MTP; M.books.push({g,a:rand(TAU),r:rand(4,13),y:rand(2,4.5),s:rand(.15,.3)}); } } }
 function a8TileColor(M){ if(!M.glow) return; const c=new THREE.Color(); const F=M.fig; M.tiles.forEach((t,i)=>{ if(t.broken>0) c.setRGB(.05,.08,.1); else if(F&&F.on){ const safe=F.safe.includes(i); c.setRGB(safe?.95:.0,safe?.72:.25,safe?.25:.35); if(!safe&&F.t>F.cast-1) c.setRGB(.1,.45,.6); } else c.setRGB(0,0,0); M.glow.setColorAt(i,c); }); M.glow.instanceColor.needsUpdate=true; }
@@ -99,7 +99,7 @@ Object.assign(BP,{
 // люстра бала падает на плиту: плита «разбита» 10 с (не участвует в фигурах)
 function a8BallChandDown(c){ const M=W.bossMech; c.st='down'; c.g.remove(c.m); c.g.remove(c.ch); const dm=pmesh(A8C.broken(),c.g); dm.material=MTP; fx('boom',c.x,.3,c.z,{r:2.2,col:0xffe0a0,smoke:0x6a8a8a}); fx('light',c.x,.6,c.z,{k:12}); AU.sfx('boom',.7); AU.sfx('chime',.6,1.4); shake(.4);
   const t=a8TileAt(M,c.x,c.z); if(t){ t.broken=10; dmgNum(t.x,1,t.z,'плита разбита','txt'); } for(const e of G.enemies) if(e.alive&&!e.boss&&Math.hypot(e.x-c.x,e.z-c.z)<2+e.r){ dmgEnemy(e,e.maxHp*.2,{src:G.P}); e.stat.stun=2; }
-  later(10,()=>{ if(!W||W.bossMech!==M) return; c.g.remove(dm); c.m.position.y=5.6; c.g.add(c.m); c.g.add(c.ch); c.st='hang'; }); }
+  later(10,()=>{ if(!W||W.bossMech!==M) return; c.g.remove(dm); c.m.position.y=4.6; c.g.add(c.m); c.g.add(c.ch); c.st='hang'; }); }
 // сходящееся кольцо «Прилив»
 function a8RingIn(x,z,r0,spd,dmg,src){ W.a8rin=W.a8rin||[]; const m=ringMesh(0x4ad8d0,1,.12,.9); worldRoot.add(m); W.a8rin.push({x,z,r:r0,spd,dmg,src,m,hit:false}); }
 function a8RingInTick(dt){ const L=W.a8rin; if(!L||!L.length) return; const P=G.P; for(let i=L.length-1;i>=0;i--){ const w=L[i]; w.r-=w.spd*dt; w.m.position.set(w.x,.15,w.z); w.m.scale.setScalar(Math.max(.1,w.r)); if(Math.random()<.8){ const a=rand(TAU); fx('bubble',w.x+Math.cos(a)*w.r,.3,w.z+Math.sin(a)*w.r,{k:1}); }
@@ -159,8 +159,9 @@ bossMechTick=function(dt){ _bossMechTickA8(dt); if(!W) return; a8RingInTick(dt);
   if(P.hp<P.maxHp*.3&&G.time-(M.plowT||-99)>25){ M.plowT=G.time; a2Bark(e,'plow'); }
   const el=G.time-(M.t0||G.time); if(!M.enrage&&el>(e.kind==='chamberlain'?240:300)){ M.enrage=1; banner(e.kind==='chamberlain'?'Бал без конца!':'Глава без конца!',''); AU.sfx('roar'); }
   if(e.kind==='chamberlain'){ for(const t of M.tiles) if(t.broken>0){ t.broken-=dt; if(t.broken<=0) a8TileColor(M); }
+    if(M.fig&&!(e.cur&&e.cur.n==='figure')){ M.fig=null; a8TileColor(M); }
     const every=M.enrage?9:e.phase>=2?12:20; M.double=e.phase>=2; if(!(M.fig)) M.figT-=dt; if(M.figT<=0&&!e.cur&&!(e.bstun>0)){ M.figT=every; e.cur={n:'figure',t:0,f:{}}; }
-    for(const c of (M.chands||[])) if(c.st==='hang'){ c.m.rotation.y+=dt*.25; c.m.rotation.z=Math.sin(G.time*.8+c.j)*.04; } }
+    for(const c of (M.chands||[])) if(c.st==='hang'){ c.m.rotation.y+=dt*.25; c.m.rotation.z=Math.sin(G.time*.8+c.j)*.04; const near=Math.abs(P.x-c.x)<3.2&&P.z-c.z<1.2&&P.z-c.z>-4.5; c.g.visible=!near; } else c.g.visible=true; }
   if(e.kind==='inkmaw'){ const A=W.arenaNode; const d=Math.hypot(e.x-A.x,e.z-A.z); if(d>3){ e.x+=(A.x-e.x)/d*dt*2; e.z+=(A.z-e.z)/d*dt*2; }
     M.eraseT=(M.eraseT===undefined?6:M.eraseT)-dt; if(M.eraseT<=0&&!e.cur&&!(e.bstun>0)){ M.eraseT=M.enrage?6:16; e.cur={n:e.phase>=2?'erase2':'erase',t:0,f:{}}; }
     if(e.phase>=1&&!M.imps){ M.imps=1; for(let i=0;i<2;i++){ const a=rand(TAU); const im=spawnEnemy('inkImp',e.x+Math.cos(a)*3,e.z+Math.sin(a)*3,e.lvl,{summon:1,aggro:1}); im.spd=4; } }
