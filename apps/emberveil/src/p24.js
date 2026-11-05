@@ -23,7 +23,7 @@ function artImg(k,fn,cls,fallbackHtml){ const u=ART[k];
   if(!ARTQ.some(q=>q.k===k)) ARTQ.push({k,fn}); if(!_artBusy){ _artBusy=true; requestAnimationFrame(artPump); }
   return `<img class="${cls||''}" data-art="${k}" data-ph="${encodeURIComponent(fallbackHtml||'')}" src="${ART_PH}" alt="">`; }
 function bldArt(id,lv,cls){ lv=Math.max(1,Math.min(5,lv||1)); const B=BUILDINGS[id];
-  return artImg('b_'+id+'_'+lv,()=>{ const g=typeof asBuilding==='function'?asBuilding(id,lv):null; if(!g) return ''; return EVAssets.icon(g,200,{yaw:-.62,pitch:.14,roll:0,pad:.46}).toDataURL(); },cls||'bimg',`<span class="bi">${ico(B?B.ic:'hall')}</span>`); }
+  return artImg('b_'+id+'_'+lv,()=>{ const g=typeof asBuilding==='function'?asBuilding(id,lv):null; if(!g) return ''; if(g.userData.town) g.rotation.y=Math.PI; /* v22: фасад детального здания — к камере */ return EVAssets.icon(g,200,{yaw:-.62,pitch:.14,roll:0,pad:.46}).toDataURL(); },cls||'bimg',`<span class="bi">${ico(B?B.ic:'hall')}</span>`); }
 function npcArt(npc,cls){ if(!npc) return '';
   return artImg('n_'+npc,()=>{ if(asCan(npc)) return EVAssets.iconURL(npc,224,{yaw:.38,roll:0,pad:.56}); return portraitFor(npc)||''; },cls||'who',''); }
 function chestArt(tier){ return chestImg(tier); }

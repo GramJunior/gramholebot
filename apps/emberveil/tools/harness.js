@@ -16,7 +16,7 @@ let FCSS = null;
 try { FCSS = fs.readFileSync(FONTS + '/fonts.css', 'utf8'); } catch (e) { }
 try { fs.mkdirSync(D + '/shots', { recursive: true }); } catch (e) { }
 const IGNORE = e => e.includes('GPU stall') || e.includes('ERR_FAILED') || e.includes('ERR_ABORTED') || e.includes('Failed to load resource') || e.includes('telegram') || e.includes('GL Driver Message') || e.includes('ReadPixels') || e.includes('ERR_CONNECTION');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.css': 'text/css', '.md': 'text/plain' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.css': 'text/css', '.md': 'text/plain' };
 let SERVER = null;
 function serve() {
   if (SERVER) return SERVER;

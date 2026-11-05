@@ -25,6 +25,20 @@ Processing (`lab/build/build_ubc.mjs`, `build_ual.mjs`, `ubc_manifest.py`): all 
 
 **Игнар (дракон)** — no third-party asset: procedural skinned model written for this game (`src/p32.js`). The dragon pet stays the Quaternius «Ultimate Monsters» Dragon_Evolved (see above).
 
+## v22: детальные здания — Quaternius «Medieval Village MegaKit» (CC0) / Detailed buildings
+
+Files `kits/kit_town.glb` (94 modular parts, geometry only), `kits/town_atlas.jpg` (1024 px) and `kits/town_atlas_s.jpg` (512 px, «Низк./Произв.») are built from
+**Quaternius — Medieval Village MegaKit** (free «Standard» version, itch.io 2025-04-22), licence **CC0 1.0 Universal** (text: `assets/LICENSES/Quaternius-Medieval-Village-MegaKit.License.txt`).
+
+| what | source |
+|---|---|
+| walls (plaster / uneven stone, doors, windows), corners, door frames, doors, windows, shutters, round-tile roofs (4×4…8×10, tower, dormer), gable fronts, floors, balconies, stairs, chimneys, crate, wagon, fences, metal fences, bricks | https://github.com/J-Ponzo/gltf-medieval-village-megakit (`glTF/*.gltf`, commit 21104b4) — an unmodified glTF-only mirror of the itch.io download (https://quaternius.itch.io/medieval-village-megakit), README + LICENSE state CC0 |
+| atlas tiles: wood trim, round tiles, plaster, uneven brick, brick, rock trim, metal ornaments | same pack, `T_*_BaseColor.png` (2048 px → 448/224 px tiles with wrapped padding; round tiles desaturated, wood −15 % saturation) |
+| signboard icons (crown, anvil, potion, paw, tankard, ember, crate, saw, pickaxe, drop, shield, house), banners (Brod ember), swatches | drawn for this game (SVG in `lab/build/build_town.mjs`), CC0 |
+
+Processing: `lab/build/build_town.mjs` (gltf-transform 4.5 + meshoptimizer): each part flattened to one primitive, vines dropped, heavy parts simplified (roofs ×0.17, stone corners ×0.07, …), UVs packed (uv/8+0.5, uint16), atlas tile index as `_TILE`, meshopt + 14-bit positions.
+Buildings are assembled at runtime from these parts by recipes in `src/p42.js` (12 buildings × levels 0–5, scaffolding, camp tents, crypts, Northern-legion tents).
+
 ## Characters (`assets/chars/`)
 
 | file | source model | pack | source URL |

@@ -54,7 +54,8 @@
   "pet_owl": "chars/pet_owl.glb",
   "ubc_m": "chars/ubc_m.glb",
   "ubc_f": "chars/ubc_f.glb",
-  "anim_ual": "anim/anim_ual.glb"
+  "anim_ual": "anim/anim_ual.glb",
+  "kit_town": "kits/kit_town.glb"
  },
  "groups": {
   "core": [
@@ -237,6 +238,9 @@
    "paladin",
    "kit_weapons2",
    "anim_large"
+  ],
+  "town": [
+   "kit_town"
   ]
  },
  "rigs": {

@@ -204,6 +204,7 @@ Offline pipeline in `lab/build/` (Node 18+, Python 3; `npm i` there). Directory 
 4. `node build_hero.mjs` — rebinds 40 parts of 9 characters to the Knight skin (remaps JOINTS_0) → `hero_parts.glb`.
 5. `python3 kits.py && node build_kits.mjs` — merges props into `kit_*.glb` (one top-level node per id).
 6. `python3 gen_manifest.py ../manifest.json` and `python3 gen_credits.py ../../assets/CREDITS.md`.
+7. v22 buildings: `node build_town.mjs <MegaKit glTF dir> ../../assets` → `kits/kit_town.glb` + `kits/town_atlas.jpg` / `town_atlas_s.jpg` (source: Quaternius Medieval Village MegaKit, CC0, mirror `J-Ponzo/gltf-medieval-village-megakit`). The manifest only needs `files.kit_town` and `groups.town` (gen_manifest.py does not know them — re-add after regenerating). Atlas tile rectangles are printed by the script (`town_report.json`) and must match `TOWN_RECT` in `src/p42.js`.
 
 ## 11. Known issues / follow-ups
 
@@ -239,3 +240,11 @@ New semantic clip keys: add to `M['clipsets']`; sub-clips can be cut from long U
 **Perf rules**: keep a UBC character ≤ ~10k vertices (hero ~11–12k, NPCs 6–9k), crowds of UBC enemies ≤ 8 on screen; `actor.vertexCount` reports the merged size. Animation LOD/culling is the same as KayKit (`asTick`).
 
 **Игнар** (`src/p32.js`): procedural skinned dragon (≈5k vertices, 46 bones, 1 draw + outline), poses synced to boss pattern names/times (`e.cur.n`, `e.cur.t`: breath inhale→fire at 1.0 s, bite lunge at 1.1 s, tail swipe at 0.9 s, stomp, gust, sky/landing, phase roar, death). It exposes a minimal actor (`setFlash/setTint/setOpacity`) so `setMat()` flashes work on the skinned mesh. Camera keeps hero + dragon in frame during the fight.
+
+## 14. v22: detailed buildings (`src/p42.js`)
+
+`kit_town.glb` holds 94 modular parts (2 m wall modules, 3 m storeys, 2.13 m doors) as geometry only: `POSITION`, `NORMAL`, `TEXCOORD_0` (packed uv/8+0.5) and `_TILE` (atlas tile).
+At runtime `TB` (builder) places parts + simple shapes (boards, barrels, signs, banners, lanterns, crystals) into ONE `BufferGeometry` per building/level (`townGeo(id, lv)`, cached), drawn with one
+material (`townMat()`: EVAssets toon + game paint patch; fragment wraps uv inside the tile with `textureGrad`, glass/glow tiles emit, `aSway` cloth sway, cut-away circle around the hero).
+`asBuilding(id, lv)` returns the town building when `kit_town` + atlas are ready (else KayKit/procedural as before). Recipes: `TREC[id](b, lv)` → `{r: reach, anims: [{tb, p, axis, spd}]}`.
+Stage props `v:tent`, `h:crypt`, `legionTent` are replaced by injecting EVAssets templates (`townInjectProps`). Add a building: write `TREC.myId`, add an icon to the atlas SVG, rebuild.

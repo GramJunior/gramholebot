@@ -35,7 +35,7 @@ function enterVillage(after){
 function villageTargets(){
   const P=G.P; const out=[];
   for(const n of W.npcs){ const d=Math.hypot(n.x-P.x,n.z-P.z); if(d<2.8) out.push({d,label:'Говорить: '+NPC_INFO[n.kind].n,fn:()=>{ n.talk=2; openPanel('npc',{npc:n.kind}); }}); }
-  for(const id of BLD_ORDER){ const p=VPOS[id]; if(!p) continue; if(!W.bmesh[id]) continue; const rad={hall:5.2,forge:4.2,alch:4,pen:4.4,tavern:4.6,temple:4.4,store:4.2,saw:4,mine:4,well:3.2}[id]||4; const d=Math.hypot(p[0]-P.x,p[1]-P.z); if(d<rad) out.push({d:d-1,label:(S.bld[id]?'':'Построить: ')+BUILDINGS[id].n,fn:()=>openPanel('bld',{id})}); }
+  for(const id of BLD_ORDER){ const p=VPOS[id]; if(!p) continue; if(!W.bmesh[id]) continue; const rad=Math.max({hall:5.2,forge:4.2,alch:4,pen:4.4,tavern:4.6,temple:4.4,store:4.2,saw:4,mine:4,well:3.2}[id]||4,((W.bmesh[id].userData||{}).reach||0)+1.4); const d=Math.hypot(p[0]-P.x,p[1]-P.z); if(d<rad) out.push({d:d-1,label:(S.bld[id]?'':'Построить: ')+BUILDINGS[id].n,fn:()=>openPanel('bld',{id})}); }
   if(S.bld.houses>0||true){ for(let i=0;i<HOUSE_POS.length;i++){ const [x,z]=HOUSE_POS[i]; if(Math.hypot(x-P.x,z-P.z)<3.6) { out.push({d:3,label:'Дома',fn:()=>openPanel('bld',{id:'houses'})}); break; } } }
   if(Math.hypot(-6-P.x,-30-P.z)<5) out.push({d:0,label:'Ворота: в поход',fn:()=>openMap()});
   if(W.abyssPit&&Math.hypot(W.abyssPit.x-P.x,W.abyssPit.z-P.z)<4) out.push({d:.5,label:'Бездна',fn:()=>{ openMap(); abyssCard(); }});

@@ -41,7 +41,7 @@ function asBoot(onProg){
   if(!window.EVAssets||!THREE.GLTFLoader||!window.EV_MANIFEST||S.set.models==='simple') return Promise.resolve(false);
   let initP;
   try{ initP=EVAssets.init({renderer:R,base:'assets/',manifest:window.EV_MANIFEST,quality:asQ(),gradientMap:GRAD,rim:RIM,sat:SATG,paint:paintPatch,paintU:PAINT_U.uPaint,brush:PAINT_U.tBrush.value,charFX:!/[?&]cfx=0/.test(location.search),chars:asCharsMode()}); }catch(e){ console.warn(e); return Promise.resolve(false); }
-  const first=['core','village'];
+  const first=['core','village']; if(S.started) first.push('town'); // v22: детальные здания — сразу, если игрок уже в деревне; новичку — фоном после загрузки
   if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) first.push('village_late');
   if(S.started) first.push(asZoneGroup(S.prog.zone||1));
   return Promise.race([initP.then(()=>asLoad(first,onProg)).then(()=>{ AS.ok=asCoreOk(); asTintInit(); return AS.ok; },e=>{ console.warn(e); AS.failed=true; return false; }),
@@ -53,7 +53,7 @@ function asCharsMode(){ const q=(location.search.match(/[?&]chars=(\w+)/)||[])[1
 function asCoreOk(){ const H=asInfo('hero'); if(!H) return false; const rg=EVAssets.manifest.rigs[H.rig]; return EVAssets.isLoaded(H.file)&&EVAssets.isLoaded(rg&&rg.anims?rg.anims[0]:'anim_medium')&&EVAssets.isLoaded('kit_weapons'); }
 // background streaming: next zones, late village, companions in use
 function asPrefetch(){
-  if(!asOn()) return; const z=clamp(S.prog.zone||1,1,6); const q=[asZoneGroup(z),'village_late',asZoneGroup(z+1),'pets'];
+  if(!asOn()) return; const z=clamp(S.prog.zone||1,1,6); const q=['town',asZoneGroup(z),'village_late',asZoneGroup(z+1),'pets'];
   const c=S.comp&&S.comp.active&&COMP_ASSET[S.comp.active]; if(c){ const d=asInfo(c); if(d) q.push(d.file); }
   if(S.endless&&S.endless.runs>0||stageDone('1-5')) q.push('abyss');
   q.push('companions');
@@ -369,7 +369,7 @@ function ghostOf(m){ let g=GHOST.get(m); if(!g){ g=m.clone(); g.onBeforeCompile=
 function asFadeOcc(){
   if(!asOn()||!W||W.kind!=='village'||!G.P||G.mode==='title') return; const P=G.P;
   const list=[]; for(const k in W.bmesh) list.push(W.bmesh[k]); for(const k in (W.rsMesh||{})) list.push(W.rsMesh[k]);
-  for(const g of list){ if(!g||!g.visible||!g.isGroup) continue;
+  for(const g of list){ if(!g||!g.visible||!g.isGroup||g.userData.cutaway) continue; // v22: детальные здания — «окно» вокруг героя в шейдере (p42), без полупрозрачности целиком
     const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=!CINE.on&&dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
     if(!!g.userData.faded===occ) continue; g.userData.faded=occ;
     g.traverse(o=>{ if(!o.isMesh) return; if(o.userData.isOutline){ o.visible=!occ; return; } if(occ){ o.userData.solid=o.material; o.material=ghostOf(o.material); } else if(o.userData.solid){ o.material=o.userData.solid; } }); }

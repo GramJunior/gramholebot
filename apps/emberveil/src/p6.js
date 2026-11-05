@@ -232,7 +232,7 @@ function makeVillage(){
   return W;
 }
 // v21: коллайдер здания — прямоугольники по самой модели (срез основания, p41); без формы — прежний круг (fb)
-function bldCol(m,key,x,z,fb){ const grp=fb?fb.grp:key.replace(/\d+$/,''); let bx=null; try{ bx=meshFootBoxes(key+(m.userData.ev?'e':'p'),m,x,z,m.rotation.y,{bld:1,grp}); }catch(e){ bx=null; }
+function bldCol(m,key,x,z,fb){ const grp=fb?fb.grp:key.replace(/\d+$/,''); let bx=null; try{ bx=meshFootBoxes(key+(m.userData.town?'t':m.userData.ev?'e':'p'),m,x,z,m.rotation.y,{bld:1,grp}); }catch(e){ bx=null; }
   if(bx&&bx.length){ for(const b of bx) W.obst.push(b); return true; } if(fb) W.obst.push(fb); return false; }
 function bldMesh(id,lv,geoFn){ const g=asBuilding(id,lv); if(g){ g.userData.ev=1; g.userData.bkey=id+lv+'e'; return g; } const m=new THREE.Mesh(geoFn(),MTP); m.userData.bkey=id+lv+'p'+(bldMesh.n=(bldMesh.n||0)+1); return m; }
 function buildVillageBuildings(){

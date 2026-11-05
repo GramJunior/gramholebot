@@ -111,7 +111,7 @@ function validateWorld(opt={}){
   }
   if(kind==='village'&&opt.village!==false){ // every building front reachable from the Heart square
     const N=navGrid({rad:.45,cell:.5}); const D=navBFS(N,navNear(N,W.start.x,W.start.z,1.2));
-    for(const id in (W.bmesh||{})){ const m=W.bmesh[id]; const ex=m.position.x, ez=m.position.z; const tol=/^t\d/.test(id)?2.6:/^h\d/.test(id)?3.2:({hall:5.4,temple:4.6,tavern:4.4,forge:4.2,store:4.2,alch:4.2,mine:4.2,saw:4.2,well:3,pen:4.2}[id]||4.2); if(!navReach(N,D,ex,ez,tol)) add('unreachable',`к зданию ${id} не пройти`,ex,ez); }
+    for(const id in (W.bmesh||{})){ const m=W.bmesh[id]; const ex=m.position.x, ez=m.position.z; let tol=/^t\d/.test(id)?2.6:/^h\d/.test(id)?3.2:({hall:5.4,temple:4.6,tavern:4.4,forge:4.2,store:4.2,alch:4.2,mine:4.2,saw:4.2,well:3,pen:4.2}[id]||4.2); if(m.userData&&m.userData.town) tol=Math.max(tol,(m.userData.reach||0)+1.2); /* v22: досягаемость детального здания */ if(!navReach(N,D,ex,ez,tol)) add('unreachable',`к зданию ${id} не пройти`,ex,ez); }
     for(const n of (W.npcs||[])) if(!navReach(N,D,n.x,n.z,1.5)) add('unreachable',`NPC ${n.kind} недостижим`,n.x,n.z);
     if(W.gate&&!navReach(N,D,W.gate.x,W.gate.z,2)) add('unreachable','ворота недостижимы',W.gate.x,W.gate.z);
   }

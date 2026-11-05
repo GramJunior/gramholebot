@@ -149,7 +149,7 @@ function colViolations(){ const V=[]; const add=(rule,msg,x,z)=>V.push({rule,msg
     if(bx.length) nT[t]=(nT[t]||0)+1; if(bad) add('solidNoCol',`${t}: часть формы без коллайдера`,bad[0],bad[1]); }
   const SR=W.secret?[W.secret.chest,W.secret.reward]:[];
   for(const o of (W.objs||[])) if(o.alive!==false&&OBJ_COL[o.kind]&&!SR.includes(o)&&!covered(o.x,o.z)) add('objNoCol',`${o.kind} без коллайдера`,o.x,o.z);
-  for(const k in (W.bmesh||{})){ const m=W.bmesh[k]; if(!m||!m.parent) continue; const b=new THREE.Box3().setFromObject(m); const c=b.getCenter(new THREE.Vector3()); if(b.max.y-b.min.y<1.2) continue; if(!covered(c.x,c.z)) add('bldNoCol',`здание ${k} без коллайдера`,c.x,c.z); }
+  for(const k in (W.bmesh||{})){ const m=W.bmesh[k]; if(!m||!m.parent) continue; const b=new THREE.Box3().setFromObject(m); const c=b.getCenter(new THREE.Vector3()); if(b.max.y-b.min.y<1.2) continue; if(!covered(c.x,c.z)&&!(m.userData&&m.userData.town&&W.obst.some(o=>o.bld&&(o.grp===k||o.grp===k.replace(/\d+$/,''))&&!o.rs))) add('bldNoCol',`здание ${k} без коллайдера`,c.x,c.z); }
   W._colTypes=nT; return V; }
 const _validateWorldV21=validateWorld;
 validateWorld=function(opt={}){ const r=_validateWorldV21(opt); try{ if(!W||!W.walk) return r; const V=colViolations(); if(V.length){ r.violations=(r.violations||[]).concat(V); r.n=(r.n||0)+V.length; r.by=r.by||{}; for(const v of V) r.by[v.rule]=(r.by[v.rule]||0)+1; r.ok=false; }
