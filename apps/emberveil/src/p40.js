@@ -21,7 +21,7 @@ function lootGen(L,tier){ const lt=S.loot||(S.loot={blp:0,n:0,up:0,conv:0}); con
   if(lootUpgrade(it)){ lt.blp=0; lt.up++; } else lt.blp++; return it; }
 function lootForceUp(L,tier,mf){ // слот, где надетое слабее всего относительно уровня этапа
   const slots=['weapon','offhand','helm','chest','gloves','boots','amulet','ring1','ring2']; let best=null,bs=-1e9; for(const s of slots){ if(s==='offhand'&&curCls()==='axe') continue; const eq=S.gear[s]; const sc=eq?(L-eq.ilvl)*3-eq.rar*2-(eq.up||0)*.5:99; if(sc>bs){ bs=sc; best=s; } }
-  const sk=slotKey(best), eq=S.gear[best]; for(let k=0;k<8;k++){ const b=sk==='weapon'?{cls:curCls()}:lootBase(sk,L+1); const it=genItem(L+1,Object.assign({slot:sk,rar:Math.min(4,Math.max(eq?eq.rar:0,lootRar(tier,mf))+(k>=4?1:0))},b)); if(lootUpgrade(it)) return it; } return null; }
+  const sk=slotKey(best), eq=S.gear[best]; const r0=Math.min(3,Math.max(eq?eq.rar:0,lootRar(tier,mf))); for(let k=0;k<8;k++){ const b=sk==='weapon'?{cls:curCls()}:lootBase(sk,L+1); const it=genItem(L+1,Object.assign({slot:sk,rar:Math.min(3,r0+(k>=5&&r0<2?1:0))},b)); if(lootUpgrade(it)) return it; S.uid--; } return null; }
 const _spawnDropV20=spawnDrop; spawnDrop=function(kind,x,z,o){ if(kind==='item'&&G._noItemDrop) return null; return _spawnDropV20.apply(this,arguments); };
 const _dropLootV20=dropLoot;
 dropLoot=function(e){ G._noItemDrop=true; try{ _dropLootV20(e); } finally{ G._noItemDrop=false; }
@@ -118,7 +118,8 @@ updateDmgNums=function(dt){ const w=window.innerWidth,h=window.innerHeight; cons
   const list=DN2.pool.filter(d=>d.on).sort((a,b)=>a.t-b.t);
   for(const d of list){ d.t+=dt; if(d.t>d.life){ d.on=false; d.el.style.display='none'; continue; }
     _pv3.set(d.x,d.y+d.t*1.3,d.z).project(cam); let sx=(_pv3.x*.5+.5)*w+d.vx*d.t, sy=(-_pv3.y*.5+.5)*h;
-    for(let k=0;k<4;k++){ const hit=placed.find(p=>Math.abs(p[0]-sx)<34*p[2]&&Math.abs(p[1]-sy)<16*p[2]); if(!hit) break; sy=hit[1]-17*hit[2]; } d.sy=sy; placed.push([sx,sy,Math.max(1,d.sc||1)]);
+    const sc0=Math.max(.8,d.sc||1), hw=Math.max(12,String(d.el.textContent).length*5.4)*sc0, hh=9*sc0;
+    for(let k=0;k<6;k++){ const hit=placed.find(p=>Math.abs(p[0]-sx)<p[2]+hw&&Math.abs(p[1]-sy)<p[3]+hh); if(!hit) break; sy=hit[1]-hit[3]-hh-1; } d.sy=sy; placed.push([sx,sy,hw,hh]);
     const u=d.t/d.life; d.pop=Math.max(0,(d.pop||0)-dt*6); const sc=(u<.12?.6+u/.12*.55:1.15-Math.min(.15,u*.25))*(d.sc||1)*(1+d.pop*.25);
     d.el.style.transform=`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(${sc.toFixed(3)})`; d.el.style.opacity=u>.7?((1-u)/.3).toFixed(2):'1'; } };
 // цель для слияния: удар по врагу помечает его на время вызова
@@ -195,7 +196,14 @@ botInput=function(){ const r=_botInputV20.apply(this,arguments); const P=G.P; if
   // блок/парирование: враг замахнулся на героя — нажать за ~0,12 с до удара
   if(BOTS.blkUntil&&G.time>BOTS.blkUntil){ BOTS.blkUntil=0; blockRelease(); }
   if(!BOTS.blkUntil&&!P.exh&&P.sta>20&&P.state!=='roll'){ for(const x of G.enemies){ if(!x.alive||x.boss||x.state!=='wind'||!x.wind) continue; const k=x.wind.k; if(k!=='melee'&&k!=='charge'&&k!=='emerge') continue; const left=x.wind.t-x.st, dd=Math.hypot(x.x-P.x,x.z-P.z); if(dd<(x.D.rng||1.8)+x.r+1.6&&left<.17&&left>0){ if(Math.random()<.75){ blockPress('bot'); BOTS.blkUntil=G.time+.35; BOTS.parry++; } break; } }
-    const B=G.boss; if(!BOTS.blkUntil&&B&&B.alive&&B.cur&&bossTag(B)!=='unbl'&&Math.hypot(B.x-P.x,B.z-P.z)<B.r+4&&Math.random()<.03){ blockPress('bot'); BOTS.blkUntil=G.time+.6; } }
+  }
+  // фляга: раньше, чем у прежнего бота (перезарядка фляг)
+  if(P.hp<P.maxHp*(G.boss&&G.boss.alive?.55:.45)&&(P.potCdT||0)<=0&&flaskLeft()>0&&S.cons.potion>0) drinkPotion();
+  // владыка: держать блок на блокируемых приёмах вблизи
+  { const B=G.boss; if(!BOTS.blkUntil&&B&&B.alive&&B.cur&&B.cur!==BOTS.bcur&&!P.exh&&P.sta>30&&Math.hypot(B.x-P.x,B.z-P.z)<B.r+4.5){ BOTS.bcur=B.cur; const tg=bossTag(B); if(tg!=='unbl'&&Math.random()<.7){ blockPress('bot'); BOTS.blkUntil=G.time+rand(.5,.9); } } }
+  // телеграф под ногами: уйти от центра; если до удара мало — кувырок (если есть силы)
+  { const T=teleInside(P); if(T&&P.state!=='roll'){ let ax=P.x-T.cx, az=P.z-T.cz; if(T.shape!=='circle'){ const f=T.dir||0; ax=Math.cos(f); az=-Math.sin(f); if((P.x-T.cx)*ax+(P.z-T.cz)*az<0){ ax=-ax; az=-az; } } const L=Math.hypot(ax,az)||1; r.mx=ax/L; r.mz=az/L; G.input.mx=r.mx; G.input.mz=r.mz;
+      if(T.left<.45&&!P.exh&&P.sta>staCost('roll')&&P.rollCd<=0){ P.face=Math.atan2(r.mx,r.mz); dodge(); } if(P.state==='block'){ blockRelease(); BOTS.blkUntil=0; } } }
   if(P.state==='block') { r.atk=false; G.input.atk=false; return r; }
   // бомбы: скопление врагов или владыка
   BOTS.bombT-=1/30; if(BOTS.bombT<=0&&e&&d<10&&BOMB_ORDER.some(t=>bombN(t)>0)){ let best=null,bn=0; for(const x of G.enemies){ if(!x.alive||x.burrowed||Math.hypot(x.x-P.x,x.z-P.z)>10) continue; let n=0; for(const y of G.enemies) if(y.alive&&Math.hypot(y.x-x.x,y.z-x.z)<3.2) n++; if(x.boss) n+=2; if(n>bn){ bn=n; best=x; } }
@@ -210,6 +218,6 @@ botInput=function(){ const r=_botInputV20.apply(this,arguments); const P=G.P; if
   G.input.atk=r.atk; return r; };
 
 // ---------- отладка/стенд ----------
-Object.assign(window.__game,{ loot:()=>Object.assign({},S.loot), flask:()=>({left:flaskLeft(),cap:flaskCap(),cd:G.P&&G.P.potCdT,inv:S.cons.potion}), bon:()=>W&&W.bonfires&&W.bonfires.map(b=>({x:+b.x.toFixed(1),z:+b.z.toFixed(1),lit:b.lit})), bonTp:(i)=>{ const b=W.bonfires[i||0]; if(b){ G.P.x=b.x+1.5; G.P.z=b.z+1.5; } return !!b; }, urn:()=>W&&W.urn&&{x:W.urn.x,z:W.urn.z,v:W.urn.v}, runV20:()=>G.run&&{flask:G.run.flask,lives:G.run.lives,deaths:G.run.deaths||0,ck:!!G.run.ckpt,bombs:G.run.bombs||0,conv:G.run.conv||0}, botStats:()=>Object.assign({},BOTS), dn:()=>({on:DN2.pool.filter(d=>d.on).length,pool:DN2.pool.length}), lootSim:(L,n,tier)=>{ const c=[0,0,0,0,0]; const il={}; for(let i=0;i<(n||1000);i++){ const it=lootGen(L,tier||'normal'); c[it.rar]++; il[it.ilvl]=(il[it.ilvl]||0)+1; S.uid--; } return {c,il}; } });
+Object.assign(window.__game,{ loot:()=>Object.assign({},S.loot), flask:()=>({left:flaskLeft(),cap:flaskCap(),cd:G.P&&G.P.potCdT,inv:S.cons.potion}), bon:()=>W&&W.bonfires&&W.bonfires.map(b=>({x:+b.x.toFixed(1),z:+b.z.toFixed(1),lit:b.lit})), bonTp:(i)=>{ const b=W.bonfires[i||0]; if(b){ G.P.x=b.x+1.5; G.P.z=b.z+1.5; } return !!b; }, urn:()=>W&&W.urn&&{x:W.urn.x,z:W.urn.z,v:W.urn.v}, runV20:()=>G.run&&{exh:Math.round(G.run.exhT||0),staAvg:Math.round(100*(G.run.staS||0)/Math.max(1,G.run.t||1)),flask:G.run.flask,lives:G.run.lives,deaths:G.run.deaths||0,ck:!!G.run.ckpt,bombs:G.run.bombs||0,conv:G.run.conv||0}, botStats:()=>Object.assign({},BOTS), dn:()=>({on:DN2.pool.filter(d=>d.on).length,pool:DN2.pool.length}), lootSim:(L,n,tier,blp)=>{ const c=[0,0,0,0,0]; const il={}; const b0=S.loot.blp; for(let i=0;i<(n||1000);i++){ if(!blp) S.loot.blp=-1e9; const it=lootGen(L,tier||'normal'); c[it.rar]++; il[it.ilvl]=(il[it.ilvl]||0)+1; S.uid--; } S.loot.blp=b0; return {c,il}; } });
 // один раз в деревне: что нового в бою (v20) и где сложность
 if(typeof ftueVillageSeq==='function'){ const _fvs=ftueVillageSeq; ftueVillageSeq=function(seq){ _fvs(seq); if(S.started&&S.seen.wake&&!S.seen.v20tip){ S.seen.v20tip=1; seq.push(cb=>{ later(6,()=>toast(`${ico('vit')} <b>Новый бой</b>: шкала сил, блок и парирование (щит у атаки), удержание атаки — заряд, бомбы пяти стихий, костры на этапах. Сложность и подсказки — «Настройки»; потренироваться — «Учебный плац».`,null,2,'quest')); cb(); }); } }; }

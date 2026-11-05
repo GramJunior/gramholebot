@@ -71,3 +71,6 @@ function aiCallHelp(e){ if(!e.alive) return; let n=0; for(const o of G.enemies){
 const _killEnemyV20=killEnemy; killEnemy=function(e,o){ tokFree(e); return _killEnemyV20.apply(this,arguments); };
 const _clearEntitiesV20b=clearEntities; clearEntities=function(){ AIT.hold.clear(); return _clearEntitiesV20b.apply(this,arguments); };
 Object.assign(window.__game,{ ai:()=>({tok:AIT.hold.size,max:tokMax(),give:AIT.log.give,deny:AIT.log.deny,circling:G.enemies.filter(e=>e.alive&&e.state==='chase'&&!AIT.hold.has(e)&&G.P&&Math.hypot(G.P.x-e.x,G.P.z-e.z)<5).length,fleeing:G.enemies.filter(e=>e.fleeT>0).length}) });
+// v20: бой стал оборонительнее (силы, блок, фляги) — время владык Предела у «ожидаемого» бота выросло на ~60%;
+// здоровье ниже на 22/24% возвращает цели docs/ACT2.md §8.4 (Стужень 110–130 с, Белава 140–170 с)
+if(BOSSES.stuzhen) BOSSES.stuzhen.hp=23500; if(BOSSES.belava) BOSSES.belava.hp=25000;

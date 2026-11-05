@@ -7,20 +7,20 @@
 
 // ---------- сложность ----------
 const V20D={
-  story:{n:'История',d:'Для сюжета: враги мягче и реже нападают, окно парирования шире, фляг больше.',hp:.7,dmg:.6,tok:-1,cd:1.3,mf:0,il:0,parry:.3,flask:1,res:99,bossFloor:.6,potCd:5},
-  norm:{n:'Норма',d:'Задуманный баланс: учит блоку, кувырку и запасу сил.',hp:1,dmg:1,tok:0,cd:1,mf:0,il:0,parry:.2,flask:0,res:3,bossFloor:1,potCd:8},
-  night:{n:'Кошмар',d:'Для мастеров: враги крепче и злее, нападают втроём-вчетвером, окно парирования уже. Добыча лучше (+1 ур. вещей, выше редкость).',hp:1.35,dmg:1.4,tok:1,cd:.85,mf:35,il:1,parry:.15,flask:-1,res:1,bossFloor:1.15,potCd:10}
+  story:{n:'История',d:'Для сюжета: враги мягче и реже нападают, окно парирования шире, фляг больше.',hp:.7,dmg:.6,tok:-1,cd:1.3,mf:0,il:0,parry:.3,flask:1,res:99,bossFloor:.6,potCd:4},
+  norm:{n:'Норма',d:'Задуманный баланс: учит блоку, кувырку и запасу сил.',hp:1,dmg:1,tok:0,cd:1,mf:0,il:0,parry:.2,flask:0,res:3,bossFloor:1,potCd:6},
+  night:{n:'Кошмар',d:'Для мастеров: враги крепче и злее, нападают втроём-вчетвером, окно парирования уже. Добыча лучше (+1 ур. вещей, выше редкость).',hp:1.35,dmg:1.4,tok:1,cd:.85,mf:35,il:1,parry:.15,flask:-1,res:1,bossFloor:1.15,potCd:8}
 };
 function diffK(){ const k=S&&S.set&&S.set.diff; return V20D[k]?k:'norm'; }
 function DF(){ return V20D[diffK()]; }
 
 // ---------- числа ----------
-const STA={max:100,regen:30,delay:.5,delayLight:.32,atkK:.35,blockK:.3,drawK:.35,exhRecover:.35,exhMove:.8,exhAspd:.78,
-  cost:{sword:{light:6,heavy:16},axe:{light:10,heavy:22},staff:{light:5,heavy:14},bow:{quick:4,full:14},roll:20,bombThrow:0},
+const STA={max:100,regen:30,delay:.5,delayLight:.32,atkK:.42,blockK:.3,drawK:.5,exhRecover:.35,exhMove:.8,exhAspd:.78,
+  cost:{sword:{light:5,heavy:16},axe:{light:9,heavy:22},staff:{light:4,heavy:14},bow:{quick:4,full:10},roll:20,bombThrow:0},
   block:{base:6,perHp:70,boss:1.3,shield:.7}};
 const CH_T={sword:.8,axe:1.0,staff:.9}; // время полного заряда, с
 const HOLD_T=.3;                         // удержание дольше — заряд
-const BOW={drawT:.85,rec:.28,minGap:1.08,mQuick:.85,mFull:2.6,perfect:[.95,1.6]}; // minGap = прежний цикл 0,36 с × 3
+const BOW={drawT:.75,rec:.26,minGap:1.08,mQuick:.85,mFull:2.7,perfect:[.95,1.6]}; // minGap = прежний цикл 0,36 с × 3
 const GUARD={sword:{abs:1,cost:.7,n:'щит'},axe:{abs:.8,cost:1,n:'древко'},bow:{abs:.6,cost:1.1,n:'лук'},staff:{abs:.7,cost:1,n:'оберег'}};
 // приёмы владык: какие парируются (золотой блик), какие не блокируются (красный блик); остальные — блок без парирования
 const PARRY_PAT=new Set(['melee','combo3','chop','fists','tail','embrace','tongue']);
@@ -64,7 +64,7 @@ function staTick(dt){ const P=G.P; if(!P) return; const m=PS.staMaxT||STA.max; i
   if(G.mode==='village'||P.dead){ P.sta=m; P.exh=false; return; }
   const st=P.state; let k=st==='atk'?STA.atkK:st==='block'?STA.blockK:(st==='draw'||st==='charge')?STA.drawK:st==='roll'||st==='skill'?0:1;
   const del=P.staLight?STA.delayLight:STA.delay; if(G.time-(P.staT||0)<del&&st!=='atk') k=0; else if(G.time-(P.staT||0)<del) k*=.5;
-  if(P.exh) k*=.85;
+  if(P.exh){ k*=.85; if(G.run) G.run.exhT=(G.run.exhT||0)+dt; } if(G.run){ G.run.staS=(G.run.staS||0)+P.sta/(PS.staMaxT||100)*dt; }
   P.sta=Math.min(m,P.sta+STA.regen*(PS.staRegK||1)*k*dt);
   if(P.exh&&P.sta>=m*STA.exhRecover){ P.exh=false; }
   if(P.counterT>0) P.counterT-=dt; if(P.blkBroken>0) P.blkBroken-=dt; if(P.bowGap>0) P.bowGap-=dt; if(P.parryFx>0) P.parryFx-=dt;
@@ -98,9 +98,9 @@ function chargeRelease(P){ const cls=PS.cls; const T=CH_T[cls]||.8; const c=clam
   if(mv.lunge){ const l=t&&cls!=='staff'?Math.min(mv.lunge,Math.max(0,(dist(P,t)-t.r-1.2)*3)):mv.lunge*.5; P.kx+=Math.sin(P.face)*l; P.kz+=Math.cos(P.face)*l; }
   AU.sfx(cls==='staff'?'bolt':'heavy',.9,.8); if(c>=.98){ dmgNum(P.x,2.7,P.z,cls==='axe'?'СОКРУШЕНИЕ':cls==='staff'?'СГУСТОК':'ВЫПАД','syn'); vib('medium'); } }
 function heavyMove(cls,c){
-  if(cls==='axe') return {d:.72,h:.3,rng:3.3,arc:2.3,m:2.2+2.2*c,a:'overhead',lunge:2.5,kb:6+5*c,aoe:1.8+1.0*c,stun:.35+.85*c,shake:.3+.35*c,heavy:1,hs:.09+.05*c,c};
-  if(cls==='staff') return {d:.6,h:.24,m:1.5+2.1*c,a:'castBig',proj:'orbH',heavy:1,hs:.04,c};
-  return {d:.56,h:.2,rng:3.1,arc:2.6,m:1.6+1.5*c,a:'slashR',lunge:4+3*c,kb:5+5*c,stun:.3+.7*c,shake:.15+.25*c,heavy:1,hs:.06+.06*c,c};
+  if(cls==='axe') return {d:.72,h:.3,rng:3.3,arc:2.3,m:2.6+3.0*c,a:'overhead',lunge:2.5,kb:6+5*c,aoe:1.8+1.0*c,stun:.35+.85*c,shake:.3+.35*c,heavy:1,hs:.09+.05*c,c};
+  if(cls==='staff') return {d:.6,h:.24,m:1.8+2.6*c,a:'castBig',proj:'orbH',heavy:1,hs:.04,c};
+  return {d:.56,h:.2,rng:3.1,arc:2.6,m:1.8+2.4*c,a:'slashR',lunge:4+3*c,kb:5+5*c,stun:.3+.7*c,shake:.15+.25*c,heavy:1,hs:.06+.06*c,c};
 }
 // посох: заряженный сгусток
 PROJ_GEO.orbH=()=>cgeo('pj_orbH',b=>{ b.sph(.42,0xffffff,{e:1,ol:0}); },0);
@@ -188,7 +188,12 @@ function doParry(o,tag){ const P=G.P; P.sta=Math.min(PS.staMaxT||100,P.sta+10); 
 function raw0(o){ return o&&o.src&&o.src.dmg||0; }
 // ловушки «тэгов» удара: ближний удар врага, таран, телеграф босса
 const _enemyActV20=enemyAct; enemyAct=function(e,tg){ const k=e.wind&&e.wind.k; G._hitK=k==='melee'||k==='emerge'?'block':k==='slam'||k==='explode'||k==='breath'||k==='lob'?'unbl':null; try{ return _enemyActV20(e,tg); } finally{ G._hitK=null; } };
-const _teleHitV20=teleHit; teleHit=function(shape,x,z,r,delay,dmg,o={}){ const src=o.src; const tag=src&&src.boss?bossTag(src):'block';
+// телеграфы на земле — для бота стенда (уйти из круга/конуса/линии до удара)
+const TELE={list:[]}; function teleAdd(shape,x,z,r,t,o){ TELE.list.push({shape,x,z,r,end:G.time+t,dir:o&&o.dir,ang:o&&o.ang,w:o&&o.w,follow:o&&o.follow}); if(TELE.list.length>40) TELE.list.shift(); }
+function teleInside(P){ const now=G.time; let best=null; for(const T of TELE.list){ if(T.end<now) continue; const cx=T.follow?T.follow.x:T.x, cz=T.follow?T.follow.z:T.z; const dx=P.x-cx, dz=P.z-cz, d=Math.hypot(dx,dz); let ins=false;
+    if(T.shape==='circle') ins=d<T.r+P.r; else if(T.shape==='cone') ins=d<T.r+P.r&&Math.abs(angWrap(Math.atan2(dx,dz)-(T.dir||0)))<(T.ang||.6)+.15; else { const f=T.dir||0, al=dx*Math.sin(f)+dz*Math.cos(f), sd=Math.abs(dx*Math.cos(f)-dz*Math.sin(f)); ins=al>-P.r&&al<T.r+P.r&&sd<(T.w||1.5)/2+P.r; }
+    if(ins&&(!best||T.end<best.end)) best=Object.assign({cx,cz,left:T.end-now},T); } return best; }
+const _teleHitV20=teleHit; teleHit=function(shape,x,z,r,delay,dmg,o={}){ const src=o.src; const tag=src&&src.boss?bossTag(src):'block'; teleAdd(shape,x,z,r,delay,o);
   if(src&&src.boss&&delay>.3) later(Math.max(0,delay-DF().parry-.05),()=>{ if(src.alive&&tag!=='block') glint(src,tag==='parry'?0xffd060:0xff3a2a,.28); });
   return _teleHitV20(shape,x,z,r,delay,dmg,Object.assign({},o,{fx:()=>{ G._hitK=tag; if(o.fx) o.fx(); },after:h=>{ G._hitK=null; if(o.after) o.after(h); }})); };
 
@@ -199,7 +204,7 @@ const GLINT=(()=>{ const cv=document.createElement('canvas'); cv.width=cv.height
   return {pool,spawn(e,col,d){ const q=pool.find(p=>!p.e)||pool[0]; q.e=e; q.t=0; q.d=d||.4; q.m.material.color.set(col); q.m.visible=true; return q; },
     update(dt){ for(const q of pool){ if(!q.e) continue; q.t+=dt; const e=q.e; if(q.t>=q.d||!e.alive){ q.e=null; q.m.visible=false; continue; } const u=q.t/q.d, s=(e.boss?2.4:1.3)*(.4+Math.sin(u*PI)*1.1); q.m.scale.set(s,s,1); q.m.material.rotation=u*2; q.m.position.set(e.x+Math.sin(e.face||0)*.3,(e.rig.h||1.6)*(e.rig.root.scale.x||1)*(e.boss?.85:.95)+.2,e.z+Math.cos(e.face||0)*.3); q.m.material.opacity=Math.sin(u*PI); } } }; })();
 function glint(e,col,d){ if(!e||!e.alive) return; GLINT.spawn(e,col,d); if(col===0xff3a2a) AU.synth('glR',({t,osc})=>osc('square',220,t,.08,.05,null,{lp:900})); else AU.synth('glG',({t,osc})=>osc('triangle',2093,t,.12,.05,null,{rv:1})); }
-const _startWindV20=startWind; startWind=function(e,k,t){ _startWindV20(e,k,t); if(e.boss||!e.wind) return; const P=G.P;
+const _startWindV20=startWind; startWind=function(e,k,t){ _startWindV20(e,k,t); if(!e.wind) return; try{ const w=e.wind; if(k==='slam') teleAdd('circle',w.cx,w.cz,2.4,w.t); else if(k==='charge') teleAdd('line',e.x,e.z,11,w.t,{dir:e.face,w:e.r*2+.4}); else if(k==='explode') teleAdd('circle',e.x,e.z,2.4,w.t,{follow:e}); else if(k==='lob') teleAdd('circle',w.tx,w.tz,1.8,w.t+.5); else if(k==='breath') teleAdd('cone',e.x,e.z,5.5,w.t+.2,{dir:e.face,ang:.5}); }catch(er){} if(e.boss) return; const P=G.P;
   if((k==='melee'||k==='charge'||k==='emerge')&&P&&Math.hypot(P.x-e.x,P.z-e.z)<7){ const w=e.wind, lead=Math.max(0,w.t-DF().parry-.04); later(lead,()=>{ if(e.alive&&e.state==='wind'&&e.wind===w) glint(e,0xffd060,.3); }); }
   else if(k==='slam'&&P&&Math.hypot(P.x-e.x,P.z-e.z)<8) later(Math.max(0,t-.35),()=>{ if(e.alive&&e.state==='wind') glint(e,0xff3a2a,.3); }); };
 const _updateEnemyV20=updateEnemy;
@@ -231,12 +236,12 @@ updatePlayer=function(dt){ const P=G.P; if(!P) return _updatePlayerV20(dt);
     const tg=bowTarget(P,false); if(tg){ P.drawTgt=tg; P.face=angTo(P.face,Math.atan2(tg.x-P.x,tg.z-P.z),dt*16); } }
   // скорость: блок/заряд/натяжение/усталость — через временный множитель (как p35)
   const mt=PS.moveT, at=PS.aspdT; let ms=1, as=1;
-  if(P.state==='block') ms*=.42; else if(P.state==='charge') ms*=.5; else if(P.state==='draw') ms*=.45; if(P.exh) ms*=STA.exhMove;
+  if(P.state==='block') ms*=.42; else if(P.state==='charge') ms*=.5; else if(P.state==='draw') ms*=.85; if(P.exh) ms*=STA.exhMove;
   if(P.exh||P.tired&&P.state==='atk') as*=STA.exhAspd; if(P.counterT>0) as*=1.12;
   PS.moveT=mt*ms; PS.aspdT=at*as; const face0=P.face;
   try{ _updatePlayerV20(dt); } finally{ PS.moveT=mt; PS.aspdT=at; }
   if(P.state==='block'||P.state==='charge'||P.state==='draw'){ // лицом к цели, а не по ходу
-    const t=P.state==='draw'?P.drawTgt:nearestEnemy(P.x,P.z,P.state==='block'?8:6); if(t&&t.alive) P.face=angTo(face0,Math.atan2(t.x-P.x,t.z-P.z),dt*14); else if(P.state!=='draw'&&Math.hypot(G.input.mx,G.input.mz)>.2) P.face=angTo(face0,Math.atan2(G.input.mx,G.input.mz),dt*10); else P.face=face0; P.st+=dt; }
+    const t=P.state==='draw'?P.drawTgt:nearestEnemy(P.x,P.z,P.state==='block'?8:6); if(t&&t.alive) P.face=angTo(face0,Math.atan2(t.x-P.x,t.z-P.z),dt*14); else if(Math.hypot(G.input.mx,G.input.mz)>.2) P.face=angTo(face0,Math.atan2(G.input.mx,G.input.mz),dt*10); else P.face=face0; P.st+=dt; }
   if(P.blkHitT>0) P.blkHitT-=dt;
   staTick(dt); };
 // кувырок стоит сил; без сил — нельзя
@@ -270,7 +275,7 @@ const _dmgEnemyV20=dmgEnemy;
 dmgEnemy=function(e,amt,o={}){ if(!e||!e.alive) return _dmgEnemyV20(e,amt,o); const P=G.P; const src=o.src||P;
   // стихии: слабость ×до 1,5, стойкость ×до 0,4 (доля стихийного урона)
   const R=eRes(e); if(R&&amt>0){ let k=1; if(o.dot&&o.dotEl&&R[o.dotEl]) k=1-R[o.dotEl]; else if(o.els&&o.els.length){ for(const el of o.els){ if(!R[el]) continue; const sh=o.elK||(src===P&&PS.elShare?Math.max(.25,PS.elShare[el]||0):.5); k*=1-R[el]*sh*(o.elK?1:1.4); } }
-    k=clamp(k,.4,1.6); if(k!==1){ amt*=k; if(!o.dot&&!o.silent&&G.time-(e._resT||0)>1.4){ e._resT=G.time; dmgNum(e.x,(e.rig.h||1.5)+.7,e.z,k>1.05?'уязвим':'стойкий','txt '+(k>1.05?'weak':'resist')); } } }
+    k=clamp(k,.4,1.6); if(k!==1){ amt*=k; if(!o.dot&&!o.silent&&!e._resShown&&G.time-(G._resT||0)>1.2&&Math.abs(k-1)>.08){ e._resShown=1; G._resT=G.time; dmgNum(e.x,(e.rig.h||1.5)+.7,e.z,k>1?'уязвим':'стойкий','txt '+(k>1?'weak':'resist')); } } }
   // контрудар после парирования
   if(src===P&&P&&P.counterT>0&&!o.dot&&!o.syn){ P.counterT=0; amt*=1.6; o=Object.assign({},o,{crit:true}); dmgNum(e.x,(e.rig.h||1.5)+.9,e.z,'КОНТРУДАР','syn'); G.hitstop=Math.max(G.hitstop,.1); vib('medium'); }
   // отбрасывание и вздрагивание: тяжёлые удары сбивают с ног (кроме громил и владык)

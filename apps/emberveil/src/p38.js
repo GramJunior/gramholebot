@@ -231,12 +231,12 @@ const _pickupV20=pickup; pickup=function(d){ if(d.kind==='bomb'){ const t=d.bt||
 function bombDrop(e,p){ if(Math.random()>=p) return; const z=W&&W.zone?W.zone.id:1; const t=pick(z<=1?['fire','smoke']:z<=3?['fire','poison','smoke','ice']:['fire','ice','poison','thunder','smoke']); const d=spawnDrop('bomb',e.x,e.z,{bt:t}); if(d&&d.m){ d.m.traverse&&d.m.traverse(o=>{ if(o.isMesh) o.material=MT; }); } }
 if(typeof alchBody==='function'){ const _alchBodyV20=alchBody; alchBody=function(){ let h=_alchBodyV20.apply(this,arguments); try{ const lv=S.bld.alch, L=S.hero.lvl, cap=bombCap();
     // убрать прежнюю карточку «Бомба» и добавить пять видов (материалы v16)
-    const i=h.indexOf('<div class="bcard2'), j=h.lastIndexOf('</div>'); let cards='';
+    // вырезаем старую «Бомбу» (карточка с текстом «Бомба</b>»/«Огненная бомба</b>»)
+    for(const nm of ['Бомба',BOMBS.fire.n]){ const k=h.indexOf(`<b>${nm}</b>`); if(k>0){ const s0=h.lastIndexOf('<div class="bcard2',k); const r=cutDiv(h,s0); if(r){ h=h.slice(0,r[0])+h.slice(r[1]); break; } } }
+    const j=h.lastIndexOf('</div>'); let cards='';
     for(const t of BOMB_ORDER){ const B=BOMBS[t], c=B.cost(L), n=S.cons[B.k]||0, lock=lv<B.lvl;
       cards+=`<div class="bcard2 ${lock?'lock':''}" style="--c:${B.css}"><span class="have">${n}<small>/${cap}</small></span><span class="med" style="color:${B.css}">${ico('bomb')}</span><b>${B.n}</b><small>${B.d}</small>${lock?`<span class="muted">Лавка ${B.lvl} ур.</span>`:costHtml(c)}${lock?'':`<button class="btn leather small" ${n<cap&&canPay(c)?'':'disabled'} ${act(()=>{ if(pay(c)){ S.cons[B.k]=(S.cons[B.k]||0)+1; AU.sfx('fire',.4,1.4); S.st.crafted++; ev2('craft'); saveGame(); rerender(); } })}>${ico('flask')} Собрать</button>`}</div>`; }
-    // вырезаем старую «Бомбу»: ищем карточку с текстом «Бомба</b>»
-    const k=h.indexOf(`<b>${CONS.bomb.n}</b>`); if(k>0){ const s0=h.lastIndexOf('<div class="bcard2',k); const r=cutDiv(h,s0); if(r) h=h.slice(0,r[0])+h.slice(r[1]); }
-    h=h.slice(0,j)+`</div><div class="sect">${ico('bomb')} Бомбы — сумка: ${cap} каждого вида</div><div class="bcards v-stg">`+cards+h.slice(j); void i; }catch(e){ console.error(e); } return h; }; }
+    h=h.slice(0,j)+`</div><div class="sect">${ico('bomb')} Бомбы — сумка: ${cap} каждого вида</div><div class="bcards v-stg">`+cards+h.slice(j); }catch(e){ console.error(e); } return h; }; }
 CONS.bomb.n=BOMBS.fire.n; CONS.bomb.d=BOMBS.fire.d;
 
 Object.assign(window.__game,{ bombs:()=>Object.fromEntries(BOMB_ORDER.map(t=>[t,bombN(t)])), giveBombs:(n=3)=>{ for(const t of BOMB_ORDER) S.cons[BOMBS[t].k]=n; hudRefresh(); }, throwAt:(dx,dz,t)=>throwBomb(G.P.x+dx,G.P.z+dz,t), blast:(k,r)=>EXPL.blast(G.P.x+rand(-3,3),G.P.z-4,k||'fire',r||3), explStats:()=>EXPL.stats(), aimShow:(dx,dz,t)=>{ BOMB.aim={src:'dbg',mode:'aim',tx:G.P.x+dx,tz:G.P.z+dz}; if(t) S.set.bombT=t; }, aimOff:()=>{ BOMB.aim=null; aimHide(); } });
