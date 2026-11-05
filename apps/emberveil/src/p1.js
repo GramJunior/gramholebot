@@ -236,7 +236,10 @@ const AU=(()=>{
     boss:{root:45,scale:[0,1,3,5,7,8,10],tempo:142,pad:[0,7,13],arp:'pulse',drum:4,lead:'reed',mood:.2,prog:[0,1,6,4]},
     // v19: Ледяной Предел — ре минор, челеста, бурдон, хор на вдохе; каждые ~30 с — два такта только ветра; бой — марш легиона
     z7:{root:50,scale:[0,2,3,5,7,8,10],tempo:72,pad:[0,7,12],arp:'celesta',drum:5,lead:'choir',mood:.45,prog:[0,5,3,6],rest:1},
-    boss2:{root:50,scale:[0,1,3,5,7,8,10],tempo:128,pad:[0,7,13],arp:'celesta',drum:6,lead:'choir',mood:.3,prog:[0,5,1,4]}
+    boss2:{root:50,scale:[0,1,3,5,7,8,10],tempo:128,pad:[0,7,13],arp:'celesta',drum:6,lead:'choir',mood:.3,prog:[0,5,1,4]},
+    // v23: Затонувший Златоверх — «утопленный» вальс 3/4 (глухой фильтр, стеклянная гармоника); бал — тот же вальс громче и с фальшивыми нотами
+    z8:{root:48,scale:[0,2,3,5,7,8,10],tempo:66,pad:[0,7,15],arp:'waltz',drum:0,lead:'glass',mood:.25,prog:[0,5,3,4]},
+    waltz:{root:53,scale:[0,2,4,5,7,9,11],tempo:96,pad:[0,7,16],arp:'waltz',drum:0,lead:'glass',mood:.7,prog:[0,5,1,4],sour:1}
   };
   let cur=null, curKey='', step=0, nextT=0, timer=null, melIdx=2, barChord=0;
   const mtof=m=>440*Math.pow(2,(m-69)/12);
@@ -272,6 +275,7 @@ const AU=(()=>{
       else if(ar==='slow'&&s%4===0){ pluck(deg(chord+[0,2,4,7][(s/4)%4]),t,.06,1.4); }
       else if(ar==='bell'&&s%6===0){ const m=deg(chord+[0,4,2,7,5][(s/6)%5],1); osc('sine',mtof(m),t,1.8,.05,musG,{rv:1}); osc('sine',mtof(m)*2.76,t,.6,.015,musG,{rv:1}); }
       else if(ar==='celesta'&&s%3===0){ const m=deg(chord+[0,2,4,6,4,2,7,5][(s/3|0)%8],1); osc('sine',mtof(m),t,1.4,.045,musG,{rv:1}); osc('triangle',mtof(m)*2,t,.5,.018,musG,{rv:1}); if(s%12===0) osc('sine',mtof(deg(chord,-2)),t,spb*12,.07,musG,{a:.8}); }
+      else if(ar==='waltz'){ const b=s%6; if(b===0) osc('sine',mtof(deg(chord,-1)),t,spb*2.2,.09,musG,{lp:600+cur.mood*600,rv:1}); else if(b===2||b===4) [2,4].forEach(iv=>osc('triangle',mtof(deg(chord+iv,0)),t,spb*1.2,.028,musG,{lp:900+cur.mood*1400,rv:1})); }
       else if(ar==='pulse'&&s%2===0){ osc('sawtooth',mtof(deg(chord,-1)+(s%8===6?12:0)),t,spb*.9,.045,musG,{lp:700+cur.mood*500}); }
       // drums
       const dr=cur.drum;
@@ -295,6 +299,7 @@ const AU=(()=>{
           o.connect(g);g.connect(musG);g.connect(rev);o.start(t);l.start(t);o.stop(t+len+.05);l.stop(t+len+.05); noise(t,.08,.02,'bandpass',mtof(m)*2,musG,{q:4}); }
         else if(cur.lead==='reed'){ osc('sawtooth',mtof(m-12),t,len,.035,musG,{lp:1100,a:.05,rv:1}); }
         else if(cur.lead==='choir'){ [0,7].forEach(iv=>osc('triangle',mtof(m-12+iv),t,len*1.2,.03,musG,{lp:1500,a:.25,rv:1,det:Math.random()*10})); }
+        else if(cur.lead==='glass'){ const sour=cur.sour&&Math.random()<.12?mtof(m)*1.035:mtof(m); osc('sine',sour,t,len*1.6,.045,musG,{a:.18,rv:1}); osc('sine',sour*2.01,t,len,.012,musG,{a:.25,rv:1}); }
         else { osc('sine',mtof(m),t,1.2,.05,musG,{rv:1}); osc('sine',mtof(m)*3.01,t,.4,.012,musG); }
       }
       nextT+=spb; step++;

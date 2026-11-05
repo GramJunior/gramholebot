@@ -35,9 +35,9 @@ storyVillageSeq=function(seq){ _storyVillageSeqA2(seq);
 };
 // карта: Act II stages unlock only after the opening scene
 const _stageUnlockedA2=stageUnlocked;
-stageUnlocked=function(z,s){ if(z>=7){ if(z>7||!a2On()) return false; return s===1?true:stageDone(z+'-'+(s-1)); } return _stageUnlockedA2(z,s); };
+stageUnlocked=function(z,s){ if(z>=7){ if(z>A2_OPEN_MAX||!a2On()) return false; if(s===1) return z===7?true:stageDone((z-1)+'-5'); return stageDone(z+'-'+(s-1)); } return _stageUnlockedA2(z,s); };
 const _findCurrentStageA2=findCurrentStage;
-findCurrentStage=function(){ const r=_findCurrentStageA2(); if(r) return r; if(a2On()) for(let s=1;s<=5;s++) if(!stageDone('7-'+s)) return [7,s]; return null; };
+findCurrentStage=function(){ const r=_findCurrentStageA2(); if(r) return r; if(a2On()) for(let z=7;z<=A2_OPEN_MAX;z++) for(let s=1;s<=5;s++) if(!stageDone(z+'-'+s)) return stageUnlocked(z,s)?[z,s]:null; return null; };
 // следующий этап после 6-5 не предлагаем; внутри зоны 7 — как обычно
 // стражи на «Чертог» / «Заставу» — промежуточный босс и владыка
 const _stageInfoA2=stageInfo;
@@ -47,7 +47,7 @@ stageInfo=function(z,s){ const I=_stageInfoA2(z,s); if(z===7){ I.act=2; if(A2_ST
 MAP.ch=1;
 function mapCh2Avail(){ return true; } // вкладку видно всегда — как тизер; этапы открываются по условиям
 const _openMapA2=openMap;
-openMap=function(){ _openMapA2(); try{ if(a2On()&&MAP._chAuto!==1){ MAP._chAuto=1; MAP.ch=findCurrentStage()&&findCurrentStage()[0]===7?2:MAP.ch; } a2MapTabs(); if(MAP.ch===2){ drawMap(); const sc=$('mapScroll'); const nd=document.querySelector('.mnode.cur'); if(nd) sc.scrollTop=Math.max(0,parseFloat(nd.style.top)-sc.clientHeight*.55); else sc.scrollTop=sc.scrollHeight; } }catch(e){ console.error(e); } };
+openMap=function(){ _openMapA2(); try{ if(a2On()&&MAP._chAuto!==1){ MAP._chAuto=1; MAP.ch=findCurrentStage()&&findCurrentStage()[0]>=7?2:MAP.ch; } a2MapTabs(); if(MAP.ch===2){ drawMap(); const sc=$('mapScroll'); const nd=document.querySelector('.mnode.cur'); if(nd) sc.scrollTop=Math.max(0,parseFloat(nd.style.top)-sc.clientHeight*.55); else sc.scrollTop=sc.scrollHeight; } }catch(e){ console.error(e); } };
 function a2MapTabs(){ const h=$('mapHead'); if(!h||h.querySelector('.chtabs')) return; const d=document.createElement('div'); d.className='chtabs';
   d.innerHTML=`<button class="btn small ${MAP.ch===1?'leather':'woodb'}" data-ch="1">Глава I</button><button class="btn small ${MAP.ch===2?'leather':'woodb'} ch2" data-ch="2">Глава II${a2On()?'':' '+ico('lock')}</button>`;
   h.insertBefore(d,h.children[1]); for(const b of d.querySelectorAll('button')) b.addEventListener('click',ev=>{ ev.stopPropagation(); MAP.ch=+b.dataset.ch; AU.sfx('page'); for(const x of d.querySelectorAll('button')){ x.classList.toggle('leather',+x.dataset.ch===MAP.ch); x.classList.toggle('woodb',+x.dataset.ch!==MAP.ch); } show('stageCard',false); drawMap(); const sc=$('mapScroll'); const nd=document.querySelector('.mnode.cur'); sc.scrollTop=nd?Math.max(0,parseFloat(nd.style.top)-sc.clientHeight*.55):sc.scrollHeight; }); }
@@ -73,17 +73,18 @@ function a2DrawMap(){
   // aurora over the north
   const top7=(10-7)*MAP.zoneH; for(let k=0;k<3;k++){ g.strokeStyle=['rgba(120,240,220,.35)','rgba(140,255,160,.28)','rgba(200,150,255,.28)'][k]; g.lineWidth=6-k; g.beginPath(); for(let x=0;x<=w;x+=8){ const y=top7+18+k*7+Math.sin(x*.025+k)*8; x?g.lineTo(x,y):g.moveTo(x,y); } g.stroke(); }
   // fog + "soon" on zones 8–10, and on 7 while the act is closed
-  for(const Z of A2_ZONES){ const top=(10-Z.id)*MAP.zoneH; const closed=Z.id>7||!a2On(); if(closed){ g.fillStyle='rgba(16,14,24,.6)'; g.fillRect(0,top,w,MAP.zoneH); } }
+  for(const Z of A2_ZONES){ const top=(10-Z.id)*MAP.zoneH; const closed=Z.id>A2_OPEN_MAX||!a2On()||Z.id>7&&!stageDone((Z.id-1)+'-5'); if(closed){ g.fillStyle='rgba(16,14,24,.6)'; g.fillRect(0,top,w,MAP.zoneH); } }
   let nh=''; const cur=findCurrentStage();
-  for(const Z of A2_ZONES){ const top=(10-Z.id)*MAP.zoneH; const soon=Z.id>7, lock7=Z.id===7&&!a2On();
+  for(const Z of A2_ZONES){ const top=(10-Z.id)*MAP.zoneH; const soon=Z.id>A2_OPEN_MAX, lock7=Z.id===7&&!a2On(), lockN=Z.id>7&&!soon&&(!a2On()||!stageDone((Z.id-1)+'-5'));
     nh+=`<div class="mzone a2" style="top:${top+14}px;color:#e8f0ff;text-shadow:0 2px 0 #000">${Z.n}<small style="color:#b8c8e8">${Z.sub.toUpperCase()} · УР. ${Z.lv}–${Z.lv+4}</small></div>`;
-    if(soon||lock7){ const why=soon?'СКОРО':(STS().end?'С 30 УРОВНЯ':'ПОСЛЕ ФИНАЛА ГЛАВЫ I'); nh+=`<div class="mtease" style="top:${top+MAP.zoneH*.42}px">${ico('lock')} <b>${why}</b><span>${esc(soon?Z.tease:lock7&&STS().end?'Достигните 30 уровня — в Броде пойдёт снег.':'Победите Пепельного Короля, чтобы открыть вторую главу.')}</span></div>`; continue; }
+    if(soon||lock7||lockN){ const why=soon?'СКОРО':lockN?(a2On()?'ПОСЛЕ ЗОНЫ '+(Z.id-1):'ГЛАВА II'):(STS().end?'С 30 УРОВНЯ':'ПОСЛЕ ФИНАЛА ГЛАВЫ I'); nh+=`<div class="mtease" style="top:${top+MAP.zoneH*.42}px">${ico('lock')} <b>${why}</b><span>${esc(soon||lockN?Z.tease:lock7&&STS().end?'Достигните 30 уровня — в Броде пойдёт снег.':'Победите Пепельного Короля, чтобы открыть вторую главу.')}</span></div>`; continue; }
     for(let s=1;s<=5;s++){ const [x,y]=nodePos(Z.id,s,w); const k=Z.id+'-'+s; const un=stageUnlocked(Z.id,s); const st=S.prog.stages[k]; const isCur=cur&&cur[0]===Z.id&&cur[1]===s;
       nh+=`<button class="mnode a2 ${s>=4?'boss':''} ${un?'':'lock'} ${isCur?'cur':''}" style="left:${x+(sc.clientWidth-w)/2}px;top:${y}px" ${un?act(()=>stageCard(Z.id,s)):''}>${s>=4?ico('skull'):s}<i class="r2">II</i><span class="st">${[1,2,3].map(i=>st&&st.stars>=i?'★':'<i>★</i>').join('')}</span></button>`; } }
   $('mapNodes').innerHTML=nh;
 }
 const _stageCardA2=stageCard;
 stageCard=function(z,s){ _stageCardA2(z,s); const I=stageInfo(z,s); if(I.disp){ const c=$('stageCard'); const card=c&&c.querySelector('.card'); if(card) card.innerHTML=`<b>${STAGE_TYPES[I.disp].n}.</b> ${STAGE_TYPES[I.disp].d}`; }
+  if(z===8){ const c=$('stageCard'); const m=c&&c.querySelector('.muted'); if(m&&!c.querySelector('.a2hint')) m.insertAdjacentHTML('afterend',`<div class="muted a2hint" style="font-size:12px;color:#2a8a8a">${ico('drop')} Воздух: в глубоких залах пузырь сжимается — дышите в колоколах, у пузырьковых жерл и на мелководье.</div>`); }
   if(z===7){ const c=$('stageCard'); const m=c&&c.querySelector('.muted'); if(m&&!c.querySelector('.a2hint')) m.insertAdjacentHTML('afterend',`<div class="muted a2hint" style="font-size:12px;color:#5a7ab0">${ico('snow')} Стужа: грейтесь у жаровен и горящих костров, прячьтесь от ветра за камнями.</div>`); } };
 
 // ---------- цепочка заданий Акта II ----------
@@ -117,8 +118,8 @@ const _hudBuildA2=hudBuild;
 hudBuild=function(){ _hudBuildA2(); try{ const k=a2MeterKind(); if(!k||G.mode==='village') return; const M=A2.meters[k]; const em=$('emB'); if(!em||$('bmB')) return;
   em.insertAdjacentHTML('afterend',`<div class="bar bm ${k}" id="bmB" title="${M.n}"><i class="v" id="bmV" style="background:linear-gradient(90deg,${M.c2},${M.col})"></i><b class="bmi">${ico(M.ic)}</b><b class="bmt" id="bmT">${M.n}</b></div>`); hudEl.bmV=$('bmV'); hudEl.bmB=$('bmB'); }catch(e){ console.error(e); } };
 const _hudTickA2=hudTick;
-hudTick=function(dt){ _hudTickA2(dt); const P=G.P; if(!P||!hudEl.bmV||!P.meter) return; const v=Math.round(P.meter.v); hudSet('bm',v,x=>{ hudEl.bmV.style.transform=`scaleX(${x/100})`; hudEl.bmB.classList.toggle('hi',x>=75); });
-  const vg=$('coldVig'); if(vg){ const o=P.meter.v>=75?clamp((P.meter.v-70)/30,0,1)*.85:0; hudSet('cv',Math.round(o*20),()=>{ vg.style.opacity=o.toFixed(2); }); } };
+hudTick=function(dt){ _hudTickA2(dt); const P=G.P; if(!P||!hudEl.bmV||!P.meter) return; const v=Math.round(P.meter.v); const air=P.meter.k==='air'; hudSet('bm',v,x=>{ hudEl.bmV.style.transform=`scaleX(${x/100})`; hudEl.bmB.classList.toggle('hi',air?x<=25:x>=75); });
+  const vg=$('coldVig'); if(vg){ const o=!air&&P.meter.v>=75?clamp((P.meter.v-70)/30,0,1)*.85:0; hudSet('cv',Math.round(o*20),()=>{ vg.style.opacity=o.toFixed(2); }); } };
 (function a2Css(){ const st=document.createElement('style'); st.id='a2css'; st.textContent=`
 .bar.bm{height:9px;overflow:visible;box-shadow:0 0 0 2px #3a5a7a,0 0 0 3px #0a1018,inset 0 2px 4px rgba(0,0,0,.7)}
 .bar.bm i.v{border-radius:5px}
@@ -153,7 +154,7 @@ function a2StageTick(dt){
   const P=G.P; const k=a2MeterKind();
   if(a2Zone()||k){ a2HeatTick(dt); a2BrazierTick(dt); a2GlassTick(dt); a2IcicleTick(dt); a2KegTick(dt); a2MineTick(dt); a2PudTick(dt); a2WallTick(dt); a2SnowFx(dt); }
   if(a2Zone()){ a2WindTick(dt); a2AuroraTick(dt); if(W.obj&&W.obj.type==='thaw') a2ThawTick(dt); if(W.a2rescue) a2RescueTick(dt); a2DormantTick(dt); }
-  if(k){ if(!P.meter||P.meter.k!==k) P.meter={k,v:0,warnT:0}; a2ColdTick(dt); }
+  if(k){ if(!P.meter||P.meter.k!==k) P.meter={k,v:k==='air'?100:0,warnT:0}; if(k==='cold') a2ColdTick(dt); }
 }
 function a2HeatAt(x,z){ let best=0; for(const h of (W.a2src||[])){ if(!h.on) continue; const d=Math.hypot(h.x-x,h.z-z); if(d<h.r) best=Math.max(best,1-d/h.r*.4); }
   for(const e of G.enemies){ if(e.alive&&e.stat&&e.stat.burn>0&&Math.hypot(e.x-x,e.z-z)<2.6){ best=Math.max(best,.7); break; } }
@@ -205,7 +206,7 @@ updatePlayer=function(dt){ const P=G.P;
 function a2OnIce(x,z){ for(const c of (W.ice||[])){ const d=Math.hypot(x-c.x,z-c.z); if(c.r0?d>c.r0&&d<c.r:d<c.r) return c; } return null; }
 // Вспышка Искры греет (−20%), «Пар» рядом — −5%
 const _useSkillA2=useSkill;
-useSkill=function(id){ const r=_useSkillA2(id); if(r!==false&&id==='ult'&&G.P&&G.P.meter) G.P.meter.v=Math.max(0,G.P.meter.v-A2.cold.flash); return r; };
+useSkill=function(id){ const r=_useSkillA2(id); if(r!==false&&id==='ult'&&G.P&&G.P.meter&&G.P.meter.k==='cold') G.P.meter.v=Math.max(0,G.P.meter.v-A2.cold.flash); return r; };
 const _synFireA2=synFire;
 synFire=function(id,e){ const r=_synFireA2(id,e); try{ const P=G.P; if(id==='steam'&&P&&P.meter&&e&&Math.hypot(e.x-P.x,e.z-P.z)<8) P.meter.v=Math.max(0,P.meter.v-A2.cold.steam);
     if(id==='steam'&&e&&e.kind==='frostRanker'&&e.crust){ e.crust=false; e.steamed=1; dmgNum(e.x,2.6,e.z,'корка растаяла','txt'); } }catch(err){} return r; };
@@ -534,7 +535,7 @@ placeLiquids=function(info){ if(info.zone.id!==7) return _placeLiquidsA2(info); 
   for(const a of mids.slice().sort(()=>Math.random()-.5).slice(0,1)){ const dirs=linkDirs(a); for(let k=0;k<16;k++){ const ang=rand(TAU); if(dirs.some(d=>Math.abs(angWrap2(d-ang))<.95)) continue; const r=rand(3.4,4.6); const D=a.r-r*.6; const x=a.x+Math.sin(ang)*D, z=a.z+Math.cos(ang)*D; if(bandDist(x,z)<r+1.5||resHit(x,z,r+.4)) continue; (W.ice=W.ice||[]).push({x,z,r}); W.paint.push({x,z,r:r+.2,c:ZMAT[7].sand,k:1,ring:.01}); break; } } };
 // after the vanilla stage build: braziers (≤ 25 м по маршруту), костры, жилы льда, арка Остена, засады
 const _makeStageA2=makeStage;
-makeStage=function(info){ a2PuzNames(info.zone.id===7); const mid=info.key==='7-4';
+makeStage=function(info){ a2PuzNames(info.zone.id); const mid=info.key==='7-4';
   const sh=STAGE_SHAPE.boss; if(mid) STAGE_SHAPE.boss={n:6,arena:5,ar:14}; A2._cave=info.type==='thaw'; let I2=info;
   if(info.type==='thaw') I2=Object.assign({},info,{type:'survive'}); if(info.bossId) I2=Object.assign({},I2);
   A2._dress=info.zone.id===7?info:null; let r; try{ r=_makeStageA2(I2); } finally { STAGE_SHAPE.boss=sh; A2._dress=null; }
@@ -589,10 +590,10 @@ const PUZ_PLAN_A2={'7-1':'plates','7-2':'push','7-3':'runes'}; Object.assign(PUZ
 const PUZ_A1={plates:Object.assign({},PUZ_TYPES.plates),push:Object.assign({},PUZ_TYPES.push),runes:Object.assign({},PUZ_TYPES.runes)};
 const PUZ_A2={plates:{n:'Оттаять печать',hint:'Сундук вморожен в печать. Зажгите все три плиты-костра — каждая горит лишь пять секунд, — и лёд растает.',ic:'flame'},
   push:{n:'Скользящие глыбы',hint:'Задвиньте ледяные глыбы на обе плиты — толкайте их, шагая в них.',ic:'snow'},runes:{n:'Цвета сияния',hint:'Сияние показывает порядок цветов — кристаллы вспыхивают так же. Ударьте их в том же порядке. Три круга.',ic:'eye'}};
-function a2PuzNames(on){ for(const k in PUZ_A2) Object.assign(PUZ_TYPES[k],on?PUZ_A2[k]:PUZ_A1[k]); }
+function a2PuzNames(zid){ const T=zid===7?PUZ_A2:zid===8&&typeof PUZ_A8!=='undefined'?PUZ_A8:null; for(const k in PUZ_A1) Object.assign(PUZ_TYPES[k],T&&T[k]?T[k]:PUZ_A1[k]); }
 // тайники Предела хранят страницы «Летописи Глубин»
 const _buildSecretA2=buildSecret;
-buildSecret=function(info){ _buildSecretA2(info); const S0=W.secret; if(!S0||info.zone.id!==7||!S0.reward) return; const left=LORE2.map((l,i)=>i).filter(i=>LORE2[i].z===7&&!(S.lore2||[]).includes(i)); if(!left.length||!chance(.7)) return;
+buildSecret=function(info){ _buildSecretA2(info); const S0=W.secret; if(!S0||info.zone.id<7||!S0.reward) return; const left=LORE2.map((l,i)=>i).filter(i=>LORE2[i].z===info.zone.id&&!(S.lore2||[]).includes(i)); if(!left.length||!chance(.7)) return;
   const r=S0.reward; worldRoot.remove(r.mesh); const i=W.objs.indexOf(r); if(i>=0) W.objs.splice(i,1); const rew=mkObj('scroll',r.x,r.z,{lore:-1}); rew.lore2=left[0]; S0.reward=rew; };
 const _interactObjsA2=interactObjs;
 interactObjs=function(){ const P=G.P; for(const o of W.objs){ if(o.alive&&o.kind==='scroll'&&o.lore2!==undefined&&Math.hypot(o.x-P.x,o.z-P.z)<1.4){ o.alive=false; worldRoot.remove(o.mesh); S.lore2=S.lore2||[]; if(!S.lore2.includes(o.lore2)) S.lore2.push(o.lore2); AU.sfx('page'); toast(`Летопись Глубин: <b>«${LORE2[o.lore2].n}»</b>`,null,null,'quest'); ev('lore'); later(2,()=>spirit('lore2',true)); track('a2:lore',o.lore2); } } _interactObjsA2(); };

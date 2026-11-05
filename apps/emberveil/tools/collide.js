@@ -1,9 +1,9 @@
 // Стенд коллизий (v21): в каждом уровне герой упирается в каждый тип твёрдого пропа/объекта/здания и должен остановиться на его форме;
 // стрела, пущенная в высокое препятствие, должна погаснуть о него.
-// Запуск: node apps/emberveil/tools/collide.js [--stages=1-1,7-1] [--per=1] [--noassets]. Код выхода 1, если что-то проходимо.
+// Запуск: node apps/emberveil/tools/collide.js [--stages=1-1,8-1] [--per=1] [--noassets]. Код выхода 1, если что-то проходимо.
 const {open,serve}=require('./harness.js');
 const args=process.argv.slice(2); const arg=(k,d)=>{ const a=args.find(x=>x.startsWith('--'+k)); if(!a) return d; const v=a.split('=')[1]; return v===undefined?true:v; };
-const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,village,abyss')).split(','), PER=+arg('per',1);
+const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,village,abyss')).split(','), PER=+arg('per',1);
 (async()=>{ const base=await serve(); const H=await open({vp:{width:844,height:390},mobile:false,dpr:1,offline:true,noassets:!!arg('noassets',false),url:base+'/emberveil/index.html?q=low&noprologue'}); const {ev,wait}=H; await H.quick();
   for(let i=0;i<4;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); }); await wait(300); }
   await ev(()=>{ __game.S.seen.ftue_done=1; __game.mapTo(8); __game.god(true); });

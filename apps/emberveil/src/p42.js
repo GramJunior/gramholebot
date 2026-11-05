@@ -94,13 +94,18 @@ function iconUV(i){ const cx=i%6, cy=Math.floor(i/6), m=.06; return [(cx+m)/6,(c
 
 // ---------- материал: общий toon + кисть v10/v21, атлас с «заворотом» uv по тайлу, свечение окон/огня, колыхание ткани ----------
 function townPatch(sh,nocut){
-  sh.uniforms.uCut=nocut?{value:new THREE.Vector4(0,0,1,0)}:TOWN_CUT.uCut; sh.uniforms.uCutZ=TOWN_CUT.uCutZ;
+  sh.uniforms.uCut=nocut?{value:new THREE.Vector4(0,0,1,0)}:TOWN_CUT.uCut; sh.uniforms.uCutZ=TOWN_CUT.uCutZ; sh.uniforms.uHeroC=nocut?{value:new THREE.Vector4(0,0,0,0)}:TOWN_CUT.uHeroC;
   sh.uniforms.uTiles={value:TOWN_RECT.map(r=>new THREE.Vector4(r[0],r[1],r[2],r[3]))};
-  sh.vertexShader='attribute float aTile;\nattribute float aSway;\nuniform vec4 uTiles[15];\nuniform float uTime;\nvarying vec4 vRect;\nvarying float vTileF;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  sh.vertexShader='attribute float aTile;\nattribute float aSway;\nuniform vec4 uTiles[15];\nuniform float uTime;\nuniform vec4 uHeroC;\nvarying vec4 vRect;\nvarying float vTileF;\nvarying vec2 vCutY;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
   vRect=uTiles[int(aTile+0.5)]; vTileF=aTile;
+  // v23 «кукольный дом»: здание между камерой и героем теряет крышу и верхний этаж (первый этаж остаётся); высота среза плавно растёт с удалением
+  { vec3 bo=(modelMatrix*vec4(0.0,0.0,0.0,1.0)).xyz; float lx=abs(bo.x-uHeroC.x), dz=bo.z-uHeroC.y;
+    float k=uHeroC.z*(1.0-smoothstep(uHeroC.w,uHeroC.w+3.0,lx))*smoothstep(-2.0,0.5,dz)*(1.0-smoothstep(14.0,18.0,dz));
+    vCutY=vec2(mix(60.0,2.75,k),(modelMatrix*vec4(transformed,1.0)).y); }
   transformed.x+=sin(uTime*2.3+position.y*1.7+position.z)*aSway*0.10; transformed.z+=sin(uTime*1.9+position.y*1.3+position.x)*aSway*0.07;`);
   let fs=sh.fragmentShader;
-  fs='varying vec4 vRect;\nvarying float vTileF;\nuniform vec4 uCut;\nuniform float uCutZ;\n'+fs.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+  fs='varying vec4 vRect;\nvarying float vTileF;\nvarying vec2 vCutY;\nuniform vec4 uCut;\nuniform float uCutZ;\n'+fs.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+  if(vCutY.y>vCutY.x){ float hc=fract(sin(dot(floor(gl_FragCoord.xy*0.5),vec2(41.31,17.17)))*9631.7); if(vCutY.y>vCutY.x+0.35*hc) discard; }
   // «окно» к герою: всё, что ближе к камере, чем герой, в круге вокруг него — вырезается (край — дизеринг)
   if(uCut.w>0.5&&vViewPosition.z<uCutZ){ float dd=length(gl_FragCoord.xy-uCut.xy)/uCut.z; float hs=fract(sin(dot(floor(gl_FragCoord.xy),vec2(12.9898,78.233)))*43758.5453); if(dd<0.72+0.42*hs) discard; }`).replace('#include <map_fragment>',`
 #ifdef USE_MAP
@@ -125,9 +130,9 @@ function townMat(stage){ const k=stage?'matS':'mat'; if(TOWN[k]) return TOWN[k];
   const base=m.onBeforeCompile; m.onBeforeCompile=(sh,r)=>{ base(sh,r); townPatch(sh,stage); }; m.customProgramCacheKey=()=>'evtown'+(stage?'S':''); m.userData.town=1; return TOWN[k]=m; } // stage: пропсы этапов (инстансы) — без «окна»
 function townMesh(geo){ const m=new THREE.Mesh(geo,townMat()); m.matrixAutoUpdate=false; m.updateMatrix(); m.onBeforeRender=townCutPre; return m; }
 // параметры «окна»: считаются раз за кадр, только для игровой камеры в деревне/набеге (иконки, портреты, крупные планы — без выреза)
-const TOWN_CUT={uCut:{value:new THREE.Vector4(0,0,1,0)},uCutZ:{value:0},frame:-1,v:new THREE.Vector3(),sz:new THREE.Vector2()};
+const TOWN_CUT={uCut:{value:new THREE.Vector4(0,0,1,0)},uCutZ:{value:0},uHeroC:{value:new THREE.Vector4(0,0,0,5.5)},frame:-1,v:new THREE.Vector3(),sz:new THREE.Vector2()};
 function townCutPre(r,sc,camera){ const U=TOWN_CUT; const on=camera===cam&&!!G.P&&!!W&&W.kind==='village'&&(G.mode==='village'||G.mode==='raid')&&!(typeof CINE!=='undefined'&&CINE.on)&&!G.dialog;
-  if(!on){ U.uCut.value.w=0; U.frame=-1; return; } const f=r.info.render.frame; if(U.frame===f&&U.uCut.value.w) return; U.frame=f;
+  if(!on){ U.uCut.value.w=0; U.uHeroC.value.z=0; U.frame=-1; return; } const f=r.info.render.frame; if(U.frame===f&&U.uCut.value.w) return; U.frame=f; U.uHeroC.value.set(G.P.x,G.P.z,1,6.5);
   const rt=r.getRenderTarget(); let w,h; if(rt){ w=rt.width; h=rt.height; } else { r.getDrawingBufferSize(U.sz); w=U.sz.x; h=U.sz.y; }
   const v=U.v.set(G.P.x,1.0,G.P.z); v.applyMatrix4(camera.matrixWorldInverse); U.uCutZ.value=-v.z-1.6; v.applyMatrix4(camera.projectionMatrix);
   U.uCut.value.set((v.x*.5+.5)*w,(v.y*.5+.5)*h,h*.25,1); }

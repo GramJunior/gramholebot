@@ -1,4 +1,4 @@
-// Валидатор мира: генерирует все этапы кампании (6 зон × 5 + Акт II: зона 7), деревню и этажи Бездны и проверяет правила расстановки.
+// Валидатор мира: генерирует все этапы кампании (6 зон × 5 + Акт II: зоны 7–8), деревню и этажи Бездны и проверяет правила расстановки.
 // Запуск: node apps/emberveil/tools/validate.js [--shots] [--stages=1-1,4-2] [--abyss=10] [--q=med]
 // --shots: обзор сверху каждого уровня (EV_OUT/shots/ov_*.png). Код выхода 1, если есть нарушения.
 const {open,serve}=require('./harness.js');
@@ -7,7 +7,7 @@ const SHOTS=arg('shots',false), Q=arg('q','med'), NAB=+arg('abyss',10), ONLY=arg
 (async()=>{ const base=await serve(); const H=await open({vp:SHOTS?{width:900,height:1300}:{width:844,height:390},mobile:false,dpr:1,url:base+'/emberveil/'+PAGE+'?q='+Q+'&noprologue'}); const {ev,wait,shot}=H; await H.quick();
   for(let i=0;i<4;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); }); await wait(400); } // v18: сцена пробуждения не должна держать камеру
   await ev(()=>{ __game.S.seen.ftue_done=1; __game.mapTo(7); });
-  const keys=[]; if(ONLY) keys.push(...ONLY.split(',')); else for(let z=1;z<=7;z++) for(let s=1;s<=5;s++) keys.push(z+'-'+s);
+  const keys=[]; if(ONLY) keys.push(...ONLY.split(',')); else for(let z=1;z<=8;z++) for(let s=1;s<=5;s++) keys.push(z+'-'+s);
   let total=0; const sum={}; const rows=[];
   const report=(r)=>{ total+=r.n; for(const k in r.by) sum[k]=(sum[k]||0)+r.by[k]; rows.push(r);
     console.log((r.key||'').padEnd(8),(r.type||'').padEnd(8),r.n?('НАРУШЕНИЙ '+r.n+' '+JSON.stringify(r.by)):'ok','|',JSON.stringify(r.stats));

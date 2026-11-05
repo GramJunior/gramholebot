@@ -234,11 +234,12 @@ onBossDeath=function(e){ if(G.abyss||!(e.kind==='stuzhen'||e.kind==='belava')) r
 function a2AuroraWake(){ if(!W||!W.aurora) return; W.aurora.k=.75; W.aurora.force=0x6aff8a; later(5,()=>{ if(W&&W.aurora){ W.aurora.force=null; W.aurora.k=.55; } }); }
 // trophy & Heart runes of Act II (outer ring: 4 stones, one per Act II lord)
 const _heartLevelA2=heartLevel;
-heartLevel=function(){ const n=_heartLevelA2(); return n+(stageDone('7-5')?1:0); };
+function a2Runes(){ return (stageDone('7-5')?1:0)+(stageDone('8-5')?1:0); }
+heartLevel=function(){ const n=_heartLevelA2(); return n+a2Runes(); };
 function a2RunesGeo(n){ return cgeo('a2runes_'+n,b=>{ for(let i=0;i<4;i++){ const a=PI*.18+i/3*PI*.64, lit=i<n; const x=Math.cos(a)*2.85, z=Math.sin(a)*2.85, ry=-a+PI/2;
   b.box(.24,.62,.18,0x4a5468,{p:[x,.31,z],r:[0,ry,0],j:.06}); b.cone(.18,.2,0x4a5468,{p:[x,.72,z],seg:4,r:[0,ry+PI/4,0]}); b.box(.11,.2,.03,lit?0x7ad0ff:0x5a6070,{p:[x+Math.sin(ry)*.1,.42,z+Math.cos(ry)*.1],r:[0,ry,0],e:lit?1:0,ol:0}); } },.03); }
 const _heartUpdateA2=heartUpdate;
-heartUpdate=function(force){ _heartUpdateA2(force); const H=W&&W.heart2; if(!H||!a2On()) return; const n=stageDone('7-5')?1:0; if(H.a2n===n&&H.a2r&&!force) return; H.a2n=n; if(!H.a2r){ H.a2r=pmesh(a2RunesGeo(n),H.g); for(let i=0;i<4;i++){ const a=PI*.18+i/3*PI*.64; W.obst.push({x:Math.cos(a)*2.85,z:Math.sin(a)*2.85,r:.25,grp:'heart'}); } } else H.a2r.geometry=a2RunesGeo(n);
+heartUpdate=function(force){ _heartUpdateA2(force); const H=W&&W.heart2; if(!H||!a2On()) return; const n=a2Runes(); if(H.a2n===n&&H.a2r&&!force) return; H.a2n=n; if(!H.a2r){ H.a2r=pmesh(a2RunesGeo(n),H.g); for(let i=0;i<4;i++){ const a=PI*.18+i/3*PI*.64; W.obst.push({x:Math.cos(a)*2.85,z:Math.sin(a)*2.85,r:.25,grp:'heart'}); } } else H.a2r.geometry=a2RunesGeo(n);
   if(n&&!H.ring2){ H.ring2=pmesh(cgeo('hring2',b=>{ b.tor(1.15,.03,0x7ad0ff,{r:[PI/2,0,0],ts:32,e:1,ol:0}); for(let i=0;i<8;i++){ const a=i/8*TAU; b.oct(.07,0xdff4ff,{p:[Math.cos(a)*1.15,0,Math.sin(a)*1.15],e:1,ol:0}); } },0),H.g,0,1.75,0); } };
 const _heartTickA2b=heartTick;
 heartTick=function(dt){ _heartTickA2b(dt); const H=W&&W.heart2; if(H&&H.ring2){ H.ring2.position.y=H.core.position.y; H.ring2.rotation.y+=dt*.35; H.ring2.rotation.x=Math.sin(G.time*.5)*.2; } };
