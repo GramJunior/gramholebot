@@ -34,7 +34,7 @@ PROPS.goldSpire=b=>{ b.box(2.6,.6,2.6,MRB2,{p:[0,.3,0]}); b.box(2.0,3.4,2.0,MRB,
 PROPS.heartAltar=b=>{ b.cyl(2.2,2.5,.5,MRB2,{p:[0,.25,0],seg:18}); b.cyl(1.7,1.9,.35,MRB,{p:[0,.67,0],seg:18}); b.cyl(.5,.7,1.0,MRB,{p:[0,1.3,0],seg:12}); b.lathe([[.2,0],[.9,.15],[1.3,.5],[1.4,.62],[.2,.6]],GLD2,{p:[0,1.75,0],seg:16});
   b.tor(2.3,.08,GLD,{p:[0,.52,0],r:[PI/2,0,0],ts:28}); for(let i=0;i<6;i++){ const a=i/6*TAU; b.box(.5,.08,.2,GLD,{p:[Math.cos(a)*1.8,.86,Math.sin(a)*1.8],r:[0,-a,0],ol:0}); } for(let i=0;i<5;i++){ const a=i/5*TAU; b.sph(.2,0x8af8ff,{p:[Math.cos(a)*.6,2.25,Math.sin(a)*.6],s:[1,.7,1],e:.6,t1:PI*.6,ol:0}); } };
 Object.assign(PFOOT,{kelpTall:[.25,1.0,'b'],kelpTall2:[.22,.9,'b'],kelp:[0,.5,'s'],coral:[0,.55,'s'],shellPile:[0,.35,'t'],rockReef:[.85,1.0,'b'],rockCoral:[.6,.8,'b'],pillarDrowned:[.65,.8,'b'],pillarBroken8:[.65,1.4,'b'],
-  statueDrowned:[.7,.85,'b'],lanternDrowned:[.2,.5,'b'],urnDrowned:[.3,.4,'b'],chandelierFallen:[0,1.2,'s'],fountain8:[1.6,1.8,'b'],marketStall:[1.1,1.3,'b'],carriage8:[1.1,1.4,'b'],goldSpire:[1.3,1.5,'b'],heartAltar:[2.3,2.6,'b']});
+  statueDrowned:[.7,.85,'b'],lanternDrowned:[.32,.55,'b'],urnDrowned:[.3,.4,'b'],chandelierFallen:[0,1.2,'s'],fountain8:[1.6,1.8,'b'],marketStall:[1.1,1.3,'b'],carriage8:[1.1,1.4,'b'],goldSpire:[1.3,1.5,'b'],heartAltar:[2.3,2.6,'b']});
 ZKIT[8]={trees:['kelpTall','kelpTall2','kelpTall'],shrub:['kelp','coral'],rock:['rockReef','rockCoral'],tuft:['kelp','shellPile'],
   shore:['coral','shellPile','rockCoral'],ruin:['pillarBroken8','statueDrowned','pillarDrowned','urnDrowned'],edge:['kelpTall','rockReef','pillarDrowned','kelpTall2','rockCoral','pillarBroken8'],
   themes:['plaza','market','ballroom','reef','plaza'],big:['goldSpire',1.0],bridge:null,small:['shellPile','coral']};
@@ -174,3 +174,5 @@ validateWorld=function(opt={}){ const r=_validateWorldA8(opt); try{ if(!W||W.kin
     for(const c of (W.chand||[])){ if(W.secret&&W.secret.wall&&Math.hypot(c.x-W.secret.wall.x,c.z-W.secret.wall.z)<3) add('a8ChandSecret','люстра над входом в тайник',c.x,c.z); }
     const dedupe={}; const V2=V.filter(v=>{ const k=v.rule+Math.round((v.x||0)/6)+','+Math.round((v.z||0)/6); if(dedupe[k]) return false; dedupe[k]=1; return true; });
     r.violations=(r.violations||[]).concat(V2); r.n+=V2.length; r.ok=r.n===0; for(const v of V2) r.by[v.rule]=(r.by[v.rule]||0)+1; r.stats.deep=(W.deep||[]).length; r.stats.air=air.length; r.stats.cur=(W.currents||[]).length; }catch(e){ console.error(e); } return r; };
+// v21 colliders: round zone-8 props use their PFOOT circle (thin posts with an offset lamp/arm would get a poor box from the raster)
+for(const t of ['kelpTall','kelpTall2','rockReef','rockCoral','pillarDrowned','lanternDrowned','urnDrowned','fountain8']) COL_CIRCLE.add(t);

@@ -21,7 +21,7 @@ BOSS_MODELS.inkmaw=()=>{ const r=mkRig({hip:0,type:'blob',h:4.4,r:2.4}); r.torso
   pmesh(cgeo('ink_body',b=>{ b.sph(1.6,0x14141e,{p:[0,1.6,0],s:[1,1.2,1],j:.04}); b.sph(1.0,0x1a1a2a,{p:[0,3.0,.3]}); b.box(1.4,.08,1.0,0xe8dcc0,{p:[-.5,2.7,1.1],r:[.3,0,.3],ol:0}); b.box(1.4,.08,1.0,0xe8dcc0,{p:[.5,2.7,1.1],r:[.3,0,-.3],ol:0}); for(let i=0;i<12;i++) b.box(.2,.02,.08,0x9ad8ff,{p:[Math.cos(i)*1.2,1+i*.18,Math.sin(i)*1.2+.4],r:[0,i,0],e:1,ol:0}); },.05),r.torso); return r; };
 function a8BossDress(e){ const a=e.rig&&e.rig.actor; try{
   if(e.kind==='chamberlain'&&a){ a.setGlow('#7af0e0',.12); try{ a.attach('head',new THREE.Mesh(A8B.key(),MTP)).position.set(0,-.25,.14); }catch(er){} try{ a.attach('head',new THREE.Mesh(A8B.monocle(),MTP)).position.set(.07,.12,.17); }catch(er){} try{ a.attach('head',new THREE.Mesh(A8B.hairKelp(),MTP)); }catch(er){} }
-  if(e.kind==='inkmaw'){ e._tent=[]; const host=a?null:e.rig.torso; for(let i=0;i<6;i++){ const t=A8B.tentacle(); const ang=i/6*TAU; if(a){ try{ const o=a.attach('back',t); o.position.set(Math.cos(ang)*.3,.2,Math.sin(ang)*.3-.1); o.rotation.set(-.6+Math.sin(ang)*.3,ang,0); }catch(er){} } else { host.add(t); t.position.set(Math.cos(ang)*1.3,2.2,Math.sin(ang)*1.3); t.rotation.set(Math.cos(ang)*.7,ang,Math.sin(ang)*.7); } e._tent.push(t); } if(a){ a.setGlow('#9ad8ff',.35); } }
+  if(e.kind==='inkmaw'){ e._tent=[]; const host=a?null:e.rig.torso; for(let i=0;i<6;i++){ const t=A8B.tentacle(); const ang=i/6*TAU; if(a){ try{ const o=a.attach('back',t); o.position.set(Math.cos(ang)*.3,.2,Math.sin(ang)*.3-.1); o.rotation.set(-.6+Math.sin(ang)*.3,ang,0); }catch(er){} } else { host.add(t); t.position.set(Math.cos(ang)*1.3,2.2,Math.sin(ang)*1.3); t.rotation.set(Math.cos(ang)*.7,ang,Math.sin(ang)*.7); } e._tent.push(t); } if(a){ a.setGlow('#9ad8ff',.6); } }
   }catch(err){ console.warn('a8 dress',err); } }
 (function a8WrapBossFactories(){ for(const k of ['chamberlain','inkmaw']){ const f=BOSS_MODELS[k]; BOSS_PROC[k]=f; BOSS_MODELS[k]=()=>{ if(asCan(k)){ const m=asMeta('boss:'+k,f); const r=asRig(k,m); if(r) return r; } return f(); }; } })();
 
@@ -48,8 +48,8 @@ function a8ArenaVisuals(){ const M=W.bossMech, A=W.arenaNode; if(!M||!A) return;
     const og=new THREE.PlaneGeometry(S0*.96,S0*.96); og.rotateX(-PI/2); const om=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.55,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}); const im=new THREE.InstancedMesh(og,om,9); im.frustumCulled=false; im.renderOrder=3;
     const c=new THREE.Color(0,0,0); const m4=new THREE.Matrix4(); M.tiles.forEach((t,i)=>{ m4.makeTranslation(t.x,.06,t.z); im.setMatrixAt(i,m4); im.setColorAt(i,c); }); worldRoot.add(im); M.glow=im;
     M.chands=[]; for(let j=0;j<3;j++){ const t=M.tiles[j*3+1]; const g2=new THREE.Group(); g2.position.set(t.x,0,t.z); worldRoot.add(g2); const cm=pmesh(A8C.chand(),g2,0,4.6,0); cm.material=MTP; cm.scale.setScalar(.75); const ch=pmesh(A8C.chain(),g2,0,4.9,0); ch.material=MTP; M.chands.push({j,g:g2,m:cm,ch,st:'hang',x:t.x,z:t.z}); } }
-  if(W.deep&&W.deep.some(d=>d.pit)&&!M.pit){ const d=W.deep.find(d=>d.pit); const m=new THREE.Mesh(new THREE.CircleGeometry(d.r+.6,40),new THREE.MeshBasicMaterial({map:DEEP_TEX,color:0x02060e,transparent:true,opacity:.8,depthWrite:false})); m.rotation.x=-PI/2; m.position.set(d.x,.04,d.z); m.renderOrder=1; worldRoot.add(m); M.pit=m;
-    M.books=[]; for(let i=0;i<9;i++){ const g=new THREE.Group(); worldRoot.add(g); pmesh(A8B.bookFloat(),g).material=MTP; M.books.push({g,a:rand(TAU),r:rand(4,13),y:rand(2,4.5),s:rand(.15,.3)}); } } }
+  if(W.deep&&W.deep.some(d=>d.pit)&&!M.pit){ const d=W.deep.find(d=>d.pit); const m=new THREE.Mesh(new THREE.CircleGeometry(d.r+.6,40),new THREE.MeshBasicMaterial({map:DEEP_TEX,color:0x02060e,transparent:true,opacity:.35,depthWrite:false})); m.rotation.x=-PI/2; m.position.set(d.x,.04,d.z); m.renderOrder=1; worldRoot.add(m); M.pit=m;
+    M.books=[]; for(let i=0;i<5;i++){ const g=new THREE.Group(); worldRoot.add(g); pmesh(A8B.bookFloat(),g).material=MTP; M.books.push({g,a:rand(TAU),r:rand(4,13),y:rand(2,4.5),s:rand(.15,.3)}); } } }
 function a8TileColor(M){ if(!M.glow) return; const c=new THREE.Color(); const F=M.fig; M.tiles.forEach((t,i)=>{ if(t.broken>0) c.setRGB(.05,.08,.1); else if(F&&F.on){ const safe=F.safe.includes(i); c.setRGB(safe?.95:.0,safe?.72:.25,safe?.25:.35); if(!safe&&F.t>F.cast-1) c.setRGB(.1,.45,.6); } else c.setRGB(0,0,0); M.glow.setColorAt(i,c); }); M.glow.instanceColor.needsUpdate=true; }
 function a8TileAt(M,x,z){ const S0=M.tileS; for(const t of M.tiles) if(Math.abs(x-t.x)<S0/2&&Math.abs(z-t.z)<S0/2) return t; return null; }
 
@@ -82,7 +82,7 @@ Object.assign(BP,{
     e.pose='raise'; e.poseK=clamp(p.t,0,1); return p.t>2.0; },
   figure(e,p){ return a8FigurePat(e,p); },
   // ---- Строкоед ----
-  whip(e,p){ const P=G.P; if(once(p,'a',0)){ p.n=0; } const t0=[0,.8]; for(let i=0;i<2;i++) if(once(p,'w'+i,t0[i])){ const f=Math.atan2(P.x-e.x,P.z-e.z)+(i?.25:-.25); teleHit('line',e.x,e.z,11,.9+a8Ear(),BD(e,1),{dir:f,w:1.4,src:e,lvl:e.lvl,col:0x9ad8ff,kb:4,fx:()=>{ for(let k=2;k<11;k+=1.5) fx('smoke',e.x+Math.sin(f)*k,.6,e.z+Math.cos(f)*k,{k:1,col:0x14141e}); AU.sfx('swing',.7,.6); }}); }
+  whip(e,p){ const P=G.P; const t0=[0,.8]; for(let i=0;i<2;i++) if(once(p,'w'+i,t0[i])){ const f=Math.atan2(P.x-e.x,P.z-e.z)+(i?.25:-.25); teleHit('line',e.x,e.z,11,.9+a8Ear(),BD(e,1),{dir:f,w:1.4,src:e,lvl:e.lvl,col:0x9ad8ff,kb:4,fx:()=>{ for(let k=2;k<11;k+=1.5) fx('smoke',e.x+Math.sin(f)*k,.6,e.z+Math.cos(f)*k,{k:1,col:0x14141e}); AU.sfx('swing',.7,.6); }}); }
     e.pose='swing'; e.poseK=1; return p.t>2.0; },
   spit(e,p){ const P=G.P; if(once(p,'a',0)){ const x=P.x, z=P.z; teleHit('circle',x,z,2.2,1.1+a8Ear(),BD(e,.9),{src:e,lvl:e.lvl,col:0x6a5aa0,kb:2,fx:()=>{ fx('smoke',x,.4,z,{k:12,col:0x14141e}); AU.sfx('zap',.4,.5); a8Blot(x,z,2.2,8); }}); }
     e.pose='cast'; return p.t>1.4; },
@@ -186,7 +186,7 @@ const _heroDmgA8b=heroDmg; heroDmg=function(m,o){ const r=_heroDmgA8b(m,o); try{
 
 // ---------- победа: реплика, сцены, награды, выбор «Книга или человек» ----------
 const _onBossDeathA8=onBossDeath;
-onBossDeath=function(e){ if(G.abyss||!(e.kind==='chamberlain'||e.kind==='inkmaw')) return _onBossDeathA8(e); const first=!stageDone(W.info.key); _onBossDeathA8(e); const M=W.bossMech||{};
+onBossDeath=function(e){ if(G.abyss||!(e.kind==='chamberlain'||e.kind==='inkmaw')) return _onBossDeathA8(e); const first=!stageDone(W.info.key); W.a2wait=true; _onBossDeathA8(e); const M=W.bossMech||{};
   for(const m of G.enemies) if(m.alive&&!m.boss){ m.invuln=false; m.hp=0; killEnemy(m); } if(M.fig){ M.fig=null; a8TileColor(M); } const P=G.P; if(P.erased){ P.erased={}; a8EraseUI(); } if(P.carry==='page'){ P.carry=null; } for(const q of (M.pages||[])) worldRoot.remove(q.g); M.pages=[];
   a2Bark(e,'defeat',true); W.a2wait=true; objText(); track('a2:boss',e.kind+':win:'+Math.round(G.time-(M.t0||G.time)));
   later(.9,()=>{ for(let i=0;i<6;i++) spawnDrop('mat',e.x,e.z,{res:'pearl',v:randi(2,4)}); spawnDrop('mat',e.x,e.z,{res:'scrap',v:first?3:1}); });

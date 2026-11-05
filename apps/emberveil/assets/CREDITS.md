@@ -39,6 +39,10 @@ Files `kits/kit_town.glb` (94 modular parts, geometry only), `kits/town_atlas.jp
 Processing: `lab/build/build_town.mjs` (gltf-transform 4.5 + meshoptimizer): each part flattened to one primitive, vines dropped, heavy parts simplified (roofs ×0.17, stone corners ×0.07, …), UVs packed (uv/8+0.5, uint16), atlas tile index as `_TILE`, meshopt + 14-bit positions.
 Buildings are assembled at runtime from these parts by recipes in `src/p42.js` (12 buildings × levels 0–5, scaffolding, camp tents, crypts, Northern-legion tents).
 
+## v23: Затонувший Златоверх — новых файлов нет / no new asset files
+
+Zone 8 (Act II, milestone 2) reuses files already shipped here, all CC0: KayKit Character Pack Skeletons (`skel_warrior.glb` — drowned guard, `skel_golem.glb` — shellback), KayKit Character Pack Adventures / Mystery-Monthly via the CC0 KayKit mirror (`rogue.glb` — siren, `vampire.glb` — Chamberlain, `monstrosity.glb` — Inkmaw, `lorekeeper.glb` — chronicler Dobromir), Quaternius Universal Base Characters + Modular Outfits (`ubc_m.glb`/`ubc_f.glb` — detailed siren and Chamberlain), KayKit Dungeon Remastered (`d:bookcase_double_decoratedA` in the Archive). Everything else in the zone (jellyfish, shells, kelp, corals, columns, statues, chandeliers, bells, mosaic, caustics, light shafts, fish) is procedural code in `src/p44.js`–`src/p46.js`. Manifest entries: `lab/build/act2z8_manifest.py`. Licences: see `LICENSES/` (unchanged).
+
 ## Characters (`assets/chars/`)
 
 | file | source model | pack | source URL |

@@ -6,7 +6,7 @@ const args=process.argv.slice(2); const arg=(k,d)=>{ const a=args.find(x=>x.star
 const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,village,abyss')).split(','), PER=+arg('per',1);
 (async()=>{ const base=await serve(); const H=await open({vp:{width:844,height:390},mobile:false,dpr:1,offline:true,noassets:!!arg('noassets',false),url:base+'/emberveil/index.html?q=low&noprologue'}); const {ev,wait}=H; await H.quick();
   for(let i=0;i<4;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); }); await wait(300); }
-  await ev(()=>{ __game.S.seen.ftue_done=1; __game.mapTo(8); __game.god(true); });
+  await ev(()=>{ const S=__game.S; S.seen.ftue_done=1; for(const k of ['z7_intro','z8_intro','z8_square']) S.seen[k]=1; __game.mapTo(8); __game.god(true); });
   let fail=0, total=0, arrows=0, arrowFail=0; const types=new Set();
   for(const key of KEYS){
     if(key==='village') await ev(()=>{ const S=__game.S; for(const b of ['hall','forge','alch','pen','tavern','temple','store','saw','mine','well','houses','walls']) S.bld[b]=Math.max(S.bld[b]||0,3); __game.village(); });

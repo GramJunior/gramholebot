@@ -218,7 +218,7 @@ animEnemy=function(e,dt){ if(e.kind==='belavaMirror'){ const R=e.rig; R.root.pos
 
 // ---------- победа: реплика, сцены после боя, награды, выбор ----------
 const _onBossDeathA2=onBossDeath;
-onBossDeath=function(e){ if(G.abyss||!(e.kind==='stuzhen'||e.kind==='belava')) return _onBossDeathA2(e); const first=!stageDone(W.info.key); _onBossDeathA2(e); const M=W.bossMech||{};
+onBossDeath=function(e){ if(G.abyss||!(e.kind==='stuzhen'||e.kind==='belava')) return _onBossDeathA2(e); const first=!stageDone(W.info.key); W.a2wait=true; _onBossDeathA2(e); const M=W.bossMech||{};
   for(const m of G.enemies) if(m.alive&&!m.boss){ m.invuln=false; m.hp=0; killEnemy(m); } if(M.winter&&M.winter.ring){ worldRoot.remove(M.winter.ring); M.winter.ring=null; } if(W.aurora) W.aurora.force=null;
   a2Bark(e,'defeat',true); W.a2wait=true; objText(); track('a2:boss',e.kind+':win:'+Math.round(G.time-(M.t0||G.time)));
   const irga=compS().active==='irga'&&G.allies.some(a=>a.id==='irga');

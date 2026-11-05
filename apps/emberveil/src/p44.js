@@ -47,7 +47,7 @@ function a8BubbleTick(dt){ const P=G.P; if(!W.a8bub){ const m=new THREE.Mesh(new
   if(v<=0){ U.uC.value.setHex(Math.sin(G.time*10)>0?0xff6a5a:0xffc0b0); U.uA.value=.8; } else if(v<30){ U.uC.value.setHex(0xffd8b0); U.uA.value=.62; } else { U.uC.value.setHex(0xbff8ff); U.uA.value=.5; } }
 // ---------- туман: в глубоком зале синее и ближе (плавно) ----------
 function a8FogTick(dt){ const P=G.P; if(!W.a8fog0) W.a8fog0={c:scene.fog.color.clone(),n:scene.fog.near,f:scene.fog.far,dc:deepFog(A8.deepFog.fog)};
-  const F0=W.a8fog0; const tgt=a8Deep(P.x,P.z)?1:0; W.a8fk=(W.a8fk||0)+(tgt-(W.a8fk||0))*(1-Math.exp(-dt*1.2)); const k=W.a8fk;
+  const F0=W.a8fog0; const dp=a8Deep(P.x,P.z); const tgt=dp?(dp.pit?.4:1):0; W.a8fk=(W.a8fk||0)+(tgt-(W.a8fk||0))*(1-Math.exp(-dt*1.2)); const k=W.a8fk;
   scene.fog.color.copy(F0.c).lerp(F0.dc,k); scene.fog.near=lerp(F0.n,A8.deepFog.fogN,k); scene.fog.far=lerp(F0.f,A8.deepFog.fogF,k); R.setClearColor(scene.fog.color,1); }
 
 // ---------- воздушные колокола и пузырьковые жерла ----------
@@ -109,7 +109,7 @@ function a8ChandBoss(e){ /* p45 перехватывает: люстра Кам�
 
 // ---------- медузьи поля: маленькие медузы-ловушки; касание — разряд 6% и «Наэлектризованный»; лопаются от удара ----------
 function a8Field(x,z){ const ob=mkObj('a8_field',x,z,{ry:0}); ob.a8='field'; ob.r=1.4; ob.hitme=1; ob.hp=1e9; const g=ob.mesh; ob.js=[];
-  for(let i=0;i<6;i++){ const a=i/6*TAU+rand(-.3,.3), r=i?rand(.5,1.2):0; const m=pmesh(cgeo('a8_minijelly',b=>{ b.sph(.22,0x8af8ff,{s:[1,.75,1],e:.7,t1:PI*.55}); for(let k=0;k<4;k++) b.cyl(.015,.01,.35,0xbff8ff,{p:[Math.cos(k*1.57)*.1,-.15,Math.sin(k*1.57)*.1],e:.5,ol:0,seg:3}); },0),g,Math.cos(a)*r,rand(.5,1.2),Math.sin(a)*r); m.material=a8JellyMat(); ob.js.push({m,y0:m.position.y,ph:rand(TAU)}); }
+  for(let h=0;h<2;h++){ const m=pmesh(cgeo('a8_jfield'+h,b=>{ for(let i=0;i<3;i++){ const a=(i*2+h)/6*TAU+.2, r=(i+h)?.55+((i*3+h)%4)*.2:0, y=.6+((i+h*2)%3)*.25, x=Math.cos(a)*r, z=Math.sin(a)*r; b.sph(.22,0x8af8ff,{p:[x,y,z],s:[1,.75,1],e:.7,t1:PI*.55}); for(let k=0;k<4;k++) b.cyl(.015,.01,.35,0xbff8ff,{p:[x+Math.cos(k*1.57)*.1,y-.15,z+Math.sin(k*1.57)*.1],e:.5,ol:0,seg:3}); } },0),g,0,0,0); m.material=a8JellyMat(); ob.js.push({m,y0:0,ph:h*2.2}); }
   ob.zapT=0; return ob; }
 function a8FieldTick(dt){ const P=G.P; for(const o of W.objs){ if(!o.alive||o.a8!=='field') continue; for(const j of o.js){ j.m.position.y=j.y0+Math.sin(G.time*1.6+j.ph)*.15; }
     o.zapT-=dt; if(o.zapT<=0&&!P.dead&&Math.hypot(P.x-o.x,P.z-o.z)<o.r+P.r*.5){ o.zapT=1.2; hurtPlayer(P.maxHp*A8.field.dmg,{true:1,el:'light',kb:2,dir:Math.atan2(P.x-o.x,P.z-o.z)}); P.elecT=4; fx('light',P.x,1,P.z,{k:10}); AU.sfx('bolt',.5);
@@ -227,7 +227,7 @@ killEnemy=function(e,o){ const was=e.alive; _killEnemyA8(e,o); if(!was||!W) retu
 // процедурная медуза (полностью): купол с френелем + 6 щупалец
 ENEMY_MODELS.jelly=()=>{ const r=mkRig({hip:0,type:'jelly',h:1.6,r:.55}); r.torso=piv(r.body,0,0,0);
   const dome=pmesh(cgeo('a8_jdome',b=>{ b.sph(.55,0x6af0e0,{s:[1,.8,1],t1:PI*.58,ws:14,hs:8,e:.55}); b.sph(.34,0xd8fff8,{p:[0,.06,0],s:[1,.7,1],t1:PI*.5,e:.9,ol:0}); b.tor(.5,.04,0xbff8ff,{p:[0,.02,0],r:[PI/2,0,0],e:.8,ol:0,ts:16}); },.03),r.torso); dome.material=a8JellyMat();
-  r.tent=[]; for(let i=0;i<6;i++){ const a=i/6*TAU; const t=piv(r.torso,Math.cos(a)*.32,0,Math.sin(a)*.32); for(let k=0;k<5;k++){ const s=pmesh(cgeo('a8_jt',b=>{ b.sph(.06,0x9af8ff,{e:.7,ol:0,ws:6,hs:4}); },0),t,0,-.16*k-.1,0); s.material=a8JellyMat(); } r.tent.push(t); }
+  r.tent=[]; for(let i=0;i<2;i++){ const t=piv(r.torso,0,0,0); const m=pmesh(cgeo('a8_jt'+i,b=>{ for(let j=0;j<3;j++){ const a=(j*2+i)/6*TAU; for(let k=0;k<5;k++) b.sph(.06-k*.006,0x9af8ff,{p:[Math.cos(a)*(.32+k*.02),-.16*k-.1,Math.sin(a)*(.32+k*.02)],e:.7,ol:0,ws:6,hs:4}); } },0),t); m.material=a8JellyMat(); r.tent.push(t); }
   r.root.userData.noShadow=0; return r; };
 const _animEnemyA8=animEnemy;
 animEnemy=function(e,dt){ if(e.kind==='jelly'&&!e.rig.actor){ const R=e.rig; R.root.position.set(e.x,e.y||1.5,e.z); R.root.rotation.y=e.face; if(!e.alive){ e.deadT=(e.deadT||0)+dt; R.root.scale.setScalar(Math.max(.01,1-e.deadT*1.2)); R.root.position.y=(e.y||1.5)+e.deadT; return; }
@@ -304,7 +304,8 @@ enterVillage=function(after){ const r=_enterVillageA8(after); try{ a8VillageScri
 NPC_LINES.scribe=NPC_LINES2.scribe;
 function a8VillageScribe(){ if(!W||W.kind!=='village'||!a2On()||STS().ch.ink!=='father'||!stageDone('8-5')) return; if(W.npcs.some(n=>n.kind==='scribe')) return;
   const C=[[-6.5,-9.5],[6.5,-9.5],[-8,4.5],[8,-3.5],[-5,11]]; let x=null,z=null; for(const [cx,cz] of C){ if(walkable(cx,cz,.6)&&!W.obst.some(o=>!o.dead&&Math.hypot(o.x-cx,o.z-cz)<(o.r||.5)+1.8)){ x=cx; z=cz; break; } } if(x===null) return;
-  let rig=null; try{ if(asCan('scribe')) rig=asRig('scribe',{h:2.0,r:.45}); }catch(e){} if(!rig) rig=buildNPC('elder');
+  if(!asCan('scribe')&&asOn()&&!W._scribeWait){ W._scribeWait=1; const w0=W; asLoad('lorekeeper').then(()=>{ if(W===w0&&W.kind==='village') a8VillageScribe(); }); return; }
+  let rig=null; try{ if(asCan('scribe')) rig=asRig('scribe',{h:2.0,r:.45}); }catch(e){} if(!rig){ rig=buildNPC('stranger'); try{ rig.root.traverse(o=>{ if(o.isMesh) o.material=MTsiren; }); }catch(e){} }
   rig.root.position.set(x,0,z); worldRoot.add(rig.root); try{ if(rig.actor){ rig.actor.play('idle'); rig.actor.setGlow('#9ad8ff',.2); } }catch(e){}
   W.npcs.push({kind:'scribe',x,z,rig,face:0,t:0,r:.5}); W.obst.push({x,z,r:.5});
   const g=new THREE.Group(); g.position.set(x+1.1,0,z+.2); worldRoot.add(g); pmesh(cgeo('a8_lectern',b=>{ b.cyl(.08,.12,1.0,0x5a3a22,{p:[0,.5,0],seg:6}); b.box(.6,.06,.45,0x6a4a2a,{p:[0,1.05,0],r:[-.4,0,0]}); b.box(.54,.03,.38,0xf0e6c8,{p:[0,1.09,.02],r:[-.4,0,0],ol:0}); b.box(.4,.06,.4,0x4a3020,{p:[0,.03,0]}); },.03),g).material=MTP; W.obst.push({x:x+1.1,z:z+.2,r:.35});
