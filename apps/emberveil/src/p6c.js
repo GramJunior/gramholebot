@@ -8,7 +8,9 @@ function navGrid(o={}){
       if(d>-rad) g[j*nx+i]=1; } }
   const stamp=(x,z,r)=>{ const i0=Math.max(0,Math.floor((x-r-b.minX)/c)),i1=Math.min(nx-1,Math.floor((x+r-b.minX)/c)),j0=Math.max(0,Math.floor((z-r-b.minZ)/c)),j1=Math.min(nz-1,Math.floor((z+r-b.minZ)/c));
     for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ const cx=b.minX+(i+.5)*c, cz=b.minZ+(j+.5)*c; if(Math.hypot(cx-x,cz-z)<r) g[j*nx+i]=1; } };
-  for(const ob of W.obst){ if(ob.dead) continue; if(o.ignore&&o.ignore(ob)) continue; stamp(ob.x,ob.z,ob.r+rad); }
+  const stampB=(ob,r)=>{ const R=ob.r+r; const i0=Math.max(0,Math.floor((ob.x-R-b.minX)/c)),i1=Math.min(nx-1,Math.floor((ob.x+R-b.minX)/c)),j0=Math.max(0,Math.floor((ob.z-R-b.minZ)/c)),j1=Math.min(nz-1,Math.floor((ob.z+R-b.minZ)/c));
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ if(obDist(ob,b.minX+(i+.5)*c,b.minZ+(j+.5)*c)<r) g[j*nx+i]=1; } };
+  for(const ob of W.obst){ if(ob.dead) continue; if(o.ignore&&o.ignore(ob)) continue; if(ob.objc&&ob.objc.brk) continue; /* бочки, ящики, горшки разбиваются — путь им не перекрыть */ if(ob.hx) stampB(ob,rad); else stamp(ob.x,ob.z,ob.r+rad); }
   if(o.hazBlock) for(const p of W.pools){ if(p.bridged||p.kind==='wet') continue; stamp(p.x,p.z,p.r+rad*.5); }
   if(o.extra) for(const e of o.extra) stamp(e.x,e.z,e.r+rad);
   return {g,nx,nz,c,b,rad};
@@ -51,11 +53,11 @@ function validateWorld(opt={}){
   // 1. blockers must not overlap (trees/rocks/pillars/buildings); same building / raid socket parts are one thing
   const blk=live.filter(o=>!o.water&&!o.raid);
   for(let i=0;i<blk.length;i++) for(let j=i+1;j<blk.length;j++){ const a=blk[i], b=blk[j]; if(a.grp&&a.grp===b.grp) continue; if(a.rs&&a.rs===b.rs) continue;
-    const d=Math.hypot(a.x-b.x,a.z-b.z); if(d<a.r+b.r-.06) add('overlap',`коллайдеры пересекаются (${a.prop||a.grp||'obst'} / ${b.prop||b.grp||'obst'}) на ${(a.r+b.r-d).toFixed(2)} м`,a.x,a.z); }
+    if(a.objc||b.objc) continue; if(Math.abs(a.x-b.x)>a.r+b.r||Math.abs(a.z-b.z)>a.r+b.r) continue; const ov=obOverlap(a,b); if(ov>.06) add('overlap',`коллайдеры пересекаются (${a.prop||a.grp||'obst'} / ${b.prop||b.grp||'obst'}) на ${ov.toFixed(2)} м`,a.x,a.z); }
   // 2. objects: not inside colliders, not inside each other, not in water, inside the walkable space
   for(const o of solidObjs){ const r=Math.max(.35,Math.min(o.r||.5,1.1)*.8);
-    for(const b of blk){ if(b===o.col||b===W.obstCage&&o.kind==='cage'||b.keg) continue; if(o.kind==='stone'&&Math.hypot(b.x-o.x,b.z-o.z)<.01) continue; if(o.kind==='cartE'&&b===o.col) continue; if(o.kind==='lever'&&Math.hypot(b.x-o.x,b.z-o.z)<.01) continue;
-      const d=Math.hypot(o.x-b.x,o.z-b.z); if(d<r+b.r-.05) add('objInCollider',`${o.kind} внутри коллайдера ${b.prop||'obst'}`,o.x,o.z); }
+    for(const b of blk){ if(b.objc||b===o.col||b===W.obstCage&&o.kind==='cage'||b.keg) continue; if(o.kind==='stone'&&Math.hypot(b.x-o.x,b.z-o.z)<.01) continue; if(o.kind==='cartE'&&b===o.col) continue; if(o.kind==='lever'&&Math.hypot(b.x-o.x,b.z-o.z)<.01) continue;
+      if(obDist(b,o.x,o.z)<r-.05) add('objInCollider',`${o.kind} внутри коллайдера ${b.prop||'obst'}`,o.x,o.z); }
     if(inPool(o.x,o.z,r*.7)) add('objInWater',`${o.kind} стоит в воде/лаве`,o.x,o.z);
     const sd=o.kind==='scroll'||o.kind==='egg'||o.kind==='vault'||o.kind==='chest'?sdfW(o.x,o.z):sdfOpen(o.x,o.z); if(sd>-.2) add('objOutside',`${o.kind} вне проходимой зоны`,o.x,o.z); }
   for(let i=0;i<solidObjs.length;i++) for(let j=i+1;j<solidObjs.length;j++){ const a=solidObjs[i], b=solidObjs[j]; const d=Math.hypot(a.x-b.x,a.z-b.z); if(d<.75) add('objOverlap',`${a.kind} в ${b.kind}`,a.x,a.z); }
@@ -116,14 +118,14 @@ function validateWorld(opt={}){
   // 9. мелочь v9 (трава, камешки, листья…, p6t): не на осевой тропы (кроме плоских камней-ступеней), не в воде (кроме камыша/кувшинок),
   //    не внутри коллайдеров пропсов/объектов (кроме корней у ствола), кувшинки — только на воде
   if(W.clutter){ const pwC=(W.ter&&W.ter.pathW||W.pathW||1.8)*.5; let nc=0; const cnt={}; const lim={}; const addC=(rule,msg,x,z)=>{ lim[rule]=(lim[rule]||0)+1; if(lim[rule]<=15) add(rule,msg,x,z); else V.push({rule,msg}); };
-    const bl2=[]; for(const o of live){ if(!o.water) bl2.push({x:o.x,z:o.z,r:o.r,n:o.prop||o.grp||'obst'}); } for(const p of P){ const f=pfoot(p.type,p.s); if(f.k==='b'&&f.c>0) bl2.push({x:p.x,z:p.z,r:f.c,n:p.type}); } for(const o of solidObjs) bl2.push({x:o.x,z:o.z,r:Math.max(.35,(o.r||.5)*.8),n:o.kind});
+    const bl2=[]; for(const o of live){ if(!o.water&&!o.objc) bl2.push({x:o.x,z:o.z,r:o.r,n:o.prop||o.grp||'obst',o:o.hx?o:null}); } for(const p of P){ const f=pfoot(p.type,p.s); if(f.k==='b'&&f.c>0) bl2.push({x:p.x,z:p.z,r:f.c,n:p.type}); } for(const o of solidObjs) bl2.push({x:o.x,z:o.z,r:Math.max(.35,(o.r||.5)*.8),n:o.kind});
     const g2=new Map(); for(const e of bl2){ const k=Math.floor(e.x/4)+','+Math.floor(e.z/4); (g2.get(k)||g2.set(k,[]).get(k)).push(e); }
     const near2=(x,z)=>{ const out=[]; const i=Math.floor(x/4), j=Math.floor(z/4); for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const q=g2.get(a+','+b); if(q) for(const e of q) out.push(e); } return out; };
     for(const t in W.clutter){ const L=W.clutter[t], M=L.M; cnt[t]=L.n; nc+=L.n;
       for(let i=0;i<L.n;i++){ const x=M[i*16+12], z=M[i*16+14];
         if(t!=='flag'&&W.paths&&W.paths.length&&pathCenterDist(x,z)<pwC) addC('clutterOnPath',`${t} на осевой тропы`,x,z);
         const pp=inPool(x,z,-.1); if(t==='lily'){ if(!pp) addC('clutterLily','кувшинка не на воде',x,z); } else if(t!=='reeds'&&pp) addC('clutterInWater',`${t} в воде (${pp.kind})`,x,z);
-        if(t!=='roots'&&t!=='lily'){ for(const e of near2(x,z)) if(Math.hypot(x-e.x,z-e.z)<e.r-.05){ addC('clutterInProp',`${t} внутри ${e.n}`,x,z); break; } } } }
+        if(t!=='roots'&&t!=='lily'){ for(const e of near2(x,z)) if(e.o?obDist(e.o,x,z)<-.05:Math.hypot(x-e.x,z-e.z)<e.r-.05){ addC('clutterInProp',`${t} внутри ${e.n}`,x,z); break; } } } }
     stats.clutter=nc; }
   if(W.puzzle) stats.puzzle=W.puzzle.type; stats.props=P.length; stats.obst=live.length; stats.objs=W.objs.length; stats.pools=pools.length; stats.areas=(W.areas||[]).length; stats.nooks=(W.nooks||[]).length; stats.seedTry=W.seedTry;
   if(W.route){ let L=0; for(let i=0;i<W.route.length-1;i++) L+=Math.hypot(W.route[i+1].x-W.route[i].x,W.route[i+1].z-W.route[i].z); stats.routeLen=Math.round(L); }

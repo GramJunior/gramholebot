@@ -280,11 +280,11 @@ function chestWorldBuild(ob,kind,o,g){ const tier=chestWorldTier(kind,o); const 
 // Каноническая поза (как раньше): клинок/древко вдоль +y, рукоять у начала координат, плоскость клинка — xy.
 // =====================================================================================================
 const WR=[
-  {m:0x8c9298,mD:0x5c6268,tr:0x7a6448,gr:0x5a3a22,wr:0x4a3020,gem:0,glow:0},
-  {m:0xc4ced6,mD:0x707c86,tr:0xc0924a,gr:0x6a4426,wr:0x3a2414,gem:0x4a9ae8,glow:0},
-  {m:0xa8b0e8,mD:0x585a90,tr:0xd8dae8,gr:0x3a2a58,wr:0x241838,gem:0xb06cf0,glow:.5},
-  {m:0x5a5a68,mD:0x2e2e3a,tr:0xe8b040,gr:0x6a1a1a,wr:0x3a0c0c,gem:0xffa030,glow:1},
-  {m:0x3e2630,mD:0x1c1016,tr:0xff6a3a,gr:0x1c1016,wr:0x0e080a,gem:0xff4a30,glow:1}
+  {m:0x8a8c88,mD:0x585a58,tr:0x6e5a40,gr:0x5a3c24,wr:0x46301e,gem:0,glow:0},
+  {m:0xb4bcc0,mD:0x666e74,tr:0xa8824a,gr:0x5e3e24,wr:0x3a2616,gem:0x4a9ae8,glow:0},
+  {m:0x9aa4c0,mD:0x4e5470,tr:0xc8ccd6,gr:0x3a3048,wr:0x262030,gem:0xb06cf0,glow:.5},
+  {m:0x5c5e66,mD:0x2e3036,tr:0xd2a040,gr:0x5a1c1a,wr:0x340e0c,gem:0xffa030,glow:1},
+  {m:0x463a40,mD:0x1e1618,tr:0xe0603a,gr:0x22161a,wr:0x120a0c,gem:0xff4a30,glow:1}
 ];
 function wpal(rar,el){ const P=Object.assign({},WR[clamp(rar|0,0,4)]); if(el&&rar>=1){ P.gem=ELCOL[el]; if(rar>=3) P.rune=ELCOL[el]; } if(rar>=3&&!P.rune) P.rune=rar===4?0xff7a3a:0xffb040; if(rar===4) P.edge=el?ELCOL[el]:0xff6a2a; else if(el&&rar>=2) P.edge=ELCOL[el]; return P; }
 // рукоять: обмотка (ремни-кольца), гарда, навершие
@@ -310,7 +310,7 @@ function wGuard(b,P,rar,w,o={}){ // крестовина
   for(const s of [1,-1]){ if(rar===2){ b.tor(.07,.018,P.tr,{p:[s*w*.3,.08,0],r:[0,0,s>0?-PI*.15:PI*1.15],arc:PI*1.1,ts:10,rs:5}); b.sph(.026,P.tr,{p:[s*w*.48,.12,0]}); }
     else { b.zprof([[0,0],[w*.55,.12],[w*.62,.2],[w*.5,.12],[0,.06]].map(p=>[s*p[0],p[1]]),.05,P.tr,{bev:.008}); b.gem(.02,P.gem,{p:[s*w*.42,.11,.03],r:[PI/2,0,0],e:1,ol:0}); if(rar===4) b.cone(.025,.14,P.tr,{p:[s*w*.62,.24,0],r:[0,0,-s*.5],seg:5}); } } }
 function wSword(b,vis,rar,P,uq){
-  const H={sw0:[[.05,0],[.05,.55],[0,.66]], sw1:[[.05,0],[.075,.28],[.07,.48],[0,.7]], sw2:[[.09,0],[.095,.66],[.06,.84],[0,.9]], sw3:[[.065,0],[.055,.22],[.085,.28],[.06,.34],[.058,.74],[.075,.86],[0,1.06]]}[vis]||[[.06,0],[.055,.6],[0,.78]];
+  const H={sw0:[[.05,0],[.05,.55],[0,.66]], sw1:[[.05,0],[.075,.28],[.07,.48],[0,.7]], sw2:[[.09,0],[.095,.66],[.06,.84],[0,.9]], sw3:[[.065,0],[.055,.2],[.085,.25],[.06,.31],[.058,.66],[.075,.77],[0,.95]]}[vis]||[[.06,0],[.055,.6],[0,.78]];
   let half=H.map(p=>[p[0],p[1]+.06]);
   if(rar>=3&&vis!=='sw0'){ // свой силуэт: шире, с зазубринами-«крыльями» у основания
     half=[[half[0][0],.06],[half[0][0]+.035,.15],[half[0][0]*.95,.22]].concat(half.slice(1).map(p=>[p[0]*1.12,p[1]*1.05])); }
@@ -376,7 +376,7 @@ function wStaff(b,vis,rar,P,uq){
     b.oct(.14+rar*.025,oc,{p:[0,top+.26,0],s:[1,1.6,1],e:1}); if(rar>=3) for(let i=0;i<3;i++){ const a=i/3*TAU; b.oct(.04,oc,{p:[Math.cos(a)*.2,top+.2+Math.sin(i)*.05,Math.sin(a)*.2],s:[.7,1.4,.7],e:1,ol:0}); } }
   else { // череп
     b.sph(.18,COL.bone,{p:[0,top+.06,0],s:[1,1.1,1.05]}); b.sph(.05,0x1a1010,{p:[-.065,top+.07,.15],ol:0}); b.sph(.05,0x1a1010,{p:[.065,top+.07,.15],ol:0}); b.sph(.03,oc,{p:[-.065,top+.07,.18],e:1,ol:0}); b.sph(.03,oc,{p:[.065,top+.07,.18],e:1,ol:0}); b.rbox(.16,.08,.13,COL.bone,{p:[0,top-.09,.06],bev:.02}); for(let i=-2;i<=2;i++) b.box(.02,.03,.01,0x3a3020,{p:[i*.03,top-.07,.13],ol:0});
-    if(rar>=1) for(const s of [1,-1]) b.cone(.05,.32,COL.boneD,{p:[s*.18,top+.22,-.02],r:[0,0,-s*.7],seg:6}); b.cone(.08+rar*.014,.26+rar*.05,oc,{p:[0,top+.38,0],e:1,ol:0}); }
+    if(rar>=1) for(const s of [1,-1]) b.cone(.05,.32,COL.boneD,{p:[s*.18,top+.22,-.02],r:[0,0,-s*.7],seg:6}); b.oct(.06+rar*.012,oc,{p:[0,top+.36,0],s:[.75,1.9,.75],e:1,ol:0}); }
   if(rar>=4||uq==='burst'){ b.tor(.3,.014,P.rune||oc,{p:[0,top+.24,0],r:[PI/2.4,0,0],ts:24,e:1,ol:0}); for(let i=0;i<5;i++){ const a=i/5*TAU; b.box(.035,.06,.01,P.rune||oc,{p:[Math.cos(a)*.3,top+.24+Math.sin(a)*.12,Math.sin(a)*.3*.4],e:1,ol:0}); } }
 }
 function wOff(b,vis,rar,P,el){
@@ -387,7 +387,7 @@ function wOff(b,vis,rar,P,el){
     if(rar>=2){ b.gem(.06,P.gem,{p:[0,0,.08],r:[PI/2,0,0],e:.9}); for(let i=0;i<4;i++){ const a=i/4*TAU+PI/4; b.rbox(.05,.2,.02,trim,{p:[Math.cos(a)*.2,Math.sin(a)*.2,.035],r:[0,0,a+PI/2],bev:.006}); } }
     if(P.rune) for(let i=0;i<6;i++){ const a=i/6*TAU; b.box(.016,.06,.006,P.rune,{p:[Math.cos(a)*.24,Math.sin(a)*.24,.036],r:[0,0,a],e:1,ol:0}); }
     return; }
-  if(vis==='sh2'){ const kite=[[0,.46],[.33,.34],[.31,-.08],[0,-.52],[-.31,-.08],[-.33,.34]]; const fc=rar===0?0x9aa2a8:rar===1?0xc8d0d8:rar===2?0x5a5aa0:rar===3?0x6a1a1a:0x2a1622;
+  if(vis==='sh2'){ const kite=[[0,.46],[.33,.34],[.31,-.08],[0,-.52],[-.31,-.08],[-.33,.34]]; const fc=rar===0?0x7a6044:rar===1?0x3e5a78:rar===2?0x4a4a78:rar===3?0x6a1e1c:0x2a1a20;
     b.zprof(kite.map(p=>[p[0]*1.06,p[1]*1.06]),.05,trim,{bev:.01}); b.zprof(kite,.07,fc,{bev:.012});
     const em=rar>=3?P.tr:rar>=1?0xf0e0c0:0xb8b0a0; b.box(.07,.6,.01,em,{p:[0,0,.045],ol:0}); b.box(.42,.07,.01,em,{p:[0,.12,.045],ol:0});
     if(rar>=2) b.gem(.05,P.gem,{p:[0,.12,.07],r:[PI/2,0,0],e:.9}); if(rar>=3){ for(const s of [1,-1]) b.cone(.04,.14,P.tr,{p:[s*.36,.38,0],r:[0,0,-s*.9],seg:5}); }
@@ -415,14 +415,14 @@ function wOff(b,vis,rar,P,el){
 // новая wpnGeo (та же сигнатура + уникальное свойство): общий кэш, 1 сетка с контуром
 wpnGeo=function(vis,rar,el,uq){ rar=clamp(rar|0,0,4); el=el||''; uq=uq||'';
   return cgeo('w2_'+vis+'_'+rar+'_'+el+'_'+uq,b=>{ const P=wpal(rar,el);
-    if(/^sw/.test(vis)) wSword(b,vis,rar,P,uq); else if(/^ax/.test(vis)) wAxe(b,vis,rar,P,uq); else if(/^bw/.test(vis)) wBow(b,vis,rar,P,uq); else if(/^st/.test(vis)) wStaff(b,vis,rar,P,uq); else wOff(b,vis,rar,P,el); },.022); };
+    if(/^sw/.test(vis)) wSword(b,vis,rar,P,uq); else if(/^ax/.test(vis)) wAxe(b,vis,rar,P,uq); else if(/^bw/.test(vis)) wBow(b,vis,rar,P,uq); else if(/^st/.test(vis)) wStaff(b,vis,rar,P,uq); else wOff(b,vis,rar,P,el); },.012); };
 
 // ---------- оружие на герое (модели KayKit заменяются процедурными той же формы — видна редкость и стихия) ----------
 // посадка в «ладонь» кости handslot KayKit: масштаб/сдвиг/поворот под размеры оружия KayKit (меч ≈1,8, лук — вдоль x)
-const WFIT={sword:{s:1.45,y:0,r:[0,0,0]},axe:{s:1.3,y:0,r:[0,0,0]},hammer:{s:1.12,y:0,r:[0,0,0]},staff:{s:1.08,y:-.3,r:[0,0,0]},bow:{s:1.3,y:0,r:[PI/2,0,-PI/2]},
+const WFIT={sword:{s:1.28,y:0,r:[0,0,0]},axe:{s:1.3,y:0,r:[0,0,0]},hammer:{s:1.12,y:0,r:[0,0,0]},staff:{s:1.08,y:-.3,r:[0,0,0]},bow:{s:1.3,y:0,r:[PI/2,0,-PI/2]},
   shield:{s:1.1,y:0,r:[0,0,0]},tome:{s:1.05,y:0,r:[0,0,0]},orb:{s:.95,y:.15,r:[0,0,0]}};
 const _wDummyOl=new THREE.Object3D();
-function wMeshFit(geo,fit){ const m=new THREE.Mesh(geo,MT); m.scale.setScalar(fit.s); m.rotation.set(...fit.r); m.position.y=fit.y; const g=new THREE.Group(); g.add(m); m.userData.evOutline=_wDummyOl; // контур уже запечён в сетке
+function wMeshFit(geo,fit){ const m=new THREE.Mesh(geo,MTW); m.scale.setScalar(fit.s); m.rotation.set(...fit.r); m.position.y=fit.y; const g=new THREE.Group(); g.add(m); m.userData.evOutline=_wDummyOl; // контур уже запечён в сетке
   if(!geo.boundingBox) geo.computeBoundingBox(); g.updateMatrixWorld(true); g.userData.evBox=new THREE.Box3().setFromObject(m); g.userData.wProc=1; return g; }
 function heroProcWeapons(rig,gear){ const a=rig.actor; if(!a||S.set.models==='simple') return; const V=heroVis(gear);
   try{ const wp=V.wp==='sw0'?'sw1':V.wp, cls=V.cls, fit=WFIT[wp==='ax2'?'hammer':cls]||WFIT.sword; const geo=wpnGeo(wp,V.wp==='sw0'?0:V.wpr,V.wpe,V.wpu);
@@ -437,7 +437,7 @@ const _dressHeroV13=dressHero; dressHero=function(rig,gear){ _dressHeroV13(rig,g
 // =====================================================================================================
 const ASET={warden:{m:0xb8c8d8,c:0x2a5a9a,t:0xe8e8f0,g:0x6ab8ff},ash:{m:0x3a3434,c:0x5a2010,t:0xff7a2a,g:0xff6a1a},owl:{m:0x5a6a4a,c:0x2e3a26,t:0xd8c8a0,g:0x9be37a},king:{m:0xe0b040,c:0x4a1a6a,t:0xffe08a,g:0xc47cff}};
 const AUQ={ashskin:0xff6a1a,glacier:0x8ae8ff,phoenix:0xff9a3a,catalyst:0xc47cff};
-function apal(rar,set,uq){ const W0=WR[clamp(rar|0,0,4)]; const P={m:[0x8a9298,0xbcc6ce,0x9aa2e0,0x5e5e6c,0x3a2630][rar],mD:W0.mD,cl:[0x8a6a44,0x7a2a24,0x3a2a6a,0x5a1018,0x1c1016][rar],cl2:[0x6a5032,0x5a1a18,0x2a1a50,0x3a0a10,0x120a0e][rar],lt:[0x6a4426,0x6a4426,0x4a2a3a,0x3a1a1a,0x1c1016][rar],tr:W0.tr,gem:W0.gem||0xb8a888,rune:rar>=3?(rar===4?0xff7a3a:0xffb040):0};
+function apal(rar,set,uq){ const W0=WR[clamp(rar|0,0,4)]; const P={m:[0x8a8c88,0xb4bcc0,0x9aa4c0,0x5c5e66,0x463a40][rar],mD:W0.mD,cl:[0x8a6a44,0x7a2a24,0x3a2a6a,0x5a1018,0x1c1016][rar],cl2:[0x6a5032,0x5a1a18,0x2a1a50,0x3a0a10,0x120a0e][rar],lt:[0x6a4426,0x6a4426,0x4a2a3a,0x3a1a1a,0x1c1016][rar],tr:W0.tr,gem:W0.gem||0xb8a888,rune:rar>=3?(rar===4?0xff7a3a:0xffb040):0};
   if(set&&ASET[set]){ const A=ASET[set]; P.m=A.m; P.cl=A.c; P.cl2=_dk(A.c,.3); P.tr=A.t; P.gem=A.g; P.rune=A.g; P.set=set; }
   if(uq&&AUQ[uq]){ P.gem=AUQ[uq]; P.rune=AUQ[uq]; P.uq=uq; }
   return P; }
@@ -507,12 +507,12 @@ function aRing(b,rar,P){ const gc=rar>=3||P.set?0xe0b040:rar>=1?0xd0d0dc:0xa08a6
   b.cyl(.075,.05,.08,gc,{p:[0,.24,0],seg:8}); for(let i=0;i<(rar>=2?6:4);i++){ const a=i/(rar>=2?6:4)*TAU; b.cone(.014,.06,_lt(gc,.2),{p:[Math.cos(a)*.06,.3,Math.sin(a)*.06],seg:4,ol:0}); }
   b.gem(.06+rar*.008,P.gem,{p:[0,.32,0],e:.9}); if(rar>=3) for(const s of [1,-1]) b.gem(.03,P.gem,{p:[s*.12,.2,0],r:[0,0,-s*.8],e:.9}); }
 function armorGeo2(slot,vis,rar,set,uq){ rar=clamp(rar|0,0,4); return cgeo('a2_'+slot+'_'+vis+'_'+rar+'_'+(set||'')+'_'+(uq||''),b=>{ const P=apal(rar,set,uq);
-  if(slot==='helm') aHelm(b,vis,rar,P); else if(slot==='chest') aChest(b,vis,rar,P); else if(slot==='gloves') aGlove(b,vis,rar,P); else if(slot==='boots') aBoot(b,vis,rar,P); else if(slot==='amulet') aAmulet(b,rar,P); else aRing(b,rar,P); },.022); }
+  if(slot==='helm') aHelm(b,vis,rar,P); else if(slot==='chest') aChest(b,vis,rar,P); else if(slot==='gloves') aGlove(b,vis,rar,P); else if(slot==='boots') aBoot(b,vis,rar,P); else if(slot==='amulet') aAmulet(b,rar,P); else aRing(b,rar,P); },.014); }
 
 // ---------- модель предмета (иконки, карточки, добыча на земле) ----------
 function itemGeo(it){ const B=ITEM_BASES[it.base]; if(!B) return null; if(B.slot==='weapon'||B.slot==='offhand') return wpnGeo(B.vis,it.rar,it.el||'',B.slot==='weapon'?it.uniq||'':'');
   const sl=B.slot==='ring1'||B.slot==='ring2'?'ring':B.slot; return armorGeo2(sl,B.vis,it.rar,it.set,it.uniq); }
-itemIconObj=function(it){ const B=ITEM_BASES[it.base]; const m=new THREE.Mesh(itemGeo(it)||wpnGeo('sw1',0,''),MT); return {m,slot:B.slot,cls:B.cls,vis:B.vis}; };
+itemIconObj=function(it){ const B=ITEM_BASES[it.base]; const m=new THREE.Mesh(itemGeo(it)||wpnGeo('sw1',0,''),MTW); return {m,slot:B.slot,cls:B.cls,vis:B.vis}; };
 const ICON_POSE={weapon:[0,.35,-.78],bow:[0,.3,-.75],shield:[.12,.45,0],quiver:[0,.3,-.5],tome:[.15,.5,.05],orb:[.35,.3,0],helm:[.2,.6,0],chest:[.12,.5,0],gloves:[.1,.5,.2],boots:[.15,-.8,0],amulet:[.2,.3,0],ring:[.55,.35,0]};
 const RGLOW=['#c8b898','#4a9ae8','#b06cf0','#f2a634','#ff4c39'];
 function itemPoseGroup(it){ const B=ITEM_BASES[it.base]; const o=itemIconObj(it); const k=B.slot==='weapon'?(B.cls==='bow'?'bow':'weapon'):B.slot==='offhand'?B.oh:(B.slot==='ring1'||B.slot==='ring2'?'ring':B.slot);
@@ -599,7 +599,7 @@ function dfxInit(){ if(DFX.ring) return;
   for(const m of [DFX.ring,DFX.beam]){ m.frustumCulled=false; m.count=0; m.renderOrder=3; m.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(m.instanceMatrix.count*3),3); } }
 const _dm=new THREE.Matrix4(), _dc=new THREE.Color();
 function dropModel(kind,o){ let m, s=1;
-  if(kind==='item'){ const B=ITEM_BASES[o.item.base]; m=new THREE.Mesh(itemGeo(o.item),MT); const w=B.slot==='weapon'||B.slot==='offhand'; s=w?(B.cls==='staff'?1.0:1.3):(B.slot==='amulet'||/^ring/.test(B.slot)?1.25:1.6); if(w&&B.oh!=='shield'&&B.oh!=='tome') m.rotation.z=-.75; if(B.oh==='shield') m.rotation.x=-.25; }
+  if(kind==='item'){ const B=ITEM_BASES[o.item.base]; m=new THREE.Mesh(itemGeo(o.item),MTW); const w=B.slot==='weapon'||B.slot==='offhand'; s=w?(B.cls==='staff'?1.0:1.3):(B.slot==='amulet'||/^ring/.test(B.slot)?1.25:1.6); if(w&&B.oh!=='shield'&&B.oh!=='tome') m.rotation.z=-.75; if(B.oh==='shield') m.rotation.x=-.25; }
   else { const k=kind==='mat'?o.res:kind==='gem'?'gem':kind==='key'?'iron':kind; const sub=kind==='gem'&&o.gem?o.gem.replace(/\d$/,''):''; m=new THREE.Mesh(supGeo(k,sub),MT); s=kind==='gold'?.75:.95; }
   m.scale.setScalar(s); const g=new THREE.Group(); g.add(m); return g; }
 spawnDrop=function(kind,x,z,o={}){

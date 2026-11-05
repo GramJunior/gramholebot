@@ -316,7 +316,7 @@ function updateEnemy(e,dt){
   if(e.state==='chase'&&d<6&&!(mvx||mvz)) e.face=angTo(e.face,Math.atan2(dx,dz),dt*6);
   constrain(e,e.r*.8);
 }
-function hasLOS(e,t){ const n=6; for(let i=1;i<n;i++){ const x=lerp(e.x,t.x,i/n), z=lerp(e.z,t.z,i/n); for(const o of W.obst){ if(!o.dead&&o.r>.6&&Math.hypot(x-o.x,z-o.z)<o.r&&Math.hypot(t.x-o.x,t.z-o.z)>o.r+.7) return false; } } return true; }
+function hasLOS(e,t){ const n=6; for(let i=1;i<n;i++){ const x=lerp(e.x,t.x,i/n), z=lerp(e.z,t.z,i/n); for(const o of W.obst){ if(!o.dead&&(o.hx?Math.max(o.hx,o.hz)>.6:o.r>.6)&&(o.h===undefined||o.h>1.2)&&Math.abs(x-o.x)<o.r+.1&&Math.abs(z-o.z)<o.r+.1&&obDist(o,x,z)<0&&obDist(o,t.x,t.z)>.7) return false; } } return true; }
 function startWind(e,k,t){
   e.state='wind'; e.st=0; e.wind={k,t}; e.hitDone=false; const P=G.P; const tg=enemyTarget(e);
   const fdir=Math.atan2(tg.x-e.x,tg.z-e.z); e.face=fdir;
@@ -413,6 +413,11 @@ function updateProjs(dt){
         if(!dead&&G.mode==='raid'&&raidProjHit(p)) dead=true;
       }
     }
+    if(!dead&&!p.noClip&&W.obst&&p.t>.04){ // v21: стрелы и снаряды упираются в стены, стволы, здания (проверка вдоль пути за кадр — тонкие столбы не «проскакивают»); бомба взрывается о стену
+      const tst=o=>!o.water&&!o.rs&&!o.raid&&!o.objc&&!o.keg&&o!==(W.cart&&W.cart.col)&&(o.h===undefined?1.8:o.h)>p.y-.15;
+      const sx=p.vx*dt, sz=p.vz*dt, n=Math.min(12,Math.ceil(Math.hypot(sx,sz)/.3)); let ob=null;
+      for(let k=n-1;k>=0&&!ob;k--){ const u=k/n; const hx=p.x-sx*u, hz=p.z-sz*u; ob=obHit(hx,hz,.1,tst); if(ob&&!p.arc){ p.x=hx; p.z=hz; } } // k=n-1 — ближе к началу шага
+      if(ob){ if(p.arc) p.life=0; else { dead=true; p.wall=1; p.m.position.set(p.x,p.y,p.z); fx('dust',p.x,Math.max(.2,p.y-.6),p.z,{k:4}); } } }
     if(p.arc&&p.life<=0){ dead=true; const R=p.team==='p'?3:1.9; fx('boom',p.x,0,p.z,{r:R,col:p.col||0xff8a2a}); sfxAt('boom',p.x,p.z,.6);
       if(p.team==='p'){ aoeDamage(p.x,p.z,R,0,{}); for(const e of G.enemies) if(e.alive&&Math.hypot(e.x-p.x,e.z-p.z)<R+e.r) dmgEnemy(e,p.dmg,{kb:5,dir:Math.atan2(e.x-p.x,e.z-p.z),stun:1,src:G.P,heavy:1}); if(p.kind==='bombT') igniteAt(p.x,p.z,1.2,p.dmg*.1); shake(.35); }
       else { if(Math.hypot(P.x-p.x,P.z-p.z)<R+P.r) hurtPlayer(p.dmg,{src:p.src,lvl:p.lvl,el:p.el,kb:4,dir:Math.atan2(P.x-p.x,P.z-p.z)}); splashAllies(p.x,p.z,R,p.dmg,p.src); if(p.el==='poison') addHazard(p.x,p.z,1.5,'poison',3.5,p.dmg*.25,p.lvl); if(p.el==='fire') addHazard(p.x,p.z,1.4,'fire',3,p.dmg*.25,p.lvl); if(p.hz) addHazard(p.x,p.z,p.hz.r,p.hz.t,p.hz.life,p.dmg*.3,p.lvl); }

@@ -176,6 +176,20 @@ const PAINT_FS=`
     c*=mix(1.0,mix(0.7,1.12,smoothstep(0.5,3.4,hP)),leaf);
     c=mix(c,uLeafTint*(0.55+0.5*bP.b),stone*smoothstep(0.62,0.92,nW.y)*smoothstep(0.35,0.75,bP.b)*uPaint.y*2.2); // мох на верхних гранях камня (как на скальном слое земли)
     c*=mix(mix(0.5,0.9,smoothstep(0.55,0.95,nW.y)),1.0,smoothstep(-0.05,0.8,hP)); // AO у земли — на боковых гранях (настил моста, плиты и верх камней не темнеют)
+    // v21: выветривание — земляной «забрызг» у основания боковых граней и потёки дождя на камне/штукатурке (здания, стены, руины, шатры)
+    float sideF=1.0-smoothstep(0.55,0.95,abs(nW.y));
+    c=mix(c,c*vec3(0.84,0.72,0.56),(1.0-smoothstep(0.04,0.85,hP))*sideF*0.5);
+    c*=mix(1.0,0.86+0.24*texture2D(tBrush,vec2(dot(rel.xz,tg)*0.85+iv,rel.y*0.07)).g,stone*sideF*smoothstep(0.6,1.6,hP)*0.85);
+    // черепица/дранка: на скатах крыш (тёплый насыщенный цвет, наклонная грань, выше 1,8 м) — ряды с тёмным нижним краем, вразбежку, тон на плитку
+    float roof=smoothstep(0.12,0.3,satC)*step(c.b,c.r)*smoothstep(0.22,0.4,nW.y)*(1.0-smoothstep(0.9,0.99,nW.y))*smoothstep(1.6,2.4,hP);
+    float rw=rel.y/0.3, rcol=floor(dot(rel.xz,tg)/0.42+floor(rw)*0.5); float rf=fract(rw);
+    float th=fract(sin(rcol*12.9898+floor(rw)*78.233)*43758.5453);
+    c*=mix(1.0,mix(0.62,1.0,smoothstep(0.0,0.2,rf))*(0.86+0.24*th)*(1.0-0.25*smoothstep(0.93,1.0,fract(dot(rel.xz,tg)/0.42+floor(rw)*0.5))),roof);
+    c=mix(c,c*vec3(0.92,0.96,0.9)*(0.85+0.3*bP.b),roof*smoothstep(0.55,0.8,bP.b)*0.6); // лишайник/копоть пятнами
+    // окна: стекло (голубоватое, на стене) светится тёплым светом изнутри — в тёмных зонах и вечером (uPaint.w)
+    float glass=smoothstep(0.08,0.2,c.b-c.r)*step(c.g,c.b)*sideF*step(0.6,hP);
+    totalEmissiveRadiance+=vec3(1.0,0.66,0.3)*glass*uPaint.w*(0.75+0.25*bP.b);
+    c=mix(c,vec3(0.22,0.16,0.1),glass*uPaint.w*0.6);
     diffuseColor.rgb=c;
   }
 `;
@@ -187,7 +201,7 @@ function paintPatch(sh){
 }
 function paintMat(m){ const base=m.onBeforeCompile; m.onBeforeCompile=(sh,r)=>{ base(sh,r); paintPatch(sh); }; const k=m.customProgramCacheKey&&m.customProgramCacheKey!==THREE.Material.prototype.customProgramCacheKey?m.customProgramCacheKey.bind(m):null; m.customProgramCacheKey=()=>(k?k():'evg')+'paint'; m.userData.paint=1; return m; }
 const MTP=paintMat(toonMat()); // процедурные пропсы и объекты мира (деревья-запаска, частокол, мосты, баррикады, сундуки…)
-function paintZone(Z){ const T=typeof ZTER!=='undefined'&&Z&&ZTER[Z.id]; PAINT_U.uLeafTint.value.set(T?T.moss:0x557a2a); PAINT_U.uPaint.value.y=T?.28:.12; }
+function paintZone(Z){ const T=typeof ZTER!=='undefined'&&Z&&ZTER[Z.id]; PAINT_U.uLeafTint.value.set(T?T.moss:0x557a2a); PAINT_U.uPaint.value.y=T?.28:.12; PAINT_U.uPaint.value.w=!Z||!Z.id?.45:[0,.2,.3,.55,.9,.8,.9,.7][Z.id]||.4; }
 
 // ---------- geometry builder (merged parts + baked inverted-hull outline) ----------
 const _m4=new THREE.Matrix4(), _q=new THREE.Quaternion(), _e=new THREE.Euler(), _v3=new THREE.Vector3(), _s3=new THREE.Vector3(), _c=new THREE.Color(), _c2=new THREE.Color();

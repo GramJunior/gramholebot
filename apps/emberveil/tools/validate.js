@@ -12,8 +12,8 @@ const SHOTS=arg('shots',false), Q=arg('q','med'), NAB=+arg('abyss',10), ONLY=arg
   const report=(r)=>{ total+=r.n; for(const k in r.by) sum[k]=(sum[k]||0)+r.by[k]; rows.push(r);
     console.log((r.key||'').padEnd(8),(r.type||'').padEnd(8),r.n?('НАРУШЕНИЙ '+r.n+' '+JSON.stringify(r.by)):'ok','|',JSON.stringify(r.stats));
     if(r.n&&VERB) for(const v of r.violations) console.log('    ',v.rule,v.msg,v.x,v.z); else if(r.n) for(const v of r.violations.slice(0,4)) console.log('    ',v.rule,v.msg,v.x,v.z); };
-  for(const k of keys){ const [z,s]=k.split('-').map(Number); if(SHOTS) await ev(z=>__game.x(`asLoad(asZoneGroup(${z}))`),z); if(SHOTS) await wait(1500);
-    const r=await ev(([z,s])=>__game.genCheck(z,s),[z,s]); report(r);
+  const zl={}; for(const k of keys){ const [z,s]=k.split('-').map(Number); if(!zl[z]){ zl[z]=1; await ev(z=>Promise.race([Promise.resolve(__game.x(`asLoad(asZoneGroup(${z}))`)),new Promise(r=>setTimeout(r,9000))]).then(()=>1,()=>1),z); } if(SHOTS) await wait(1500); // v21: наборы зоны загружены, как в игре (формы коллайдеров — по моделям)
+    const r=await ev(([z,s])=>__game.genCheck(z,s),[z,s]); report(r); if(process.env.VDBG&&r.n) console.log('    dbg',await ev(c=>__game.x(c),process.env.VDBG));
     if(SHOTS){ await ev(()=>__game.overview()); await wait(900); await shot('ov_'+k); await ev(()=>__game.overviewOff()); } }
   if(!ONLY){ for(let f=1;f<=NAB;f++){ const r=await ev(f=>__game.genAbyss(f),f); report(r); if(SHOTS&&f<=3){ await ev(()=>__game.overview({pad:10})); await wait(700); await shot('ov_abyss'+f); await ev(()=>__game.overviewOff()); } }
     const r=await ev(()=>{ const r=__game.genVillage(); r.key='village'; return r; }); report(r); if(SHOTS){ await ev(()=>__game.overview({pad:10})); await wait(900); await shot('ov_village'); await ev(()=>__game.overviewOff()); } }

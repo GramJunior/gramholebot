@@ -5,7 +5,7 @@
 set -e
 D=$(cd "$(dirname "$0")" && pwd)
 [ -f "$D/../../server/client/ev-net.js" ] && cp "$D/../../server/client/ev-net.js" "$D/src/ev-net.js"
-PARTS="p0.html p1.js p1i.js p2.js p2a.js p3.js p3b.js p3c.js p4.js p5.js p6.js p6b.js p6c.js p6t.js p7.js p7b.js p8.js p8b.js p8n.js p10.js p11.js p12.js p13.js p14.js p15.js p9.js p16.js p17.js p18.js p19.js p20.js p21.js p22.js p23.js p24.js p25.js p26.js p27.js p28.js p29.js p30.js p31.js p32.js p33.js p34.js p35.js p36.js p37.js p38.js p39.js p40.js pz.html"
+PARTS="p0.html p1.js p1i.js p2.js p2a.js p3.js p3b.js p3c.js p4.js p5.js p6.js p6b.js p6c.js p6t.js p7.js p7b.js p8.js p8b.js p8n.js p10.js p11.js p12.js p13.js p14.js p15.js p9.js p16.js p17.js p18.js p19.js p20.js p21.js p22.js p23.js p24.js p25.js p26.js p27.js p28.js p29.js p30.js p31.js p32.js p33.js p34.js p35.js p36.js p37.js p38.js p39.js p40.js p41.js pz.html"
 python3 - "$D" $PARTS <<'PY'
 import sys,json
 d=sys.argv[1]; parts=sys.argv[2:]

@@ -116,8 +116,11 @@ function canStand(x,z,r,o={}){
 function putProp(type,x,z,o={}){
   const s=o.s||1, f=pfoot(type,s), r=o.out?Math.max(f.c,f.v*.55):(f.k==='b'?Math.max(f.c,f.v*.8):f.v*.7);
   if(!o.force&&!canStand(x,z,r,Object.assign({k:f.k},o))) return null;
-  const p={type,x,z,s,ry:o.ry===undefined?rand(TAU):o.ry}; if(o.sy) p.sy=o.sy; p.y=o.y!==undefined?o.y:groundH(x,z)-(o.out?.12:.02);
-  const k=o.k||f.k; W.props.push(p); fpAdd(x,z,r,k,p);
+  // v21: вытянутые пропсы (заборы, стены, телеги, шатры…) — отпечаток по настоящей форме модели (цепочка кругов вдоль прямоугольников, p41)
+  const ry=o.ry===undefined?rand(TAU):o.ry, FC=(f.k==='b'&&typeof footCircles==='function')?footCircles(type,x,z,s,ry,o.sx):null;
+  if(FC&&!o.force) for(const q of FC){ if(o.out?fpHit(q[0],q[1],q[2],o.gap===undefined?.15:o.gap,e=>e.k!=='t'&&e.k!=='x'):!canStand(q[0],q[1],q[2],Object.assign({k:f.k},o))) return null; }
+  const p={type,x,z,s,ry}; if(o.sy) p.sy=o.sy; p.y=o.y!==undefined?o.y:groundH(x,z)-(o.out?.12:.02);
+  const k=o.k||f.k; W.props.push(p); fpAdd(x,z,r,k,p); if(FC) for(const q of FC) fpAdd(q[0],q[1],q[2],k,p);
   if(k==='b'&&!o.out&&f.c>0&&!o.noCol) W.obst.push({x,z,r:f.c,prop:type});
   return p;
 }
@@ -380,6 +383,7 @@ function stageBuild(info){
   for(const n of W.nooks) reserve(n.room.x,n.room.z,n.kind==='elite'?4.1:2.6,'nook');
   if(W.puzzle) reserve(W.puzzle.room.x,W.puzzle.room.z,W.puzzle.room.r+.5,'puzzle');
   if(W.secret) reserve(W.secret.room.x,W.secret.room.z,W.secret.room.r+.5,'secretRoom');
+  if(W.secret&&W.secret.from){ const S0=W.secret, a=S0.from, wx=a.x+S0.ux*(a.r+.9), wz=a.z+S0.uz*(a.r+.9); for(let d=1.5;d<=7.5;d+=1.5) reserve(wx-S0.ux*d,wz-S0.uz*d,1.9,'secretMouth'); } // v21: подход к тайнику свободен (бочки и шатры теперь твёрдые)
   synDressStage(info,A);
   // objective spots before anything else is placed
   const L0=Math.floor(mids.length/2); const objA=T==='totems'?mids.slice(0,3):T==='rescue'?[mids[Math.min(mids.length-1,2)]]:[];

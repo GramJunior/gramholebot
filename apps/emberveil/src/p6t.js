@@ -374,6 +374,7 @@ const ZCL={
 };
 const TREEISH=/tree|pine|oak|fir|birch|stump|Tree/; const ROCKY=/rock|stone|Rock|obsidian|basalt|rubble|boulder/;
 function terFinish(){
+  try{ colliderPass(); }catch(e){ console.warn('colliderPass',e); } // v21: формы коллайдеров известны до мелочи (трава не прорастает сквозь забор)
   if(!W||!W.ter||W.ter.done||!W.ground) return; W.ter.done=true; const t0=performance.now();
   const T=W.ter, ctl=T.ctl, Z=W.zone, zid=Z.id, cfg=ZCL[W.kind==='village'?0:zid]||ZCL[1], q=CLQ[QL]||CLQ.med, K=W.kind, stageLike=K!=='village', b=W.bounds;
   const rnd=rng32(strH('cl:'+(W.info?W.info.key:K)+':'+(W.floor||0))); const rr=(a,c)=>a+(c-a)*rnd(), ch=p=>rnd()<p;
@@ -381,7 +382,7 @@ function terFinish(){
   // --- props → contact shadow on the ground (vertex AO) + soil/moss stamps on the splat map ---
   const col=W.ground.geometry.attributes.color, CA=col.array, vx=T.vx, vz=T.vz, sx=T.w/(vx-1), sz=T.h/(vz-1);
   const blockers=[]; for(const p of W.props){ const f=pfoot(p.type,p.s); if(f.k==='b'&&f.c>0) blockers.push({x:p.x,z:p.z,r:f.c,p}); }
-  for(const o of W.obst){ if(o.water||o.dead) continue; blockers.push({x:o.x,z:o.z,r:o.r}); }
+  for(const o of W.obst){ if(o.water||o.dead||o.objc) continue; blockers.push({x:o.x,z:o.z,r:o.r,o:o.hx?o:null}); }
   for(const o of W.objs){ if(o.alive!==false&&o.kind!=='portal'&&o.kind!=='gate') blockers.push({x:o.x,z:o.z,r:Math.max(.45,o.r||0)}); }
   const bBin=terBins(blockers,e=>e.r+.4,4);
   const stampV=(x,z,r,k)=>{ const i0=Math.max(0,Math.floor((x-r-T.x0)/sx)), i1=Math.min(vx-1,Math.ceil((x+r-T.x0)/sx)), j0=Math.max(0,Math.floor((z-r-T.z0)/sz)), j1=Math.min(vz-1,Math.ceil((z+r-T.z0)/sz));
@@ -400,7 +401,7 @@ function terFinish(){
   const pools=(W.pools||[]).filter(p=>!p.bridged), wetOK={lily:1,reeds:1};
   const inPool=(x,z,r)=>{ for(const p of pools) if(Math.hypot(x-p.x,z-p.z)<p.r+r) return p; return null; };
   const br=W.bridge, onBridge=(x,z)=>br&&Math.hypot(x-br.x,z-br.z)<Math.max(4.2,br.w*.5+1.2);
-  const blocked=(x,z,r)=>{ const L=bBin(Math.floor(x/4)+','+Math.floor(z/4)); if(L) for(const e of L) if(Math.hypot(x-e.x,z-e.z)<e.r+r) return true; return false; };
+  const blocked=(x,z,r)=>{ const L=bBin(Math.floor(x/4)+','+Math.floor(z/4)); if(L) for(const e of L) if(e.o?obDist(e.o,x,z)<r:Math.hypot(x-e.x,z-e.z)<e.r+r) return true; return false; };
   const OUT={}; const put=(t,x,z,o={})=>{ const flush=t==='flag', water=t==='lily';
     if(!water&&inPool(x,z,o.r||.15)) return false; if(water&&!o.pool) return false; if(onBridge(x,z)) return false;
     if(!flush&&pathC(x,z)<pw*.5+.15) return false; if(!flush&&!water&&!o.force&&blocked(x,z,o.r||.12)) return false; if(flush&&blocked(x,z,.35)) return false;

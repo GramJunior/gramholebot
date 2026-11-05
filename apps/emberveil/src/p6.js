@@ -17,9 +17,9 @@ function constrain(e,rad){
   for(const n of walk.nodes){ const d=Math.hypot(e.x-n.x,e.z-n.z)-n.r; if(d<best){best=d;bx=n.x;bz=n.z;br=n.r;} }
   for(const s of walk.segs){ if(s.closed) continue; const r=segDist(e.x,e.z,s); const d=r[0]-s.w/2; if(d<best){best=d;bx=r[1];bz=r[2];br=s.w/2;} }
   if(best>-rad){ const dx=e.x-bx,dz=e.z-bz,d=Math.hypot(dx,dz)||1; const lim=Math.max(0.01,br-rad); e.x=bx+dx/d*lim; e.z=bz+dz/d*lim; e.hitWall=true; } else e.hitWall=false;
-  for(const o of W.obst){ if(o.dead) continue; const dx=e.x-o.x,dz=e.z-o.z,d=Math.hypot(dx,dz),m=o.r+rad; if(d<m&&d>0.001){ e.x=o.x+dx/d*m; e.z=o.z+dz/d*m; } }
+  let hitN=0; obEach(e.x,e.z,rad+4,o=>{ if(obPush(o,e,rad)) hitN++; }); if(hitN>1) obEach(e.x,e.z,rad+4,o=>{ obPush(o,e,rad); }); // v21 (второй проход — зажат между двумя формами): формы (круг/прямоугольник) + пространственный хэш (p41)
 }
-function walkable(x,z,m=0){ return sdfW(x,z)<-m && !W.obst.some(o=>!o.dead&&Math.hypot(x-o.x,z-o.z)<o.r+m); }
+function walkable(x,z,m=0){ return sdfW(x,z)<-m && !obHit(x,z,m); }
 
 // ---------- ground ----------
 function buildGround(Z,b,opts={}){
@@ -67,6 +67,7 @@ function buildLiquid(Z){
 // ---------- props (instanced, culled) ----------
 function addProp(type,x,z,s=1,ry){ W.props.push({type,x,z,s,ry:ry===undefined?rand(TAU):ry}); }
 function buildPropMeshes(){
+  try{ colliderPass(); }catch(e){ console.warn('colliderPass',e); } // v21 (p41)
   const byType={}; for(const p of W.props){ (byType[p.type]=byType[p.type]||[]).push(p); }
   W.propIM={};
   for(const t in byType){ const list=byType[t]; const g=asPropIM(t,list); if(g){ worldRoot.add(g); W.propIM[t]={grp:g,list}; continue; } const ft=propFallback(t); if(!ft) continue; const im=new THREE.InstancedMesh(propGeo(ft),MTP,list.length); im.frustumCulled=false; im.count=0; worldRoot.add(im); W.propIM[t]={im,list}; }
@@ -230,21 +231,23 @@ function makeVillage(){
   buildPropMeshes();
   return W;
 }
-function bldMesh(id,lv,geoFn){ const g=asBuilding(id,lv); if(g){ g.userData.ev=1; return g; } return new THREE.Mesh(geoFn(),MTP); }
+// v21: коллайдер здания — прямоугольники по самой модели (срез основания, p41); без формы — прежний круг (fb)
+function bldCol(m,key,x,z,fb){ const grp=fb?fb.grp:key.replace(/\d+$/,''); let bx=null; try{ bx=meshFootBoxes(key+(m.userData.ev?'e':'p'),m,x,z,m.rotation.y,{bld:1,grp}); }catch(e){ bx=null; }
+  if(bx&&bx.length){ for(const b of bx) W.obst.push(b); return true; } if(fb) W.obst.push(fb); return false; }
+function bldMesh(id,lv,geoFn){ const g=asBuilding(id,lv); if(g){ g.userData.ev=1; g.userData.bkey=id+lv+'e'; return g; } const m=new THREE.Mesh(geoFn(),MTP); m.userData.bkey=id+lv+'p'+(bldMesh.n=(bldMesh.n||0)+1); return m; }
 function buildVillageBuildings(){
   for(const k in W.bmesh){ worldRoot.remove(W.bmesh[k]); } W.bmesh={}; W.obst=W.obst.filter(o=>!o.bld);
   for(const id of BLD_ORDER){
     const lv=S.bld[id];
-    if(id==='houses'){ for(let i=0;i<lv*2&&i<HOUSE_POS.length;i++){ const [x,z,ry]=HOUSE_POS[i]; const m=bldMesh('houses',1+(i%4),()=>BUILD_GEO.houses(i)); m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh['h'+i]=m; W.obst.push({x,z,r:1.9,bld:1,grp:'h'+i}); } continue; }
-    if(id==='walls'){ if(lv>0) for(let i=0;i<Math.min(4,lv+1);i++){ const [x,z]=TOWER_POS[i]; const m=bldMesh('walls',lv,()=>BUILD_GEO.walls(lv)); m.position.set(x,0,z); worldRoot.add(m); W.bmesh['t'+i]=m; W.obst.push({x,z,r:1.3,bld:1,grp:'t'+i}); } continue; }
+    if(id==='houses'){ for(let i=0;i<lv*2&&i<HOUSE_POS.length;i++){ const [x,z,ry]=HOUSE_POS[i]; const m=bldMesh('houses',1+(i%4),()=>BUILD_GEO.houses(i)); m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh['h'+i]=m; bldCol(m,'houses'+(1+(i%4)),x,z,{x,z,r:1.9,bld:1,grp:'h'+i}); } continue; }
+    if(id==='walls'){ if(lv>0) for(let i=0;i<Math.min(4,lv+1);i++){ const [x,z]=TOWER_POS[i]; const m=bldMesh('walls',lv,()=>BUILD_GEO.walls(lv)); m.position.set(x,0,z); worldRoot.add(m); W.bmesh['t'+i]=m; bldCol(m,'walls'+lv,x,z,{x,z,r:1.3,bld:1,grp:'t'+i}); } continue; }
     const [x,z,ry]=VPOS[id];
     let m;
     if(lv>0){ m=bldMesh(id,lv,()=>BUILD_GEO[id](lv)); }
     else { if(bldUnlock(id)>S.bld.hall) continue; m=bldMesh(id,0,()=>OBJ_GEO.plot()); }
     m.position.set(x,0,z); m.rotation.y=ry+(m.userData.ev?PI:0); worldRoot.add(m); W.bmesh[id]=m;
     const rad={hall:3.6,forge:2.6,alch:2.5,pen:1.5,tavern:2.9,temple:3,store:2.6,saw:2.4,mine:2.6,well:1.4}[id]||2;
-    if(lv>0) W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1,grp:id});
-    if(id==='pen'&&lv>0){ W.obst.push({x:x+Math.sin(ry)*-1.6*0,z:z-1.6,r:1.6,bld:1,grp:id}); }
+    if(lv>0&&!bldCol(m,id+lv,x,z,null)){ W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1,grp:id}); if(id==='pen') W.obst.push({x,z:z-1.6,r:1.6,bld:1,grp:id}); }
   }
   buildRaidStructs();
   W.abyssOpen=stageDone('1-5');
