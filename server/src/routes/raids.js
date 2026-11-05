@@ -30,7 +30,7 @@ export function cleanSnapshot(b) {
   const layout = Array.isArray(b.layout) ? b.layout.slice(0, 64) : [];
   const hero = b.hero && typeof b.hero === 'object' ? b.hero : {};
   const lvl = int(hero.lvl, 1);
-  if (lvl < 1 || lvl > 40) fail(400, 'bad_snapshot', 'Неверный уровень героя');
+  if (lvl < 1 || lvl > 50) fail(400, 'bad_snapshot', 'Неверный уровень героя');
   const snap = { bld, layout, hero: { ...hero, lvl }, pets: Array.isArray(b.pets) ? b.pets.slice(0, 2) : [], power };
   if (JSON.stringify(snap).length > 16 * 1024) fail(413, 'too_large', 'Снимок деревни слишком большой');
   return snap;

@@ -4,7 +4,7 @@
 // can't prove a save is honest. What it can do cheaply:
 //   HARD (save rejected, HTTP 422):
 //     - wrong format (not the game's save object, v !== 1)
-//     - impossible values: negative / NaN / huge resources, hero level outside 1..40
+//     - impossible values: negative / NaN / huge resources, hero level outside 1..50
 //     - monotonic counters going DOWN (kills, floors, abyss best, runs, bosses, chests,
 //       hero level) or `created` changing — unless the client explicitly sends
 //       overwrite:true (user chose "use this device's copy" after a conflict).
@@ -14,7 +14,7 @@
 //     - abyss best in the save far above the server-verified leaderboard best
 // Leaderboards never trust the save: they use server-recorded runs only.
 
-export const MAX_LEVEL = 40;
+export const MAX_LEVEL = 50; // v19 (Emberveil Act II): level cap 40 → 50
 const MAX_RES = 1e12;
 const COUNTERS = ['kills', 'floors', 'boss', 'chests', 'runs', 'best', 'lvl'];
 
