@@ -40,7 +40,7 @@ const EXPL=(()=>{
   let FIRE=null, PUFF=null, SCOR=null;
   const VS=`varying vec2 vUv;uniform float uF;void main(){ float f=floor(uF); vec2 c=vec2(mod(f,4.0),3.0-floor(f/4.0)); vUv=(uv+c)/4.0; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
   const FS=`varying vec2 vUv;uniform sampler2D uMap;uniform vec3 uTint;uniform float uA;void main(){ vec4 c=texture2D(uMap,vUv); gl_FragColor=vec4(c.rgb*uTint,min(1.0,c.a*uA)); if(gl_FragColor.a<.01) discard; }`;
-  const geo=new THREE.PlaneGeometry(1,1); const bills=[]; const rings=[]; const scor=[]; let deb=null; const debD=[]; let ready=false; let flash={t:0,d:0,x:0,z:0,i:0,col:new THREE.Color()};
+  const BILL_CAP={perf:6,low:8,med:10,high:18}; const geo=new THREE.PlaneGeometry(1,1); const bills=[]; const rings=[]; const scor=[]; let deb=null; const debD=[]; let ready=false; let flash={t:0,d:0,x:0,z:0,i:0,col:new THREE.Color()};
   function init(){ if(ready) return; ready=true; FIRE=sheet('fire'); PUFF=sheet('puff');
     for(let i=0;i<18;i++){ const add=i<12; const mat=new THREE.ShaderMaterial({uniforms:{uMap:{value:add?FIRE:PUFF},uTint:{value:new THREE.Color(1,1,1)},uA:{value:1},uF:{value:0}},vertexShader:VS,fragmentShader:FS,transparent:true,depthWrite:false,blending:add?THREE.AdditiveBlending:THREE.NormalBlending,fog:false});
       const m=new THREE.Mesh(geo,mat); m.visible=false; m.frustumCulled=false; m.renderOrder=add?7:6; scene.add(m); bills.push({m,mat,add,on:false}); }
@@ -55,7 +55,7 @@ const EXPL=(()=>{
     const dg=new THREE.DodecahedronGeometry(.11,0); deb=new THREE.InstancedMesh(dg,new THREE.MeshBasicMaterial({color:0xffffff}),48); deb.count=0; deb.frustumCulled=false; deb.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     scene.add(deb); for(let i=0;i<48;i++) debD.push({on:false}); }
   const _m4=new THREE.Matrix4(), _q=new THREE.Quaternion(), _p=new THREE.Vector3(), _s=new THREE.Vector3(), _e=new THREE.Euler(), _c=new THREE.Color();
-  function bill(x,y,z,o){ const b=bills.find(q=>q.add===!!o.add&&!q.on); if(!b) return null; b.on=true; b.t=0; b.d=o.d||.7; b.x=x; b.y=y; b.z=z; b.s0=o.s0||1; b.s1=o.s1||3; b.vy=o.vy||0; b.a=o.a===undefined?1:o.a; b.rot=rand(TAU);
+  function bill(x,y,z,o){ const cap=BILL_CAP[QL]||18; if(cap<18){ let n=0; for(const q of bills) if(q.on) n++; if(n>=cap) return null; } /* v28: не больше cap спрайтов огня/дыма разом (каждый — вызов отрисовки) */ const b=bills.find(q=>q.add===!!o.add&&!q.on); if(!b) return null; b.on=true; b.t=0; b.d=o.d||.7; b.x=x; b.y=y; b.z=z; b.s0=o.s0||1; b.s1=o.s1||3; b.vy=o.vy||0; b.a=o.a===undefined?1:o.a; b.rot=rand(TAU);
     b.mat.uniforms.uMap.value=o.fire?FIRE:PUFF; b.mat.uniforms.uTint.value.set(o.col===undefined?0xffffff:o.col); b.m.visible=true; return b; }
   function ring(x,z,R,col,d){ const r=rings.find(q=>!q.on); if(!r) return; r.on=true; r.t=0; r.d=d||.45; r.R=R; r.m.position.set(x,.12,z); r.m.material.color.set(col); r.m.visible=true; }
   function scorch(x,z,R,col,a,life){ if(qLow()&&!a) return; let s=scor.find(q=>!q.on); if(!s){ s=scor.reduce((m,q)=>q.t>m.t?q:m,scor[0]); } s.on=true; s.t=0; s.life=life||12; s.a=a||.55; s.m.position.set(x,.05+Math.random()*.01,z); s.m.scale.set(R*2,1,R*2); s.m.rotation.y=rand(TAU); s.m.material.color.set(col); s.m.material.opacity=0; s.m.visible=true; }

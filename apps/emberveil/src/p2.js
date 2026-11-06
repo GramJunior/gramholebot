@@ -377,9 +377,15 @@ function fx(kind,x,y,z,o={}){
 }
 
 // ---------- telegraph decals ----------
-const DECAL_VS=`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
-const DECAL_FS=`varying vec2 vUv;uniform vec3 uC;uniform float uP;uniform float uShape;uniform float uAng;uniform float uT;uniform float uA;
+// v28: все телеграфы — один InstancedMesh (цвет, заполнение, форма, угол, прозрачность — атрибуты экземпляра): 1 вызов отрисовки вместо одного на каждую зону
+const DECAL_VS=`attribute vec3 aC;attribute vec4 aD;varying vec2 vUv;varying vec3 vC;varying vec4 vD;void main(){vUv=uv;vC=aC;vD=aD;vec4 q=vec4(position,1.0);
+#ifdef USE_INSTANCING
+q=instanceMatrix*q;
+#endif
+gl_Position=projectionMatrix*modelViewMatrix*q;}`;
+const DECAL_FS=`varying vec2 vUv;varying vec3 vC;varying vec4 vD;uniform float uT;
 void main(){
+  float uP=vD.x, uShape=vD.y, uAng=vD.z, uA=vD.w;
   vec2 p=vUv*2.0-1.0; float a=0.0;
   if(uShape<0.5){ float d=length(p); if(d>1.0)discard;
     float edge=smoothstep(0.9,0.97,d)*(1.0-smoothstep(0.97,1.0,d));
@@ -392,33 +398,38 @@ void main(){
     a=edge*0.9+step(vUv.y,uP)*0.38+0.08;
   }
   float stripe=0.08*step(0.5,fract((p.x+p.y)*4.0-uT*2.0));
-  gl_FragColor=vec4(uC,(a+stripe*step(0.3,a))*uA);
+  gl_FragColor=vec4(vC,(a+stripe*step(0.3,a))*uA);
 }`;
 const DECALS=(()=>{
-  const pool=[]; const geo=new THREE.PlaneGeometry(1,1); geo.rotateX(-PI/2);
-  for(let i=0;i<28;i++){
-    const mat=new THREE.ShaderMaterial({uniforms:{uC:{value:new THREE.Color(0xff3a1a)},uP:{value:0},uShape:{value:0},uAng:{value:.6},uT:{value:0},uA:{value:1}},vertexShader:DECAL_VS,fragmentShader:DECAL_FS,transparent:true,depthWrite:false,blending:THREE.NormalBlending});
-    const m=new THREE.Mesh(geo,mat); m.visible=false; m.renderOrder=2; m.frustumCulled=false; scene.add(m); pool.push({m,mat,t:0,dur:1,on:false,follow:null});
-  }
+  const N=28, geo=new THREE.PlaneGeometry(1,1); geo.rotateX(-PI/2);
+  const aC=new THREE.InstancedBufferAttribute(new Float32Array(N*3),3), aD=new THREE.InstancedBufferAttribute(new Float32Array(N*4),4);
+  aC.setUsage(THREE.DynamicDrawUsage); aD.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('aC',aC); geo.setAttribute('aD',aD);
+  const mat=new THREE.ShaderMaterial({uniforms:{uT:{value:0}},vertexShader:DECAL_VS,fragmentShader:DECAL_FS,transparent:true,depthWrite:false,blending:THREE.NormalBlending});
+  const im=new THREE.InstancedMesh(geo,mat,N); im.count=0; im.visible=false; im.renderOrder=2; im.frustumCulled=false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(im);
+  const pool=[]; for(let i=0;i<N;i++) pool.push({on:false,t:0,dur:1,follow:null,shape:0,x:0,y:0,z:0,ry:0,sx:1,sz:1,c:new THREE.Color(),a:1,ang:.6});
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3(), up=new THREE.Vector3(0,1,0);
+  function sync(){ let n=0; for(const d of pool){ if(!d.on) continue; q.setFromAxisAngle(up,d.ry); v.set(d.x,d.y,d.z); sc.set(d.sx,1,d.sz); m4.compose(v,q,sc); im.setMatrixAt(n,m4);
+      aC.setXYZ(n,d.c.r,d.c.g,d.c.b); aD.setXYZW(n,clamp(d.t/d.dur,0,1),d.shape,d.ang,d.a); n++; }
+    im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; aC.needsUpdate=true; aD.needsUpdate=true; }
   return {
+    mesh:im,
     // shape: 'circle'|'cone'|'line'; x,z origin; dir angle; r radius/length; w width; dur seconds
     spawn(shape,x,z,r,dur,o={}){
       const d=pool.find(p=>!p.on); if(!d) return null;
-      d.on=true; d.t=0; d.dur=dur; d.follow=o.follow||null; d.m.visible=true;
-      const U=d.mat.uniforms; U.uC.value.set(o.col||0xff3a1a); U.uP.value=0; U.uA.value=o.a||1;
-      U.uShape.value=shape==='circle'?0:shape==='cone'?1:2; U.uAng.value=o.ang||0.6;
-      d.m.rotation.set(0,0,0);
-      if(shape==='line'){ const w=o.w||1.2; d.m.scale.set(w,1,r); const dir=o.dir||0; d.m.rotation.y=-dir+PI/2*0; d.m.position.set(x+Math.sin(dir)*r/2,0.06+(o.y||0),z+Math.cos(dir)*r/2); d.m.rotation.y=dir+PI; }
-      else { d.m.scale.set(r*2,1,r*2); d.m.position.set(x,0.06+(o.y||0),z); if(shape==='cone') d.m.rotation.y=(o.dir||0)+PI; }
-      return d;
+      d.on=true; d.t=0; d.dur=dur; d.follow=o.follow||null; d.c.set(o.col||0xff3a1a); d.a=o.a||1;
+      d.shape=shape==='circle'?0:shape==='cone'?1:2; d.ang=o.ang||0.6; d.ry=0; d.y=0.06+(o.y||0);
+      if(shape==='line'){ const w=o.w||1.2, dir=o.dir||0; d.sx=w; d.sz=r; d.x=x+Math.sin(dir)*r/2; d.z=z+Math.cos(dir)*r/2; d.ry=dir+PI; }
+      else { d.sx=d.sz=r*2; d.x=x; d.z=z; if(shape==='cone') d.ry=(o.dir||0)+PI; }
+      sync(); return d;
     },
-    update(dt,time){
-      for(const d of pool){ if(!d.on) continue; d.t+=dt; const U=d.mat.uniforms; U.uP.value=clamp(d.t/d.dur,0,1); U.uT.value=time;
-        if(d.follow){ d.m.position.x=d.follow.x; d.m.position.z=d.follow.z; }
-        if(d.t>=d.dur){ d.on=false; d.m.visible=false; } }
+    update(dt,time){ mat.uniforms.uT.value=time; let any=false;
+      for(const d of pool){ if(!d.on) continue; any=true; d.t+=dt;
+        if(d.follow){ d.x=d.follow.x; d.z=d.follow.z; }
+        if(d.t>=d.dur) d.on=false; }
+      if(any||im.count) sync();
     },
-    kill(d){ if(d){d.on=false;d.m.visible=false;} },
-    clear(){ for(const d of pool){d.on=false;d.m.visible=false;} }
+    kill(d){ if(d&&d.on){ d.on=false; sync(); } },
+    clear(){ for(const d of pool) d.on=false; sync(); }
   };
 })();
 

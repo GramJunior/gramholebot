@@ -151,6 +151,7 @@ function a2Overlay(id){ if(A2_NOOV&&id!=='coldVig'){ return a2Overlay._d||(a2Ove
 const _updateStageA2=updateStage;
 updateStage=function(dt){ _updateStageA2(dt); if(!G.P) return; try{ a2StageTick(dt); }catch(e){ if(!a2StageTick._err){ a2StageTick._err=1; console.error(e); } } };
 function a2StageTick(dt){
+  if(a2Zone()&&W.a2init!==W){ W.a2init=W; a2StageInit(); }
   const P=G.P; const k=a2MeterKind();
   if(a2Zone()||k){ a2HeatTick(dt); a2BrazierTick(dt); a2GlassTick(dt); a2IcicleTick(dt); a2KegTick(dt); a2MineTick(dt); a2PudTick(dt); a2WallTick(dt); a2SnowFx(dt); }
   if(a2Zone()){ a2WindTick(dt); a2AuroraTick(dt); if(W.obj&&W.obj.type==='thaw') a2ThawTick(dt); if(W.a2rescue) a2RescueTick(dt); a2DormantTick(dt); }
@@ -615,8 +616,9 @@ const _enterVillageA2=enterVillage;
 enterVillage=function(after){ if(AS.a2snow){ try{ scene.remove(AS.a2snow.mesh); EVFX.remove(AS.a2snow); }catch(e){} AS.a2snow=null; } a2HideOverlays(); const r=_enterVillageA2(after); try{ a2VillageSnow(); a2VillageIrga(); }catch(e){ console.error(e); } return r; };
 function a2HideOverlays(){ for(const id of ['aurora','windFx','coldVig']){ const el=$(id); if(el) el.style.opacity='0'; } if(W&&W.aurora&&W.aurora.hemi0) hemi.color.copy(W.aurora.hemi0); }
 const _startStage2A2=startStage2;
-startStage2=function(z,s){ a2HideOverlays(); if(AS.a2snow){ try{ scene.remove(AS.a2snow.mesh); EVFX.remove(AS.a2snow); }catch(e){} AS.a2snow=null; } _startStage2A2(z,s);
-  if(z===7) later(.5,()=>{ if(!W||W.kind!=='stage') return; a2Overlay('coldVig'); if(W.info.key==='7-1'&&!S.seen.z7_intro) playDialog('z7_intro'); try{ if(compS().active&&COMP_LINES2[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES2[a.id])+'»','tag'); }); }catch(e){} }); };
+startStage2=function(z,s){ a2HideOverlays(); if(AS.a2snow){ try{ scene.remove(AS.a2snow.mesh); EVFX.remove(AS.a2snow); }catch(e){} AS.a2snow=null; } _startStage2A2(z,s); };
+// v28: старт этапа зоны 7 — на первом кадре этапа (later() до сборки мира стирался clearEntities: сцена z7_intro и виньетка холода не появлялись)
+function a2StageInit(){ later(.5,()=>{ if(!W||W.kind!=='stage') return; a2Overlay('coldVig'); if(W.info.key==='7-1'&&!S.seen.z7_intro) playDialog('z7_intro'); try{ if(compS().active&&COMP_LINES2[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES2[a.id])+'»','tag'); }); }catch(e){} }); }
 const _villageTickA2=updateVillage;
 updateVillage=function(dt){ _villageTickA2(dt); if(AS.a2snow&&G.P) AS.a2snow.center.set(G.P.x,0,G.P.z-4); };
 function a2VillageIrga(){ if(!W||W.kind!=='village'||!compOwned('irga')||!stageDone('7-2')) return; if(W.npcs.some(n=>n.kind==='irga')) return; const x=17.5, z=11.5;

@@ -272,12 +272,17 @@ function asTick(dt,rdt){
     root.visible=on; if(!on) { a._acc=(a._acc||0)+adt; continue; }
     vis++;
     const dx=_awp.x-cx, dz=_awp.z-cz, d2=dx*dx+dz*dz;
-    if(a._olFar!==undefined||olOn){ const far=!olOn||d2>olR2; if(a._olFar!==far){ a._olFar=far; asOutlineVis(a,!far); } }
+    if(a._olFar!==undefined||olOn) _olL.push(a,d2);
     if(adt>0){ const lod=d2>34*34?4:d2>20*20?2:1; a._lod=lod; anim++; _upo.step=anim>cap?Math.max(2,lod):lod; a.update(adt,_upo); }
   }
+  // v28: в толпе контуры — только у AS_OL_MAX[QL] ближайших (остальные в радиусе — дальше прочих; на «Выс.» без потолка)
+  const olMax=(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid')&&AS_OL_MAX[QL]||99; let olK=olMax;
+  if(_olL.length/2>olMax){ const ds=[]; for(let i=1;i<_olL.length;i+=2) if(_olL[i]<=olR2) ds.push(_olL[i]); if(ds.length>olMax){ ds.sort((x,y)=>x-y); olK=ds[olMax-1]; } else olK=-1; } else olK=-1;
+  for(let i=0;i<_olL.length;i+=2){ const a=_olL[i], d2=_olL[i+1]; const far=!olOn||d2>olR2||(olK>=0&&d2>olK); if(a._olFar!==far){ a._olFar=far; asOutlineVis(a,!far); } }
+  _olL.length=0;
   AS.visible=vis; AS.animated=anim;
 }
-const AS_ANIM_CAP={perf:10,low:14,med:22,high:32}, _upo={step:1};
+const AS_ANIM_CAP={perf:10,low:14,med:22,high:32}, _upo={step:1}, AS_OL_MAX={low:6,med:6}, _olL=[];
 // показать/спрятать контуры актёра (без пересоздания): дальние актёры без контура — минус 1–2 вызова отрисовки на каждого
 function asOutlineVis(a,on){ if(!a._outline) return; for(const m of a.meshes){ const o=m.userData.evOutline; if(o) o.visible=on&&m.visible; }
   for(const k in a.slots){ const w=a.slots[k]; if(w) w.traverse(o=>{ if(o.userData&&o.userData.isOutline) o.visible=on&&a._weaponOutline(); }); } }

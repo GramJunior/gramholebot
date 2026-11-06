@@ -4853,9 +4853,15 @@ function fx(kind,x,y,z,o={}){
 }
 
 // ---------- telegraph decals ----------
-const DECAL_VS=`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
-const DECAL_FS=`varying vec2 vUv;uniform vec3 uC;uniform float uP;uniform float uShape;uniform float uAng;uniform float uT;uniform float uA;
+// v28: все телеграфы — один InstancedMesh (цвет, заполнение, форма, угол, прозрачность — атрибуты экземпляра): 1 вызов отрисовки вместо одного на каждую зону
+const DECAL_VS=`attribute vec3 aC;attribute vec4 aD;varying vec2 vUv;varying vec3 vC;varying vec4 vD;void main(){vUv=uv;vC=aC;vD=aD;vec4 q=vec4(position,1.0);
+#ifdef USE_INSTANCING
+q=instanceMatrix*q;
+#endif
+gl_Position=projectionMatrix*modelViewMatrix*q;}`;
+const DECAL_FS=`varying vec2 vUv;varying vec3 vC;varying vec4 vD;uniform float uT;
 void main(){
+  float uP=vD.x, uShape=vD.y, uAng=vD.z, uA=vD.w;
   vec2 p=vUv*2.0-1.0; float a=0.0;
   if(uShape<0.5){ float d=length(p); if(d>1.0)discard;
     float edge=smoothstep(0.9,0.97,d)*(1.0-smoothstep(0.97,1.0,d));
@@ -4868,33 +4874,38 @@ void main(){
     a=edge*0.9+step(vUv.y,uP)*0.38+0.08;
   }
   float stripe=0.08*step(0.5,fract((p.x+p.y)*4.0-uT*2.0));
-  gl_FragColor=vec4(uC,(a+stripe*step(0.3,a))*uA);
+  gl_FragColor=vec4(vC,(a+stripe*step(0.3,a))*uA);
 }`;
 const DECALS=(()=>{
-  const pool=[]; const geo=new THREE.PlaneGeometry(1,1); geo.rotateX(-PI/2);
-  for(let i=0;i<28;i++){
-    const mat=new THREE.ShaderMaterial({uniforms:{uC:{value:new THREE.Color(0xff3a1a)},uP:{value:0},uShape:{value:0},uAng:{value:.6},uT:{value:0},uA:{value:1}},vertexShader:DECAL_VS,fragmentShader:DECAL_FS,transparent:true,depthWrite:false,blending:THREE.NormalBlending});
-    const m=new THREE.Mesh(geo,mat); m.visible=false; m.renderOrder=2; m.frustumCulled=false; scene.add(m); pool.push({m,mat,t:0,dur:1,on:false,follow:null});
-  }
+  const N=28, geo=new THREE.PlaneGeometry(1,1); geo.rotateX(-PI/2);
+  const aC=new THREE.InstancedBufferAttribute(new Float32Array(N*3),3), aD=new THREE.InstancedBufferAttribute(new Float32Array(N*4),4);
+  aC.setUsage(THREE.DynamicDrawUsage); aD.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('aC',aC); geo.setAttribute('aD',aD);
+  const mat=new THREE.ShaderMaterial({uniforms:{uT:{value:0}},vertexShader:DECAL_VS,fragmentShader:DECAL_FS,transparent:true,depthWrite:false,blending:THREE.NormalBlending});
+  const im=new THREE.InstancedMesh(geo,mat,N); im.count=0; im.visible=false; im.renderOrder=2; im.frustumCulled=false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(im);
+  const pool=[]; for(let i=0;i<N;i++) pool.push({on:false,t:0,dur:1,follow:null,shape:0,x:0,y:0,z:0,ry:0,sx:1,sz:1,c:new THREE.Color(),a:1,ang:.6});
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3(), up=new THREE.Vector3(0,1,0);
+  function sync(){ let n=0; for(const d of pool){ if(!d.on) continue; q.setFromAxisAngle(up,d.ry); v.set(d.x,d.y,d.z); sc.set(d.sx,1,d.sz); m4.compose(v,q,sc); im.setMatrixAt(n,m4);
+      aC.setXYZ(n,d.c.r,d.c.g,d.c.b); aD.setXYZW(n,clamp(d.t/d.dur,0,1),d.shape,d.ang,d.a); n++; }
+    im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; aC.needsUpdate=true; aD.needsUpdate=true; }
   return {
+    mesh:im,
     // shape: 'circle'|'cone'|'line'; x,z origin; dir angle; r radius/length; w width; dur seconds
     spawn(shape,x,z,r,dur,o={}){
       const d=pool.find(p=>!p.on); if(!d) return null;
-      d.on=true; d.t=0; d.dur=dur; d.follow=o.follow||null; d.m.visible=true;
-      const U=d.mat.uniforms; U.uC.value.set(o.col||0xff3a1a); U.uP.value=0; U.uA.value=o.a||1;
-      U.uShape.value=shape==='circle'?0:shape==='cone'?1:2; U.uAng.value=o.ang||0.6;
-      d.m.rotation.set(0,0,0);
-      if(shape==='line'){ const w=o.w||1.2; d.m.scale.set(w,1,r); const dir=o.dir||0; d.m.rotation.y=-dir+PI/2*0; d.m.position.set(x+Math.sin(dir)*r/2,0.06+(o.y||0),z+Math.cos(dir)*r/2); d.m.rotation.y=dir+PI; }
-      else { d.m.scale.set(r*2,1,r*2); d.m.position.set(x,0.06+(o.y||0),z); if(shape==='cone') d.m.rotation.y=(o.dir||0)+PI; }
-      return d;
+      d.on=true; d.t=0; d.dur=dur; d.follow=o.follow||null; d.c.set(o.col||0xff3a1a); d.a=o.a||1;
+      d.shape=shape==='circle'?0:shape==='cone'?1:2; d.ang=o.ang||0.6; d.ry=0; d.y=0.06+(o.y||0);
+      if(shape==='line'){ const w=o.w||1.2, dir=o.dir||0; d.sx=w; d.sz=r; d.x=x+Math.sin(dir)*r/2; d.z=z+Math.cos(dir)*r/2; d.ry=dir+PI; }
+      else { d.sx=d.sz=r*2; d.x=x; d.z=z; if(shape==='cone') d.ry=(o.dir||0)+PI; }
+      sync(); return d;
     },
-    update(dt,time){
-      for(const d of pool){ if(!d.on) continue; d.t+=dt; const U=d.mat.uniforms; U.uP.value=clamp(d.t/d.dur,0,1); U.uT.value=time;
-        if(d.follow){ d.m.position.x=d.follow.x; d.m.position.z=d.follow.z; }
-        if(d.t>=d.dur){ d.on=false; d.m.visible=false; } }
+    update(dt,time){ mat.uniforms.uT.value=time; let any=false;
+      for(const d of pool){ if(!d.on) continue; any=true; d.t+=dt;
+        if(d.follow){ d.x=d.follow.x; d.z=d.follow.z; }
+        if(d.t>=d.dur) d.on=false; }
+      if(any||im.count) sync();
     },
-    kill(d){ if(d){d.on=false;d.m.visible=false;} },
-    clear(){ for(const d of pool){d.on=false;d.m.visible=false;} }
+    kill(d){ if(d&&d.on){ d.on=false; sync(); } },
+    clear(){ for(const d of pool) d.on=false; sync(); }
   };
 })();
 
@@ -5287,12 +5298,17 @@ function asTick(dt,rdt){
     root.visible=on; if(!on) { a._acc=(a._acc||0)+adt; continue; }
     vis++;
     const dx=_awp.x-cx, dz=_awp.z-cz, d2=dx*dx+dz*dz;
-    if(a._olFar!==undefined||olOn){ const far=!olOn||d2>olR2; if(a._olFar!==far){ a._olFar=far; asOutlineVis(a,!far); } }
+    if(a._olFar!==undefined||olOn) _olL.push(a,d2);
     if(adt>0){ const lod=d2>34*34?4:d2>20*20?2:1; a._lod=lod; anim++; _upo.step=anim>cap?Math.max(2,lod):lod; a.update(adt,_upo); }
   }
+  // v28: в толпе контуры — только у AS_OL_MAX[QL] ближайших (остальные в радиусе — дальше прочих; на «Выс.» без потолка)
+  const olMax=(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid')&&AS_OL_MAX[QL]||99; let olK=olMax;
+  if(_olL.length/2>olMax){ const ds=[]; for(let i=1;i<_olL.length;i+=2) if(_olL[i]<=olR2) ds.push(_olL[i]); if(ds.length>olMax){ ds.sort((x,y)=>x-y); olK=ds[olMax-1]; } else olK=-1; } else olK=-1;
+  for(let i=0;i<_olL.length;i+=2){ const a=_olL[i], d2=_olL[i+1]; const far=!olOn||d2>olR2||(olK>=0&&d2>olK); if(a._olFar!==far){ a._olFar=far; asOutlineVis(a,!far); } }
+  _olL.length=0;
   AS.visible=vis; AS.animated=anim;
 }
-const AS_ANIM_CAP={perf:10,low:14,med:22,high:32}, _upo={step:1};
+const AS_ANIM_CAP={perf:10,low:14,med:22,high:32}, _upo={step:1}, AS_OL_MAX={low:6,med:6}, _olL=[];
 // показать/спрятать контуры актёра (без пересоздания): дальние актёры без контура — минус 1–2 вызова отрисовки на каждого
 function asOutlineVis(a,on){ if(!a._outline) return; for(const m of a.meshes){ const o=m.userData.evOutline; if(o) o.visible=on&&m.visible; }
   for(const k in a.slots){ const w=a.slots[k]; if(w) w.traverse(o=>{ if(o.userData&&o.userData.isOutline) o.visible=on&&a._weaponOutline(); }); } }
@@ -8567,7 +8583,7 @@ function enemyAct(e,tg){
   if(k==='shoot'){ spawnProj(e.kind==='skelArcher'?'earrowB':'earrow',e.x,e.z,e.face,{team:'e',dmg:e.dmg,lvl:e.lvl,spd:15,src:e,el:D.el}); sfxAt('arrow',e.x,e.z,.6); }
   if(k==='bolt'){ for(let i=-1;i<=1;i++) spawnProj('eorb',e.x,e.z,e.face+i*.22,{team:'e',dmg:e.dmg*.8,lvl:e.lvl,spd:10,src:e,el:D.el,col:0x7ae8ff}); sfxAt('ice',e.x,e.z,.5); if(D.blink&&Math.random()<.4){ later(.4,()=>{ if(!e.alive) return; fx('magic',e.x,1,e.z,{col:0x7ae8ff}); const a=rand(TAU); const nx=P.x+Math.cos(a)*7,nz=P.z+Math.sin(a)*7; if(walkable(nx,nz,.5)){ e.x=nx; e.z=nz; fx('magic',e.x,1,e.z,{col:0x7ae8ff}); } }); } }
   if(k==='lob'){ spawnProj('lob',e.x,e.z,0,{team:'e',tx:e.wind.tx,tz:e.wind.tz,arc:1,life:.5,dmg:e.dmg*1.2,lvl:e.lvl,src:e,el:D.el,col:D.el==='fire'?0xff7a2a:0x8ad03a}); sfxAt('bolt',e.x,e.z,.5); }
-  if(k==='summon'){ const sk=e.kind==='cultist'?'imp':e.kind==='toad'?'bogling':'goblin'; for(let i=0;i<2;i++){ const a=rand(TAU); const m=spawnEnemy(sk,e.x+Math.cos(a)*1.5,e.z+Math.sin(a)*1.5,e.lvl,{summon:1,aggro:1}); m.owner=e; m.maxHp*=.5; m.hp=m.maxHp; fx('magic',m.x,.5,m.z,{col:0xff6a3a}); } sfxAt('tele',e.x,e.z,.5); }
+  if(k==='summon'){ const sk=e.kind==='cultist'?'imp':e.kind==='toad'?'bogling':e.kind==='driedPriest'?'goldBeetle':'goblin'; /* v28: жрец зоны 9 призывает Златожуков (а не гоблинов) */ for(let i=0;i<2;i++){ const a=rand(TAU); const m=spawnEnemy(sk,e.x+Math.cos(a)*1.5,e.z+Math.sin(a)*1.5,e.lvl,{summon:1,aggro:1}); m.owner=e; m.maxHp*=.5; m.hp=m.maxHp; fx('magic',m.x,.5,m.z,{col:0xff6a3a}); } sfxAt('tele',e.x,e.z,.5); }
   if(k==='explode'){ e.exploded=true; enemyExplode(e,1); e.hp=0; killEnemy(e); }
   if(k==='charge'){ e.st=0; sfxAt('roar',e.x,e.z,.25); }
   if(k==='breath'){ for(let i=0;i<10;i++) later(i*.06,()=>{ if(!e.alive) return; const a=e.face+rand(-.4,.4),r=rand(1,5.5); fx('fire',e.x+Math.sin(a)*r,1,e.z+Math.cos(a)*r,{k:2}); }); later(.2,()=>{ if(!e.alive) return; const ang=Math.abs(angWrap(Math.atan2(P.x-e.x,P.z-e.z)-e.face)); if(Math.hypot(P.x-e.x,P.z-e.z)<5.8&&ang<.55) hurtPlayer(e.dmg*1.3,{src:e,lvl:e.lvl,el:'fire',kb:3}); }); sfxAt('fire',e.x,e.z,.7); }
@@ -16473,6 +16489,7 @@ function a2Overlay(id){ if(A2_NOOV&&id!=='coldVig'){ return a2Overlay._d||(a2Ove
 const _updateStageA2=updateStage;
 updateStage=function(dt){ _updateStageA2(dt); if(!G.P) return; try{ a2StageTick(dt); }catch(e){ if(!a2StageTick._err){ a2StageTick._err=1; console.error(e); } } };
 function a2StageTick(dt){
+  if(a2Zone()&&W.a2init!==W){ W.a2init=W; a2StageInit(); }
   const P=G.P; const k=a2MeterKind();
   if(a2Zone()||k){ a2HeatTick(dt); a2BrazierTick(dt); a2GlassTick(dt); a2IcicleTick(dt); a2KegTick(dt); a2MineTick(dt); a2PudTick(dt); a2WallTick(dt); a2SnowFx(dt); }
   if(a2Zone()){ a2WindTick(dt); a2AuroraTick(dt); if(W.obj&&W.obj.type==='thaw') a2ThawTick(dt); if(W.a2rescue) a2RescueTick(dt); a2DormantTick(dt); }
@@ -16937,8 +16954,9 @@ const _enterVillageA2=enterVillage;
 enterVillage=function(after){ if(AS.a2snow){ try{ scene.remove(AS.a2snow.mesh); EVFX.remove(AS.a2snow); }catch(e){} AS.a2snow=null; } a2HideOverlays(); const r=_enterVillageA2(after); try{ a2VillageSnow(); a2VillageIrga(); }catch(e){ console.error(e); } return r; };
 function a2HideOverlays(){ for(const id of ['aurora','windFx','coldVig']){ const el=$(id); if(el) el.style.opacity='0'; } if(W&&W.aurora&&W.aurora.hemi0) hemi.color.copy(W.aurora.hemi0); }
 const _startStage2A2=startStage2;
-startStage2=function(z,s){ a2HideOverlays(); if(AS.a2snow){ try{ scene.remove(AS.a2snow.mesh); EVFX.remove(AS.a2snow); }catch(e){} AS.a2snow=null; } _startStage2A2(z,s);
-  if(z===7) later(.5,()=>{ if(!W||W.kind!=='stage') return; a2Overlay('coldVig'); if(W.info.key==='7-1'&&!S.seen.z7_intro) playDialog('z7_intro'); try{ if(compS().active&&COMP_LINES2[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES2[a.id])+'»','tag'); }); }catch(e){} }); };
+startStage2=function(z,s){ a2HideOverlays(); if(AS.a2snow){ try{ scene.remove(AS.a2snow.mesh); EVFX.remove(AS.a2snow); }catch(e){} AS.a2snow=null; } _startStage2A2(z,s); };
+// v28: старт этапа зоны 7 — на первом кадре этапа (later() до сборки мира стирался clearEntities: сцена z7_intro и виньетка холода не появлялись)
+function a2StageInit(){ later(.5,()=>{ if(!W||W.kind!=='stage') return; a2Overlay('coldVig'); if(W.info.key==='7-1'&&!S.seen.z7_intro) playDialog('z7_intro'); try{ if(compS().active&&COMP_LINES2[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES2[a.id])+'»','tag'); }); }catch(e){} }); }
 const _villageTickA2=updateVillage;
 updateVillage=function(dt){ _villageTickA2(dt); if(AS.a2snow&&G.P) AS.a2snow.center.set(G.P.x,0,G.P.z-4); };
 function a2VillageIrga(){ if(!W||W.kind!=='village'||!compOwned('irga')||!stageDone('7-2')) return; if(W.npcs.some(n=>n.kind==='irga')) return; const x=17.5, z=11.5;
@@ -17792,7 +17810,7 @@ const EXPL=(()=>{
   let FIRE=null, PUFF=null, SCOR=null;
   const VS=`varying vec2 vUv;uniform float uF;void main(){ float f=floor(uF); vec2 c=vec2(mod(f,4.0),3.0-floor(f/4.0)); vUv=(uv+c)/4.0; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
   const FS=`varying vec2 vUv;uniform sampler2D uMap;uniform vec3 uTint;uniform float uA;void main(){ vec4 c=texture2D(uMap,vUv); gl_FragColor=vec4(c.rgb*uTint,min(1.0,c.a*uA)); if(gl_FragColor.a<.01) discard; }`;
-  const geo=new THREE.PlaneGeometry(1,1); const bills=[]; const rings=[]; const scor=[]; let deb=null; const debD=[]; let ready=false; let flash={t:0,d:0,x:0,z:0,i:0,col:new THREE.Color()};
+  const BILL_CAP={perf:6,low:8,med:10,high:18}; const geo=new THREE.PlaneGeometry(1,1); const bills=[]; const rings=[]; const scor=[]; let deb=null; const debD=[]; let ready=false; let flash={t:0,d:0,x:0,z:0,i:0,col:new THREE.Color()};
   function init(){ if(ready) return; ready=true; FIRE=sheet('fire'); PUFF=sheet('puff');
     for(let i=0;i<18;i++){ const add=i<12; const mat=new THREE.ShaderMaterial({uniforms:{uMap:{value:add?FIRE:PUFF},uTint:{value:new THREE.Color(1,1,1)},uA:{value:1},uF:{value:0}},vertexShader:VS,fragmentShader:FS,transparent:true,depthWrite:false,blending:add?THREE.AdditiveBlending:THREE.NormalBlending,fog:false});
       const m=new THREE.Mesh(geo,mat); m.visible=false; m.frustumCulled=false; m.renderOrder=add?7:6; scene.add(m); bills.push({m,mat,add,on:false}); }
@@ -17807,7 +17825,7 @@ const EXPL=(()=>{
     const dg=new THREE.DodecahedronGeometry(.11,0); deb=new THREE.InstancedMesh(dg,new THREE.MeshBasicMaterial({color:0xffffff}),48); deb.count=0; deb.frustumCulled=false; deb.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     scene.add(deb); for(let i=0;i<48;i++) debD.push({on:false}); }
   const _m4=new THREE.Matrix4(), _q=new THREE.Quaternion(), _p=new THREE.Vector3(), _s=new THREE.Vector3(), _e=new THREE.Euler(), _c=new THREE.Color();
-  function bill(x,y,z,o){ const b=bills.find(q=>q.add===!!o.add&&!q.on); if(!b) return null; b.on=true; b.t=0; b.d=o.d||.7; b.x=x; b.y=y; b.z=z; b.s0=o.s0||1; b.s1=o.s1||3; b.vy=o.vy||0; b.a=o.a===undefined?1:o.a; b.rot=rand(TAU);
+  function bill(x,y,z,o){ const cap=BILL_CAP[QL]||18; if(cap<18){ let n=0; for(const q of bills) if(q.on) n++; if(n>=cap) return null; } /* v28: не больше cap спрайтов огня/дыма разом (каждый — вызов отрисовки) */ const b=bills.find(q=>q.add===!!o.add&&!q.on); if(!b) return null; b.on=true; b.t=0; b.d=o.d||.7; b.x=x; b.y=y; b.z=z; b.s0=o.s0||1; b.s1=o.s1||3; b.vy=o.vy||0; b.a=o.a===undefined?1:o.a; b.rot=rand(TAU);
     b.mat.uniforms.uMap.value=o.fire?FIRE:PUFF; b.mat.uniforms.uTint.value.set(o.col===undefined?0xffffff:o.col); b.m.visible=true; return b; }
   function ring(x,z,R,col,d){ const r=rings.find(q=>!q.on); if(!r) return; r.on=true; r.t=0; r.d=d||.45; r.R=R; r.m.position.set(x,.12,z); r.m.material.color.set(col); r.m.visible=true; }
   function scorch(x,z,R,col,a,life){ if(qLow()&&!a) return; let s=scor.find(q=>!q.on); if(!s){ s=scor.reduce((m,q)=>q.t>m.t?q:m,scor[0]); } s.on=true; s.t=0; s.life=life||12; s.a=a||.55; s.m.position.set(x,.05+Math.random()*.01,z); s.m.scale.set(R*2,1,R*2); s.m.rotation.y=rand(TAU); s.m.material.color.set(col); s.m.material.opacity=0; s.m.visible=true; }
@@ -19256,7 +19274,7 @@ const _a2MeterKind8=a2MeterKind;
 a2MeterKind=function(){ if(W&&W.kind==='stage'&&W.zone&&W.zone.underwater) return 'air'; return _a2MeterKind8(); };
 const _updateStageA8=updateStage;
 updateStage=function(dt){ _updateStageA8(dt); if(!G.P||!a8Zone()) return; try{ a8Tick(dt); }catch(e){ if(!a8Tick._err){ a8Tick._err=1; console.error(e); } } };
-function a8Tick(dt){ const P=G.P; a8AirTick(dt); a8BubbleTick(dt); a8FogTick(dt); a8CurrentTick(dt); a8ChandTick(dt); a8FieldTick(dt); a8VentTick(dt); a8ShieldTick(dt); a8LineTick(dt);
+function a8Tick(dt){ const P=G.P; if(W.a8init!==W){ W.a8init=W; a8StageInit(); } a8AirTick(dt); a8BubbleTick(dt); a8FogTick(dt); a8CurrentTick(dt); a8ChandTick(dt); a8FieldTick(dt); a8VentTick(dt); a8ShieldTick(dt); a8LineTick(dt);
   if(W.info&&W.info.key==='8-2') a8SquareTick(dt); if(W.obj&&W.obj.type==='totems') a8BellsTick(dt); if(W.cart) a8DiveBellTick(dt);
   // пузырьки от героя и взвесь
   P._bbT=(P._bbT||0)-dt; if(P._bbT<=0&&!P.dead){ P._bbT=rand(.5,1.1); fx('bubble',P.x+rand(-.3,.3),1.6,P.z+rand(-.3,.3),{k:1}); } }
@@ -19517,8 +19535,9 @@ objText=function(){ _objTextA8(); try{ if(!a8Zone()) return; const o=W.obj; if(!
 
 // ---------- этапы: стартовые сцены, реплики спутников, музыка бала ----------
 const _startStage2A8=startStage2;
-startStage2=function(z,s){ _startStage2A8(z,s);
-  if(z===8) later(.5,()=>{ if(!W||W.kind!=='stage') return; if(W.info.key==='8-1'&&!S.seen.z8_intro) playDialog('z8_intro'); try{ if(compS().active&&COMP_LINES8[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES8[a.id])+'»','tag'); }); }catch(e){} }); };
+startStage2=function(z,s){ _startStage2A8(z,s); };
+// v28: старт этапа зоны 8 — на первом кадре этапа (later() до сборки мира стирался clearEntities: сцена z8_intro не появлялась)
+function a8StageInit(){ later(.5,()=>{ if(!W||W.kind!=='stage') return; if(W.info.key==='8-1'&&!S.seen.z8_intro) playDialog('z8_intro'); try{ if(compS().active&&COMP_LINES8[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES8[a.id])+'»','tag'); }); }catch(e){} }); }
 const _runEndA8=runEnd;
 runEnd=function(win,reason,keep){ const I=G.run&&G.run.info; const was=I&&I.z===8; _runEndA8(win,reason,keep); if(was){ try{ if(W&&W.a8bub){ worldRoot.remove(W.a8bub); W.a8bub=null; } }catch(e){} if(win) track('a2:stage',I.key); } };
 // asset group of zone 8
@@ -19961,7 +19980,7 @@ validateWorld=function(opt={}){ const r=_validateWorldA8(opt); try{ if(!W||W.kin
     const dedupe={}; const V2=V.filter(v=>{ const k=v.rule+Math.round((v.x||0)/6)+','+Math.round((v.z||0)/6); if(dedupe[k]) return false; dedupe[k]=1; return true; });
     r.violations=(r.violations||[]).concat(V2); r.n+=V2.length; r.ok=r.n===0; for(const v of V2) r.by[v.rule]=(r.by[v.rule]||0)+1; r.stats.deep=(W.deep||[]).length; r.stats.air=air.length; r.stats.cur=(W.currents||[]).length; }catch(e){ console.error(e); } return r; };
 // v21 colliders: round zone-8 props use their PFOOT circle (thin posts with an offset lamp/arm would get a poor box from the raster)
-for(const t of ['kelpTall','kelpTall2','rockReef','rockCoral','pillarDrowned','lanternDrowned','urnDrowned','fountain8']) COL_CIRCLE.add(t);
+for(const t of ['kelpTall','kelpTall2','rockReef','rockCoral','pillarDrowned','lanternDrowned','urnDrowned','fountain8','heartAltar']) COL_CIRCLE.add(t); // v28: алтарь площади круглый — по прямоугольнику модели он не вставал (после первой сборки), и сцены z8_square на 8-2 не было
 
 // ================= p47 (v24): прогрессия, волна 1 — нерф дальнего боя, кривая сложности по зонам, деревня даёт силу
 // (бонусы зданий, «Пламя Очага», ворота зон), заточка без потери ступени («удача кузнеца»), прозрачный урон в карточке вещи =================
@@ -21710,7 +21729,10 @@ function a9Sky(){ return !!(W&&W.a9sky); }
 const _a2MeterKind9=a2MeterKind;
 a2MeterKind=function(){ if(W&&W.kind==='stage'&&W.zone&&W.zone.heat) return 'heat'; return _a2MeterKind9(); };
 const _updateStageA9=updateStage;
-updateStage=function(dt){ _updateStageA9(dt); if(!G.P||!a9Zone()) return; try{ a9Tick(dt); }catch(e){ if(!a9Tick._err){ a9Tick._err=1; console.error(e); } } };
+updateStage=function(dt){ const wv=!!(W&&W.a9clock&&W.survStarted&&W.survT>0&&W.waveT-dt<=0&&a9Zone()); if(wv) W.waveT=1e9; _updateStageA9(dt); if(wv&&W.waveT>1e8) a9SiegeWave(); if(!G.P||!a9Zone()) return; try{ a9Tick(dt); }catch(e){ if(!a9Tick._err){ a9Tick._err=1; console.error(e); } } };
+// v28: волна осады 9-3 (вместо общей из p9): столько же врагов, но всего на этапе — не больше ~12 (раньше волна в 7–9 врагов приходила поверх 11 живых)
+function a9SiegeWave(){ const A=W.arena; W.waveT=Math.max(5,9-W.info.z*.5); if(!A||!(W.survT>0)) return; const alive=G.enemies.filter(e=>e.alive).length; const n=Math.min(randi(3,5)+Math.floor(W.info.z/2),Math.max(2,12-alive));
+  for(let i=0;i<n;i++){ const a=rand(TAU); const x=A.x+Math.cos(a)*(A.r-1), z=A.z+Math.sin(a)*(A.r-1); spawnEnemy(pick(W.zone.enemies),x,z,W.lvl,{aggro:1,elite:chance(.08)?1:0}); fx('magic',x,.5,z,{col:0x5a2a2a,k:8}); } }
 function a9Tick(dt){ const P=G.P; if(W.a9init!==W){ W.a9init=W; a9StageInit(); } a9ShadeTick(dt); a9HeatTick(dt); a9StormTick(dt); a9QuickTick(dt); a9SignTick(dt); a9GustTick(dt); a9LiftTick(dt); a9WellTick(dt); a9BlindTick(dt); a9EnemyFxTick(dt);
   if(W.cart&&W.a9caravan) a9CaravanTick(dt); if(W.obj&&W.obj.type==='survive'&&W.a9clock){ a9ClockTick(dt); if(W.survStarted&&W.survT>0&&G.enemies.filter(e=>e.alive).length>=12) W.waveT=Math.max(W.waveT,1.5); } // осада: не больше ~12 врагов разом (телефоны)
   // песок у ног и марево
@@ -21736,7 +21758,7 @@ function a9HeatTick(dt){ const P=G.P, M=P.meter; if(!M||M.k!=='heat'||P.dead) re
   // 100%: Солнечный удар
   if(M.v>=100){ M.v=50; hurtPlayer(P.maxHp*C.stroke,{true:1}); a9Blind(C.blind,1); banner('Солнечный удар!','Зной сбит до половины — ищите тень'); AU.sfx('hit',.8,.6); shake(.3); spirit('sunstroke',true); track('a2:meter','heat_max'); } }
 // Мираж: полупрозрачные «враги», исчезают от удара, не бьют (у элиты «Миражный» — бьют на 30%)
-function a9MirageSpawn(n,src){ const P=G.P; const kinds=src?[src.kind]:W.zone.enemies.filter(k=>k!=='goldBeetle'); for(let i=0;i<n;i++){ let x=P.x,z=P.z; for(let k=0;k<12;k++){ const a=rand(TAU), r=src?rand(1.5,3):rand(5,8); const tx=(src||P).x+Math.cos(a)*r, tz=(src||P).z+Math.sin(a)*r; if(walkable(tx,tz,.5)){ x=tx; z=tz; break; } }
+function a9MirageSpawn(n,src){ const P=G.P; const kinds=src?[src.kind]:W.zone.enemies.filter(k=>k!=='goldBeetle'); if(!src){ const al=G.enemies.filter(e=>e.alive).length; n=Math.min(n,Math.max(al<6?1:0,13-al)); } /* v28: миражи Зноя не раздувают толпу (каждый — полная модель) */ for(let i=0;i<n;i++){ let x=P.x,z=P.z; for(let k=0;k<12;k++){ const a=rand(TAU), r=src?rand(1.5,3):rand(5,8); const tx=(src||P).x+Math.cos(a)*r, tz=(src||P).z+Math.sin(a)*r; if(walkable(tx,tz,.5)){ x=tx; z=tz; break; } }
     const e=spawnEnemy(pick(kinds),x,z,W.lvl,{summon:1,aggro:1}); e.mirage=1; e.maxHp=e.hp=1; e.mirDmg=src?.3:0; e.dmg*=e.mirDmg; e.untargetPet=true; e.noPoise=1; a9Ghost(e,.42); fx('dust',x,.6,z,{k:8,col:0xffe8b0}); } }
 function a9Ghost(e,op){ try{ if(e.rig.actor){ e.rig.actor.setOpacity(op); e.rig.actor.setGlow('#ffe8b0',.35); } else { const m=toonMat(0xffe8b0,.5); m.transparent=true; m.opacity=op; m.depthWrite=false; e.baseMat=m; setMat(e,m); } }catch(er){} e.noShadow=1; }
 function a9Blind(t,strong){ const P=G.P; P.blindT=Math.max(P.blindT||0,t); P.blindK=strong?1:.6; }
@@ -22572,6 +22594,60 @@ validateWorld=function(opt={}){ const r=_validateWorldA9(opt); try{ if(!W||W.kin
     for(const s of (W.a9signs||[])) if(sdfOpen(s.x,s.z)>-.6) add('objOutside','солнечный знак вне проходимой зоны',s.x,s.z);
     const dedupe={}; const V2=V.filter(v=>{ const k=v.rule+Math.round((v.x||0)/6)+','+Math.round((v.z||0)/6); if(dedupe[k]) return false; dedupe[k]=1; return true; });
     r.violations=(r.violations||[]).concat(V2); r.n+=V2.length; r.ok=r.n===0; for(const v of V2) r.by[v.rule]=(r.by[v.rule]||0)+1; r.stats.shade=(W.a9shade||[]).length; r.stats.wells=(W.a9wells||[]).length; r.stats.lifts=(W.a9lifts||[]).length; r.stats.sky=W.a9sky?1:0; }catch(e){ console.error(e); } return r; };
+
+// ---------- v28: вызовы отрисовки ----------
+// InstancedMesh с count 0 (тени-пятна, обломки, частицы окружения, пустые наборы пропсов) three.js всё равно отправляет на отрисовку — прячем их на кадр
+function v28HideEmpty(root){ for(const c of root.children){ if(!c.isInstancedMesh) continue; if(c.count===0){ if(c.visible){ c.visible=false; c.userData._v28h=1; } } else if(c.userData._v28h){ c.userData._v28h=0; c.visible=true; } } }
+// золото, материалы, камни и ключи на земле — по одному InstancedMesh на модель (одинаковые сетка и материал MT): было по вызову на каждую монету
+const DINST={}, _v28m=new THREE.Matrix4();
+{ const _dm28=dropModel; dropModel=function(kind,o){ const g=_dm28(kind,o); try{ const m=g.children[0]; if(kind!=='item'&&g.children.length===1&&m&&m.isMesh&&m.material===MT&&!m.rotation.x&&!m.rotation.z){ const k=m.geometry.uuid; g.userData.dinst=DINST[k]||(DINST[k]={geo:m.geometry,im:null}); g.userData.dsc=m.scale.x; g.remove(m); } }catch(e){} return g; }; }
+function v28DropInst(){ for(const k in DINST) DINST[k].n=0; const L=(G.mode==='village'||!G.drops)?[]:G.drops;
+  for(const d of L){ const g=d.m, P=g&&g.userData.dinst; if(!P||!g.parent) continue; if(!P.im){ P.im=new THREE.InstancedMesh(P.geo,MT,96); P.im.frustumCulled=false; P.im.count=0; P.im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
+    if(P.n>=96) continue; g.updateMatrix(); _v28m.copy(g.matrix).scale(_v28s.set(g.userData.dsc,g.userData.dsc,g.userData.dsc)); P.im.setMatrixAt(P.n++,_v28m); }
+  for(const k in DINST){ const P=DINST[k]; if(!P.im) continue; if(P.im.parent!==scene) scene.add(P.im); P.im.count=P.n; P.im.visible=P.n>0; P.im.instanceMatrix.needsUpdate=true; } }
+const _v28s=new THREE.Vector3();
+// бочки, ящики и горшки (одна сетка, ломаются с одного удара) — тоже по InstancedMesh на модель
+const OINST={}, OBRK={barrel:1,oilBarrel:1,crate:1,pot:1};
+function v28ObjInst(){ for(const k in OINST) OINST[k].n=0; const L=(W&&W.objs&&(G.mode==='stage'||G.mode==='abyss'))?W.objs:[];
+  for(const o of L){ if(!OBRK[o.kind]||!o.alive) continue; const g=o.mesh; if(!g||!g.parent) continue; let c=g.userData.v28c;
+    if(c===undefined){ c=g.userData.v28c=(g.children.length===1&&g.children[0].isMesh&&!g.children[0].isInstancedMesh&&!g.children[0].children.length)?g.children[0]:null; if(c){ c.visible=false; } }
+    if(!c) continue; const k=c.geometry.uuid+c.material.uuid; const P=OINST[k]||(OINST[k]={geo:c.geometry,mat:c.material,im:null,n:0});
+    if(!P.im){ P.im=new THREE.InstancedMesh(P.geo,P.mat,48); P.im.frustumCulled=false; P.im.count=0; P.im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
+    if(P.n>=48){ c.visible=true; continue; } c.visible=false; c.updateWorldMatrix(true,false); P.im.setMatrixAt(P.n++,c.matrixWorld); }
+  for(const k in OINST){ const P=OINST[k]; if(!P.im) continue; if(P.im.parent!==scene) scene.add(P.im); P.im.count=P.n; P.im.visible=P.n>0; P.im.instanceMatrix.needsUpdate=true; } }
+// летучие острова и их тени — по одному InstancedMesh на всё (было 2 сетки на остров); в кадр попадают только видимые
+{ const _ib=a9IslesBuild; a9IslesBuild=function(){ _ib(); const L=W.a9isles; if(!L||!L.length) return; const m0=L[0].m, s0=L[0].shm;
+  const im=new THREE.InstancedMesh(m0.geometry,m0.material,L.length), sm=new THREE.InstancedMesh(s0.geometry,s0.material,L.length); for(const x of [im,sm]){ x.frustumCulled=false; x.count=0; x.instanceMatrix.setUsage(THREE.DynamicDrawUsage); worldRoot.add(x); } sm.renderOrder=s0.renderOrder;
+  for(const q of L){ q.m.visible=false; q.shm.visible=false; } W.a9isIM={im,sm}; }; }
+const _v28F=new THREE.Frustum(), _v28P=new THREE.Matrix4(), _v28S=new THREE.Sphere();
+function v28Isles(){ const I=W&&W.a9isIM; if(!I||!I.im.parent) return; cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P); let a=0,b=0;
+  for(const q of W.a9isles){ q.m.updateMatrix(); q.shm.updateMatrix(); _v28S.set(q.m.position,q.sr*1.6); if(_v28F.intersectsSphere(_v28S)) I.im.setMatrixAt(a++,q.m.matrix); _v28S.set(q.shm.position,q.sr*1.05); if(_v28F.intersectsSphere(_v28S)) I.sm.setMatrixAt(b++,q.shm.matrix); }
+  I.im.count=a; I.sm.count=b; I.im.visible=a>0; I.sm.visible=b>0; I.im.instanceMatrix.needsUpdate=I.sm.instanceMatrix.needsUpdate=true; }
+// Златожуки (одна сетка, базовый материал) — один InstancedMesh на всех видимых; вспышка удара, мираж, лёд — обычной сеткой
+let _v28B=null;
+function v28Beetles(){ if(!_v28B&&typeof MTscarab==='undefined') return; let n=0; const L=(G.mode==='stage'||G.mode==='abyss')&&G.enemies?G.enemies:[];
+  for(const e of L){ if(e.kind!=='goldBeetle'||!e.meshes||e.meshes.length!==1||(e.rig&&e.rig.actor)) continue; const m=e.meshes[0], root=e.rig.root;
+    const ok=root.parent&&root.visible&&m.material===MTscarab&&!e.mirage; if(!ok){ if(m.userData._v28b){ m.userData._v28b=0; m.visible=true; } continue; }
+    if(!_v28B){ _v28B=new THREE.InstancedMesh(m.geometry,MTscarab,64); _v28B.frustumCulled=false; _v28B.count=0; _v28B.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
+    if(m.geometry!==_v28B.geometry||n>=64){ if(m.userData._v28b){ m.userData._v28b=0; m.visible=true; } continue; }
+    m.userData._v28b=1; m.visible=false; m.updateWorldMatrix(true,false); _v28S.center.setFromMatrixPosition(m.matrixWorld); _v28S.radius=1.2; if(!_v28F.intersectsSphere(_v28S)) continue; _v28B.setMatrixAt(n++,m.matrixWorld); }
+  if(_v28B){ if(_v28B.parent!==scene) scene.add(_v28B); _v28B.count=n; _v28B.visible=n>0; _v28B.instanceMatrix.needsUpdate=true; } }
+{ const _asr=asRender; asRender=function(dt){ try{ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P); v28Beetles(); v28Isles(); v28DropInst(); v28ObjInst(); v28HideEmpty(scene); v28HideEmpty(worldRoot); }catch(e){ if(!asRender._e){ asRender._e=1; console.warn('v28',e); } } return _asr(dt); }; }
+// пропсы на этапе: после отсечения прямоугольником (с запасом под любой наклон камеры) — ещё и по пирамиде видимости камеры
+// (сфера пропа с запасом 2,5 м на сдвиг до следующего пересчёта); тип пропа, которого нет в кадре, не стоит вызова отрисовки
+{ const _cp=cullProps; cullProps=function(cx,cz,force){ if(!W||!W.propIM) return _cp(cx,cz,force);
+    const k=(Math.round(cam.position.y*2)/2)+'|'+cam.fov+'|'+cam.aspect.toFixed(2)+'|'+(CAMR.override?1:0); if(W._v28ck!==k){ W._v28ck=k; force=true; }
+    const was=W.propCullAt; _cp(cx,cz,force); if(W.propCullAt===was) return;
+    if(!(G.mode==='stage'||G.mode==='abyss')||W.cullAll||CAMR.override||cineTarget()) return; try{ v28PropFrustum(); }catch(e){ console.warn('v28 cull',e); } }; }
+const _v28q=new THREE.Quaternion(), _v28v=new THREE.Vector3(), _v28y=new THREE.Vector3(0,1,0), _v28sc=new THREE.Vector3();
+function v28PropFrustum(){ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P);
+  const [cx,cz]=W.propCullAt; const asp=cam.aspect, xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
+  for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0; const f=pfoot(t,1);
+    for(const p of list){ const dx=p.x-cx, dz=p.z-cz; if(dx<-xr||dx>xr||dz<z0||dz>z1) continue; const s=p.s*(p.sy||1);
+      let h=p._v28h; if(h===undefined){ try{ h=propH(p); }catch(e){ h=2.5; } if(!(h>0)) h=2.5; p._v28h=h; }
+      _v28S.center.set(p.x,(p.y||0)+h*.5,p.z); _v28S.radius=Math.max(f.v*p.s*(p.sx||1)*1.2,h*.6)+2.5; if(!_v28F.intersectsSphere(_v28S)) continue;
+      _v28q.setFromAxisAngle(_v28y,p.ry); _v28sc.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _v28v.set(p.x,p.y||0,p.z); _v28m.compose(_v28v,_v28q,_v28sc); if(grp) asPropSet(grp,n++,_v28m); else im.setMatrixAt(n++,_v28m); }
+    if(grp){ asPropCount(grp,n); grp.visible=n>0; continue; } im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; } }
 // ================= pz: boot =================
 boot();
 })();

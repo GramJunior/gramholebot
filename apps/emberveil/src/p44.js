@@ -15,7 +15,7 @@ const _a2MeterKind8=a2MeterKind;
 a2MeterKind=function(){ if(W&&W.kind==='stage'&&W.zone&&W.zone.underwater) return 'air'; return _a2MeterKind8(); };
 const _updateStageA8=updateStage;
 updateStage=function(dt){ _updateStageA8(dt); if(!G.P||!a8Zone()) return; try{ a8Tick(dt); }catch(e){ if(!a8Tick._err){ a8Tick._err=1; console.error(e); } } };
-function a8Tick(dt){ const P=G.P; a8AirTick(dt); a8BubbleTick(dt); a8FogTick(dt); a8CurrentTick(dt); a8ChandTick(dt); a8FieldTick(dt); a8VentTick(dt); a8ShieldTick(dt); a8LineTick(dt);
+function a8Tick(dt){ const P=G.P; if(W.a8init!==W){ W.a8init=W; a8StageInit(); } a8AirTick(dt); a8BubbleTick(dt); a8FogTick(dt); a8CurrentTick(dt); a8ChandTick(dt); a8FieldTick(dt); a8VentTick(dt); a8ShieldTick(dt); a8LineTick(dt);
   if(W.info&&W.info.key==='8-2') a8SquareTick(dt); if(W.obj&&W.obj.type==='totems') a8BellsTick(dt); if(W.cart) a8DiveBellTick(dt);
   // пузырьки от героя и взвесь
   P._bbT=(P._bbT||0)-dt; if(P._bbT<=0&&!P.dead){ P._bbT=rand(.5,1.1); fx('bubble',P.x+rand(-.3,.3),1.6,P.z+rand(-.3,.3),{k:1}); } }
@@ -276,8 +276,9 @@ objText=function(){ _objTextA8(); try{ if(!a8Zone()) return; const o=W.obj; if(!
 
 // ---------- этапы: стартовые сцены, реплики спутников, музыка бала ----------
 const _startStage2A8=startStage2;
-startStage2=function(z,s){ _startStage2A8(z,s);
-  if(z===8) later(.5,()=>{ if(!W||W.kind!=='stage') return; if(W.info.key==='8-1'&&!S.seen.z8_intro) playDialog('z8_intro'); try{ if(compS().active&&COMP_LINES8[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES8[a.id])+'»','tag'); }); }catch(e){} }); };
+startStage2=function(z,s){ _startStage2A8(z,s); };
+// v28: старт этапа зоны 8 — на первом кадре этапа (later() до сборки мира стирался clearEntities: сцена z8_intro не появлялась)
+function a8StageInit(){ later(.5,()=>{ if(!W||W.kind!=='stage') return; if(W.info.key==='8-1'&&!S.seen.z8_intro) playDialog('z8_intro'); try{ if(compS().active&&COMP_LINES8[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES8[a.id])+'»','tag'); }); }catch(e){} }); }
 const _runEndA8=runEnd;
 runEnd=function(win,reason,keep){ const I=G.run&&G.run.info; const was=I&&I.z===8; _runEndA8(win,reason,keep); if(was){ try{ if(W&&W.a8bub){ worldRoot.remove(W.a8bub); W.a8bub=null; } }catch(e){} if(win) track('a2:stage',I.key); } };
 // asset group of zone 8

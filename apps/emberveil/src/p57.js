@@ -185,3 +185,57 @@ validateWorld=function(opt={}){ const r=_validateWorldA9(opt); try{ if(!W||W.kin
     for(const s of (W.a9signs||[])) if(sdfOpen(s.x,s.z)>-.6) add('objOutside','солнечный знак вне проходимой зоны',s.x,s.z);
     const dedupe={}; const V2=V.filter(v=>{ const k=v.rule+Math.round((v.x||0)/6)+','+Math.round((v.z||0)/6); if(dedupe[k]) return false; dedupe[k]=1; return true; });
     r.violations=(r.violations||[]).concat(V2); r.n+=V2.length; r.ok=r.n===0; for(const v of V2) r.by[v.rule]=(r.by[v.rule]||0)+1; r.stats.shade=(W.a9shade||[]).length; r.stats.wells=(W.a9wells||[]).length; r.stats.lifts=(W.a9lifts||[]).length; r.stats.sky=W.a9sky?1:0; }catch(e){ console.error(e); } return r; };
+
+// ---------- v28: вызовы отрисовки ----------
+// InstancedMesh с count 0 (тени-пятна, обломки, частицы окружения, пустые наборы пропсов) three.js всё равно отправляет на отрисовку — прячем их на кадр
+function v28HideEmpty(root){ for(const c of root.children){ if(!c.isInstancedMesh) continue; if(c.count===0){ if(c.visible){ c.visible=false; c.userData._v28h=1; } } else if(c.userData._v28h){ c.userData._v28h=0; c.visible=true; } } }
+// золото, материалы, камни и ключи на земле — по одному InstancedMesh на модель (одинаковые сетка и материал MT): было по вызову на каждую монету
+const DINST={}, _v28m=new THREE.Matrix4();
+{ const _dm28=dropModel; dropModel=function(kind,o){ const g=_dm28(kind,o); try{ const m=g.children[0]; if(kind!=='item'&&g.children.length===1&&m&&m.isMesh&&m.material===MT&&!m.rotation.x&&!m.rotation.z){ const k=m.geometry.uuid; g.userData.dinst=DINST[k]||(DINST[k]={geo:m.geometry,im:null}); g.userData.dsc=m.scale.x; g.remove(m); } }catch(e){} return g; }; }
+function v28DropInst(){ for(const k in DINST) DINST[k].n=0; const L=(G.mode==='village'||!G.drops)?[]:G.drops;
+  for(const d of L){ const g=d.m, P=g&&g.userData.dinst; if(!P||!g.parent) continue; if(!P.im){ P.im=new THREE.InstancedMesh(P.geo,MT,96); P.im.frustumCulled=false; P.im.count=0; P.im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
+    if(P.n>=96) continue; g.updateMatrix(); _v28m.copy(g.matrix).scale(_v28s.set(g.userData.dsc,g.userData.dsc,g.userData.dsc)); P.im.setMatrixAt(P.n++,_v28m); }
+  for(const k in DINST){ const P=DINST[k]; if(!P.im) continue; if(P.im.parent!==scene) scene.add(P.im); P.im.count=P.n; P.im.visible=P.n>0; P.im.instanceMatrix.needsUpdate=true; } }
+const _v28s=new THREE.Vector3();
+// бочки, ящики и горшки (одна сетка, ломаются с одного удара) — тоже по InstancedMesh на модель
+const OINST={}, OBRK={barrel:1,oilBarrel:1,crate:1,pot:1};
+function v28ObjInst(){ for(const k in OINST) OINST[k].n=0; const L=(W&&W.objs&&(G.mode==='stage'||G.mode==='abyss'))?W.objs:[];
+  for(const o of L){ if(!OBRK[o.kind]||!o.alive) continue; const g=o.mesh; if(!g||!g.parent) continue; let c=g.userData.v28c;
+    if(c===undefined){ c=g.userData.v28c=(g.children.length===1&&g.children[0].isMesh&&!g.children[0].isInstancedMesh&&!g.children[0].children.length)?g.children[0]:null; if(c){ c.visible=false; } }
+    if(!c) continue; const k=c.geometry.uuid+c.material.uuid; const P=OINST[k]||(OINST[k]={geo:c.geometry,mat:c.material,im:null,n:0});
+    if(!P.im){ P.im=new THREE.InstancedMesh(P.geo,P.mat,48); P.im.frustumCulled=false; P.im.count=0; P.im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
+    if(P.n>=48){ c.visible=true; continue; } c.visible=false; c.updateWorldMatrix(true,false); P.im.setMatrixAt(P.n++,c.matrixWorld); }
+  for(const k in OINST){ const P=OINST[k]; if(!P.im) continue; if(P.im.parent!==scene) scene.add(P.im); P.im.count=P.n; P.im.visible=P.n>0; P.im.instanceMatrix.needsUpdate=true; } }
+// летучие острова и их тени — по одному InstancedMesh на всё (было 2 сетки на остров); в кадр попадают только видимые
+{ const _ib=a9IslesBuild; a9IslesBuild=function(){ _ib(); const L=W.a9isles; if(!L||!L.length) return; const m0=L[0].m, s0=L[0].shm;
+  const im=new THREE.InstancedMesh(m0.geometry,m0.material,L.length), sm=new THREE.InstancedMesh(s0.geometry,s0.material,L.length); for(const x of [im,sm]){ x.frustumCulled=false; x.count=0; x.instanceMatrix.setUsage(THREE.DynamicDrawUsage); worldRoot.add(x); } sm.renderOrder=s0.renderOrder;
+  for(const q of L){ q.m.visible=false; q.shm.visible=false; } W.a9isIM={im,sm}; }; }
+const _v28F=new THREE.Frustum(), _v28P=new THREE.Matrix4(), _v28S=new THREE.Sphere();
+function v28Isles(){ const I=W&&W.a9isIM; if(!I||!I.im.parent) return; cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P); let a=0,b=0;
+  for(const q of W.a9isles){ q.m.updateMatrix(); q.shm.updateMatrix(); _v28S.set(q.m.position,q.sr*1.6); if(_v28F.intersectsSphere(_v28S)) I.im.setMatrixAt(a++,q.m.matrix); _v28S.set(q.shm.position,q.sr*1.05); if(_v28F.intersectsSphere(_v28S)) I.sm.setMatrixAt(b++,q.shm.matrix); }
+  I.im.count=a; I.sm.count=b; I.im.visible=a>0; I.sm.visible=b>0; I.im.instanceMatrix.needsUpdate=I.sm.instanceMatrix.needsUpdate=true; }
+// Златожуки (одна сетка, базовый материал) — один InstancedMesh на всех видимых; вспышка удара, мираж, лёд — обычной сеткой
+let _v28B=null;
+function v28Beetles(){ if(!_v28B&&typeof MTscarab==='undefined') return; let n=0; const L=(G.mode==='stage'||G.mode==='abyss')&&G.enemies?G.enemies:[];
+  for(const e of L){ if(e.kind!=='goldBeetle'||!e.meshes||e.meshes.length!==1||(e.rig&&e.rig.actor)) continue; const m=e.meshes[0], root=e.rig.root;
+    const ok=root.parent&&root.visible&&m.material===MTscarab&&!e.mirage; if(!ok){ if(m.userData._v28b){ m.userData._v28b=0; m.visible=true; } continue; }
+    if(!_v28B){ _v28B=new THREE.InstancedMesh(m.geometry,MTscarab,64); _v28B.frustumCulled=false; _v28B.count=0; _v28B.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
+    if(m.geometry!==_v28B.geometry||n>=64){ if(m.userData._v28b){ m.userData._v28b=0; m.visible=true; } continue; }
+    m.userData._v28b=1; m.visible=false; m.updateWorldMatrix(true,false); _v28S.center.setFromMatrixPosition(m.matrixWorld); _v28S.radius=1.2; if(!_v28F.intersectsSphere(_v28S)) continue; _v28B.setMatrixAt(n++,m.matrixWorld); }
+  if(_v28B){ if(_v28B.parent!==scene) scene.add(_v28B); _v28B.count=n; _v28B.visible=n>0; _v28B.instanceMatrix.needsUpdate=true; } }
+{ const _asr=asRender; asRender=function(dt){ try{ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P); v28Beetles(); v28Isles(); v28DropInst(); v28ObjInst(); v28HideEmpty(scene); v28HideEmpty(worldRoot); }catch(e){ if(!asRender._e){ asRender._e=1; console.warn('v28',e); } } return _asr(dt); }; }
+// пропсы на этапе: после отсечения прямоугольником (с запасом под любой наклон камеры) — ещё и по пирамиде видимости камеры
+// (сфера пропа с запасом 2,5 м на сдвиг до следующего пересчёта); тип пропа, которого нет в кадре, не стоит вызова отрисовки
+{ const _cp=cullProps; cullProps=function(cx,cz,force){ if(!W||!W.propIM) return _cp(cx,cz,force);
+    const k=(Math.round(cam.position.y*2)/2)+'|'+cam.fov+'|'+cam.aspect.toFixed(2)+'|'+(CAMR.override?1:0); if(W._v28ck!==k){ W._v28ck=k; force=true; }
+    const was=W.propCullAt; _cp(cx,cz,force); if(W.propCullAt===was) return;
+    if(!(G.mode==='stage'||G.mode==='abyss')||W.cullAll||CAMR.override||cineTarget()) return; try{ v28PropFrustum(); }catch(e){ console.warn('v28 cull',e); } }; }
+const _v28q=new THREE.Quaternion(), _v28v=new THREE.Vector3(), _v28y=new THREE.Vector3(0,1,0), _v28sc=new THREE.Vector3();
+function v28PropFrustum(){ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P);
+  const [cx,cz]=W.propCullAt; const asp=cam.aspect, xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
+  for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0; const f=pfoot(t,1);
+    for(const p of list){ const dx=p.x-cx, dz=p.z-cz; if(dx<-xr||dx>xr||dz<z0||dz>z1) continue; const s=p.s*(p.sy||1);
+      let h=p._v28h; if(h===undefined){ try{ h=propH(p); }catch(e){ h=2.5; } if(!(h>0)) h=2.5; p._v28h=h; }
+      _v28S.center.set(p.x,(p.y||0)+h*.5,p.z); _v28S.radius=Math.max(f.v*p.s*(p.sx||1)*1.2,h*.6)+2.5; if(!_v28F.intersectsSphere(_v28S)) continue;
+      _v28q.setFromAxisAngle(_v28y,p.ry); _v28sc.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _v28v.set(p.x,p.y||0,p.z); _v28m.compose(_v28v,_v28q,_v28sc); if(grp) asPropSet(grp,n++,_v28m); else im.setMatrixAt(n++,_v28m); }
+    if(grp){ asPropCount(grp,n); grp.visible=n>0; continue; } im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; } }

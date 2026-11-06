@@ -19,7 +19,10 @@ function a9Sky(){ return !!(W&&W.a9sky); }
 const _a2MeterKind9=a2MeterKind;
 a2MeterKind=function(){ if(W&&W.kind==='stage'&&W.zone&&W.zone.heat) return 'heat'; return _a2MeterKind9(); };
 const _updateStageA9=updateStage;
-updateStage=function(dt){ _updateStageA9(dt); if(!G.P||!a9Zone()) return; try{ a9Tick(dt); }catch(e){ if(!a9Tick._err){ a9Tick._err=1; console.error(e); } } };
+updateStage=function(dt){ const wv=!!(W&&W.a9clock&&W.survStarted&&W.survT>0&&W.waveT-dt<=0&&a9Zone()); if(wv) W.waveT=1e9; _updateStageA9(dt); if(wv&&W.waveT>1e8) a9SiegeWave(); if(!G.P||!a9Zone()) return; try{ a9Tick(dt); }catch(e){ if(!a9Tick._err){ a9Tick._err=1; console.error(e); } } };
+// v28: волна осады 9-3 (вместо общей из p9): столько же врагов, но всего на этапе — не больше ~12 (раньше волна в 7–9 врагов приходила поверх 11 живых)
+function a9SiegeWave(){ const A=W.arena; W.waveT=Math.max(5,9-W.info.z*.5); if(!A||!(W.survT>0)) return; const alive=G.enemies.filter(e=>e.alive).length; const n=Math.min(randi(3,5)+Math.floor(W.info.z/2),Math.max(2,12-alive));
+  for(let i=0;i<n;i++){ const a=rand(TAU); const x=A.x+Math.cos(a)*(A.r-1), z=A.z+Math.sin(a)*(A.r-1); spawnEnemy(pick(W.zone.enemies),x,z,W.lvl,{aggro:1,elite:chance(.08)?1:0}); fx('magic',x,.5,z,{col:0x5a2a2a,k:8}); } }
 function a9Tick(dt){ const P=G.P; if(W.a9init!==W){ W.a9init=W; a9StageInit(); } a9ShadeTick(dt); a9HeatTick(dt); a9StormTick(dt); a9QuickTick(dt); a9SignTick(dt); a9GustTick(dt); a9LiftTick(dt); a9WellTick(dt); a9BlindTick(dt); a9EnemyFxTick(dt);
   if(W.cart&&W.a9caravan) a9CaravanTick(dt); if(W.obj&&W.obj.type==='survive'&&W.a9clock){ a9ClockTick(dt); if(W.survStarted&&W.survT>0&&G.enemies.filter(e=>e.alive).length>=12) W.waveT=Math.max(W.waveT,1.5); } // осада: не больше ~12 врагов разом (телефоны)
   // песок у ног и марево
@@ -45,7 +48,7 @@ function a9HeatTick(dt){ const P=G.P, M=P.meter; if(!M||M.k!=='heat'||P.dead) re
   // 100%: Солнечный удар
   if(M.v>=100){ M.v=50; hurtPlayer(P.maxHp*C.stroke,{true:1}); a9Blind(C.blind,1); banner('Солнечный удар!','Зной сбит до половины — ищите тень'); AU.sfx('hit',.8,.6); shake(.3); spirit('sunstroke',true); track('a2:meter','heat_max'); } }
 // Мираж: полупрозрачные «враги», исчезают от удара, не бьют (у элиты «Миражный» — бьют на 30%)
-function a9MirageSpawn(n,src){ const P=G.P; const kinds=src?[src.kind]:W.zone.enemies.filter(k=>k!=='goldBeetle'); for(let i=0;i<n;i++){ let x=P.x,z=P.z; for(let k=0;k<12;k++){ const a=rand(TAU), r=src?rand(1.5,3):rand(5,8); const tx=(src||P).x+Math.cos(a)*r, tz=(src||P).z+Math.sin(a)*r; if(walkable(tx,tz,.5)){ x=tx; z=tz; break; } }
+function a9MirageSpawn(n,src){ const P=G.P; const kinds=src?[src.kind]:W.zone.enemies.filter(k=>k!=='goldBeetle'); if(!src){ const al=G.enemies.filter(e=>e.alive).length; n=Math.min(n,Math.max(al<6?1:0,13-al)); } /* v28: миражи Зноя не раздувают толпу (каждый — полная модель) */ for(let i=0;i<n;i++){ let x=P.x,z=P.z; for(let k=0;k<12;k++){ const a=rand(TAU), r=src?rand(1.5,3):rand(5,8); const tx=(src||P).x+Math.cos(a)*r, tz=(src||P).z+Math.sin(a)*r; if(walkable(tx,tz,.5)){ x=tx; z=tz; break; } }
     const e=spawnEnemy(pick(kinds),x,z,W.lvl,{summon:1,aggro:1}); e.mirage=1; e.maxHp=e.hp=1; e.mirDmg=src?.3:0; e.dmg*=e.mirDmg; e.untargetPet=true; e.noPoise=1; a9Ghost(e,.42); fx('dust',x,.6,z,{k:8,col:0xffe8b0}); } }
 function a9Ghost(e,op){ try{ if(e.rig.actor){ e.rig.actor.setOpacity(op); e.rig.actor.setGlow('#ffe8b0',.35); } else { const m=toonMat(0xffe8b0,.5); m.transparent=true; m.opacity=op; m.depthWrite=false; e.baseMat=m; setMat(e,m); } }catch(er){} e.noShadow=1; }
 function a9Blind(t,strong){ const P=G.P; P.blindT=Math.max(P.blindT||0,t); P.blindK=strong?1:.6; }

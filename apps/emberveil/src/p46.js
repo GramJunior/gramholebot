@@ -175,4 +175,4 @@ validateWorld=function(opt={}){ const r=_validateWorldA8(opt); try{ if(!W||W.kin
     const dedupe={}; const V2=V.filter(v=>{ const k=v.rule+Math.round((v.x||0)/6)+','+Math.round((v.z||0)/6); if(dedupe[k]) return false; dedupe[k]=1; return true; });
     r.violations=(r.violations||[]).concat(V2); r.n+=V2.length; r.ok=r.n===0; for(const v of V2) r.by[v.rule]=(r.by[v.rule]||0)+1; r.stats.deep=(W.deep||[]).length; r.stats.air=air.length; r.stats.cur=(W.currents||[]).length; }catch(e){ console.error(e); } return r; };
 // v21 colliders: round zone-8 props use their PFOOT circle (thin posts with an offset lamp/arm would get a poor box from the raster)
-for(const t of ['kelpTall','kelpTall2','rockReef','rockCoral','pillarDrowned','lanternDrowned','urnDrowned','fountain8']) COL_CIRCLE.add(t);
+for(const t of ['kelpTall','kelpTall2','rockReef','rockCoral','pillarDrowned','lanternDrowned','urnDrowned','fountain8','heartAltar']) COL_CIRCLE.add(t); // v28: алтарь площади круглый — по прямоугольнику модели он не вставал (после первой сборки), и сцены z8_square на 8-2 не было
