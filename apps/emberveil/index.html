@@ -3778,7 +3778,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=8;
+const SAVE_V=9;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -3867,6 +3867,8 @@ function migrateSave(d){
     d.set=d.set||{}; if(!d.set.diff) d.set.diff='norm'; if(!d.set.dmgN) d.set.dmgN=d.set.dmg===false?'off':'merge'; if(!d.set.hold) d.set.hold='charge'; if(!d.set.autoSalv) d.set.autoSalv='off'; if(!d.set.bombT) d.set.bombT='fire';
     d.cons=d.cons||{}; for(const k of ['bomb_ice','bomb_poison','bomb_thunder','bomb_smoke']) if(d.cons[k]===undefined) d.cons[k]=0; if((d.cons.bomb|0)>5) d.cons.bomb=5;
     d.loot=d.loot||{blp:0,n:0,up:0,conv:0}; d.v=8; }
+  if(d.v<9){ // v8 → v9 (игра v26): звёзды этапа по условиям (sf), звёздные сундуки зон, Кошмар I–X, мастерство оружия, Уголь мастерства (src/p51.js → v9Migrate)
+    try{ if(typeof v9Migrate==='function') v9Migrate(d); }catch(e){ console.error(e); } d.v=9; }
   return d;
 }
 let _saveT=0;
@@ -20949,6 +20951,420 @@ itHtml=function(it,o){ const h=_itHtml50.apply(this,arguments); try{ if(it&&aspO
 
 Object.assign(window.__game,{ asp:()=>Object.keys(PS.asp||{}), aspGive:(id,n)=>{ codexS()[id]=(codexS()[id]||0)+(n||1); }, aspSet:(slot,id)=>{ const it=S.gear[slot]; if(it){ it.asp=id; refreshPlayer(false); } return it&&it.asp; },
   codex:()=>Object.assign({},codexS()), aspOf:(i)=>aspOf(S.inv[i||0]), aspList:()=>ASP_IDS.slice() });
+
+// ================= p51 (v26): волна 3 — E1 «Три звезды за этап», тайники, звёздные сундуки зон; сохранение v9 =================
+// План владельца — docs/PROGRESSION.md, раздел E. Звёзды этапа (Акт I и Акт II, не Бездна):
+//   ★ «Без гибели» — победа, ни разу не пав (очнуться у костра и «встать за ролик» — тоже гибель);
+//   ★ «В срок» — победа быстрее норматива этапа (PAR51: время бота ×1,6, округлено до 5 с);
+//   ★ «Все тайники» — за одну победную вылазку найдены все тайники этапа: тайный ход (проломить / рычаг),
+//     комната загадки (решить), каждый отнорок (боковая комната с сундуком, лагерем элиты или святилищем — войти в неё).
+// Лучшее по каждой звезде сохраняется отдельно (S.prog.stages[k].sf — битовая маска 1/2/4; .stars = число звёзд;
+// .sn — сколько тайников у этапа, .sb — рекорд найденных). Сумма звёзд зоны открывает сундуки 5/10/15 ★ (S.starRw).
+// Всё — обёртками поверх прежних функций. Миграция v8 → v9 — v9Migrate() (вызывается из migrateSave в p1.js).
+
+const ST51=[{b:1,n:'Без гибели',ic:'heart',d:'победа, ни разу не пав — возрождение у костра тоже считается'},{b:2,n:'В срок',ic:'clock',d:'победа быстрее норматива'},{b:4,n:'Все тайники',ic:'key',d:'за одну вылазку найти все тайники этапа'}];
+// норматив, с: время бота-мечника (стенд ev26/par.js, «ожидаемый» герой, Норма) ×1,6, округлено до 5 с (не меньше 90 с)
+const PAR51={'1-1':100,'1-2':195,'1-3':165,'1-4':100,'1-5':135,'2-1':90,'2-2':105,'2-3':190,'2-4':135,'2-5':240,'3-1':95,'3-2':145,'3-3':195,'3-4':150,'3-5':145,'4-1':90,'4-2':110,'4-3':265,'4-4':155,'4-5':225,'5-1':135,'5-2':220,'5-3':205,'5-4':165,'5-5':220,'6-1':110,'6-2':200,'6-3':245,'6-4':140,'6-5':530,'7-1':95,'7-2':180,'7-3':270,'7-4':380,'7-5':340,'8-1':130,'8-2':185,'8-3':280,'8-4':375,'8-5':290};
+const ZSR51=[5,10,15];
+// мастерство оружия (p53): очки до ранга 1…10
+const WM_RANKS=[0,30,80,160,280,450,680,980,1360,1840,2450];
+function popc51(n){ n|=0; let c=0; while(n){ c+=n&1; n>>=1; } return c; }
+function sfOf(st){ if(!st) return 0; if(st.sf!==undefined) return st.sf|0; return (1<<Math.min(3,Math.max(0,st.stars|0)))-1; }
+function starsOf(k){ return popc51(sfOf(S.prog.stages[k])); }
+function zoneStageKeys(z){ const a=[]; for(let s=1;s<=5;s++) a.push(z+'-'+s); return a; }
+function zoneStars(z){ let n=0; for(const k of zoneStageKeys(z)) n+=starsOf(k); return n; }
+function starRwS(){ if(!S.starRw||typeof S.starRw!=='object') S.starRw={}; return S.starRw; }
+function parOf(I){ return PAR51[I.key]||I.par||180; }
+function fmtT51(t){ t=Math.max(0,Math.round(t)); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
+// звёзды старых сохранений: число звёзд n → первые n условий (никто не теряет звёзд при переходе)
+totalStars=function(){ let n=0; for(const k in S.prog.stages) n+=starsOf(k); return n; };
+
+// ---------- норматив ----------
+{ const _si=stageInfo; stageInfo=function(z,s){ const I=_si.apply(this,arguments); if(I&&PAR51[I.key]) I.par=PAR51[I.key]; return I; }; }
+
+// ---------- тайники этапа ----------
+function sec51Build(){ const L=[]; if(!W||W.kind!=='stage'||!W.info||W.info.type==='training'||W.info.type==='prologue') return L;
+  if(W.secret&&W.secret.wall){ const sw=W.secret.wall; L.push({k:'secret',n:'Тайный ход',x:sw.x,z:sw.z,ok:()=>!sw.alive}); }
+  if(W.puzzle){ const Z=W.puzzle; const r=Z.room||{}; L.push({k:'puzzle',n:'Загадка',x:r.x,z:r.z,ok:()=>!!Z.solved}); }
+  for(const nk of (W.nooks||[])){ const r=nk.room; if(!r) continue; const it={k:'nook',n:nk.kind==='elite'?'Логово элиты':nk.kind==='shrine'?'Святилище':'Тайник',x:r.x,z:r.z,r:Math.max(2.2,(r.r||5)*.75),seen:false}; it.ok=()=>it.seen; L.push(it); }
+  return L; }
+function sec51Tick(){ const L=W&&W.sec51; const P=G.P; if(!L||!P||P.dead) return; for(const it of L){ if(it.k!=='nook'||it.seen) continue; if(Math.hypot(P.x-it.x,P.z-it.z)<it.r){ it.seen=true; if(G.run) G.run.sec51=(G.run.sec51||0)+1; const n=sec51Found(); dmgNum(P.x,2.7,P.z,`тайник ${n}/${L.length}`,'gold'); AU.sfx('chime',.6,1.2); if(n===L.length) later(.3,()=>banner('Все тайники найдены','★ «Все тайники» — за победу на этапе')); } } }
+function sec51Found(){ const L=W&&W.sec51; if(!L) return 0; let n=0; for(const it of L) if(it.ok()) n++; return n; }
+{ const _ms=makeStage; makeStage=function(info){ const r=_ms.apply(this,arguments); try{ W.sec51=sec51Build(); }catch(e){ console.error(e); W.sec51=[]; } return r; }; }
+// тайный ход и загадка тоже говорят «найдено»
+{ const _so=secretOpen; secretOpen=function(o,how){ const was=o&&o.alive; const r=_so.apply(this,arguments); try{ if(was&&W&&W.sec51){ const n=sec51Found(), N=W.sec51.length; later(.9,()=>{ if(W&&W.sec51) dmgNum(G.P.x,2.7,G.P.z,`тайник ${n}/${N}`,'gold'); }); } }catch(e){} return r; }; }
+
+// ---------- состояние звёзд в вылазке ----------
+function run51(){ const r=G.run, I=r&&r.info; if(!I||G.mode!=='stage'&&G.mode!=='result'||!W||W.kind!=='stage') return null; if(I.type==='training'||I.type==='prologue') return null;
+  const died=(r.deaths||0)>0||!!r.revived; const par=parOf(I); const L=W.sec51||[]; return {died,par,t:r.t||0,fast:(r.t||0)<=par,n:sec51Found(),N:L.length}; }
+function stars51Html(o,cls){ const ic=i=>ico(ST51[i].ic); return `<span class="st51 ${cls||''}"><i class="${o.died?'no':'ok'}">${ic(0)}${o.died?'пали':'без гибели'}</i><i class="${o.fast?'ok':'no'}">${ic(1)}${fmtT51(o.t)}<small>/${fmtT51(o.par)}</small></i><i class="${o.N&&o.n>=o.N||!o.N?'ok':'run'}">${ic(2)}Тайники ${o.n}/${o.N}</i></span>`; }
+{ const _ht=hudTick; hudTick=function(){ const r=_ht.apply(this,arguments); try{ const el=hudEl&&hudEl.obj; if(!el||G.mode!=='stage') return r; sec51Tick(); const o=run51(); if(!o) return r;
+    const key=(o.died?1:0)+'|'+Math.floor(o.t)+'|'+o.n+'/'+o.N+'|'+el.childElementCount; if(el._st51!==key||!el.querySelector('.st51')){ el._st51=key; const old=el.querySelector('.st51'); const h=stars51Html(o,'hud'); if(old) old.outerHTML=h; else el.insertAdjacentHTML('beforeend',h); } }catch(e){ console.error(e); } return r; }; }
+
+// ---------- итог вылазки: звёзды ----------
+{ const _re=runEnd; runEnd=function(win,reason,keep){ const r=G.run, I=r&&r.info; let snap=null;
+    try{ if(win&&I&&G.mode==='stage'&&W&&W.kind==='stage'){ const o=run51(); if(o) snap=o; } }catch(e){ console.error(e); }
+    const prev=I&&S.prog.stages[I.key]?Object.assign({},S.prog.stages[I.key]):null;
+    const res=_re.apply(this,arguments);
+    try{ if(snap&&I){ const st=S.prog.stages[I.key]||(S.prog.stages[I.key]={}); const sf0=sfOf(prev); let got=(snap.died?0:1)|(snap.fast?2:0)|(snap.N===0||snap.n>=snap.N?4:0);
+        const sf=sf0|got; st.sf=sf; st.stars=popc51(sf); st.best=Math.min(snap.t,prev&&prev.best||1e9); st.sn=Math.max(prev&&prev.sn||0,snap.N); st.sb=Math.max(prev&&prev.sb||0,snap.n);
+        if(prev&&prev.nm) st.nm=Math.max(st.nm||0,prev.nm);
+        const nw=sf&~sf0; G._st51={stars:popc51(got),got,nw,sf,o:snap,z:I.z}; saveGame(true);
+        if(nw) later(1.4,()=>{ const zs=zoneStars(I.z); const nx=ZSR51.find(v=>zs>=v&&!(starRwS()[I.z]&(1<<ZSR51.indexOf(v)))); if(nx) toast(`${ico('chest')} <b>Звёздный сундук</b> зоны готов (${zs} ★) — заберите на карте`,null,3,'quest'); }); }
+      else G._st51=null; }catch(e){ console.error(e); }
+    return res; }; }
+{ const _sr=showResults; showResults=function(o){ try{ const X=G._st51; if(X&&o&&o.stars!==undefined&&G.mode==='result'){ G._st51=null; const s=X.o; o.stars=X.stars;
+      o.starTxt=`${s.died?'☆':'★'} без гибели · ${s.fast?'★':'☆'} в срок ${fmtT51(s.par)} · ${s.N===0||s.n>=s.N?'★':'☆'} тайники ${s.n}/${s.N}`+(X.nw?` <b class="nw51">+${popc51(X.nw)} ★ новая</b>`:''); } }catch(e){ console.error(e); } return _sr.apply(this,arguments); }; }
+
+// ---------- карточка этапа ----------
+{ const _sc=stageCard; stageCard=function(z,s){ const r=_sc.apply(this,arguments); try{ const c=$('stageCard'); if(!c) return r; const I=stageInfo(z,s); const st=S.prog.stages[I.key]; const sf=sfOf(st);
+    for(const sp of c.querySelectorAll('.row span')){ const t=sp.textContent.trim(); if(/^\d\/3$/.test(t)||/★ за/.test(t)) sp.remove(); }
+    for(const m of c.querySelectorAll('.muted')) if(/★ победа/.test(m.textContent)) m.remove();
+    const par=parOf(I); const sn=st&&st.sn, sb=st&&st.sb||0;
+    const rows=ST51.map((d,i)=>{ const on=!!(sf&d.b); const sub=i===0?d.d:i===1?`быстрее <b>${fmtT51(par)}</b>${st&&st.best&&st.best<1e8?` · лучшее ${fmtT51(st.best)}`:''}`:`${sn!==undefined?`найдено <b>${sb}/${sn}</b> · `:''}тайный ход, загадка, отнорки`;
+      return `<div class="sc51r ${on?'on':''}"><span class="sc51i">${ico(d.ic)}</span><span class="sc51t"><b>${d.n}</b><small>${sub}</small></span><span class="sc51s">${on?'★':'<i>★</i>'}</span></div>`; }).join('');
+    const h=`<div class="sc51"><div class="sc51h"><b>${popc51(sf)}</b>/3 ${ico('star')} <small>лучшее по каждой звезде сохраняется</small></div>${rows}</div>`;
+    const row=c.querySelector('.rec24')&&c.querySelector('.rec24').parentElement; const w=c.querySelector('.v24warn'); const anchor=w||row;
+    if(anchor) anchor.insertAdjacentHTML('afterend',h); }catch(e){ console.error(e); } return r; }; }
+
+// ---------- звёздные сундуки зон (5 / 10 / 15 ★) ----------
+function zsrReward(z,i){ const ch=i===0?(z>=5?'iron':'wood'):i===1?(z>=3?'gold':'iron'):(z>=4?'leg':'gold'); const L=z<=6?ZONES[z-1].lv+4:z===7?35:40; const f=Math.sqrt(F(L));
+  const rw={ch,key:ch==='wood'?null:ch,gold:Math.round([80,160,300][i]*f),ess:[4,10,20][i]+z*2}; if(i===2){ rw.dust=2+z; if(z>=6) rw.core=1; } return rw; }
+function zsrHtml(rw){ const a=[`<b style="color:${CHESTS[rw.ch].col}">${CHESTS[rw.ch].n}</b>${rw.key?' + ключ':''}`]; const c={gold:rw.gold,ess:rw.ess}; if(rw.dust) c.dust=rw.dust; if(rw.core) c.core=rw.core; return a.join('')+' '+costHtml(c).replace(/cost no/g,'cost'); }
+function zsrClaim(z,i){ const need=ZSR51[i]; const m=starRwS()[z]|0; if(m&(1<<i)) return false; if(zoneStars(z)<need) return false; const rw=zsrReward(z,i);
+  starRwS()[z]=m|(1<<i); chestAdd(rw.ch,1,true); if(rw.key) keyAdd(rw.key,1); S.res.gold+=rw.gold; S.res.ess=(S.res.ess||0)+rw.ess; if(rw.dust) S.res.dust=(S.res.dust||0)+rw.dust; if(rw.core) S.res.core=(S.res.core||0)+rw.core;
+  AU.sfx('chest'); vib('success'); toast(`${ico('chest')} Звёздный сундук (${need} ★): ${zsrHtml(rw)} — откройте в «Лавке» → «Сундуки»`,null,rw.ch==='leg'?4:3,'quest'); track('stars_chest',z+':'+need); saveGame(true); return true; }
+function zsrPlaque(z,top){ const n=zoneStars(z), m=starRwS()[z]|0; let h=`<div class="zs51" style="top:${top+52}px"><span class="zs51n">${ico('star')}<b>${n}</b>/15</span>`;
+  ZSR51.forEach((v,i)=>{ const got=!!(m&(1<<i)), can=!got&&n>=v; const rw=zsrReward(z,i);
+    h+=`<button class="zs51c ${got?'got':can?'can':'lock'}" ${act(()=>{ if(can){ if(zsrClaim(z,i)) drawMap(); } else if(!got) toast(`${ico('star')} <b>${v} ★</b> в зоне «${esc(z<=6?ZONES[z-1].n:(A2_ZONES.find(x=>x.id===z)||{}).n||'')}»: ${zsrHtml(rw)}. Сейчас ${n} ★.`,null,2,'quest'); })}><img src="${chestImg(rw.ch)}" alt=""><i>${got?ico('check'):v}</i></button>`; });
+  return h+'</div>'; }
+{ const _dm=drawMap; drawMap=function(){ const r=_dm.apply(this,arguments); try{ const box=$('mapNodes'); if(!box) return r; let h='';
+    if(MAP.ch!==2){ for(let z=1;z<=6;z++){ if(!stageDone(z+'-1')) continue; h+=zsrPlaque(z,(6-z)*MAP.zoneH); } }
+    else if(typeof a2On==='function'&&a2On()){ for(let z=7;z<=(typeof A2_OPEN_MAX!=='undefined'?A2_OPEN_MAX:8);z++){ if(!stageDone(z+'-1')) continue; h+=zsrPlaque(z,(10-z)*MAP.zoneH); } }
+    if(h) box.insertAdjacentHTML('beforeend',h); bindPanel(); }catch(e){ console.error(e); } return r; }; }
+function zsrPending(){ let n=0; for(let z=1;z<=8;z++){ const zs=zoneStars(z), m=starRwS()[z]|0; ZSR51.forEach((v,i)=>{ if(zs>=v&&!(m&(1<<i))) n++; }); } return n; }
+
+// ---------- сохранение v9 ----------
+// v8 → v9 (игра v26): звёзды по условиям (sf), звёздные сундуки зон, Кошмар I–X (S.nm), мастерство оружия (S.wm), Уголь мастерства (S.mast).
+function v9Migrate(d){ d.prog=d.prog||{stages:{},zone:1}; const st=d.prog.stages||(d.prog.stages={});
+  for(const k in st){ const e=st[k]; if(!e||typeof e!=='object'){ st[k]={stars:0,best:1e9,sf:0}; continue; } if(e.sf===undefined){ const n=Math.min(3,Math.max(0,e.stars|0)); e.sf=(1<<n)-1; e.stars=n; } }
+  if(!d.starRw||typeof d.starRw!=='object') d.starRw={};
+  if(!d.nm||typeof d.nm!=='object') d.nm={max:1,got:{},runs:0};
+  if(!d.wm||typeof d.wm!=='object'){ d.wm={sword:0,axe:0,bow:0,staff:0}; // прошлые победы засчитываем оружию, которое сейчас в руках (до 6-го ранга)
+    try{ const w=d.gear&&d.gear.weapon; const B=w&&ITEM_BASES[w.base]; const cls=B&&B.cls||'sword'; const k=(d.st&&d.st.kills)||0, b=(d.st&&d.st.boss)||0, el=(d.st&&d.st.elites)||0; d.wm[cls]=Math.min(WM_RANKS[6],Math.round(k*.6+el*2+b*15)); }catch(e){} }
+  if(!d.mast||typeof d.mast!=='object') d.mast={xp:0,pts:0,n:{},big:[]};
+  return d; }
+{ const _ns=newSave; newSave=function(){ const s=_ns.apply(this,arguments); s.starRw={}; s.nm={max:1,got:{},runs:0}; s.wm={sword:0,axe:0,bow:0,staff:0}; s.mast={xp:0,pts:0,n:{},big:[]}; return s; }; }
+
+Object.assign(window.__game,{ stars51:()=>{ const o=run51(); return o&&Object.assign(o,{list:(W.sec51||[]).map(i=>i.k+':'+(i.ok()?1:0))}); }, sec51:()=>W&&W.sec51,
+  secFind:(i)=>{ const L=W&&W.sec51; if(!L) return 0; for(const [j,it] of L.entries()){ if(i!==undefined&&i!==j) continue; if(it.k==='nook') it.seen=true; else if(it.k==='secret'&&W.secret&&W.secret.wall.alive) secretOpen(W.secret.wall,'стенд'); else if(it.k==='puzzle'&&W.puzzle&&!W.puzzle.solved) puzzleSolved(); } return sec51Found(); },
+  stageSt:(k)=>S.prog.stages[k], zoneStars, zsrClaim, par51:()=>Object.assign({},PAR51) });
+
+(function(){ const st=document.createElement('style'); st.textContent=`
+.st51{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px;margin-top:3px;font-family:var(--body);font-weight:600;font-size:10.5px}
+.st51 i{display:inline-flex;align-items:center;gap:2px;font-style:normal;padding:1px 5px 1px 3px;border-radius:8px;background:rgba(14,8,4,.62);border:1px solid rgba(234,180,90,.35);color:#f2dfb8;white-space:nowrap}
+.st51 i .ico.ic{width:12px;height:12px}.st51 i small{font-size:9.5px;color:#bba27a;font-weight:400}
+.st51 i.ok{border-color:rgba(255,210,110,.75);color:#ffe2a0}.st51 i.ok .ico.ic{color:#ffd060}
+.st51 i.no{opacity:.6;color:#c8a890;text-decoration:line-through;text-decoration-color:rgba(255,120,90,.6)}.st51 i.no .ico.ic{color:#b06050}
+.st51 i.run .ico.ic{color:#d8c090}
+html.land.xshort .st51 i:nth-child(1){display:none}
+.sc51{margin:6px 0 2px;padding:6px 7px;border-radius:10px;background:rgba(20,11,5,.55);border:1px solid rgba(234,180,90,.28)}
+.sc51h{display:flex;align-items:center;gap:4px;font:700 13px var(--sc,serif);color:#ffe2a8;margin-bottom:4px}.sc51h b{font-size:16px;color:#ffd060}.sc51h .ico.ic{width:15px;height:15px;color:#ffd060}.sc51h small{margin-left:auto;font:400 10.5px var(--body);color:#bfa67e}
+.sc51r{display:grid;grid-template-columns:26px 1fr 22px;align-items:center;gap:6px;padding:3px 2px;border-top:1px solid rgba(234,180,90,.12)}
+.sc51i{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 45% 35%,#4a3014,#1a0e06);box-shadow:0 0 0 1px #8a6a30}.sc51i .ico.ic{width:15px;height:15px;color:#cdb07a}
+.sc51r.on .sc51i{box-shadow:0 0 0 1.5px #ffd060,0 0 8px rgba(255,190,70,.4)}.sc51r.on .sc51i .ico.ic{color:#ffd060}
+.sc51t b{display:block;font-size:12.5px;color:#ffe6b8;line-height:1.1}.sc51t small{display:block;font-size:10.5px;color:#cdb890;line-height:1.2}.sc51t small b{display:inline;font-size:inherit;color:#ffe2a0}
+.sc51s{font-size:19px;color:#ffd060;text-shadow:0 0 6px rgba(255,180,60,.6);text-align:center}.sc51s i{font-style:normal;color:rgba(255,255,255,.18);text-shadow:none}
+.nw51{color:#ffd060;margin-left:4px}
+.zs51{position:absolute;left:12px;display:flex;align-items:center;gap:5px;padding:4px 7px 4px 6px;border-radius:12px;background:linear-gradient(180deg,rgba(40,24,10,.88),rgba(18,10,4,.92));border:1px solid #b88a3a;box-shadow:0 2px 8px rgba(0,0,0,.45);z-index:3}
+.zs51n{display:flex;align-items:center;gap:2px;font:700 12px var(--sc,serif);color:#e8d2a8;margin-right:2px}.zs51n b{font-size:15px;color:#ffd060}.zs51n .ico.ic{width:14px;height:14px;color:#ffd060}
+.zs51c{position:relative;width:40px;height:34px;padding:0;border:0;border-radius:8px;background:rgba(0,0,0,.35);cursor:pointer;box-shadow:inset 0 0 0 1px rgba(234,180,90,.3)}
+.zs51c img{width:36px;height:30px;object-fit:contain;margin-top:1px}
+.zs51c i{position:absolute;right:-3px;bottom:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;font:800 10px/16px var(--body);font-style:normal;background:#2a1a0c;color:#e8d2a8;box-shadow:0 0 0 1px #9a7a40}
+.zs51c i .ico.ic{width:10px;height:10px;margin-top:3px}
+.zs51c.lock img{filter:grayscale(.85) brightness(.55)}
+.zs51c.can{box-shadow:inset 0 0 0 1.5px #ffd060,0 0 12px rgba(255,190,60,.55);animation:zs51g 1s ease-in-out infinite alternate}.zs51c.can i{background:linear-gradient(180deg,#ffd982,#c98a2a);color:#2a1606}
+.zs51c.got img{filter:brightness(.75) saturate(.6)}.zs51c.got i{background:#3a6a2a;color:#e0ffd0}
+@keyframes zs51g{to{box-shadow:inset 0 0 0 1.5px #ffe8a0,0 0 18px rgba(255,200,80,.85)}}
+`; document.head.appendChild(st); })();
+
+// ================= p52 (v26): волна 3 — E2 «Кошмар I–X» =================
+// После финала Главы I (победа над Пепельным Королём, этап 6-5) у каждого пройденного этапа Глав I и II в карточке появляется
+// выбор ступени Кошмара. Ступень t (1…10):
+//   • уровень врагов — max(уровень этапа, 30 + 2t) (I — 32 … X — 50, предел героя);
+//   • здоровье и урон врагов ×(1 + 0,25·t) — ЛИНЕЙНО (I ×1,25 … X ×3,5): рост уровня уже даёт сложный процент, линейная ступень
+//     держит лестницу проходимой вещами следующей ступени;
+//   • база — «Норма» при любой настройке сложности (История/Испытание на ступени не действуют), возрождений у костра — 3 (с VI — 2, с IX — 1);
+//   • элита: +1 особенность с III, +2 с VII; обычные враги с V становятся элитой с шансом 5% за ступень выше IV;
+//   • добыча: удача +12 за ступень, уровень вещей +1 с VI и +2 с IX; золото этапа +15% за ступень;
+//   • первая победа на ступени (на любом этапе) — награда ступени (золотой сундук I–IV, легендарный V–X, ключ, эссенция, пыль, ядра)
+//     и открывает следующую ступень; лучшая ступень этапа — на карте («К·III»).
+// Прежняя настройка «Кошмар» переименована в «Испытание» (ключ night прежний), чтобы не путать с лестницей.
+// Сохранение v9: S.nm = {max: открытая ступень, got: {t:1}, runs}, S.prog.stages[k].nm — лучшая пройденная ступень.
+
+const NM52={max:10,hpK:.25,lvl0:30,lvlK:2,mf:12,gold:.15};
+const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX','X'];
+V20D.night.n='Испытание';
+if(V20D.night.d) V20D.night.d=V20D.night.d.replace(/^Для мастеров/,'Для мастеров (не путать с Кошмаром I–X)');
+function nmS(){ if(!S.nm||typeof S.nm!=='object') S.nm={max:1,got:{},runs:0}; if(!S.nm.got) S.nm.got={}; if(!(S.nm.max>=1)) S.nm.max=1; return S.nm; }
+function nmOpen(){ return stageDone('6-5'); }
+function nmK(t){ return 1+NM52.hpK*t; }
+function nmLvl(L,t){ return Math.max(L,NM52.lvl0+NM52.lvlK*t); }
+function nmRes(t){ return t>=9?1:t>=6?2:3; }
+function nmIl(t){ return t>=9?2:t>=6?1:0; }
+function nmCur(){ return W&&W.info&&W.info.nm&&(G.mode==='stage'||G.mode==='result')?W.info.nm:0; }
+function nmReward(t){ const L=nmLvl(40,t); return {ch:t<=4?'gold':'leg',ess:15*t,dust:3*t,core:t>=5?Math.ceil(t/3):0,gold:Math.round(220*t*Math.sqrt(F(L)))}; }
+let NM_PICK=null;   // {key,t} — выбор в карточке этапа
+let NMRUN=null;     // {key,t} — ступень текущего запуска
+
+// ---------- этап на ступени ----------
+{ const _si=stageInfo; stageInfo=function(z,s){ const I=_si.apply(this,arguments); if(I&&NMRUN&&NMRUN.key===I.key&&NMRUN.t>0){ const t=NMRUN.t; I.nm=t; I.lvl0=I.lvl; I.lvl=nmLvl(I.lvl,t); I.name=I.name+' · Кошмар '+ROMAN[t]; } return I; }; }
+{ const _ss=startStage; startStage=function(z,s){ const key=z+'-'+s; NMRUN=NM_PICK&&NM_PICK.key===key&&NM_PICK.t>0&&nmOpen()&&stageDone(key)&&NM_PICK.t<=nmS().max?{key,t:NM_PICK.t}:null; return _ss.apply(this,arguments); }; }
+{ const _ev=enterVillage; enterVillage=function(){ NMRUN=null; return _ev.apply(this,arguments); }; }
+// сложность: на ступени — «Норма» + своё
+{ const _dk=diffK; diffK=function(){ return nmCur()?'norm':_dk.apply(this,arguments); }; }
+const _nmDF={}; { const _df=DF; DF=function(){ const d=_df.apply(this,arguments); const t=nmCur(); if(!t) return d; return _nmDF[t]||(_nmDF[t]=Object.assign({},d,{mf:(d.mf||0)+NM52.mf*t,il:(d.il||0)+nmIl(t),res:nmRes(t),tok:(d.tok||0)+(t>=4?1:0)})); }; }
+// враги
+function nmAffix(e,n){ const keys=Object.keys(ELITE_MODS); let g=0; const want=e.mods.length+n; while(e.mods.length<want&&g++<30){ const k=pick(keys); if(e.mods.includes(k)) continue; e.mods.push(k); if(typeof EMOD_FX!=='undefined'&&EMOD_FX[k]) EMOD_FX[k](e); } }
+{ const _se=spawnEnemy; spawnEnemy=function(kind,x,z,L,o){ const t=nmCur(); if(t>=5&&kind!=='dummy'&&o&&!o.elite&&!o.summon&&!o.champion&&Math.random()<.05*(t-4)) o=Object.assign({},o,{elite:1}); else if(t>=5&&kind!=='dummy'&&!o&&Math.random()<.05*(t-4)) o={elite:1};
+    const e=_se.apply(this,[kind,x,z,L,o]); if(!e||kind==='dummy'||!t) return e;
+    try{ const k=nmK(t); e.maxHp*=k; e.hp=e.maxHp; e.dmg*=k; e.nm=t; if(e.elite&&!e.boss&&e.mods){ const n=t>=7?2:t>=3?1:0; if(n) nmAffix(e,n); } }catch(er){ console.error(er); } return e; }; }
+{ const _sb=spawnBoss; spawnBoss=function(id,x,z,L,o){ const e=_sb.apply(this,arguments); const t=nmCur(); if(e&&t){ const k=nmK(t); e.maxHp*=k; e.hp=e.maxHp; e.dmg*=k; e.nm=t; } return e; }; }
+// рекомендуемая сила
+function nmRec(I){ const t=I.nm||0; const L=I.lvl; const ze=Math.min(10,Math.max(I.z,Math.floor((L-1)/5)+1)); return Math.round(recPow(ze,L)*Math.pow(nmK(t),.75)/10)*10; }
+{ const _sr=stageRec; stageRec=function(I){ return I&&I.nm?nmRec(I):_sr.apply(this,arguments); }; }
+
+// ---------- итог ----------
+{ const _re=runEnd; runEnd=function(win,reason,keep){ const r=G.run, I=r&&r.info; const t=I&&I.nm&&G.mode==='stage'?I.nm:0; let unlock=null, first=null;
+    if(t&&win){ const N=nmS(); N.runs=(N.runs||0)+1; if(!N.got[t]){ N.got[t]=1; first=nmReward(t); } if(t>=N.max&&N.max<NM52.max){ N.max=t+1; unlock=N.max; }
+      const bonus=Math.round((r.gold||0)*NM52.gold*t); if(bonus>0){ S.res.gold+=bonus; r.gold+=bonus; } }
+    const res=_re.apply(this,arguments);
+    try{ if(t&&win){ const st=S.prog.stages[I.key]; if(st) st.nm=Math.max(st.nm||0,t);
+        if(first){ chestAdd(first.ch,1,true); keyAdd(first.ch,1); S.res.gold+=first.gold; S.res.ess=(S.res.ess||0)+first.ess; S.res.dust=(S.res.dust||0)+first.dust; if(first.core) S.res.core=(S.res.core||0)+first.core;
+          later(1.6,()=>toast(`${ico('skull')} <b>Кошмар ${ROMAN[t]}</b> покорён впервые: <b style="color:${CHESTS[first.ch].col}">${CHESTS[first.ch].n}</b> + ключ, ${costHtml({gold:first.gold,ess:first.ess,dust:first.dust,core:first.core}).replace(/cost no/g,'cost')}`,null,first.ch==='leg'?4:3,'quest')); }
+        if(unlock) later(2.4,()=>{ banner('Кошмар '+ROMAN[unlock]+' открыт','Враги ×'+String(nmK(unlock)).replace('.',',')+' · уровень '+nmLvl(1,unlock)); }); track('nm_win',I.key+':'+t); saveGame(true); } }catch(e){ console.error(e); }
+    NMRUN=null; return res; }; }
+{ const _sr=showResults; showResults=function(o){ try{ const I=G.run&&G.run.info; if(o&&I&&I.nm&&G.mode==='result'){ o.lines=(o.lines||[]).concat([`${ico('skull')} Кошмар: <b>${ROMAN[I.nm]}</b>`]); } }catch(e){} return _sr.apply(this,arguments); }; }
+// «Ещё раз» на той же ступени: NM_PICK не сбрасывается; «Дальше» — следующий этап без ступени (его ступень не выбрана)
+
+// ---------- карточка этапа: выбор ступени ----------
+function nmPanel(z,s){ const I=stageInfo(z,s); const key=I.key; const st=S.prog.stages[key]; const N=nmS();
+  if(!nmOpen()) return `<div class="nm52 lock">${ico('skull')} <b>Кошмар I–X</b> <small>откроется после финала Главы I — победы над Пепельным Королём</small></div>`;
+  if(!st) return `<div class="nm52 lock">${ico('skull')} <b>Кошмар</b> <small>пройдите этап, чтобы открыть ступени Кошмара</small></div>`;
+  const cur=NM_PICK&&NM_PICK.key===key?NM_PICK.t:0; const best=st.nm||0;
+  let h=`<div class="nm52"><div class="nm52h">${ico('skull')} <b>Кошмар</b><small>${best?`лучшее здесь — ${ROMAN[best]} · `:''}открыто до ${ROMAN[N.max]}</small></div><div class="nm52t">`;
+  h+=`<button class="nm52b ${cur===0?'on':''}" ${act(()=>{ NM_PICK=null; stageCard(z,s); })}>Обычно</button>`;
+  for(let t=1;t<=NM52.max;t++){ const op=t<=N.max; h+=`<button class="nm52b ${cur===t?'on':''} ${op?'':'lock'} ${t<=best?'done':''}" ${op?act(()=>{ NM_PICK={key,t}; AU.sfx('ui'); stageCard(z,s); }):'disabled'}>${ROMAN[t]}</button>`; }
+  h+='</div>';
+  if(cur){ const L=nmLvl(I.lvl,cur), k=nmK(cur); const rw=nmReward(cur); const I2=Object.assign({},I,{nm:cur,lvl:L}); const rec=nmRec(I2), pw=heroPower();
+    h+=`<div class="nm52d"><span>${ico('skull')} Уровень врагов <b>${L}</b></span><span>${ico('heart')} Здоровье и урон <b>×${String(k).replace('.',',')}</b></span>`+
+      `<span>${ico('crown')} Элита: ${cur>=7?'+2 особенности':cur>=3?'+1 особенность':'как обычно'}${cur>=5?`, ${5*(cur-4)}% врагов — элита`:''}</span>`+
+      `<span>${ico('gem')} Удача <b>+${NM52.mf*cur}</b>${nmIl(cur)?`, вещи <b>+${nmIl(cur)}</b> ур.`:''}, золото <b>+${Math.round(NM52.gold*cur*100)}%</b></span>`+
+      `<span>${ico('flame')} Возрождений у костра: <b>${nmRes(cur)}</b> · сложность — «Норма»</span>`+
+      `<span class="rec ${pw>=rec?'ok':'bad'}">${ico('star')} Сила <b>${fmt(pw)}</b> / реком. <b>${fmt(rec)}</b></span></div>`+
+      (N.got[cur]?`<div class="nm52r got">${ico('check')} Награда ступени получена</div>`:`<div class="nm52r">${ico('chest')} Первая победа на ${ROMAN[cur]}: <b style="color:${CHESTS[rw.ch].col}">${CHESTS[rw.ch].n}</b> + ключ ${costHtml({gold:rw.gold,ess:rw.ess,dust:rw.dust,core:rw.core}).replace(/cost no/g,'cost')}${cur>=N.max&&cur<NM52.max?` · откроет ${ROMAN[cur+1]}`:''}</div>`); }
+  return h+'</div>'; }
+{ const _sc=stageCard; stageCard=function(z,s){ const r=_sc.apply(this,arguments); try{ const c=$('stageCard'); if(!c) return r; const btn=[...c.querySelectorAll('button')].find(b=>/В путь/.test(b.textContent)); const h=nmPanel(z,s);
+    if(btn){ btn.insertAdjacentHTML('beforebegin',h); const key=z+'-'+s; const t=NM_PICK&&NM_PICK.key===key?NM_PICK.t:0; if(t){ btn.classList.add('nm52go'); btn.innerHTML=`${ico('skull')} В Кошмар ${ROMAN[t]}`; } }
+    bindPanel(); }catch(e){ console.error(e); } return r; }; }
+// карта: значок лучшей ступени на узле (узел ищем по позиции — у кнопок нет ключа этапа)
+{ const _dm=drawMap; drawMap=function(){ const r=_dm.apply(this,arguments); try{ if(!nmOpen()) return r; const box=$('mapNodes'), sc=$('mapScroll'); if(!box||!sc) return r; const w=MAP.W; const off=(sc.clientWidth-w)/2;
+    const nodes=[...box.querySelectorAll('.mnode')]; const zs=MAP.ch===2?[7,8]:[1,2,3,4,5,6];
+    for(const z of zs) for(let s=1;s<=5;s++){ const st=S.prog.stages[z+'-'+s]; if(!st||!st.nm) continue; const [x,y]=nodePos(z,s,w); const b=nodes.find(n=>Math.abs(parseFloat(n.style.left)-(x+off))<1.5&&Math.abs(parseFloat(n.style.top)-y)<1.5); if(b&&!b.querySelector('.nm52m')) b.insertAdjacentHTML('beforeend',`<i class="nm52m">К·${ROMAN[st.nm]}</i>`); } }catch(e){ console.error(e); } return r; }; }
+// настройки: «Кошмар» → «Испытание»
+{ const _ps=pSettings; pSettings=function(){ const h=_ps.apply(this,arguments); return typeof h==='string'?h.replace(/>Кошмар</g,'>Испытание<'):h; }; }
+
+Object.assign(window.__game,{ nm:()=>({S:nmS(),pick:NM_PICK,run:NMRUN,cur:nmCur()}), nmPick:(key,t)=>{ NM_PICK=t?{key,t}:null; return NM_PICK; }, nmSet:(max)=>{ nmS().max=max; } });
+
+(function(){ const st=document.createElement('style'); st.textContent=`
+.nm52{margin:6px 0 2px;padding:6px 7px;border-radius:10px;background:linear-gradient(180deg,rgba(40,10,14,.7),rgba(16,6,8,.8));border:1px solid rgba(200,70,60,.45)}
+.nm52.lock{display:flex;align-items:center;gap:6px;flex-wrap:wrap;opacity:.8;font-size:12px;color:#e8c8b8}.nm52.lock small{color:#bb9a8a}.nm52 .ico.ic{width:15px;height:15px;color:#ff7a5a}
+.nm52h{display:flex;align-items:baseline;gap:6px;font:700 13px var(--sc,serif);color:#ffd8c8;margin-bottom:5px}.nm52h small{margin-left:auto;font:400 10.5px var(--body);color:#c8a090}
+.nm52t{display:grid;grid-template-columns:auto repeat(10,1fr);gap:3px}
+.nm52b{min-width:0;height:28px;padding:0 4px;border-radius:7px;border:1px solid rgba(200,90,70,.45);background:linear-gradient(180deg,#3a1612,#1c0a08);color:#f0c8b8;font:700 12px var(--sc,serif);cursor:pointer}
+.nm52b.done{color:#ffd8a0;box-shadow:inset 0 -2px 0 #c9973f}
+.nm52b.on{background:linear-gradient(180deg,#b8402a,#6a1a0e);color:#fff;border-color:#ffb090;box-shadow:0 0 10px rgba(255,90,60,.55)}
+.nm52b.lock{opacity:.35;cursor:default}
+.nm52d{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;margin-top:6px;font-size:11.5px;color:#ecd4c4}.nm52d b{color:#ffe0c8}.nm52d span{display:block;line-height:1.35}.nm52d span .ico.ic{vertical-align:-2px;margin-right:3px;width:13px;height:13px}
+.nm52d .rec.ok b{color:#9ae07a}.nm52d .rec.bad b{color:#ff8a6a}
+.nm52r{margin-top:5px;font-size:11.5px;color:#f0d8c0;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.nm52r.got{color:#a8d890}
+.btn.nm52go{background:linear-gradient(180deg,#c04a2e,#6a1a0e)!important;color:#fff}
+.nm52m{position:absolute;left:50%;top:-13px;transform:translateX(-50%);font:800 9px/13px var(--body);font-style:normal;padding:0 4px;border-radius:6px;background:#7a1a12;color:#ffd8c8;box-shadow:0 0 0 1px #ff8a6a;white-space:nowrap;pointer-events:none}
+@media (max-width:520px){ .nm52d{grid-template-columns:1fr} }
+`; document.head.appendChild(st); })();
+
+// ================= p53 (v26): волна 3 — A8 «Мастерство оружия», A7 «Уголь мастерства», вкладка героя «Мастерство» =================
+// A8. Очки мастерства оружия — за убийства этим оружием (обычный враг 1, элита 4, чемпион 6, владыка 30). Ранги 1–10 (WM_RANKS, p51).
+//   Ранг: +0,5% урона этим оружием; 3 — продолжение серии; 5 — +15% к удару по стойкости; 6 — стойка; 8 — стойка дольше на 3 с; 10 — коронный приём.
+//   Меч: 3 «Разворот» (4-й удар серии — круговой, сбивает), 6 «Стойка дуэлянта» (после парирования или Разворота, 6 с: лёгкие удары длиннее,
+//        каждый 2-й выпускает короткий клинок 30%), 10 «Клинок Рассвета» (Разворот в стойке — три летящих клинка по 100%).
+//   Двуручное: 3 «Сотрясение» (3-й удар — удар в землю, волна 2,6 м), 6 «Стойка горы» (после полного Сокрушения или Сотрясения, 6 с:
+//        −20% урона, без отбрасывания, лёгкие удары дают ударную волну 35%), 10 «Раскол небес» (Сотрясение в стойке — три трещины по 110%).
+//   Лук: 3 «Тройной выстрел» (каждый 3-й быстрый выстрел подряд — ещё две стрелы по 50%), 6 «Стойка снайпера» (после полного натяжения, 6 с:
+//        натяжение ×0,7, полный выстрел пробивает ещё одного), 10 «Звёздный залп» («Метко!» в стойке — ещё две пробивающие стрелы по 70%).
+//   Посох: 3 «Цепной знак» (4-й снаряд серии — разряд по 3 целям, 60%), 6 «Стойка заклинателя» (после умения, 6 с: снаряды не греют посох),
+//        10 «Пламенный поток» (сгусток в стойке — ещё 4 самонаводящихся снаряда по 50%).
+//   Бот пользуется всем сам: продолжения серии и стойки срабатывают от обычной игры.
+// A7. С 50 уровня опыт копится в «Уголь мастерства»: очко за порцию опыта (mastNeed: 120% опыта 49→50 ур., +1,2% за каждое полученное очко), очки — в 9 малых узлов (+0,5% урона/здоровья и т. п.),
+//   у каждого — предел с убыванием: эффект = предел·(1 − e^(−очки·шаг/предел)); каждые 10 полученных очков — выбор большого узла (1 из 3).
+// Сохранение v9: S.wm = {sword, axe, bow, staff} — очки мастерства; S.mast = {xp, pts (свободные), n: {узел: очки}, big: [id], tot}.
+
+const WM_CLS=['sword','axe','bow','staff'];
+const WM_PTS={kill:1,elite:4,champion:6,boss:30};
+const WM_MOVES={
+  sword:{r3:{n:'Разворот',d:'4-й удар серии — круговой взмах (180%), сбивает с ног',ic:'whirl'},r6:{n:'Стойка дуэлянта',d:'После парирования или Разворота, 6 с: лёгкие удары длиннее, каждый 2-й выпускает короткий клинок (30%)',ic:'shield'},r10:{n:'Клинок Рассвета',d:'Разворот в стойке выпускает три летящих клинка (по 100%) и продлевает стойку',ic:'sun'}},
+  axe:{r3:{n:'Сотрясение',d:'3-й удар серии — удар в землю (240%), волна 2,6 м сбивает с ног',ic:'hammer'},r6:{n:'Стойка горы',d:'После полного Сокрушения или Сотрясения, 6 с: −20% урона, без отбрасывания, лёгкие удары дают волну (35%)',ic:'wall'},r10:{n:'Раскол небес',d:'Сотрясение в стойке раскалывает землю тремя трещинами (по 110%)',ic:'crack'}},
+  bow:{r3:{n:'Тройной выстрел',d:'Каждый 3-й быстрый выстрел подряд — ещё две стрелы веером (по 50%)',ic:'target'},r6:{n:'Стойка снайпера',d:'После полного натяжения, 6 с: натяжение быстрее на 30%, полный выстрел пробивает ещё одного врага',ic:'eye'},r10:{n:'Звёздный залп',d:'«Метко!» в стойке выпускает ещё две пробивающие стрелы (по 70%)',ic:'star'}},
+  staff:{r3:{n:'Цепной знак',d:'4-й снаряд серии бьёт разрядом ещё по 3 целям (по 60%)',ic:'bolt'},r6:{n:'Стойка заклинателя',d:'После любого умения, 6 с: обычные снаряды не греют посох',ic:'rune'},r10:{n:'Пламенный поток',d:'Сгусток в стойке выпускает ещё 4 самонаводящихся снаряда (по 50%)',ic:'flame'}}};
+const WM_MISC={1:'+0,5% урона этим оружием за каждый ранг',5:'+15% к удару по стойкости',8:'стойка длится на 3 с дольше'};
+function wmS(){ if(!S.wm||typeof S.wm!=='object') S.wm={sword:0,axe:0,bow:0,staff:0}; for(const c of WM_CLS) if(!(S.wm[c]>=0)) S.wm[c]=0; return S.wm; }
+function wmRank(cls){ const v=wmS()[cls||PS.cls||curCls()]||0; let r=0; for(let i=1;i<WM_RANKS.length;i++) if(v>=WM_RANKS[i]) r=i; return r; }
+function wmProg(cls){ const v=wmS()[cls]||0, r=wmRank(cls); if(r>=10) return {r,v,a:WM_RANKS[10],b:WM_RANKS[10],f:1}; const a=WM_RANKS[r], b=WM_RANKS[r+1]; return {r,v,a,b,f:(v-a)/(b-a)}; }
+function wmGain(cls,n){ if(!cls||!n) return; const r0=wmRank(cls); wmS()[cls]+=n; const r1=wmRank(cls); if(r1>r0){ const M=WM_MOVES[cls]; const mv=r1===3?M.r3:r1===6?M.r6:r1===10?M.r10:null;
+    later(.3,()=>{ banner(`${CLS_NAME[cls]}: ранг ${r1}`,mv?`Открыто: «${mv.n}»`:WM_MISC[r1]||'+0,5% урона этим оружием'); AU.sfx('lvl',.7); vib('success'); }); if(mv) later(1.2,()=>toast(`${ico(mv.ic)} <b>${mv.n}</b> — ${mv.d}`,null,4,'quest')); track('wm_rank',cls+':'+r1); saveGame(); } }
+{ const _ke=killEnemy; killEnemy=function(e,o){ const was=e&&e.alive; const r=_ke.apply(this,arguments); try{ if(was&&(G.mode==='stage'||G.mode==='abyss')&&e&&(!e.summon||e.boss)&&e.kind!=='dummy'&&G.P&&!G.P.dead){ const n=e.boss?WM_PTS.boss:e.champion?WM_PTS.champion:e.elite?WM_PTS.elite:WM_PTS.kill; wmGain(PS.cls,n); } }catch(er){ console.error(er); } return r; }; }
+// ---------- стойка ----------
+function wmSt(){ const P=G.P; return P&&P.wmSt&&P.wmSt.t>0&&P.wmSt.cls===PS.cls?P.wmSt:null; }
+function wmStance(cls,why){ const P=G.P; if(!P||wmRank(cls)<6||PS.cls!==cls) return; const dur=6+(wmRank(cls)>=8?3:0); const had=wmSt(); P.wmSt={cls,t:dur,max:dur}; if(!had){ const M=WM_MOVES[cls].r6; dmgNum(P.x,2.9,P.z,M.n.toUpperCase(),'syn'); fx('ring',P.x,.2,P.z,{r:2.2,col:WM_COL[cls]}); AU.sfx('chime',.6,.9); } }
+const WM_COL={sword:0xffe08a,axe:0xff9a50,bow:0x9fe8a0,staff:0xc8a0ff};
+// ---------- серия: продолжения ----------
+const WM_BASE={sword:MOVES.sword.slice(),axe:MOVES.axe.slice(),bow:MOVES.bow.slice(),staff:MOVES.staff.slice()};
+const WM_EXT={sword:WM_BASE.sword.concat([{d:.52,h:.22,rng:3.0,arc:6.3,m:1.8,a:'slashL',lunge:2,kb:6,stun:.45,shake:.28,wm:'sw4'}]),
+  axe:WM_BASE.axe.concat([{d:.74,h:.36,rng:3.2,arc:2.6,m:2.4,a:'overhead',lunge:2,kb:6,stun:.5,shake:.42,aoe:2.6,wm:'ax3'}]),
+  bow:WM_BASE.bow, staff:WM_BASE.staff.concat([{d:.46,h:.2,m:1.1,a:'cast2',proj:'bolt',wm:'st4'}])};
+{ const _pa=playerAttack; playerAttack=function(){ try{ const cls=PS.cls; if(MOVES[cls]) MOVES[cls]=wmRank(cls)>=3?WM_EXT[cls]:WM_BASE[cls]; }catch(e){} return _pa.apply(this,arguments); }; }
+{ const _dm=doMeleeHit; doMeleeHit=function(P,mv){ const cls=PS.cls; const st=wmSt(); let m2=mv;
+    if(st&&mv&&!mv.heavy&&!mv.wm&&cls==='sword') m2=Object.assign({},mv,{rng:(mv.rng||2.5)+.8});
+    const r=_dm.call(this,P,m2);
+    try{ const fx0=Math.sin(P.face), fz0=Math.cos(P.face);
+      if(mv&&mv.wm==='sw4'){ fx('ring',P.x,.7,P.z,{r:3,col:0xffe8a0}); wmStance('sword'); if(st&&wmRank('sword')>=10){ for(const d of [-.32,0,.32]) spawnProj('wave',P.x+fx0,P.z+fz0,P.face+d,{dmg:heroDmg(1).amt,team:'p',pierce:99,life:.75,spd:17,el:'light',heavy:1}); dmgNum(P.x,3,P.z,'КЛИНОК РАССВЕТА','syn'); AU.sfx('swing',1,.7); shake(.2); } }
+      else if(mv&&mv.wm==='ax3'){ const cx=P.x+fx0*1.9, cz=P.z+fz0*1.9; fx('boom',cx,0,cz,{r:mv.aoe,col:0xd8a050,smoke:0x6a5a40}); fx('ring',cx,0,cz,{r:mv.aoe,col:0xffb060}); aoeDamage(cx,cz,mv.aoe,.8,{kb:5,heavy:1}); wmStance('axe');
+        if(st&&wmRank('axe')>=10){ later(.12,()=>{ for(const d of [-.45,0,.45]){ const f=P.face+d; fkLineFx(P.x,P.z,f,7,1.2,0xffa050); aoeLine(P.x,P.z,f,8,1.8,1.1,{kb:3,heavy:1}); } dmgNum(P.x,3,P.z,'РАСКОЛ НЕБЕС','syn'); shake(.4); AU.sfx('heavy'); }); } }
+      else if(st&&mv&&!mv.heavy){ if(cls==='sword'){ P.wmN=(P.wmN||0)+1; if(P.wmN%2===0) spawnProj('wave',P.x+fx0*.8,P.z+fz0*.8,P.face,{dmg:heroDmg(.3).amt,team:'p',pierce:3,life:.38,spd:16,el:'light'}); }
+        else if(cls==='axe'){ const t=P.tgt&&P.tgt.alive?P.tgt:null; const cx=t?t.x:P.x+fx0*2, cz=t?t.z:P.z+fz0*2; fx('ring',cx,0,cz,{r:1.8,col:0xffb060}); aoeDamage(cx,cz,1.8,.35,{kb:2}); } } }catch(e){ console.error(e); }
+    return r; }; }
+// меч: стойка от парирования; двуручное: от полного Сокрушения
+if(typeof doParry==='function'){ const _dp=doParry; doParry=function(o,tag){ const r=_dp.apply(this,arguments); try{ if(PS.cls==='sword') wmStance('sword'); }catch(e){} return r; }; }
+{ const _cr=chargeRelease; chargeRelease=function(P){ const T=CH_T[PS.cls]||.8; const full=P&&P.chg>=T-.02; const st=wmSt(); const r=_cr.apply(this,arguments);
+    try{ if(full&&PS.cls==='axe') wmStance('axe');
+      if(full&&PS.cls==='staff'&&st&&wmRank('staff')>=10){ later(.18,()=>{ const P2=G.P; if(!P2) return; const ts=G.enemies.filter(e=>e.alive&&!e.burrowed&&Math.hypot(e.x-P2.x,e.z-P2.z)<11).sort((a,b)=>Math.hypot(a.x-P2.x,a.z-P2.z)-Math.hypot(b.x-P2.x,b.z-P2.z));
+          for(let i=0;i<4;i++){ const t=ts[i%Math.max(1,ts.length)]; const a=t?Math.atan2(t.x-P2.x,t.z-P2.z)+(i-1.5)*.14:P2.face+(i-1.5)*.3; const q=spawnProj('bolt',P2.x+Math.sin(a)*.6,P2.z+Math.cos(a)*.6,a,{team:'p',dmg:heroDmg(.5).amt,el:'fire',col:0xffa040,y:1.5,spd:14,wm:1}); if(q&&t) q.home=t; }
+          dmgNum(P2.x,3,P2.z,'ПЛАМЕННЫЙ ПОТОК','syn'); AU.sfx('bolt',1,1.2); }); } }catch(e){ console.error(e); } return r; }; }
+// посох: 4-й снаряд серии — разряд; стойка — не греет
+{ const _hr=heroRelease; heroRelease=function(P,mv){ const h0=P&&P.heat||0, o0=P&&P.ovh||0; const st=wmSt(); const r=_hr.apply(this,arguments);
+    try{ if(PS.cls==='staff'&&mv&&mv.proj){ if(st&&!mv.heavy){ P.heat=h0; if(!o0&&P.ovh>0) P.ovh=0; }
+        if(mv.wm==='st4'){ const t=P.tgt&&P.tgt.alive?P.tgt:nearestEnemy(P.x,P.z,9); if(t) later(.12,()=>{ if(t.alive) fkChain({x:P.x,z:P.z},3,.6,'light'); }); } } }catch(e){ console.error(e); } return r; }; }
+{ const _us=useSkill; useSkill=function(id){ const r=_us.apply(this,arguments); try{ if(r===true&&PS.cls==='staff') wmStance('staff'); }catch(e){} return r; }; }
+// самонаводка снарядов потока
+{ const _up=updateProjs; updateProjs=function(dt){ for(const p of G.projs){ if(p.home&&p.home.alive&&p.life>0){ const a=Math.atan2(p.home.x-p.x,p.home.z-p.z), sp=Math.hypot(p.vx,p.vz)||14; const cur=Math.atan2(p.vx,p.vz); const na=cur+clamp(angWrap(a-cur),-6*dt,6*dt); p.vx=Math.sin(na)*sp; p.vz=Math.cos(na)*sp; } } return _up.apply(this,arguments); }; }
+// лук: тройной выстрел, стойка снайпера, звёздный залп
+{ const _bd=bowDrawT; bowDrawT=function(){ const v=_bd.apply(this,arguments); return wmSt()&&PS.cls==='bow'?v*.7:v; }; }
+{ const _br=bowRelease; bowRelease=function(P){ const st=wmSt(); const ok=_br.apply(this,arguments); try{ if(ok!==true||PS.cls!=='bow') return ok; const ls=P.lastShot; const c=ls?ls.c:0; const R=wmRank('bow');
+      if(c<.6&&R>=3){ P.wmQ=(G.time-(P.wmQT||-9)<1.6)?(P.wmQ||0)+1:1; P.wmQT=G.time; if(P.wmQ%3===0){ const q0=G.projs[G.projs.length-1]; const dmg=(q0&&q0.dmg||heroDmg(.6).amt)*.5; for(const d of [-.14,.14]) spawnProj('arrow',P.x+Math.sin(P.face+d)*.5,P.z+Math.cos(P.face+d)*.5,P.face+d,{team:'p',dmg,pierce:0,spd:24,life:1.2,wm:1}); dmgNum(P.x,2.8,P.z,'тройной','txt'); } }
+      if(c>=.95){ if(st&&R>=10){ const q0=G.projs[G.projs.length-1]; if(q0&&q0.perfect){ for(const d of [-.12,.12]){ const q=spawnProj('arrowC',P.x+Math.sin(P.face+d)*.5,P.z+Math.cos(P.face+d)*.5,P.face+d,{team:'p',dmg:(q0.dmg||0)*.7,crit:true,pierce:99,spd:32,life:1.3,heavy:1,wm:1}); if(q){ q.col=0xfff0a0; } } dmgNum(P.x,3,P.z,'ЗВЁЗДНЫЙ ЗАЛП','syn'); } }
+        wmStance('bow'); } }catch(e){ console.error(e); } return ok; }; }
+{ const _sp=spawnProj; spawnProj=function(kind,x,z,dir,o){ if(o&&o.team==='p'&&o.bowC>=.95&&PS.cls==='bow'&&wmSt()&&!o.wm) o.pierce=(o.pierce||0)+1; const p=_sp.apply(this,arguments); if(p&&o&&o.bowC>=.95&&PS.cls==='bow'&&wmSt()&&!o.wm) p.pierce=Math.max(p.pierce||0,(PS.pierce||0)+2); return p; }; }
+// двуручное: стойка горы — меньше урона, без отбрасывания
+{ const _hp=hurtPlayer; hurtPlayer=function(raw,o={}){ const st=wmSt(); if(st&&st.cls==='axe'&&!o.dot){ raw*=.8; o=Object.assign({},o,{kb:0}); } return _hp.call(this,raw,o); }; }
+// стойка: таймер, аура
+{ const _up=updatePlayer; updatePlayer=function(dt){ _up.apply(this,arguments); const P=G.P; if(!P) return; const st=P.wmSt; if(st&&st.t>0){ st.t-=dt; if(P.dead||G.mode==='village'||st.cls!==PS.cls) st.t=0; else { st._fx=(st._fx||0)-dt; if(st._fx<=0){ st._fx=.45; fx('ring',P.x,.08,P.z,{r:1.1,col:WM_COL[st.cls]}); } } } }; }
+
+// ---------- A7: Уголь мастерства ----------
+const MAST={need0:0,needK:.012,
+  small:[{id:'dmg',n:'Урон',ic:'sword',v:.5,cap:15,u:'%'},{id:'hp',n:'Здоровье',ic:'heart',v:.5,cap:15,u:'%'},{id:'arm',n:'Броня',ic:'shield',v:.6,cap:18,u:'%'},
+    {id:'crit',n:'Шанс крита',ic:'target',v:.2,cap:6,u:'%'},{id:'critD',n:'Крит. урон',ic:'crack',v:1,cap:30,u:'%'},{id:'cdr',n:'Перезарядка',ic:'clock',v:.25,cap:8,u:'%'},
+    {id:'sta',n:'Запас сил',ic:'vit',v:.5,cap:15,u:''},{id:'gold',n:'Золото',ic:'gold',v:1,cap:30,u:'%'},{id:'mf',n:'Удача',ic:'gem',v:1,cap:30,u:''}],
+  big:[{id:'b_boss',n:'Палач владык',ic:'crown',d:'+6% урона по владыкам'},{id:'b_elite',n:'Гроза элиты',ic:'skull',d:'+6% урона по элите и чемпионам'},{id:'b_heart',n:'Второе сердце',ic:'heart',d:'+6% здоровья'},
+    {id:'b_flask',n:'Запасная фляга',ic:'flask',d:'+1 фляга на этап'},{id:'b_skill',n:'Пламя мастера',ic:'flame',d:'+8% урона умений'},{id:'b_iron',n:'Железная воля',ic:'shield',d:'−6% получаемого урона'},
+    {id:'b_spark',n:'Неугасимая Искра',ic:'spark',d:'Искра копится на 12% быстрее'},{id:'b_crit',n:'Острый глаз',ic:'eye',d:'+3% шанса крита'},{id:'b_greed',n:'Жадный уголь',ic:'gold',d:'+12% золота, +12 удачи'},
+    {id:'b_wind',n:'Лёгкий шаг',ic:'feather',d:'Кувырок тратит на 15% меньше сил'},{id:'b_pz',n:'Сокрушитель',ic:'hammer',d:'+15% к удару по стойкости'},{id:'b_skin',n:'Угольная кожа',ic:'wall',d:'+4% брони и +4% здоровья'}],
+  grand:{n:'Великий узел',ic:'flame',d:'+1% урона и здоровья (предел 10%)'}};
+const MAST_BIG={}; for(const b of MAST.big) MAST_BIG[b.id]=b;
+function mastS(){ if(!S.mast||typeof S.mast!=='object') S.mast={xp:0,pts:0,n:{},big:[]}; const M=S.mast; if(!M.n) M.n={}; if(!Array.isArray(M.big)) M.big=[]; if(!(M.pts>=0)) M.pts=0; if(!(M.xp>=0)) M.xp=0; if(M.tot===undefined){ let t=M.pts; for(const k in M.n) t+=M.n[k]; M.tot=t; } return M; }
+function mastOn(){ return S.hero.lvl>=MAX_LVL; }
+function mastNeed(){ return Math.round(xpNeed(MAX_LVL-1)*1.2*(1+MAST.needK*(mastS().tot||0))); }
+function mastEff(id){ const d=MAST.small.find(x=>x.id===id); const r=mastS().n[id]||0; return d?d.cap*(1-Math.exp(-r*d.v/d.cap)):0; }
+function mastBigDue(){ const M=mastS(); return Math.floor((M.tot||0)/10)-M.big.length; }
+function mastGrand(){ return mastS().big.filter(x=>x==='grand').length; }
+function mastOffer(){ const M=mastS(); const left=MAST.big.filter(b=>!M.big.includes(b.id)); if(!left.length) return ['grand']; const seed=M.big.length*7919+13; const a=left.slice().sort((x,y)=>aspHash(seed+x.id.length*31+x.id.charCodeAt(2))-aspHash(seed+y.id.length*31+y.id.charCodeAt(2))); return a.slice(0,3).map(b=>b.id); }
+function mastHas(id){ return mastS().big.includes(id); }
+{ const _ax=addXp; addXp=function(n){ if(S.hero.lvl>=MAX_LVL&&n>0){ const M=mastS(); let v=Math.round(n*(1+(PS.xp||0)/100)); M.xp+=v; let got=0; let g=0; while(M.xp>=mastNeed()&&g++<50){ M.xp-=mastNeed(); M.pts++; M.tot++; got++; }
+      if(got){ const P=G.P; if(P&&G.mode!=='village') dmgNum(P.x,2.9,P.z,'+'+got+' уголь мастерства','gold'); if(!S.seen.mastTip){ S.seen.mastTip=1; later(1,()=>toast(`${ico('flame')} <b>Уголь мастерства</b>: опыт после 50 уровня даёт очки — вложите их в «Герой» → «Мастерство»`,null,4,'quest')); } if(mastBigDue()>0) later(1.5,()=>toast(`${ico('crown')} <b>Большой узел</b> Угля мастерства — выберите в «Мастерстве»`,null,3,'quest')); saveGame(); }
+      return; } return _ax.apply(this,arguments); }; }
+function mastSpend(id,n){ const M=mastS(); n=Math.min(n||1,M.pts); if(n<=0||!MAST.small.find(x=>x.id===id)) return false; M.pts-=n; M.n[id]=(M.n[id]||0)+n; refreshPlayer(false); saveGame(); return true; }
+function mastPickBig(id){ if(mastBigDue()<=0) return false; if(!mastOffer().includes(id)) return false; mastS().big.push(id); refreshPlayer(false); saveGame(); return true; }
+function mastAuto(){ const M=mastS(); const ord=['dmg','hp','arm','crit','critD','cdr','sta']; let g=0; while(M.pts>0&&g++<999){ let best=ord[0],bv=-1; for(const id of ord){ const d=MAST.small.find(x=>x.id===id); const r=M.n[id]||0; const gain=d.cap*(Math.exp(-r*d.v/d.cap)-Math.exp(-(r+1)*d.v/d.cap))/d.cap; if(gain>bv){ bv=gain; best=id; } } M.n[best]=(M.n[best]||0)+1; M.pts--; } while(mastBigDue()>0) M.big.push(mastOffer()[0]); refreshPlayer(false); }
+// характеристики
+{ const _cs=computeStats; computeStats=function(){ const s=_cs.apply(this,arguments); try{ if(G._rec24) return s; const cls=s.cls||curCls(); const wr=wmRank(cls);
+    let dmg=wr*.5; if(wr>=5) s.pzP=(s.pzP||0)+15;
+    const e=id=>mastEff(id); dmg+=e('dmg'); const g=Math.min(10,mastGrand()); dmg+=g;
+    s.atk*=1+dmg/100; let hp=e('hp')+g+(mastHas('b_heart')?6:0)+(mastHas('b_skin')?4:0); s.maxHp=Math.round(s.maxHp*(1+hp/100)); s.armorT*=1+(e('arm')+(mastHas('b_skin')?4:0))/100;
+    s.crit=(s.crit||0)+e('crit')+(mastHas('b_crit')?3:0); s.critD=(s.critD||0)+e('critD'); s.cdr=Math.min(60,(s.cdr||0)+e('cdr')); s.staMaxT=Math.round((s.staMaxT||100)+e('sta')); s.gold=(s.gold||0)+e('gold')+(mastHas('b_greed')?12:0); s.mf=(s.mf||0)+e('mf')+(mastHas('b_greed')?12:0);
+    if(mastHas('b_skill')) s.skill=(s.skill||0)+8; if(mastHas('b_spark')) s.ult=(s.ult||0)+12; if(mastHas('b_pz')) s.pzP=(s.pzP||0)+15; }catch(er){ console.error(er); } return s; }; }
+{ const _de=dmgEnemy; dmgEnemy=function(e,amt,o={}){ if(e&&e.alive&&G.P&&(o.src||G.P)===G.P&&!o.dot){ if(e.boss&&mastHas('b_boss')) amt*=1.06; else if((e.elite||e.champion)&&!e.boss&&mastHas('b_elite')) amt*=1.06; } return _de.call(this,e,amt,o); }; }
+{ const _hp=hurtPlayer; hurtPlayer=function(raw,o){ if(mastHas('b_iron')) raw*=.94; return _hp.apply(this,[raw,o]); }; }
+{ const _fc=flaskCap; flaskCap=function(){ return _fc.apply(this,arguments)+(mastHas('b_flask')?1:0); }; }
+{ const _sc=staCost; staCost=function(k){ const c=_sc.apply(this,arguments); return k==='roll'&&mastHas('b_wind')?c*.85:c; }; }
+
+// ---------- HUD: стойка ----------
+{ const _ht=hudTick; hudTick=function(){ const r=_ht.apply(this,arguments); try{ if(G.mode==='village') return r; let el=$('wm53'); const bars=$('hud'); if(!el&&bars){ bars.insertAdjacentHTML('beforeend','<div id="wm53" class="hidden"></div>'); el=$('wm53'); } if(!el) return r;
+    const st=wmSt(); const key=st?st.cls+'|'+Math.ceil(st.t):'';
+    if(el._k!==key){ el._k=key; if(!st){ el.classList.add('hidden'); } else { const M=WM_MOVES[st.cls].r6; el.classList.remove('hidden'); el.style.setProperty('--c','#'+WM_COL[st.cls].toString(16).padStart(6,'0')); el.style.setProperty('--p',Math.round(st.t/st.max*100)+'%'); el.innerHTML=`${ico(M.ic)}<b>${M.n}</b><i>${Math.ceil(st.t)}</i>`; } } }catch(e){ console.error(e); } return r; }; }
+
+// ---------- вкладка героя «Мастерство» ----------
+HERO_TABS.push(['mast','Мастерство','crown']);
+function wmCard(cls){ const p=wmProg(cls); const M=WM_MOVES[cls]; const cur=cls===curCls();
+  const un=(r,m,txt)=>`<div class="wm53u ${p.r>=r?'on':''}"><span class="wm53l">${r}</span>${m?`${ico(m.ic)}<span><b>${m.n}</b><small>${m.d}</small></span>`:`<i class="wm53x"></i><span><small>${txt}</small></span>`}</div>`;
+  return `<div class="wm53c ${cur?'cur':''}"><div class="wm53h"><span class="wm53i">${ico(cls)}</span><div class="grow"><b>${CLS_NAME[cls]}</b>${cur?' <small class="pill">в руках</small>':''}<div class="wm53b"><i style="width:${Math.round(p.f*100)}%"></i></div><small class="muted">${p.r>=10?'высший ранг':`${fmt(p.v)} / ${fmt(p.b)} очков до ранга ${p.r+1}`}</small></div><div class="wm53r"><b>${p.r}</b><small>ранг</small></div></div>
+    <div class="wm53g">${un(1,null,'+0,5% урона за ранг (сейчас +'+String(p.r*.5).replace('.',',')+'%)')}${un(3,M.r3)}${un(5,null,WM_MISC[5])}${un(6,M.r6)}${un(8,null,WM_MISC[8])}${un(10,M.r10)}</div></div>`; }
+function mastBoard(){ const M=mastS(); const on=mastOn();
+  let h=`<div class="sect fk49s">${ico('flame')} Уголь мастерства <small class="muted">— опыт после ${MAX_LVL} ур.</small></div>`;
+  if(!on) return h+`<div class="card mb53 lock">${ico('lock')} <b>Откроется на ${MAX_LVL} уровне.</b> <span class="muted">Дальше опыт не пропадает: каждая порция даёт очко мастерства — малые узлы (+0,5% урона, здоровья…) и большой узел каждые 10 очков.</span></div>`;
+  const need=mastNeed(); const due=mastBigDue();
+  h+=`<div class="mb53h"><div class="mb53p"><b>${M.pts}</b><small>свободно</small></div><div class="grow"><div class="wm53b ember"><i style="width:${Math.round(M.xp/need*100)}%"></i></div><small class="muted">${fmt(M.xp)} / ${fmt(need)} опыта до очка · получено всего <b>${M.tot}</b> · до большого узла ${10-(M.tot%10)}</small></div>${M.pts?`<button class="btn woodb small" ${act(()=>{ mastAuto(); AU.sfx('ui'); rerender(); })}>${ico('check')} Распределить</button>`:''}</div>`;
+  if(due>0){ h+=`<div class="mb53big pend"><div class="mb53bh">${ico('crown')} <b>Большой узел</b> <small>выберите один</small></div><div class="mb53o">`; for(const id of mastOffer()){ const b=id==='grand'?MAST.grand:MAST_BIG[id]; h+=`<button class="mb53bo" ${act(()=>{ if(mastPickBig(id)){ AU.sfx('lvl',.6); vib('success'); toast(`${ico(b.ic)} <b>${b.n}</b> — ${b.d}`,null,3,'quest'); rerender(); } })}>${ico(b.ic)}<b>${b.n}</b><small>${b.d}</small></button>`; } h+='</div></div>'; }
+  h+='<div class="mb53g">'; for(const d of MAST.small){ const r=M.n[d.id]||0; const v=mastEff(d.id); const nx=d.cap*(1-Math.exp(-(r+1)*d.v/d.cap))-v; const fr=v/d.cap;
+    h+=`<div class="mb53n"><span class="mb53i">${ico(d.ic)}</span><div class="grow"><b>${d.n}</b><small>+${v.toFixed(v<10?1:0).replace('.',',')}${d.u} <i>/ предел ${d.cap}${d.u}</i></small><div class="wm53b sm"><i style="width:${Math.round(fr*100)}%"></i></div></div><span class="mb53c">${r}</span><button class="btn small ${M.pts?'leather':'woodb'}" ${M.pts?act(()=>{ if(mastSpend(d.id,1)){ AU.sfx('ui',.6); rerender(); } }):'disabled'} title="+${nx.toFixed(2)}">+</button></div>`; }
+  h+='</div>';
+  if(M.big.length){ h+=`<div class="mb53got">`+M.big.map(id=>{ const b=id==='grand'?MAST.grand:MAST_BIG[id]; return `<span class="mb53t">${ico(b.ic)} ${b.n}</span>`; }).join('')+`</div>`; }
+  return h; }
+function pMastery(){ let h=`<div class="sect fk49s">${ico('sword')} Мастерство оружия <small class="muted">— очки за убийства этим оружием: враг 1, элита 4, чемпион 6, владыка 30</small></div><div class="wm53">`; const cc=curCls();
+  for(const c of [cc].concat(WM_CLS.filter(x=>x!==cc))) h+=wmCard(c); return h+'</div>'+mastBoard(); }
+{ const _hp=heroPanel; heroPanel=function(){ if(PANEL.tab==='mast'){ PANEL.tab='prof'; let r; try{ r=_hp.apply(this,arguments); } finally{ PANEL.tab='mast'; } r.body=pMastery(); return r; } const r=_hp.apply(this,arguments); try{ if(r&&r.tabs&&mastOn()&&(mastS().pts>0||mastBigDue()>0)){ const t=r.tabs.find(x=>x[0]==='mast'); if(t&&!/•/.test(t[1])) t[1]+=' •'; } }catch(e){} return r; }; }
+if(window.__game&&window.__game.manage){ const _mg=window.__game.manage; window.__game.manage=function(){ const r=_mg.apply(this,arguments); try{ mastAuto(); }catch(e){} return r; }; }
+
+Object.assign(window.__game,{ wm:(cls)=>cls?{pts:wmS()[cls],rank:wmRank(cls)}:Object.assign({},wmS()), wmSet:(cls,r)=>{ wmS()[cls]=WM_RANKS[Math.max(0,Math.min(10,r))]; refreshPlayer(false); return wmRank(cls); }, wmStance:()=>{ const s=wmSt(); return s&&{cls:s.cls,t:+s.t.toFixed(1)}; },
+  mast:()=>Object.assign({need:mastNeed(),due:mastBigDue(),eff:Object.fromEntries(MAST.small.map(d=>[d.id,+mastEff(d.id).toFixed(2)]))},JSON.parse(JSON.stringify(mastS()))), mastAuto, mastSpend, mastPickBig });
+
+(function(){ const st=document.createElement('style'); st.textContent=`
+#wm53{position:absolute;left:50%;bottom:calc(var(--sb,0px) + 16px);transform:translateX(-50%);z-index:5;pointer-events:none;display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 5px;border-radius:12px;font-size:12.5px!important;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 38%,transparent) var(--p),rgba(14,8,4,.7) var(--p));border:1px solid var(--c);color:#fff4dc;font:700 11px var(--body);box-shadow:0 0 8px color-mix(in srgb,var(--c) 45%,transparent);width:max-content}
+#wm53.hidden{display:none}#wm53 .ico.ic{width:17px;height:17px;color:var(--c)}#wm53 i{font-style:normal;font-weight:800;color:var(--c);min-width:12px;text-align:right}
+.wm53{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+@media (max-width:620px){ .wm53{grid-template-columns:1fr} }
+.wm53c{padding:6px;border-radius:10px;background:rgba(18,10,5,.55);border:1px solid rgba(234,180,90,.22)}.wm53c.cur{border-color:#e8b450;box-shadow:0 0 10px rgba(255,180,60,.2)}
+.wm53h{display:flex;align-items:center;gap:7px}.wm53h b{font-size:13px;color:#ffe6b8}.wm53h .pill{font-size:9.5px;padding:0 6px}
+.wm53i{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 34px;border-radius:50%;background:radial-gradient(circle at 45% 35%,#6a4416,#1c0f06);box-shadow:0 0 0 1.5px #c9973f}.wm53i .ico.ic{width:22px;height:22px;color:#ffd27a}
+.wm53r{display:flex;flex-direction:column;align-items:center;min-width:38px}.wm53r b{font:800 22px var(--sc,serif);color:#ffd060;line-height:1}.wm53r small{font-size:9px;color:#cdb890}
+.wm53b{height:6px;border-radius:4px;background:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(234,180,90,.25);overflow:hidden;margin:3px 0 1px}.wm53b i{display:block;height:100%;background:linear-gradient(90deg,#c98a2a,#ffd982)}.wm53b.ember i{background:linear-gradient(90deg,#b8402a,#ffb060)}.wm53b.sm{height:4px}
+.wm53g{display:grid;grid-template-columns:1fr;gap:2px;margin-top:5px}
+.wm53u{display:grid;grid-template-columns:20px 18px 1fr;align-items:start;gap:5px;padding:2px 2px;border-radius:6px;opacity:.5}.wm53u.on{opacity:1;background:rgba(255,200,90,.06)}
+.wm53u > span:last-child b{display:block;font-size:11.5px;color:#ffe2a8;line-height:1.15}.wm53u small{display:block;font-size:10.5px;color:#d8c8a8;line-height:1.2}
+.wm53x{display:block;width:16px;height:16px}.wm53u > .ico.ic{width:16px;height:16px;color:#cdb07a;margin-top:1px}.wm53u.on > .ico.ic{color:#ffd060}
+.wm53l{display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font:800 10px var(--body);background:#2a1a0c;color:#bba27a;box-shadow:0 0 0 1px #6a5030}.wm53u.on .wm53l{background:linear-gradient(180deg,#ffd982,#c98a2a);color:#2a1606;box-shadow:none}
+.mb53.lock{display:block;font-size:12px}
+.mb53h{display:flex;align-items:center;gap:8px;padding:6px;border-radius:10px;background:rgba(40,12,6,.5);border:1px solid rgba(255,130,70,.35);margin-bottom:6px}
+.mb53p{display:flex;flex-direction:column;align-items:center;min-width:48px}.mb53p b{font:800 24px var(--sc,serif);color:#ffb060;line-height:1;text-shadow:0 0 10px rgba(255,120,40,.6)}.mb53p small{font-size:9.5px;color:#d8b890}
+.mb53g{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+@media (max-width:620px){ .mb53g{grid-template-columns:1fr 1fr} }
+.mb53n{display:flex;align-items:center;gap:5px;padding:5px;border-radius:9px;background:rgba(18,10,5,.55);border:1px solid rgba(234,180,90,.2);min-width:0}.mb53n .grow{min-width:0}.mb53n b{display:block;font-size:12px;color:#ffe6b8;line-height:1.1}.mb53n small{display:block;font-size:10.5px;color:#ffd27a;white-space:nowrap}.mb53n small i{font-style:normal;color:#a89070}
+.mb53i{display:flex;align-items:center;justify-content:center;width:26px;height:26px;flex:0 0 26px;border-radius:50%;background:radial-gradient(circle at 45% 35%,#5a2a10,#1c0a04);box-shadow:0 0 0 1px #b8602a}.mb53i .ico.ic{width:16px;height:16px;color:#ffb060}
+.mb53c{font:800 13px var(--sc,serif);color:#e8d2a8;min-width:16px;text-align:center}.mb53n .btn.small{min-width:30px;padding:2px 8px;height:30px;min-height:0}
+.mb53big{padding:6px;border-radius:10px;border:1px solid #e8b450;background:linear-gradient(180deg,rgba(80,40,10,.6),rgba(24,12,4,.7));box-shadow:0 0 14px rgba(255,170,60,.3);margin-bottom:6px}
+.mb53bh{display:flex;align-items:center;gap:5px;font:700 13px var(--sc,serif);color:#ffe2a8;margin-bottom:4px}.mb53bh small{font:400 10.5px var(--body);color:#cdb890}.mb53bh .ico.ic{width:16px;height:16px;color:#ffd060}
+.mb53o{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.mb53bo{display:grid;grid-template-columns:26px 1fr;column-gap:5px;text-align:left;padding:6px;border-radius:8px;border:1px solid #e8b450;background:linear-gradient(180deg,rgba(60,38,16,.8),rgba(24,14,6,.85));color:#f2e2c0;font:inherit;cursor:pointer}.mb53bo .ico.ic{grid-row:1/3;width:24px;height:24px;color:#ffd060}.mb53bo b{font-size:12px;color:#ffe2a8}.mb53bo small{font-size:10.5px;color:#d8c8a8;line-height:1.2}
+.mb53got{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.mb53t{display:inline-flex;align-items:center;gap:3px;padding:2px 8px 2px 4px;border-radius:9px;background:rgba(80,40,10,.5);border:1px solid #c9973f;font-size:11px;color:#ffe2a8}.mb53t .ico.ic{width:13px;height:13px;color:#ffd060}
+`; document.head.appendChild(st); })();
 // ================= pz: boot =================
 boot();
 })();

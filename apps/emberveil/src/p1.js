@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=8;
+const SAVE_V=9;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -109,6 +109,8 @@ function migrateSave(d){
     d.set=d.set||{}; if(!d.set.diff) d.set.diff='norm'; if(!d.set.dmgN) d.set.dmgN=d.set.dmg===false?'off':'merge'; if(!d.set.hold) d.set.hold='charge'; if(!d.set.autoSalv) d.set.autoSalv='off'; if(!d.set.bombT) d.set.bombT='fire';
     d.cons=d.cons||{}; for(const k of ['bomb_ice','bomb_poison','bomb_thunder','bomb_smoke']) if(d.cons[k]===undefined) d.cons[k]=0; if((d.cons.bomb|0)>5) d.cons.bomb=5;
     d.loot=d.loot||{blp:0,n:0,up:0,conv:0}; d.v=8; }
+  if(d.v<9){ // v8 → v9 (игра v26): звёзды этапа по условиям (sf), звёздные сундуки зон, Кошмар I–X, мастерство оружия, Уголь мастерства (src/p51.js → v9Migrate)
+    try{ if(typeof v9Migrate==='function') v9Migrate(d); }catch(e){ console.error(e); } d.v=9; }
   return d;
 }
 let _saveT=0;
