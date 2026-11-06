@@ -6,9 +6,9 @@
 // S.spell.slot2, it.luck) необязательные и создаются по месту.
 
 // ---------- B. дальний бой: захват 8 м, спад урона за 7 м, натяжение 1 с, перегрев посоха ----------
-const V24R={lock:8,fall0:7,fall1:11,fallK:.7,fallMin:.6,drawT:1.0,drawWalk:.55,tap:.6,heatMax:6,heatCool:1.5,heatIdle:.7,heatDecay:2.4,hpK:.85,armK:.8,
+const V24R={lock:8,fall0:7,fall1:11,fallK:.7,fallMin:.6,drawT:1.0,drawWalk:.55,tap:.6,heatMax:6,heatCool:1.5,heatIdle:1.0,heatDecay:1.8,hpK:.85,armK:.8,
   hunterP:.16,hunterCdR:[4.5,6.5],hunterCdM:[8,11],dodgeP:.4,guardP:.3,guardT:1.6,guardCd:7,guardK:.3,shieldK:.5};
-BOW.drawT=V24R.drawT; BOW.mQuick=V24R.tap;
+BOW.drawT=V24R.drawT; BOW.mQuick=V24R.tap; BOW.mFull=1.95;
 function rangedCls(c){ c=c||PS.cls; return c==='bow'||c==='staff'; }
 function fall24(d){ if(d<=V24R.fall0) return 1; if(d<=V24R.fall1) return 1-(1-V24R.fallK)*(d-V24R.fall0)/(V24R.fall1-V24R.fall0); return Math.max(V24R.fallMin,V24R.fallK-(d-V24R.fall1)*.025); }
 // мягкий захват лука: только в 8 м (было 17 м для кандидатов)
@@ -35,6 +35,7 @@ heroRelease=function(P,mv){ const r=_heroRelease24.apply(this,arguments);
 const _spawnProj24=spawnProj;
 spawnProj=function(kind,x,z,dir,o={}){
   if(o&&o.team==='p'&&o.bowC!==undefined) o.pierce=(PS.pierce||0)+(o.bowC>=.95?1:0);
+  if(o&&o.team==='p'&&kind==='bolt'&&PS.cls==='staff'&&(!o.src||o.src===G.P)&&o.dmg!==undefined&&G.P&&G.P.state==='atk') o.dmg*=STAFF_BOLT_K;
   const p=_spawnProj24.apply(this,[kind,x,z,dir,o]);
   if(p&&p.team==='p'&&(!p.src||p.src===G.P)&&rangedCls()&&(/^arrow/.test(kind)||kind==='bolt')){ p._f0x=x; p._f0z=z; p._dm0=p.dmgMul||1; }
   return p; };
@@ -93,7 +94,10 @@ dmgEnemy=function(e,amt,o={}){ if(!e||!e.alive) return _dmgEnemy24.apply(this,ar
 const _botInput24=botInput;
 botInput=function(){ const r=_botInput24.apply(this,arguments); const P=G.P; try{ if(r&&P&&!P.dead&&PS.cls==='staff'&&P.ovh>0){ r.atk=false; G.input.atk=false; }
   if(r&&P&&!P.dead&&S.spell.slot2&&hearthHas(30)&&(P.cds.spell2||0)<=0&&(G.mode==='stage'||G.mode==='abyss')){ const e=nearestEnemy(P.x,P.z,9); if(e&&Math.random()<.06) castSpell2(); } }catch(e){} return r; };
-// лук/посох: −15% здоровья, броня ×0,8 (класс-множитель)
+// посох: умения −40%, снаряды −25% (одиночная цель на стенде давала ×2,5 меча из-за синергий и горения)
+const STAFF_SKILL_K=.6, STAFF_BOLT_K=.75; // снаряды посоха (касания и сгусток) ×0,75
+const _heroDmg24=heroDmg;
+heroDmg=function(mult,o){ const r=_heroDmg24.apply(this,arguments); if(o&&o.skill&&PS.cls==='staff'&&r) r.amt*=STAFF_SKILL_K; return r; };
 
 // ---------- D. деревня даёт силу ----------
 const VB24={forge:{n:'урона оружием',k:3},walls:{n:'здоровья',k:4,n2:'брони',k2:3},alch:{n:'силы зелий',k:10},pen:{n:'силы питомцев',k:10},temple:{n:'урона умений и заклинаний',k:2},tavern:{n:'силы спутников',k:8},houses:{n:'опыта и золота',k:2}};
@@ -134,6 +138,14 @@ for(const id of Object.keys(BUILDINGS)){ const B=BUILDINGS[id]; const e0=B.eff; 
 if(typeof bldComplete==='function'){ const _bc=bldComplete; bldComplete=function(){ const r=_bc.apply(this,arguments); try{ hearthCheck(); }catch(e){} return r; }; }
 { const _db=doBuild; doBuild=function(){ const r=_db.apply(this,arguments); try{ hearthCheck(); }catch(e){} return r; }; }
 
+
+// экономика ворот: ратуша дешевле и быстрее (её уровень теперь — ключ к зонам), первая победа над владыкой зоны приносит «дань» на следующую ратушу
+const HALL_MUL=[.8,1.1,2.4,5,10];
+BLD_TIME.hall=[0,120,1200,5400,14400];
+{ const _bcost=bldCost; bldCost=function(id,lv){ if(id!=='hall') return _bcost.apply(this,arguments); const b=BUILDINGS.hall.base, m=HALL_MUL[Math.max(0,Math.min(4,lv-1))]; const c={}; for(const k in b) c[k]=Math.round(b[k]*m); if(lv>=3) c.ess=Math.round(5*lv*lv); if(lv>=5) c.dust=15; return c; }; }
+{ const _re=runEnd; runEnd=function(win,reason,keep){ let tribute=null; try{ const I=G.run&&G.run.info; if(win&&I&&I.s===5&&G.mode==='stage'&&!stageDone(I.key)){ const nh=Math.min(5,(S.bld.hall||1)+1); if((S.bld.hall||1)<5&&I.z<5){ const c=bldCost('hall',nh); tribute={gold:Math.round((c.gold||0)*.35),wood:Math.round((c.wood||0)*.5),ore:Math.round((c.ore||0)*.5)}; } } }catch(e){}
+  const r=_re.apply(this,arguments); if(tribute){ for(const k in tribute) S.res[k]=(S.res[k]||0)+tribute[k]; later(1.2,()=>toast(`${ico('hall')} <b>Дань владыки</b> на ратушу: ${costHtml(tribute)}`,null,3,'quest')); saveGame(); } return r; }; }
+
 // ---------- ворота зон ----------
 function gateReq(z){ if(z<=1) return null; if(z<=5) return {hall:z}; if(z===6) return {hall:5,hearth:10}; return {hall:5,hearth:[15,20,25,30][z-7]||30}; }
 const _stageUnlocked24=stageUnlocked;
@@ -141,7 +153,7 @@ function gateInit(){ if(S.g24&&S.g24.gf) return; S.g24={gf:{}}; for(let z=2;z<=1
 function gateMet(z){ const r=gateReq(z); if(!r) return true; return (S.bld.hall||0)>=r.hall&&(!r.hearth||hearthLv()>=r.hearth); }
 function gateOk(z){ if(gateMet(z)) return true; gateInit(); return !!S.g24.gf[z]; }
 function gateWhy(z,html){ const r=gateReq(z); if(!r) return ''; const a=[]; const ok1=(S.bld.hall||0)>=r.hall, ok2=!r.hearth||hearthLv()>=r.hearth;
-  if(html){ a.push(`<span class="${ok1?'ok':'no'}">${ico('hall')} Ратуша ${r.hall} ур. <small>(${S.bld.hall||0})</small></span>`); if(r.hearth) a.push(`<span class="${ok2?'ok':'no'}">${ico('flame')} Пламя Очага ${r.hearth} <small>(${hearthLv()})</small></span>`); return a.join(''); }
+  if(html){ a.push(`<span class="${ok1?'ok':'no'}">${ico('hall')} Ратуша ${r.hall} ур. <small>(у вас ${S.bld.hall||0})</small></span>`); if(r.hearth) a.push(`<span class="${ok2?'ok':'no'}">${ico('flame')} Пламя Очага ${r.hearth} <small>(у вас ${hearthLv()})</small></span>`); return a.join(''); }
   if(!ok1) a.push(`Ратуша ${r.hall} ур.`); if(!ok2) a.push(`Пламя Очага ${r.hearth}`); return a.join(' и '); }
 stageUnlocked=function(z,s){ const u=_stageUnlocked24(z,s); if(!u) return false; if(s===1&&!gateOk(z)) return false; return true; };
 { const _ns=newSave; newSave=function(){ const s=_ns.apply(this,arguments); s.g24={gf:{}}; s.hearth={lv:0,got:{},gem:null}; return s; }; }
@@ -158,7 +170,7 @@ drawMap=function(){ _drawMap24.apply(this,arguments); try{ const box=$('mapNodes
     if(h) box.insertAdjacentHTML('beforeend',h); }catch(e){ console.error(e); } };
 
 // ---------- рекомендуемая сила и «мягкая стена» у владыки ----------
-const REC24={rar:[0,1,1,2,2,3,3,3,3,3],up:[0,1,2,4,6,8,10,10,11,12],vil:[1,1,2,2,3,3,3,3,4,5],k:.85,wall:.8,wallMin:.55};
+const REC24={rar:[0,0,1,2,2,3,3,3,3,3],up:[0,0,2,4,6,8,10,10,11,12],vil:[1,1,2,2,3,3,3,3,4,5],k:.85,wall:.8,wallMin:.55};
 const _recC={};
 function recPow(z,L,cls){ cls=cls||curCls(); const key=z+'|'+L+'|'+cls; if(_recC[key]) return _recC[key];
   const sv={gear:S.gear,lvl:S.hero.lvl,attr:S.hero.attr,tal:S.hero.talents,bless:S.bless,pa:S.pets&&S.pets.active,bld:S.bld,uid:S.uid,myth:S.st&&S.st.myth,hearth:S.hearth,rb:RUNBUF}; const rnd=Math.random; let acc=0; const N=3;
@@ -270,16 +282,16 @@ cardHtml=function(it,ctx){ const h=_cardHtml24.apply(this,arguments); try{ if(ct
 #stageCard .rec24 .ico.ic{width:14px;height:14px;vertical-align:-2px}
 .mgate{position:absolute;left:50%;transform:translateX(-50%);z-index:3;width:min(84%,400px);text-align:center;color:#ffe9c0;font-size:12px;line-height:1.35;text-shadow:0 1px 0 #000;background:linear-gradient(180deg,rgba(28,16,8,.88),rgba(14,8,4,.88));border:1.5px solid #c9973f;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 6px 16px rgba(0,0,0,.5);border-radius:10px;padding:7px 10px;pointer-events:none}
 .mgate>b{font-family:var(--sc,serif);letter-spacing:.06em;color:#ffd982;font-size:13px}.mgate .ico.ic{width:15px;height:15px;vertical-align:-3px}
-.mgate .gw{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 2px}.mgate small{display:block;color:#d8b888;font-size:11px}
+.mgate .gw{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:4px 0 2px}.mgate>small{display:block;color:#d8b888;font-size:11px}
 .mgate.sm{width:auto;padding:3px 9px;font-size:11px;color:#e8d0a0;background:rgba(20,12,6,.7);border-width:1px}
 .gw span{white-space:nowrap;font-weight:700}.gw .ok{color:#9cff7a}.gw .no{color:#ff8a6a}.gw small{opacity:.75;font-weight:400}.gw .ico.ic{width:14px;height:14px;vertical-align:-2px}
 #hBoss .bweak{margin-top:3px;font-size:11.5px;color:#ffb8a0;text-align:center;text-shadow:0 1px 2px #000;font-weight:700}#hBoss .bweak .ico.ic{width:13px;height:13px;vertical-align:-2px}
-#bAtk .heat24{position:absolute;left:50%;bottom:7px;transform:translateX(-50%);display:flex;gap:2px;z-index:6;pointer-events:none}
-#bAtk .heat24 i{width:8px;height:5px;border-radius:2px;background:rgba(0,0,0,.55);box-shadow:inset 0 0 0 1px rgba(255,200,120,.35)}
+#bAtk .heat24{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:flex;gap:3px;z-index:6;pointer-events:none;padding:2px 4px;border-radius:6px;background:rgba(10,5,2,.6)}
+#bAtk .heat24 i{width:10px;height:7px;border-radius:2px;background:rgba(0,0,0,.55);box-shadow:inset 0 0 0 1px rgba(255,200,120,.35)}
 #bAtk .heat24 i.on{background:linear-gradient(180deg,#ffe08a,#f09030);box-shadow:0 0 4px rgba(255,160,60,.8)}
 #bAtk .heat24 i.hot{background:linear-gradient(180deg,#ffb080,#e03a1a);box-shadow:0 0 5px rgba(255,80,40,.9)}
 #bAtk .heat24.ovh i{background:linear-gradient(180deg,#ff8060,#a01a0a);animation:ovh24 .35s ease-in-out infinite alternate}
-#bAtk.ovh24{filter:saturate(.6) brightness(.85)}#bAtk.ovh24:after{content:'ПЕРЕГРЕВ';position:absolute;left:0;right:0;top:-18px;text-align:center;font:800 11px var(--sc,serif);letter-spacing:.08em;color:#ff9a6a;text-shadow:0 1px 2px #000}
+#bAtk.ovh24{filter:saturate(.6) brightness(.85)}#bAtk.ovh24:after{content:'ПЕРЕГРЕВ';position:absolute;left:4px;right:4px;top:50%;transform:translateY(-50%);z-index:7;text-align:center;font:800 12px var(--sc,serif);letter-spacing:.04em;color:#ffd0b0;text-shadow:0 1px 2px #000;background:rgba(110,20,6,.82);border-radius:6px;padding:3px 0;box-shadow:0 0 10px rgba(255,80,30,.6)}
 @keyframes ovh24{to{opacity:.45}}
 #bSpell2{--c:#8ae8ff;width:46px;height:46px;left:-60px;bottom:186px;background:radial-gradient(circle at 42% 35%,var(--c),#2a1206 75%);box-shadow:0 0 0 3px #c9973f,0 0 0 5px #1c0f06,0 0 12px var(--c);color:#fff;font-size:22px}
 #acts.left #bSpell2{left:auto;right:-60px}#bSpell2 .ico.ic{width:28px;height:28px}
