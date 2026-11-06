@@ -397,3 +397,13 @@ eyes with highlights, blinking and expressions, cape sway. Water/lava/swamp/pudd
 spirit «Уголёк» (`src/p29.js`) are procedural (code), so the asset list and licences above are unchanged.
 
 В v14 новых сторонних файлов нет: всё новое — код (шейдеры и процедурные модели), лицензии выше не меняются.
+
+## v27 (Глава II, веха 3 — «Небесные Руины»)
+
+No new third-party files were added in v27. Zone 9 reuses models that are already listed above (all CC0): KayKit Adventurers / Skeletons
+(`lorekeeper.glb` — dried priests and Attal, `ninja.glb` — dune stalkers, `avian.glb` — windwings, `rogue.glb` — Sabira in the classic look,
+`frost_golem.glb` — Zenith, `kit_weapons2.glb`) and Quaternius Universal Base Characters (`ubc_m.glb` / `ubc_f.glb` — detailed looks of Sabira,
+stalkers, priests and Attal). The scarab swarm, the dune worm, floating isles, sandstone props, terrain layers and all VFX are procedural code
+(`src/p54.js`–`src/p57.js`, `lab/build/act2z9_manifest.py` only maps existing files to game ids).
+
+В v27 новых сторонних файлов нет: зона 9 использует уже перечисленные CC0-модели, остальное — код.

@@ -262,7 +262,7 @@
    "lorekeeper",
    "ninja",
    "avian",
-   "ranger",
+   "rogue",
    "frost_golem",
    "anim_large",
    "anim_medium_extra",
@@ -4178,8 +4178,8 @@
    "r": "e_plant_spear",
    "clips": "sword",
    "tint": [
-    "#f0e0b0",
-    0.3
+    "#e8c060",
+    0.78
    ],
    "glow": "#ffd27a",
    "hover": 1.8,
@@ -4217,9 +4217,9 @@
   },
   "comp:sabira": {
    "type": "char",
-   "file": "ranger",
+   "file": "rogue",
    "rig": "medium",
-   "h": 2.05,
+   "h": 2.0,
    "clips": "bow",
    "l": "w_bow_long",
    "tint": [
@@ -5692,6 +5692,181 @@
    ],
    "glow": "#7af0e0",
    "note": "Камергер Утоплый"
+  },
+  "comp:sabira": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_bow",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_bracer",
+    "ranger_legs",
+    "ranger_boots",
+    "ranger_belt",
+    "knight_scarf"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2a1a10"
+    },
+    "skin": {
+     "mul": "#d8a882",
+     "v": 0.92
+    },
+    "ranger": {
+     "h": 28,
+     "s": 0.62,
+     "v": 0.92
+    },
+    "knight": {
+     "mul": "#c84a2a"
+    }
+   },
+   "l": "w_bow_long",
+   "note": "Сабира, Дочь ветра: проводница караванов"
+  },
+  "duneStalker": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots",
+    "knight_scarf"
+   ],
+   "cols": {
+    "skin": {
+     "mul": "#c89a72",
+     "v": 0.8
+    },
+    "ranger": {
+     "h": 30,
+     "s": 0.5,
+     "v": 0.58
+    },
+    "knight": {
+     "mul": "#8a5a3a"
+    }
+   },
+   "r": "w_dagger",
+   "l": "w_dagger",
+   "tint": [
+    "#b8905a",
+    0.18
+   ],
+   "note": "Ловчий барханов"
+  },
+  "driedPriest": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "beard",
+    "wizard_body",
+    "wizard_belt",
+    "wizard_legs",
+    "peasant_arms",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e8e0d0"
+    },
+    "skin": {
+     "mul": "#c8b08a",
+     "v": 0.78
+    },
+    "wizard": {
+     "h": 40,
+     "s": 0.35,
+     "v": 0.85
+    },
+    "peasant": {
+     "h": 35,
+     "s": 0.3,
+     "v": 0.7
+    },
+    "cape": {
+     "mul": "#e8dcc0"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "tint": [
+    "#c8a870",
+    0.22
+   ],
+   "glow": "#ffd27a",
+   "glowA": 0.3,
+   "note": "Иссохший жрец Первых"
+  },
+  "attal": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#f4f0e8"
+    },
+    "skin": {
+     "mul": "#d8b890",
+     "v": 0.86
+    },
+    "noble": {
+     "mul": "#fff0c8",
+     "s": 0.45
+    },
+    "cape": {
+     "mul": "#e8c878"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "boss": true,
+   "tint": [
+    "#e8c878",
+    0.12
+   ],
+   "glow": "#ffd27a",
+   "hover": 0.4,
+   "note": "Аттал, Первый Огнедел"
   }
  },
  "ubcGroups": {
@@ -5741,6 +5916,16 @@
    "anim_medium_extra",
    "kit_weapons2",
    "kit_items2",
+   "ubc_f"
+  ],
+  "z9": [
+   "kit_dungeon",
+   "kit_nature",
+   "avian",
+   "frost_golem",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2",
    "ubc_f"
   ]
  }

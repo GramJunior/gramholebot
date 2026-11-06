@@ -44,7 +44,7 @@ ZMAT[9]={dirt:0xc8a060,stone:0xd8b880,mud:0xa07840,sand:0xe8c888};
 ZGATE[9]='obeliskGold';
 ROCK_SMALL[9]=['bonesSand','dryBush'];
 const A9W={_dress:null};
-const _spawnCampA9=spawnCamp; spawnCamp=function(x,z,cnt,L,o={}){ if(W&&W.zone&&W.zone.id===9&&W.kind==='stage'&&cnt>4) cnt-=2; return _spawnCampA9(x,z,cnt,L,o); };
+const _spawnCampA9=spawnCamp; spawnCamp=function(x,z,cnt,L,o={}){ if(W&&W.zone&&W.zone.id===9&&W.kind==='stage'&&cnt>4) cnt-=cnt>6?3:2; return _spawnCampA9(x,z,cnt,L,o); };
 
 // ---------- темы площадок ----------
 const _dressAreaA9=dressArea;
@@ -149,8 +149,8 @@ const _atmosBuildA9=atmosBuild;
 atmosBuild=function(Z){ if(!(Z&&Z.id===9&&W&&W.kind==='stage')) return _atmosBuildA9(Z); try{ _atmosBuildA9(Object.assign({},Z,{id:1})); }catch(e){ console.warn('a9 atmos',e); } };
 
 // ---------- земля зоны 9 (ZTER 9) ----------
-Object.assign(TGP,{sandDune:{d:0xa8743a,m:0xd09a58,l:0xe8bf7c,x:0xf6dca8},sandHard:{d:0x8a6236,m:0xae7e48,l:0xc89a60,x:0x7a5a3a},pathSand:{d:0x9a7a52,m:0xc4a274,l:0xdcc08e,x:0xe6c88e},
-  sunFlag:{d:0x8a6a3e,m:0xb48e58,l:0xd2ac70,x:0xffd27a},goldMosaic:{d:0x4a3a12,m:0xb8902a,l:0xe8c060,x:0x2a5a9a},rockSandstone:{d:0x8a5a30,m:0xb07840,l:0xd8a060,x:0xe8c890}});
+Object.assign(TGP,{sandDune:{d:0x9a6634,m:0xc08a4c,l:0xd8aa68,x:0xeccb90},sandHard:{d:0x8a6236,m:0xae7e48,l:0xc89a60,x:0x7a5a3a},pathSand:{d:0x8a6a44,m:0xb08e62,l:0xc8aa78,x:0xd8b078},
+  sunFlag:{d:0x7a5a34,m:0xa47e4c,l:0xc09a60,x:0xffcf6a},goldMosaic:{d:0x4a3a12,m:0xb8902a,l:0xe8c060,x:0x2a5a9a},rockSandstone:{d:0x8a5a30,m:0xb07840,l:0xd8a060,x:0xe8c890}});
 // dunes: big soft light/shadow bands + fine ripples + a few dark grains
 TGK.dune=(B,p,s)=>{ const N=B.N, d=tgCol(p.d), m=tgCol(p.m), l=tgCol(p.l), x=tgCol(p.x);
   B.fill((u,v,c)=>{ const n=tgF(u*3,v*3,3,s), w=tgF(u*2,v*2,2,s+5,2); const band=Math.sin((v*2.2+u*.7+w*1.3)*TAU); const rp=Math.sin((v*14+u*3+tgF(u*6,v*6,6,s+4,2)*2.4)*TAU);

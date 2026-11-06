@@ -3,7 +3,7 @@
 // враги, этапы 9-2/9-3/9-4), боссы — p56.js (Барханщик «Плита», Зенит «Зеркала», Аттал «Солнечные часы»), мир — p57.js.
 
 // ---------- зона 9 (индекс 8) ----------
-ZONES.push({id:9,n:'Небесные Руины',sub:'Золотые пески Первых',lv:41,mus:'z9',fog:0xe8c48a,fogN:36,fogF:110,sky:0x8ac0f0,hemi:[0xfff0d0,0x8a6a3a,.95],sun:[0xfff0c0,1.15],
+ZONES.push({id:9,n:'Небесные Руины',sub:'Золотые пески Первых',lv:41,mus:'z9',fog:0xd8b070,fogN:36,fogF:110,sky:0x8ac0f0,hemi:[0xfff0d0,0x8a6a3a,.95],sun:[0xfff0c0,1.15],
   ground:[0xe0b870,0xd4a860,0xecc888],path:0xc8a06a,edge:0xa8804a,cliff:0xb88a5a,liquid:[0x2a8ab0,0x8ae0f0,0],
   wall:['sandPillar','dune','obeliskGold','colossusHead','sandPillar'],deco:['bones','sunDisk','sail','urnGold','ribGiant'],amb:'sand',
   enemies:['goldBeetle','driedPriest','duneStalker','windwing'],boss:'attal',rim:0xfff0c0,heat:1,skyIsles:1,act:2});
@@ -32,9 +32,9 @@ const A2_ELITE9={goldBeetle:['scorch'],driedPriest:['scorch','mirage'],duneStalk
 
 // ---------- боссы зоны 9 (§5.0, §8.2; здоровье — по стенду v27, см. README) ----------
 Object.assign(BOSSES,{
-  duneWorm:{n:'Барханщик',t:'Червь глубоких песков',hp:46000,dmg:47,spd:4.0,model:'duneWorm',scale:1,r:2.2,phases:[1,.5],xp:3200,mus:'boss2',mid:1},
-  zenith:{n:'Зенит',t:'Страж Солнечного Престола',hp:42000,dmg:49,spd:2.0,model:'zenith',scale:1,r:2.0,phases:[1,.6,.3],xp:3800,el:'fire',mus:'boss2',mid:1},
-  attal:{n:'Аттал',t:'Первый Огнедел',hp:52000,dmg:51,spd:3.4,model:'attal',scale:1,r:1.2,phases:[1,.66,.33],xp:4600,el:'fire',mus:'boss2'}
+  duneWorm:{n:'Барханщик',t:'Червь глубоких песков',hp:60000,dmg:47,spd:4.0,model:'duneWorm',scale:1,r:2.2,phases:[1,.5],xp:3200,mus:'boss2',mid:1},
+  zenith:{n:'Зенит',t:'Страж Солнечного Престола',hp:38000,dmg:49,spd:2.0,model:'zenith',scale:1,r:2.0,phases:[1,.6,.3],xp:3800,el:'fire',mus:'boss2',mid:1},
+  attal:{n:'Аттал',t:'Первый Огнедел',hp:48000,dmg:51,spd:3.4,model:'attal',scale:1,r:1.2,phases:[1,.66,.33],xp:4600,el:'fire',mus:'boss2'}
 });
 BOSS_SUMMON.duneWorm='goldBeetle'; BOSS_SUMMON.zenith='windwing'; BOSS_SUMMON.attal='driedPriest';
 BOSS_TIPS.push(['Барханщик','на каменной плите он не может вынырнуть: встаньте на плиту, когда к вам бежит бугор, — червь ударится о камень и раскроет пасть.'],
@@ -245,4 +245,4 @@ COSM.troph_zenith={t:'trophy',n:'Треснувшая линза',c:'#ffe8a0',sr
 COSM.troph_attal={t:'trophy',n:'Венец Огнедела',c:'#ffd27a',src:'boss',boss:'9-5',d:'Аттал, Первый Огнедел.'};
 
 // ---------- нормативы «В срок» (p51: время бота-мечника ×1,6, стенд ev27/par.js) ----------
-Object.assign(PAR51,{'9-1':150,'9-2':330,'9-3':260,'9-4':400,'9-5':360});
+Object.assign(PAR51,{'9-1':115,'9-2':325,'9-3':225,'9-4':435,'9-5':295});

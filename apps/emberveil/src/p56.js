@@ -169,7 +169,7 @@ function a9NoonPat(e,p,dt){ const P=G.P, M=W.bossMech, A=W.arenaNode; const cast
   M.noonHeat=p.t<cast?6:0; if(Math.random()<.7){ const a=rand(TAU), r=rand(0,A.r); fx('light',A.x+Math.cos(a)*r,rand(.2,2),A.z+Math.sin(a)*r,{k:1}); }
   e.pose='raise'; e.poseK=1;
   if(p.t>=cast&&!p.done){ p.done=1; M.noonOn=0; M.noonHeat=0; if(W.a9shIM) W.a9shIM.material.opacity=.34; fx('light',A.x,.5,A.z,{k:40}); fx('ring',A.x,.3,A.z,{r:A.r,col:0xfff0b0}); AU.sfx('boom',.7,1.4); shake(.5);
-    const k=e.kind==='attal'?(M.deaths>=4?1.2:2.2):1.6; const safe=!P.dead&&a9InShade(P.x,P.z); if(!P.dead&&!safe&&!(P.iframe>0)&&!P.a9sw){ hurtPlayer(BD(e,k),{src:e,lvl:e.lvl,el:'fire',kb:0}); a9HeatAdd(e.kind==='attal'?55:60); M.noonFail=(M.noonFail||0)+1; } else if(!P.dead){ M.noonOk=(M.noonOk||0)+1; dmgNum(P.x,2.6,P.z,'в тени!','heal'); }
+    const k=e.kind==='attal'?(M.deaths>=4?1.2:2.2):1.6; const safe=!P.dead&&a9InShade(P.x,P.z); if(!P.dead&&!safe&&!(P.iframe>0)&&!P.a9sw){ hurtPlayer(BD(e,k),{src:e,lvl:e.lvl,el:'fire',kb:0}); a9HeatAdd(e.kind==='attal'?40:35); M.noonFail=(M.noonFail||0)+1; } else if(!P.dead){ M.noonOk=(M.noonOk||0)+1; dmgNum(P.x,2.6,P.z,'в тени!','heal'); }
     for(const a of G.allies) if(!a.dead&&!a9InShade(a.x,a.z)) allyHurt(a,BD(e,1),e);
     if(M.wedge2) M.wedge2.visible=false; M.fake=null; return true; }
   return p.done&&p.t>cast+.4; }
@@ -252,16 +252,21 @@ a2Runes=function(){ return (stageDone('7-5')?1:0)+(stageDone('8-5')?1:0)+(stageD
 
 // ---------- бот: плиты под нырком, диски к Зениту, тень гномона в Полдень, печати ----------
 const _botInputA9b=botInput;
-botInput=function(){ const r=_botInputA9b(); try{ const e=G.boss, P=G.P, M=W&&W.bossMech; if(!e||!e.alive||!M||e.intro||!['duneWorm','zenith','attal'].includes(e.kind)) return r; let tx=null,tz=null,atk=r.atk;
+botInput=function(){ const r=_botInputA9b(); try{ const e=G.boss, P=G.P, M=W&&W.bossMech; if(!e||!e.alive||!M||e.intro||!['duneWorm','zenith','attal'].includes(e.kind)) return r; let tx=null,tz=null,atk=r.atk,tg=null;
   if(e.kind==='duneWorm'){ if(e.cur&&e.cur.n==='wDive'){ let best=null,bd=1e9; for(const p of (M.plates||[])){ if(p.hp<=0) continue; const d=Math.hypot(p.x-P.x,p.z-P.z); if(d<bd){ bd=d; best=p; } } if(best){ tx=best.x; tz=best.z; atk=false; } }
     if(e.cur&&e.cur.n==='wRing'&&e.cur.r!==undefined){ const c=e.cur; const a=c.a0-c.gap/2; tx=c.cx+Math.cos(a)*(c.r-1.5); tz=c.cz+Math.sin(a)*(c.r-1.5); } }
   if(e.kind==='zenith'){ if(e.cur&&e.cur.n==='zNoon'){ let best=null,bd=1e9; for(const c of (W.a9shade||[])){ const mx=(c.ax+c.bx)/2, mz=(c.az+c.bz)/2; const d=Math.hypot(mx-P.x,mz-P.z); if(d<bd){ bd=d; best={x:mx,z:mz}; } } if(best){ tx=best.x; tz=best.z; atk=false; } }
-    else if(!(e.bstun>0)){ const d=(M.discs||[]).filter(d=>!(d.hot>0)).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z))[0]; if(d){ const toZ=Math.atan2(e.x-d.x,e.z-d.z); const ok=Math.abs(angWrap(d.dir-toZ))<.45; const bx=d.x-Math.sin(toZ)*1.5, bz=d.z-Math.cos(toZ)*1.5; if(e.cur&&e.cur.n==='zBeam'||!ok){ tx=bx; tz=bz; atk=!ok&&Math.hypot(bx-P.x,bz-P.z)<1.4; if(atk){ G.input.mx=0; G.input.mz=0; } } } } }
+    else if(!(e.bstun>0)){ const d=(M.discs||[]).filter(d=>!(d.hot>0)).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z))[0]; if(d){ const toZ=Math.atan2(e.x-d.x,e.z-d.z); const ok=Math.abs(angWrap(d.dir-toZ))<.45; const bx=d.x-Math.sin(toZ)*1.5, bz=d.z-Math.cos(toZ)*1.5; if(e.cur&&e.cur.n==='zBeam'||!ok){ tx=bx; tz=bz; atk=!ok&&Math.hypot(bx-P.x,bz-P.z)<1.4; tg=d; } } } }
   if(e.kind==='attal'){ if(e.cur&&e.cur.n==='aNoon'){ const a=M.fallen?M.fallAng:M.shAng; const L=M.fallen?7:6; tx=M.gx+Math.sin(a)*L; tz=M.gz+Math.cos(a)*L; atk=false; }
-    else if((M.seals||[]).some(s=>s.on)&&!(e.bstun>0)){ const s=M.seals.filter(s=>s.on).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z))[0]; const d=Math.hypot(s.x-P.x,s.z-P.z); tx=s.x+(P.x-s.x)/(d||1)*1.2; tz=s.z+(P.z-s.z)/(d||1)*1.2; atk=d<2.4; if(atk&&P.cds){ for(const k of ['s1','s2']) if((P.cds[k]||0)<=0&&skillRank(k)>0&&Math.random()<.3){ P.face=Math.atan2(s.x-P.x,s.z-P.z); useSkill(k); break; } } } }
-  if(tx!==null){ let mx=0,mz=0; const dx=tx-P.x,dz=tz-P.z,d=Math.hypot(dx,dz); if(d>.35){ mx=dx/d; mz=dz/d; } if(atk&&d<1.6){ const tg=e.kind==='attal'?(M.seals||[]).find(s=>s.on):(M.discs||[])[0]; if(tg) P.face=Math.atan2(tg.x-P.x,tg.z-P.z); } G.input.mx=mx; G.input.mz=mz; G.input.atk=atk; return {mx,mz,atk}; } }catch(err){} return r; };
+    else if((M.seals||[]).some(s=>s.on)&&!(e.bstun>0)){ const s=M.seals.filter(s=>s.on).sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z))[0]; const d=Math.hypot(s.x-P.x,s.z-P.z); tx=s.x+(P.x-s.x)/(d||1)*1.2; tz=s.z+(P.z-s.z)/(d||1)*1.2; atk=d<2.4; tg=s; if(atk&&P.cds){ for(const k of ['s1','s2']) if((P.cds[k]||0)<=0&&skillRank(k)>0&&Math.random()<.3){ P.face=Math.atan2(s.x-P.x,s.z-P.z); useSkill(k); break; } } } }
+  if(tx!==null){ let mx=0,mz=0; const dx=tx-P.x,dz=tz-P.z,d=Math.hypot(dx,dz); if(d>.35){ mx=dx/d; mz=dz/d; } if(atk&&tg&&d<1.6){ P.face=Math.atan2(tg.x-P.x,tg.z-P.z); mx=0; mz=0; if(PS.cls==='bow'||PS.cls==='staff'){ const o=hitObj; if(G.time-(P._a9shT||0)>.45){ P._a9shT=G.time; hitObj(tg,1); } } } G.input.mx=mx; G.input.mz=mz; G.input.atk=atk; return {mx,mz,atk}; } }catch(err){} return r; };
 Object.assign(window.__game,{ a9boss:()=>{ const e=G.boss, M=W&&W.bossMech; return e?{k:e.kind,hp:Math.round(e.hp),max:Math.round(e.maxHp),ph:e.phase,stun:e.bstun>0,under:!!e.under,cur:e.cur&&e.cur.n,plateOk:M&&M.plateOk||0,lensOk:M&&M.lensOk||0,noonOk:M&&M.noonOk||0,noonFail:M&&M.noonFail||0,fallOk:M&&M.fallOk||0,seals:M&&M.seals?M.seals.filter(s=>s.on).length:null,sw:!!(G.P&&G.P.a9sw)}:null; } });
 
 // «Стойкость владыки» Аттала — как у Белавы и Строкоеда (порог 2%/с, ×0,25 сверх него): окна гномона и печатей — основной урон
 const _bossSoakA9=bossSoak;
 bossSoak=function(e,amt){ if(e.kind!=='attal') return _bossSoakA9(e,amt); const s=e.soak; if(G.time-s.t>=1){ s.t=G.time; s.dmg=0; } const cap=e.maxHp*.02; const free=Math.max(0,cap-s.dmg); const a=amt<=free?amt:free+(amt-free)*.25; s.dmg+=amt; return a; };
+// реплики Барханщика говорит Сабира из паланкина (speaker в BOSS_BARKS): её имя и портрет в пузыре
+const _a2BarkA9=a2Bark;
+a2Bark=function(e,kind,force){ const B=e&&BOSS_BARKS[e.kind]; const sp=B&&B.speaker; if(!sp||sp==='narrator') return _a2BarkA9(e,kind,force);
+  const info=NPC_INFO[sp]||{n:sp}; const n0=e.bossD.n, pf=portraitFor; e.bossD.n=info.n; portraitFor=function(k){ return k===e.kind?pf(sp):pf(k); };
+  try{ return _a2BarkA9(e,kind,force); } finally{ e.bossD.n=n0; portraitFor=pf; } };

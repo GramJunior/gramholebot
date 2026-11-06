@@ -14,7 +14,7 @@ const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,9-1,9-3,9-
     else await ev(k=>{ const [z,s]=k.split('-').map(Number); __game.stage(z,s); },key);
     for(let i=0;i<60;i++){ await wait(500); if(await ev(()=>['stage','village','abyss'].includes(__game.G.mode)&&!!__game.W)) break; }
     await wait(1500); for(let i=0;i<3;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); try{ __game.closePanel(); }catch(e){} }); await wait(300); }
-    const T=await ev(n=>{ __game.killAll(); return __game.colTargets(n); },PER); const bad=[];
+    const T=await ev(n=>{ __game.killAll(); if(__game.W&&__game.W.arenaNode) __game.W.bossStarted=true; /* v27: без вступления владыки (замок арены и сцена не мешают проверке) */ return __game.colTargets(n); },PER); const bad=[];
     for(const t of T){ await ev(i=>{ __game.killAll(); __game.colRun(i); },t.i); for(let k=0;k<7;k++){ await wait(120); await ev(i=>__game.colStep(i),t.i); }
       const r=await ev(i=>__game.colEnd(i),t.i); total++; types.add(r.type); if(!r.blocked){ fail++; bad.push(r); }
       if(key!=='village'&&await ev(i=>__game.colArrow(i),t.i)){ await wait(450); const a=await ev(i=>__game.colArrowRes(i),t.i); arrows++; if(!a||!a.stopped){ arrowFail++; bad.push({arrow:t.type,a}); } } }

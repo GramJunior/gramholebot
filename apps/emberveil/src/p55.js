@@ -6,7 +6,7 @@
 // Мир и земля — p57, боссы — p56.
 
 const A9={heat:{sun:2.5,isle:1,shade:15,road:5,well:25,wellCd:10,wellR:1.9,hit:10,flashCut:.3,mirage:80,stroke:.1,blind:1.5,storm:8,scorch:3},
-  storm:{warn:3,dur:15,first:[45,70],every:[70,95],fogN:6,fogF:22,col:0xc89a5a,drift:1,c3:{on:18,off:14}},
+  storm:{warn:3,dur:15,first:[45,70],every:[70,95],fogN:7,fogF:26,col:0x9a6a3a,drift:1,c3:{on:18,off:14}},
   quick:{pull:1.5,inT:1.2,stuck:1.5,dmg:.08},
   gust:{every:[7,10],warn:1.6,dur:2,push:4,fall:.1},
   sign:{every:6,warn:1,r:1.5,dmg:1.0},
@@ -20,8 +20,8 @@ const _a2MeterKind9=a2MeterKind;
 a2MeterKind=function(){ if(W&&W.kind==='stage'&&W.zone&&W.zone.heat) return 'heat'; return _a2MeterKind9(); };
 const _updateStageA9=updateStage;
 updateStage=function(dt){ _updateStageA9(dt); if(!G.P||!a9Zone()) return; try{ a9Tick(dt); }catch(e){ if(!a9Tick._err){ a9Tick._err=1; console.error(e); } } };
-function a9Tick(dt){ const P=G.P; a9ShadeTick(dt); a9HeatTick(dt); a9StormTick(dt); a9QuickTick(dt); a9SignTick(dt); a9GustTick(dt); a9LiftTick(dt); a9WellTick(dt); a9BlindTick(dt); a9EnemyFxTick(dt);
-  if(W.cart&&W.a9caravan) a9CaravanTick(dt); if(W.obj&&W.obj.type==='survive'&&W.a9clock) a9ClockTick(dt);
+function a9Tick(dt){ const P=G.P; if(W.a9init!==W){ W.a9init=W; a9StageInit(); } a9ShadeTick(dt); a9HeatTick(dt); a9StormTick(dt); a9QuickTick(dt); a9SignTick(dt); a9GustTick(dt); a9LiftTick(dt); a9WellTick(dt); a9BlindTick(dt); a9EnemyFxTick(dt);
+  if(W.cart&&W.a9caravan) a9CaravanTick(dt); if(W.obj&&W.obj.type==='survive'&&W.a9clock){ a9ClockTick(dt); if(W.survStarted&&W.survT>0&&G.enemies.filter(e=>e.alive).length>=12) W.waveT=Math.max(W.waveT,1.5); } // осада: не больше ~12 врагов разом (телефоны)
   // песок у ног и марево
   P._sdT=(P._sdT||0)-dt; if(P._sdT<=0&&!P.dead&&P.state==='run'&&!a9Sky()){ P._sdT=rand(.25,.5); fx('dust',P.x,0,P.z,{k:1,col:0xe8c890}); } }
 function a9HeatRes(){ let r=PS.heatRes||0; if(a2S().mem>=3) r+=20; if(a2HasUniq('zenith_heart')) r+=10; return clamp(r,0,80); }
@@ -187,7 +187,7 @@ spawnEnemy=function(kind,x,z,L,o={}){ const e=_spawnEnemyA9(kind,x,z,L,o); const
   if(e.elite&&W&&W.zone&&W.zone.id===9&&A2_ELITE9[kind]&&chance(.5)){ const m=pick(A2_ELITE9[kind]); e.mods[0]=m; if(e.ring) e.ring.material.color.set(ELITE_MODS[m].col); }
   try{ if(a9EnemyLook[kind]) a9EnemyLook[kind](e); }catch(err){ console.warn('a9 look',err); }
   // рой: стая Златожуков бежит цепочкой за вожаком (4–5 жуков)
-  if(kind==='goldBeetle'&&!o.summon&&!o.swarm&&W&&W.kind==='stage'&&!e.elite){ e.swarmTrail=[]; const n=randi(1,2); for(let i=0;i<n;i++){ const a=rand(TAU); const f=spawnEnemy('goldBeetle',x+Math.cos(a)*1.2,z+Math.sin(a)*1.2,L,Object.assign({},o,{swarm:1,elite:0,champion:0})); f.swarmLead=e; f.swarmK=i+1; if(e.camp&&e.camp.members) e.camp.members.push(f); } }
+  if(kind==='goldBeetle'&&o.camp&&!o.summon&&!o.swarm&&W&&W.kind==='stage'&&!e.elite){ e.swarmTrail=[]; const n=G.enemies.filter(x=>x.alive).length>40?1:randi(1,2); for(let i=0;i<n;i++){ const a=rand(TAU); const f=spawnEnemy('goldBeetle',x+Math.cos(a)*1.2,z+Math.sin(a)*1.2,L,Object.assign({},o,{swarm:1,elite:0,champion:0})); f.swarmLead=e; f.swarmK=i+1; if(e.camp&&e.camp.members) e.camp.members.push(f); } }
   return e; };
 const A9E={
   bandages:()=>cgeo('a9e_band',b=>{ for(let i=0;i<5;i++){ const a=-1+i*.5; b.box(.08,.5+(i%2)*.25,.01,0xe8dcc0,{p:[Math.sin(a)*.18,-.25-(i%2)*.1,Math.cos(a)*.1-.04],r:[.15,a,0],ol:0}); } },0),
@@ -200,18 +200,18 @@ const A9E={
 const a9EnemyLook={
   driedPriest:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xc8a870,.55); a.setGlow('#ffd27a',.3); try{ a.attach('back',new THREE.Mesh(A9E.bandages(),MTP)); }catch(er){} } },
   duneStalker:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xb8905a,.55); try{ a.attach('head',new THREE.Mesh(A9E.scarf(),MTP)); }catch(er){} } },
-  windwing:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xf0e0b0,.3); a.setGlow('#ffd27a',.15); } }
+  windwing:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xe8c060,.78); a.setGlow('#ffd27a',.15); } }
 };
 // процедурный Златожук: панцирь с золотыми полосами, 6 лапок (анимация бега)
-const MTscarab=toonMat(0xe0b040,.45);
+const MTscarab=toonMat(0xb07818,.55);
 ENEMY_MODELS.goldBeetle=()=>{ const r=mkRig({hip:.32,type:'beetle',h:.75,r:.42}); r.torso=piv(r.body,0,0,0);
   pmesh(cgeo('a9_scarab',b=>{ b.sph(.36,0xd8a030,{s:[1,.62,1.25],t1:PI*.6,ws:12,hs:7}); b.box(.04,.2,.82,0x6a4a10,{p:[0,.06,0],ol:0}); for(let i=0;i<3;i++) b.tor(.27-i*.05,.022,0xffe080,{p:[0,.1-i*.02,-.15+i*.17],r:[PI/2,0,0],arc:PI,ts:10,e:.35,ol:0});
-    b.sph(.18,0x5a3a10,{p:[0,-.02,.4],s:[1.1,.7,.9]}); for(const s of [-1,1]){ b.cone(.04,.24,0x3a2a10,{p:[s*.09,.05,.58],r:[1.2,0,s*.3],seg:4}); b.sph(.04,0xffe080,{p:[s*.08,.05,.47],e:.9,ol:0,ws:6,hs:4}); } b.sph(.3,0x4a3010,{p:[0,-.08,0],s:[1,.35,1.1]}); },.03),r.torso);
-  r.legs=[]; for(let i=0;i<6;i++){ const s=i<3?-1:1, k=i%3; const p=piv(r.torso,s*.26,-.06,-.22+k*.22); pmesh(cgeo('a9_scleg',b=>{ b.cyl(.025,.018,.34,0x3a2a10,{p:[0,-.12,0],r:[0,0,.9],seg:4}); },0),p).rotation.z=s>0?0:PI; r.legs.push(p); }
+    b.sph(.18,0x5a3a10,{p:[0,-.02,.4],s:[1.1,.7,.9]}); for(const s of [-1,1]){ b.cone(.04,.24,0x3a2a10,{p:[s*.09,.05,.58],r:[1.2,0,s*.3],seg:4}); b.sph(.04,0xffe080,{p:[s*.08,.05,.47],e:.9,ol:0,ws:6,hs:4}); } b.sph(.3,0x4a3010,{p:[0,-.08,0],s:[1,.35,1.1]}); for(let i=0;i<6;i++){ const sd=i<3?-1:1, k=i%3; b.cyl(.025,.018,.36,0x3a2a10,{p:[sd*.36,-.14,-.22+k*.22],r:[(k-1)*.35,0,sd*.9],seg:4,ol:0}); } },.03),r.torso);
+  r.legs=null; // лапки — в той же сетке, что и панцирь (1 вызов отрисовки на жука); бег — покачивание корпуса
   return r; };
 const _animEnemyA9=animEnemy;
 animEnemy=function(e,dt){ if(e.kind==='goldBeetle'&&!e.rig.actor){ const R=e.rig; R.root.position.set(e.x,e.y||0,e.z); R.root.rotation.y=e.face; if(!e.alive){ e.deadT=(e.deadT||0)+dt; R.root.scale.setScalar(Math.max(.01,1-e.deadT*1.5)); return; }
-    const sp=(e.moving||0)>.1?18:2; R.legs.forEach((l,i)=>{ l.rotation.x=Math.sin(e.t*sp+i*2.1)*.6; }); R.torso.position.y=Math.abs(Math.sin(e.t*sp))*.03; if(e.state==='wind'&&e.wind&&e.wind.k==='explode'){ const k=1+Math.sin(e.st*30)*.08+e.st*.35; R.root.scale.setScalar(k*(e.elite?1.6:1)); } else R.root.scale.setScalar(e.elite?1.6:1); if(!e.noShadow) SHADOW.add(e.x,e.z,.45); return; }
+    const sp=(e.moving||0)>.1?18:2; R.torso.rotation.z=Math.sin(e.t*sp)*.07; R.torso.rotation.x=Math.cos(e.t*sp*1.3)*.04; R.torso.position.y=Math.abs(Math.sin(e.t*sp))*.035; if(e.state==='wind'&&e.wind&&e.wind.k==='explode'){ const k=1+Math.sin(e.st*30)*.08+e.st*.35; R.root.scale.setScalar(k*(e.elite?1.6:1)); } else R.root.scale.setScalar(e.elite?1.6:1); if(!e.noShadow) SHADOW.add(e.x,e.z,.45); return; }
   _animEnemyA9(e,dt); if(e.hover&&e.alive&&e.rig&&e.rig.root&&W&&a9Zone()){ e.rig.root.position.y=e.y||e.hover; } };
 // procedural fallbacks (models off / not loaded)
 ENEMY_MODELS.driedPriest=()=>{ const f=ENEMY_PROC.cultist||ENEMY_MODELS.cultist; const r=f(); try{ pmesh(A9E.sunStaff(),r.armR||r.torso||r.body,0,-.4,.1).material=MTP; }catch(e){} return r; };
@@ -317,7 +317,7 @@ const A9C={caravan:()=>cgeo('a9_caravan',b=>{ const WD=0x7a5432, RG=0xb8402a, CL
     b.box(1.4,.05,.06,0x5a3a20,{p:[0,.7,1.0]}); },.035),
   sail:()=>cgeo('a9_csail',b=>{ b.box(1.7,.04,2.6,0xe8d0a0,{p:[0,0,0],j:.02}); },0)};
 function a9CaravanBuild(){ const A=W.arenaNode; if(!A||!W.route) return; const r0=W.route; const fx0=r0[1].x-r0[0].x, fz0=r0[1].z-r0[0].z, fl=Math.hypot(fx0,fz0)||1; const cx=r0[0].x+fx0/fl*4, cz=r0[0].z+fz0/fl*4;
-  const c=mkObj('cartE',cx,cz,{ry:Math.atan2(fx0,fz0)}); const g=c.mesh; g.children.slice().forEach(ch=>g.remove(ch)); pmesh(A9C.caravan(),g).material=MTP; c.hp=c.maxHp=Math.round(300*F(W.lvl)); c.wp=1; c.a9=1;
+  const c=mkObj('cartE',cx,cz,{ry:Math.atan2(fx0,fz0)}); const g=c.mesh; g.children.slice().forEach(ch=>g.remove(ch)); pmesh(A9C.caravan(),g).material=MTP; c.hp=c.maxHp=Math.round(600*F(W.lvl)); c.wp=1; c.a9=1;
   const path=[]; for(const p of r0.slice(1)){ path.push({x:p.x,z:p.z}); if(Math.hypot(p.x-A.x,p.z-A.z)<A.r+2) break; } const L=path[path.length-1]; const pv=path.length>1?path[path.length-2]:{x:cx,z:cz}; const ux=A.x-pv.x, uz=A.z-pv.z, ul=Math.hypot(ux,uz)||1; path[path.length-1]={x:A.x-ux/ul*(A.r-4.5),z:A.z-uz/ul*(A.r-4.5)}; c.path=path;
   W.cart=c; W.obst.push(c.col={x:cx,z:cz,r:1.4}); W.ambush=W.areas.filter(a=>a.role==='mid').map(n=>({x:n.x,z:n.z,done:false})); W.a9caravan=1; W.cart.mesh.position.set(cx,0,cz); objText(); }
 function a9CaravanTick(dt){ const c=W.cart; if(!c||c.dead) return; if(!W.bossStarted) updateCart(dt); if(c.arrived&&!c._said){ c._said=1; banner('Песок дрожит…','Встаньте на каменную плиту!'); AU.sfx('roar',.4,.4); shake(.4); objText(); } if(Math.random()<dt*2) fx('dust',c.x+rand(-1,1),0,c.z+rand(-1,1),{k:1,col:0xd8b880}); }
@@ -344,14 +344,14 @@ const _a9InShade0=a9InShade;
 a9InShade=function(x,z){ if(_a9InShade0(x,z)) return true; return !!(W.a9shadeFn&&W.a9shadeFn(x,z)); };
 
 // ---------- этапы: стартовые сцены, реплики спутников, буря ----------
-const _startStage2A9=startStage2;
-startStage2=function(z,s){ _startStage2A9(z,s);
-  if(z===9) later(.5,()=>{ if(!W||W.kind!=='stage') return; try{ a9StormInit(); if(G.P&&G.P.meter&&G.P.meter.k==='heat') G.P.meter.v=0; objText(); }catch(e){ console.warn(e); }
-    const k=W.info.key, dragon=STS().end==='dragon'; const sab=compS().active==='sabira'&&G.allies.some(a=>a.id==='sabira');
+// старт этапа зоны 9: на первом кадре этапа (таймеры этапа сбрасываются при сборке мира — поэтому не через later)
+function a9StageInit(){ try{ a9StormInit(); if(G.P&&G.P.meter&&G.P.meter.k==='heat') G.P.meter.v=0; objText(); }catch(e){ console.warn(e); }
+  const k=W.info.key, dragon=STS().end==='dragon'; const sab=compS().active==='sabira'&&G.allies.some(a=>a.id==='sabira');
+  setTimeout(()=>{ if(!W||W.kind!=='stage'||!W.info||W.info.key!==k||G.dialog) return;
     if(k==='9-1'&&!S.seen.z9_intro) playDialog(null,()=>{ S.seen.z9_intro=1; },DLG.z9_intro.concat(dragon?DLG.z9_intro_dragon:[]));
     else if(k==='9-3'&&!S.seen.z9_sunclock) playDialog('z9_sunclock');
-    else if(k==='9-4'&&!S.seen.z9_ascend) playDialog(null,()=>{ S.seen.z9_ascend=1; },DLG.z9_ascend.filter(l=>sab||l[0]!=='c_sabira'));
-    try{ if(compS().active&&COMP_LINES9[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES9[a.id])+'»','tag'); }); }catch(e){} }); };
+    else if(k==='9-4'&&!S.seen.z9_ascend) playDialog(null,()=>{ S.seen.z9_ascend=1; },DLG.z9_ascend.filter(l=>sab||l[0]!=='c_sabira')); },600);
+  try{ if(compS().active&&COMP_LINES9[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES9[a.id])+'»','tag'); }); }catch(e){} }
 const _runEndA9=runEnd;
 runEnd=function(win,reason,keep){ const I=G.run&&G.run.info; const was=I&&I.z===9; _runEndA9(win,reason,keep); if(was){ for(const id of ['heatVig','a9blind','a9storm']){ const el=$(id); if(el) el.style.opacity='0'; } document.body.classList.remove('a9mir'); if(win) track('a2:stage',I.key); } };
 const _enterVillageA9=enterVillage;
@@ -361,7 +361,7 @@ stageCard=function(z,s){ _stageCardA9(z,s); if(z!==9) return; const c=$('stageCa
 // asset group of zone 9
 const _asZoneGroupA9=asZoneGroup;
 asZoneGroup=function(z){ return (z|0)===9?'z9':_asZoneGroupA9(z); };
-LOOK6[9]={h:.4,s:.78,e:.7,sat:1.04};
+LOOK6[9]={h:.4,s:.78,e:.66,sat:1.08};
 ZONE_KEY[9]='sands';
 try{ if(window.EV_MANIFEST&&EV_MANIFEST.zones) EV_MANIFEST.zones.sands={zone:9,grade:{lift:[.012,.006,0],gamma:[.99,1,1.03],gain:[1.02,.99,.94],sat:.92,contrast:1.05,vignette:.42,bloom:.28,bloomTh:.88}}; }catch(e){}
 if(window.EVFX&&EVFX.ambient){ const _amb=EVFX.ambient; EVFX.ambient=function(o={}){ if(o.kind==='sand') o=Object.assign({},o,{kind:'ash',color:'#f0d8a0',size:.07,rise:-.15,sway:2.6,glow:.35,blend:'normal'}); return _amb(o); }; }
