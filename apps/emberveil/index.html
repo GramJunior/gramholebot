@@ -22819,10 +22819,9 @@ function atCompass(g,x,y,r){ g.save(); g.translate(x,y); g.strokeStyle=AT_INK; g
   g.globalAlpha=1; g.fillStyle=AT_INK; g.font=`${r*.32}px 'Ruslan Display','Yeseva One',Georgia,serif`; g.textAlign='center'; g.textBaseline='middle'; g.fillText('С',0,-r*1.2); g.restore(); }
 function atText(g,t,x,y,size,o={}){ g.save(); g.font=`${o.it===false?'':'italic '}${o.w||600} ${size}px ${o.f||"Kurale,Philosopher,Georgia,serif"}`; g.textAlign='center'; g.textBaseline='middle'; if('letterSpacing' in g) g.letterSpacing=(o.ls||size*.08)+'px';
   g.lineJoin='round'; g.lineWidth=size*.22; g.strokeStyle=o.halo||'rgba(240,226,190,.75)'; g.strokeText(t,x,y); g.globalAlpha=o.a||.82; g.fillStyle=o.c||AT_INK; g.fillText(t,x,y); g.restore(); }
-function atPuff(g,R,x,y,r,a,heavy){ const n=5, C=[]; for(let i=0;i<n;i++){ const u=i/(n-1), b=Math.sin(u*Math.PI); C.push([x+(u-.5)*r*1.7+(R()-.5)*r*.2,y-b*r*.3+(R()-.5)*r*.12,r*(.3+R()*.14)*(1+b*.55)]); }
-  const path=()=>{ g.beginPath(); for(const c of C){ g.moveTo(c[0]+c[2],c[1]); g.arc(c[0],c[1],c[2],0,TAU); } g.ellipse(x,y+r*.1,r*.95,r*.24,0,0,TAU); };
-  path(); g.fillStyle=`rgba(${heavy?'228,218,196':'238,230,212'},${a})`; g.fill(); g.save(); g.clip(); const gr=g.createLinearGradient(0,y-r*.6,0,y+r*.35); gr.addColorStop(0,'rgba(255,252,240,.35)'); gr.addColorStop(.6,'rgba(255,252,240,0)'); gr.addColorStop(1,'rgba(120,100,70,.22)'); g.fillStyle=gr; g.fillRect(x-r*1.5,y-r*1.2,r*3,r*1.6); g.restore();
-  g.strokeStyle=AT_INK; g.lineCap='round'; g.globalAlpha=heavy?.17:.13; g.lineWidth=Math.max(1,r*.022); g.beginPath(); for(const c of C){ g.moveTo(c[0]+Math.cos(Math.PI*1.18)*c[2],c[1]+Math.sin(Math.PI*1.18)*c[2]); g.arc(c[0],c[1],c[2],Math.PI*1.18,Math.PI*1.8); } g.stroke(); g.globalAlpha=1; }
+function atMist(g,R,x,y,r,a,ink){ g.save(); g.translate(x,y); g.scale(1,.36+R()*.12); const gr=g.createRadialGradient(0,0,0,0,0,r); gr.addColorStop(0,`rgba(242,234,216,${a})`); gr.addColorStop(.55,`rgba(234,224,200,${a*.62})`); gr.addColorStop(1,'rgba(230,220,196,0)'); g.fillStyle=gr; g.fillRect(-r,-r,2*r,2*r); g.restore();
+  if(ink){ const L=r*(.9+R()*.6), x0=x-L/2+(R()-.5)*r*.3, yy=y-r*.12+(R()-.5)*r*.15, b=(R()-.5)*r*.18, w=1.6+R()*1.8, P=[], N=14; for(let i=0;i<=N;i++){ const t=i/N; P.push([x0+L*t,yy+Math.sin(t*Math.PI)*b-Math.sin(t*Math.PI*2)*r*.04]); }
+    g.beginPath(); for(let i=0;i<=N;i++){ const t=i/N, hw=Math.sin(t*Math.PI)*w; i?g.lineTo(P[i][0],P[i][1]-hw):g.moveTo(P[i][0],P[i][1]); } for(let i=N;i>=0;i--){ const t=i/N, hw=Math.sin(t*Math.PI)*w*.4; g.lineTo(P[i][0],P[i][1]+hw); } g.closePath(); g.fillStyle='rgba(96,72,46,.16)'; g.fill(); } }
 function atDune(g,R,x,y,w){ g.strokeStyle=AT_INK; g.lineCap='round'; g.globalAlpha=.55; g.lineWidth=1.2; g.beginPath(); g.moveTo(x-w/2,y); g.quadraticCurveTo(x-w*.05,y-w*.22,x+w/2,y+w*.02); g.stroke();
   g.globalAlpha=.25; g.fillStyle='#a8742a'; g.beginPath(); g.moveTo(x-w*.05,y-w*.11); g.quadraticCurveTo(x+w*.2,y-w*.08,x+w/2,y+w*.02); g.quadraticCurveTo(x+w*.1,y+w*.04,x-w*.05,y-w*.11); g.fill();
   g.globalAlpha=.3; g.lineWidth=.8; g.beginPath(); for(let i=1;i<4;i++){ g.moveTo(x-w*.3+i*w*.1,y+i*2); g.quadraticCurveTo(x+i*w*.05,y-w*.08+i*3,x+w*.4,y+i*3); } g.stroke(); g.globalAlpha=1; }
@@ -22997,8 +22996,15 @@ function atDyn(ch,base){ const C=AT_CH[ch]; const items=[]; const add=(l,y,b,f)=
   // туман войны: лёгкий над следующей зоной, плотный — над дальними
   for(const z of C.zones){ const st=atZoneSt(z); if(st==='open') continue; const heavy=st!=='near', Pz=C.poly[z]; const R=mulberry(z*131+(heavy?7:3));
     let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const p of Pz){ x0=Math.min(x0,p[0]); y0=Math.min(y0,p[1]); x1=Math.max(x1,p[0]); y1=Math.max(y1,p[1]); }
-    add(7,0,[x0-60,y0-60,x1+60,y1+60],(g,Rr)=>{ const Q=atNoisy(Pz,Rr,60,26); g.beginPath(); atSm(g,Q,true); g.fillStyle=heavy?'rgba(206,192,162,.86)':'rgba(214,200,170,.48)'; g.fill(); if(heavy){ g.save(); g.clip(); g.strokeStyle='rgba(120,90,60,.16)'; g.lineWidth=2; g.beginPath(); for(let yy=y0;yy<y1;yy+=14){ g.moveTo(x0,yy); g.lineTo(x1,yy+60); } g.stroke(); g.restore(); } });
-    const st2=heavy?175:220; for(let y=y0+30;y<y1;y+=st2*.7) for(let x=x0+(R()*st2);x<x1;x+=st2){ const px=x+(R()-.5)*st2*.6, py=y+(R()-.5)*st2*.4; if(!atInPoly(Pz,px,py)) continue; const r=(heavy?95:70)+R()*50, a=heavy?.82:.55; add(7,py,[px-r*1.4,py-r*1.2,px+r*1.4,py+r*.6],(g,Rr)=>atPuff(g,Rr,px,py,r,a,heavy)); } }
+    const cx=Pz.reduce((a,p)=>a+p[0],0)/Pz.length, cy=Pz.reduce((a,p)=>a+p[1],0)/Pz.length;
+    add(7,0,[x0-70,y0-70,x1+70,y1+70],(g,Rr)=>{ const n=heavy?7:5; let Q0=null;
+      for(let k=0;k<n;k++){ const f=1.03-k*.03; const Q=atNoisy(Pz.map(p=>[cx+(p[0]-cx)*f,cy+(p[1]-cy)*(f-k*.006)]),Rr,46,16); if(!k) Q0=Q; g.beginPath(); atSm(g,Q,true); g.fillStyle=heavy?'rgba(212,200,172,.17)':'rgba(220,208,182,.09)'; g.fill(); }
+      g.save(); g.beginPath(); atSm(g,Q0,true); g.clip(); g.lineCap='round';
+      for(let y=y0+10;y<y1;y+=heavy?24:34){ let x=x0-40+Rr()*80; while(x<x1){ const L=120+Rr()*260, yy=y+(Rr()-.5)*10, a=Rr(); g.beginPath(); g.moveTo(x,yy); g.bezierCurveTo(x+L*.3,yy-8+Rr()*16,x+L*.7,yy-8+Rr()*16,x+L,yy+(Rr()-.5)*8);
+          if(a<.6){ g.strokeStyle=`rgba(250,244,228,${heavy?.3:.2})`; g.lineWidth=4+Rr()*9; } else { g.strokeStyle=`rgba(110,84,56,${heavy?.09:.06})`; g.lineWidth=1+Rr()*1.6; } g.stroke(); x+=L+20+Rr()*80; } }
+      g.restore(); });
+    const sp=heavy?150:190; for(let y=y0+40;y<y1;y+=sp*.62) for(let x=x0+R()*sp;x<x1;x+=sp){ const px=x+(R()-.5)*sp*.6, py=y+(R()-.5)*sp*.4; if(!atInPoly(Pz,px,py)) continue; const r=130+R()*100, a=heavy?.72:.32, ink=R()<.45;
+      add(7,py,[px-r,py-r*.45,px+r,py+r*.45],(g,Rr)=>atMist(g,Rr,px,py,r,a,ink)); } }
   return items; }
 function atScene(ch){ let S=AT.sc[ch]; if(!S){ S=AT.sc[ch]=atBuild(ch); S.sig=''; }
   const sig=atSig(ch); if(S.sig!==sig){ S.sig=sig; const t0=performance.now(); const dyn=atDyn(ch,S); S.all=S.items.concat(dyn).sort((a,b)=>a.l-b.l||a.y-b.y);
@@ -23014,9 +23020,11 @@ function atPaint(g,S,r,L){ const x0=Math.max(0,r[0]),y0=Math.max(0,r[1]),x1=Math
 function atTile(S,L,ix,iy){ const c=document.createElement('canvas'); c.width=c.height=AT.TS; const g=c.getContext('2d'); const T=AT.TS/L; g.setTransform(L,0,0,L,-ix*T*L,-iy*T*L); atPaint(g,S,[ix*T,iy*T,(ix+1)*T,(iy+1)*T],L); return c; }
 
 // ---------- камера ----------
-function atZL(){ const zmin=Math.min(AT.vw/AT.W,(AT.vh-AT.pt)/AT.H)*.94; return [zmin,Math.max(zmin*1.5,2.2)]; }
-function atClampC(c){ const [a,b]=atZL(); c.z=clamp(c.z,a,b); const hw=AT.vw/2/c.z, hh=(AT.vh-AT.pt)/2/c.z, m=26/c.z;
-  c.x=AT.W<=2*hw-2*m?AT.W/2:clamp(c.x,hw-m,AT.W-hw+m); c.y=AT.H<=2*hh-2*m?AT.H/2:clamp(c.y,hh-m,AT.H-hh+m); return c; }
+function atIns(){ return {l:AT.ins&&AT.ins.l||10,t:AT.pt+4,r:10,b:10}; }
+function atZL(){ const I=atIns(); const zmin=Math.min((AT.vw-I.l-I.r)/AT.W,(AT.vh-I.t-I.b)/AT.H)*.96; return [zmin,Math.max(zmin*1.5,2.2)]; }
+function atClampC(c){ const [a,b]=atZL(); c.z=clamp(c.z,a,b); const z=c.z, I=atIns(), sl=16, cxs=AT.vw/2, cys=atCY();
+  const xa=(cxs-(I.l-sl))/z, xb=AT.W-((AT.vw-I.r+sl)-cxs)/z; c.x=xa>xb?AT.W/2-((I.l+AT.vw-I.r)/2-cxs)/z:clamp(c.x,xa,xb);
+  const ya=(cys-(I.t-sl))/z, yb=AT.H-((AT.vh-I.b+sl)-cys)/z; c.y=ya>yb?AT.H/2-((I.t+AT.vh-I.b)/2-cys)/z:clamp(c.y,ya,yb); return c; }
 function atCY(){ return AT.pt+(AT.vh-AT.pt)/2; }
 function atS2W(sx,sy){ const c=AT.cam; return {x:c.x+(sx-AT.vw/2)/c.z,y:c.y+(sy-atCY())/c.z}; }
 function atZoomAt(sx,sy,z){ const w=atS2W(sx,sy); const c=AT.cam; c.z=clamp(z,...atZL()); c.x=w.x-(sx-AT.vw/2)/c.z; c.y=w.y-(sy-atCY())/c.z; atClampC(c); AT.dirty=1; }
@@ -23051,7 +23059,9 @@ function atWork(){ const S=AT.sc[MAP.ch]; if(!S) return; const t0=performance.no
   if(vis) AT.dirty=1; if(!AT.stat.sharp&&AT.t0&&!AT.q.some(j=>j.d<1e6)&&!AT.anim) AT.stat.sharp=+(performance.now()-AT.t0).toFixed(0); }
 function atPlace(){ const c=AT.cam, z=c.z, cx=AT.vw/2, cy=atCY(); const kN=clamp(.56+.5*z,.72,1.12), kB=clamp(.45+.7*z,.62,1.04), kP=clamp(.5+.6*z,.66,1);
   for(const o of AT.el){ const sx=(o.x-c.x)*z+cx, sy=(o.y-c.y)*z+cy; const off=sx<-260||sx>AT.vw+260||sy<-200||sy>AT.vh+200; if(off){ if(!o.h){ o.e.style.visibility='hidden'; o.h=1; } continue; } if(o.h){ o.e.style.visibility=''; o.h=0; }
-    const k=o.k==='n'?kN:o.k==='ban'?kB:kP; o.e.style.transform=`translate3d(${sx.toFixed(1)}px,${sy.toFixed(1)}px,0) scale(${k.toFixed(3)})`+(o.k==='n'?'':' translateX(-50%)'); }
+    const k=o.k==='n'?kN:o.k==='ban'?kB:kP; o.e.style.transform=`translate3d(${sx.toFixed(1)}px,${sy.toFixed(1)}px,0) scale(${k.toFixed(3)})`+(o.k==='n'?'':' translateX(-50%)');
+    if(o.w===undefined){ o.w=o.e.offsetWidth; o.hh=o.e.offsetHeight; } const hw=o.w*k/2, x0=sx-hw, x1=sx+hw, y0=o.k==='n'?sy-o.hh*k/2-(o.e.querySelector('.atFlag,.nm52m')?18*k:0):sy, y1=o.k==='n'?sy+o.hh*k/2+14*k:sy+o.hh*k;
+    const C=AT.ctl, oc=y0<AT.pt?2:C&&x0<C[2]&&x1>C[0]&&y0<C[3]&&y1>C[1]?1:0; if(oc!==(o.oc|0)){ o.oc=oc; o.e.classList.toggle('occH',oc===2); o.e.classList.toggle('occC',oc===1); } }
   const b=$('mapNodes'); if(b) b.classList.toggle('far',z<.4); }
 function atLoop(t){ if(!AT.on) return; AT.raf=requestAnimationFrame(atLoop); const dt=Math.min(50,t-(AT.lt||t)); AT.lt=t;
   if(AT.anim){ const A=AT.anim; const u=clamp((performance.now()-A.t0)/A.d,0,1), e=u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2; const c=AT.cam;
@@ -23071,7 +23081,7 @@ function atInput(sc){
   if(AT.wl) return; AT.wl=1;
   window.addEventListener('pointermove',e=>{ if(!AT.on||!AT.ptr.has(e.pointerId)) return; AT.ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(AT.pin){ const [a,b]=[...AT.ptr.values()]; if(!b) return; const P=AT.pin, s=$('mapScroll').getBoundingClientRect(); const mx=(a.x+b.x)/2-s.left, my=(a.y+b.y)/2-s.top; const c=AT.cam; c.z=clamp(P.z0*Math.hypot(a.x-b.x,a.y-b.y)/P.d0,...atZL()); c.x=P.w.x-(mx-AT.vw/2)/c.z; c.y=P.w.y-(my-atCY())/c.z; atClampC(c); AT.dirty=1; return; }
-    const D=AT.drag; if(!D) return; const dx=e.clientX-D.x, dy=e.clientY-D.y; if(!AT.moved&&Math.hypot(dx,dy)>7) AT.moved=1; if(!AT.moved) return;
+    const D=AT.drag; if(!D) return; const dx=e.clientX-D.x, dy=e.clientY-D.y; if(!AT.moved&&Math.hypot(dx,dy)>7){ AT.moved=1; const hn=document.querySelector('#map .atHint'); if(hn) hn.classList.add('gone'); } if(!AT.moved) return;
     const c=AT.cam; c.x=D.cx-dx/c.z; c.y=D.cy-dy/c.z; atClampC(c); const n=performance.now(); D.h.push([e.clientX,e.clientY,n]); while(D.h.length>2&&n-D.h[0][2]>110) D.h.shift(); AT.dirty=1; },{passive:true});
   const up=e=>{ if(!AT.ptr.has(e.pointerId)) return; AT.ptr.delete(e.pointerId); const sc2=$('mapScroll');
     if(AT.ptr.size===1){ const [p]=[...AT.ptr.values()]; AT.pin=null; AT.drag={x:p.x,y:p.y,cx:AT.cam.x,cy:AT.cam.y,h:[[p.x,p.y,performance.now()]]}; return; }
@@ -23101,6 +23111,7 @@ function atOverlay(){ const box=$('mapNodes'); if(!box) return; const C=AT_CH[MA
   if(MAP.ch===1&&stageDone('1-5')) h+=`<button class="atA atAby" data-wx="455" data-wy="1405" data-k="pl" ${act(()=>abyssCard())}><span class="atAbyP">${ico('abyss')}</span><b>Бездна</b></button>`;
   box.innerHTML=h; AT.el=[...box.querySelectorAll('[data-wx]')].map(e=>({e,x:+e.dataset.wx,y:+e.dataset.wy,k:e.dataset.k,h:0})); bindPanel(); AT.dirty=1; }
 function atLayout(){ const sc=$('mapScroll'), cv=$('mapCv'), hd=$('mapHead'); if(!sc||!cv) return; AT.vw=sc.clientWidth||innerWidth; AT.vh=sc.clientHeight||innerHeight; AT.pt=hd?Math.max(0,hd.offsetHeight-14):0; AT.dpr=Math.min(2,window.devicePixelRatio||1);
+  { const ct=$('atCtl'); if(ct){ const a=sc.getBoundingClientRect(), r=ct.getBoundingClientRect(); AT.ctl=[r.left-a.left-6,r.top-a.top-6,r.right-a.left+6,r.bottom-a.top+6]; AT.ins={l:Math.round(r.right-a.left+8)}; } }
   const w=Math.round(AT.vw*AT.dpr), h=Math.round(AT.vh*AT.dpr); if(cv.width!==w) cv.width=w; if(cv.height!==h) cv.height=h; MAP.W=AT.W; MAP.H=AT.H; atClampC(AT.cam); AT.dirty=1; }
 
 // ---------- открытие/переключение ----------
@@ -23142,7 +23153,8 @@ Object.assign(window.__game,{ openMap:()=>openMap(), closeMap:()=>closeMap(), st
   background:radial-gradient(ellipse at 50% 55%,#3e2814 0,#1c1008 58%,#0a0503 100%)}
 #map.atlas #mapScroll.grab{cursor:grabbing}
 #map.atlas #mapCv{position:absolute;left:0;top:0;width:100%;height:100%;margin:0;box-shadow:none;display:block}
-#map.atlas #mapNodes{position:absolute;left:0;top:0;width:0;height:0;overflow:visible}
+#map.atlas #mapNodes{position:absolute;left:0;top:0;width:0;height:0;overflow:visible;z-index:1}
+#map.atlas #mapNodes .occH{opacity:0;pointer-events:none}#map.atlas #mapNodes .occC{opacity:.22;pointer-events:none}#map.atlas #mapNodes>*{transition:opacity .18s}
 #map.atlas .atA{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 #map.atlas .atZone{text-align:center;pointer-events:none;white-space:nowrap}
 #map.atlas .atRib{display:inline-block;padding:2px;background:#1c0c04;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 50%,100% 100%,0 100%,14px 50%)}
@@ -23188,18 +23200,19 @@ Object.assign(window.__game,{ openMap:()=>openMap(), closeMap:()=>closeMap(), st
 #map.atlas .atAbyP{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#0a0412 0,#2a1040 40%,#6a3a9a 62%,rgba(60,30,90,.0) 74%);box-shadow:0 0 14px rgba(150,90,230,.55);animation:atAby 6s linear infinite}
 #map.atlas .atAbyP .ico.ic{width:26px;height:26px}
 #map.atlas .atAby b{font:700 11px var(--sc);letter-spacing:.08em;color:#2a1240;text-shadow:0 0 3px #f0e2be,0 0 6px #f0e2be}
-#map.atlas #atCtl{position:absolute;left:calc(max(var(--sl,0px),6px) + 6px);bottom:calc(max(var(--sb,0px),6px) + 6px);display:flex;flex-direction:column;gap:6px;z-index:4}
-#map.atlas #atCtl button{width:40px;height:40px;padding:0;border-radius:10px;border:1px solid #c9973f;background:linear-gradient(180deg,#3e2614,#1c1008);color:#ffd79a;font:400 24px/1 var(--disp);display:grid;place-items:center;cursor:pointer;
+#map.atlas #atCtl{position:absolute;left:calc(max(var(--sl,0px),6px) + 6px);bottom:calc(max(var(--sb,0px),6px) + 6px);display:flex;flex-direction:column;gap:5px;z-index:6}
+#map.atlas #atCtl button{width:36px;height:36px;padding:0;border-radius:9px;border:1px solid #c9973f;background:linear-gradient(180deg,#3e2614,#1c1008);color:#ffd79a;font:400 21px/1 var(--disp);display:grid;place-items:center;cursor:pointer;
   box-shadow:0 2px 6px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,220,150,.25)}
-#map.atlas #atCtl .ico.ic{width:22px;height:22px}
-#map.atlas .atHint{position:absolute;left:50%;bottom:calc(max(var(--sb,0px),6px) + 10px);transform:translateX(-50%);padding:6px 14px;border-radius:14px;background:rgba(20,12,6,.82);border:1px solid rgba(201,151,63,.6);color:#f0dcb0;font:13px var(--body);white-space:nowrap;pointer-events:none;z-index:4;animation:atHint 5.5s forwards}
+#map.atlas #atCtl .ico.ic{width:19px;height:19px}
+#map.atlas .atHint{position:absolute;left:50%;bottom:calc(max(var(--sb,0px),6px) + 6px);transform:translateX(-50%);padding:3px 11px;border-radius:11px;background:rgba(20,12,6,.72);border:1px solid rgba(201,151,63,.45);color:#f0dcb0;font:11.5px/1.3 var(--body);white-space:nowrap;pointer-events:none;z-index:6;animation:atHint 4s forwards}
+#map.atlas .atHint.gone{opacity:0!important;transition:opacity .3s;animation:none}
 @keyframes atPulse{0%{transform:scale(.82);opacity:1}100%{transform:scale(1.55);opacity:0}}
 @keyframes atEmb{from{opacity:.55}to{opacity:1}}
 @keyframes atFlag{from{transform:scaleX(1) skewY(0)}to{transform:scaleX(.82) skewY(-6deg)}}
 @keyframes atAby{to{transform:rotate(360deg)}}
-@keyframes atHint{0%,78%{opacity:1}100%{opacity:0}}
+@keyframes atHint{0%,80%{opacity:1}100%{opacity:0;visibility:hidden}}
 html.land #map.atlas .atRib b{font-size:17px}
-@media (max-height:430px){ #map.atlas #atCtl button{width:36px;height:36px;font-size:21px} #map.atlas #atCtl{gap:5px} }
+@media (max-height:430px){ #map.atlas #atCtl button{width:32px;height:32px;font-size:19px;border-radius:8px} #map.atlas #atCtl{gap:4px} #map.atlas #atCtl .ico.ic{width:17px;height:17px} }
 @media (max-width:600px){ #map.atlas #mapHead h2{font-size:18px} #map.atlas .chtabs .btn{padding-left:8px;padding-right:8px} }
 `; document.head.appendChild(st); })();
 
