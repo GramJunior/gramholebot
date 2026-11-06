@@ -255,6 +255,18 @@
    "anim_medium_extra",
    "kit_weapons2",
    "kit_items2"
+  ],
+  "z9": [
+   "kit_dungeon",
+   "kit_nature",
+   "lorekeeper",
+   "ninja",
+   "avian",
+   "ranger",
+   "frost_golem",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2"
   ]
  },
  "rigs": {
@@ -4129,6 +4141,92 @@
    ],
    "glow": "#9ad8ff",
    "note": "v23: chronicler Dobromir"
+  },
+  "driedPriest": {
+   "type": "char",
+   "file": "lorekeeper",
+   "rig": "medium",
+   "h": 2.0,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "tint": [
+    "#c8a870",
+    0.55
+   ],
+   "glow": "#ffd27a",
+   "note": "v27: dried priest of the First"
+  },
+  "duneStalker": {
+   "type": "char",
+   "file": "ninja",
+   "rig": "medium",
+   "h": 1.95,
+   "r": "w_dagger",
+   "l": "w_dagger",
+   "clips": "sword",
+   "tint": [
+    "#b8905a",
+    0.5
+   ],
+   "note": "v27: dune stalker (two bronze blades)"
+  },
+  "windwing": {
+   "type": "char",
+   "file": "avian",
+   "rig": "medium",
+   "h": 2.1,
+   "r": "e_plant_spear",
+   "clips": "sword",
+   "tint": [
+    "#f0e0b0",
+    0.3
+   ],
+   "glow": "#ffd27a",
+   "hover": 1.8,
+   "note": "v27: windwing, golden guard of the isles"
+  },
+  "zenith": {
+   "type": "char",
+   "file": "frost_golem",
+   "rig": "large",
+   "h": 5.6,
+   "clips": "largeUnarmed",
+   "boss": true,
+   "tint": [
+    "#d8a840",
+    0.62
+   ],
+   "glow": "#ffd27a",
+   "note": "v27: Zenith, golden colossus (lens, halo, dark core — procedural)"
+  },
+  "attal": {
+   "type": "char",
+   "file": "lorekeeper",
+   "rig": "medium",
+   "h": 3.0,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "boss": true,
+   "tint": [
+    "#e8c878",
+    0.45
+   ],
+   "glow": "#ffd27a",
+   "hover": 0.4,
+   "note": "v27: Attal, the First Firemaker (sun crown — procedural)"
+  },
+  "comp:sabira": {
+   "type": "char",
+   "file": "ranger",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "bow",
+   "l": "w_bow_long",
+   "tint": [
+    "#d8a85a",
+    0.3
+   ],
+   "note": "v27: Sabira, daughter of the wind"
   }
  },
  "ubc": {

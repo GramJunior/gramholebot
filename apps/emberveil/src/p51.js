@@ -89,7 +89,7 @@ function zsrPlaque(z,top){ const n=zoneStars(z), m=starRwS()[z]|0; let h=`<div c
     if(MAP.ch!==2){ for(let z=1;z<=6;z++){ if(!stageDone(z+'-1')) continue; h+=zsrPlaque(z,(6-z)*MAP.zoneH); } }
     else if(typeof a2On==='function'&&a2On()){ for(let z=7;z<=(typeof A2_OPEN_MAX!=='undefined'?A2_OPEN_MAX:8);z++){ if(!stageDone(z+'-1')) continue; h+=zsrPlaque(z,(10-z)*MAP.zoneH); } }
     if(h) box.insertAdjacentHTML('beforeend',h); bindPanel(); }catch(e){ console.error(e); } return r; }; }
-function zsrPending(){ let n=0; for(let z=1;z<=8;z++){ const zs=zoneStars(z), m=starRwS()[z]|0; ZSR51.forEach((v,i)=>{ if(zs>=v&&!(m&(1<<i))) n++; }); } return n; }
+function zsrPending(){ let n=0; for(let z=1;z<=A2_OPEN_MAX;z++){ const zs=zoneStars(z), m=starRwS()[z]|0; ZSR51.forEach((v,i)=>{ if(zs>=v&&!(m&(1<<i))) n++; }); } return n; }
 
 // ---------- сохранение v9 ----------
 // v8 → v9 (игра v26): звёзды по условиям (sf), звёздные сундуки зон, Кошмар I–X (S.nm), мастерство оружия (S.wm), Уголь мастерства (S.mast).
