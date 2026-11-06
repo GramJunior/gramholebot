@@ -465,9 +465,19 @@ function tbLegionTent(b){ const R1=1.55, cl=0x8a9ab8; b.cyl(R1,R1,1.25,10,0,0,0,
   b.quad(.9,1.15,0,0,R1+.01,0,TT.dark,[.2,.2,.8,.8]); for(const sx of [-1,1]) b.box(.08,1.3,.08,sx*.5,0,R1+.05,0,TT.wood,{vb:[.31,.58]}); b.box(.8,.22,.5,1.3,0,1.4,.6,TT.white,{col:0xe8eef8}); }
 function tbCrypt(b){ tbBlock(b,{w:2,d:2,fl:['st'],door:{s:'f',i:0,d:'Door_4_Round'},solid:'fblr',col:{wall:0xb8b0b0,roof:0x8a8a9a},seed:'cr'});
   tbBrazier(b,-2.6,2.7,0,.85); tbBrazier(b,2.6,2.7,0,.85); b.box(4.6,.2,1.0,0,0,2.5,0,TT.rock); }
-const TOWN_PROPS={'v:tent':tbTent,'h:crypt':tbCrypt,legionTent:tbLegionTent};
+// v27: колонны и стены столицы в прологе (вместо серых KayKit dungeon): тесаный камень и кладка того же атласа
+function tbProCol(b){ b.box(1.0,.3,1.0,0,0,0,0,TT.rock,{k:.8}); b.box(.8,.22,.8,0,.3,0,0,TT.rock,{k:.8}); b.cyl(.31,.27,2.5,12,0,.52,0,TT.rock,{k:.7,cap:false}); b.cyl(.3,.3,.08,12,0,2.2,0,TT.gold,{cap:false});
+  b.cyl(.28,.4,.25,12,0,3.02,0,TT.rock,{k:.8}); b.box(.92,.24,.92,0,3.27,0,0,TT.rock,{k:.8}); }
+function tbProColB(b){ b.box(1.0,.3,1.0,0,0,0,0,TT.rock,{k:.8}); b.box(.8,.22,.8,0,.3,0,0,TT.rock,{k:.8}); b.cyl(.31,.29,1.2,12,0,.52,0,TT.rock,{k:.7});
+  b.box(.62,.3,.62,.03,1.6,0,.4,TT.rock,{rx:.35}); b.cyl(.29,.29,1.1,12,.75,.3,.55,TT.rock,{rz:Math.PI/2,ry:.5,k:.7}); tbPile(b,-.7,.6,4); }
+function tbProWall(b){ b.box(3,2.1,.7,0,0,0,0,TT.ubrick,{k:.45,col:0xe8dcd0}); b.box(3.2,.22,.86,0,2.1,0,0,TT.rock,{k:.8}); for(let i=0;i<4;i++) b.box(.52,.42,.74,-1.17+i*.78,2.32,0,0,TT.ubrick,{k:.45,col:0xe8dcd0});
+  b.box(3.3,.3,.95,0,0,0,0,TT.rock,{k:.8}); b.quad(.42,.62,.5,1.05,.36,0,TT.dark,[.2,.2,.8,.8]); tbPile(b,1.6,.55,3); }
+function tbProBanner(b){ b.box(.5,.3,.5,0,0,0,0,TT.rock,{k:.8}); b.box(.14,3.7,.14,0,.3,0,0,TT.wood,{vb:[.31,.58]}); b.cyl(.09,0,.22,6,0,4.0,0,TT.gold); tbBanner(b,0,3.75,-.02,0,0,1.1); }
+const TOWN_PROPS={'v:tent':tbTent,'h:crypt':tbCrypt,legionTent:tbLegionTent,proCol:tbProCol,proColB:tbProColB,proWall:tbProWall,proBanner:tbProBanner};
+Object.assign(PFOOT,{proCol:[.5,.7,'b'],proColB:[.5,.9,'b'],proWall:[1.0,1.2,'b'],proBanner:[.3,.6,'b']}); for(const t of ['proCol','proColB','proBanner']) COL_CIRCLE.add(t); Object.assign(PROP_FB,{proCol:'pillar',proColB:'pillarBroken',proWall:'wallSeg',proBanner:'banner'});
 function townInjectProps(){ if(TOWN.propsDone) return; TOWN.propsDone=1; const S0=EVAssets._S, M=EVAssets.manifest;
   if(!M.entities.legionTent) M.entities.legionTent={type:'prop',file:'kit_town',node:'__legionTent',s:1};
+  for(const id of ['proCol','proColB','proWall','proBanner']) if(!M.entities[id]) M.entities[id]={type:'prop',file:'kit_town',node:'__'+id,s:1};
   for(const id in TOWN_PROPS){ const d=M.entities[id]; if(!d) continue; try{ const b=new TB(); TOWN_PROPS[id](b); const geo=b.build(); const mesh=new THREE.Mesh(geo,townMat(true)); mesh.name='town_'+id;
       const local=new THREE.Matrix4().makeScale(1/(d.s||1),1/(d.s||1),1/(d.s||1)); const box=geo.boundingBox.clone().applyMatrix4(local);
       S0.templates[d.file+'|'+d.node]={node:mesh,meshes:[{mesh,local}],box}; TOWN.stat['prop_'+id]=geo.userData.tris; }catch(e){ console.warn('town prop',id,e); } } }
@@ -485,3 +495,17 @@ const _putPropV22=putProp; putProp=function(t,x,z,o){ if(W&&W.kind==='village'&&
 // набор догрузился, пока игрок уже в деревне со старыми зданиями (первый заход новичка): пересобрать здания один раз
 let _townSwap=false; const _sysLabelsV22b=sysLabels; sysLabels=function(dt){ _sysLabelsV22b(dt); if(_townSwap||G.mode!=='village'||!W||W.kind!=='village'||!W.bmesh) return;
   const k=Object.keys(W.bmesh)[0]; if(!k) return; if(W.bmesh[k].userData.town){ _townSwap=true; return; } if(townReady()&&!PANEL.kind&&!G.dialog){ _townSwap=true; try{ buildVillageBuildings(); }catch(e){ console.warn(e); } } };
+// ---------- v27: дворец Златоверха (пролог/предыстория) — тот же набор вместо дощатых коробок ----------
+// Координаты группы W.proBalc (0,0,−16.5), фасад в +z. Пол балкона и второй этаж — на 2,62 м (там стоит король Остен).
+function proPalaceGeo(){ const k='pro_palace'+(qLow()?'l':''); if(TOWN.geo[k]) return TOWN.geo[k].geo; const b=new TB(), Y=2.62, zc=-4.1, zf=zc+3, col={wall:0xf2eae0,roof:0xa86058};
+  tbBlock(b,{x:0,z:zc,w:5,d:3,y:Y-3,fl:['st','st','pl'],ridge:'x',door:{s:'f',i:2,d:'Door_8_Round'},skip:{f1_2:1},solid:'b',chim:1,col,sh:.8,wr:.9,seed:'palace'});
+  b.part('Wall_UnevenBrick_Door_Round',0,Y,zf,0,{col:col.wall}); b.part('DoorFrame_Round_Brick',0,Y,zf,0); b.part('Door_8_Round',-.53,Y,zf-.08,0,{col:0xc8a888});
+  b.box(10.4,.3,.5,0,Y-.3,zf+.1,0,TT.rock); b.box(10.4,.3,.5,0,Y+2.7,zf+.1,0,TT.rock); // карнизы между этажами
+  // балкон: каменная плита на колоннах, кованая решётка, жаровни, ступени к колоннам
+  b.box(8.4,.36,2.9,0,Y-.36,.25,0,TT.rock,{k:.6}); b.box(8.6,.1,3.0,0,Y-.42,.25,0,TT.gold);
+  for(const x of [-3,-1,1,3]) b.part('Balcony_Cross_Straight',x,Y,.65,0,{col:0xe8d8b8});
+  for(const sx of [-1,1]){ b.part('Balcony_Cross_Straight',sx*3.2,Y,.3,sx*Math.PI/2,{col:0xe8d8b8}); b.part('Balcony_Cross_Straight',sx*3.2,Y,-1.0,sx*Math.PI/2,{col:0xe8d8b8});
+    b.cyl(.34,.3,Y-.42,10,sx*3.4,0,1.2,TT.rock,{k:.8}); b.box(.9,.3,.9,sx*3.4,0,1.2,0,TT.rock); b.box(.8,.25,.8,sx*3.4,Y-.67,1.2,0,TT.rock); tbBrazier(b,sx*3.55,-.75,Y,.6); }
+  for(const sx of [-1,1]){ tbBanner(b,sx*3,Y+5.6,zf+.02,0,1,1.05); tbBanner(b,sx*1.6,Y-.45,1.72,0,0,.55); tbLantern(b,sx*1.25,Y+2.2,zf+.05,0); tbTurret(b,sx*6.2,zc-.6,4,sx>0?1:0,0xa86058); }
+  b.box(13.6,.2,1.4,0,0,zf+.8,0,TT.rock); b.box(1.4,.3,1.0,0,0,zf+.5,0,TT.rock);
+  const geo=b.build(); TOWN.geo[k]={geo,anims:[],tris:geo.userData.tris,ms:0,chim:b.chim,glow:b.glowAt,miss:b.miss}; return geo; }

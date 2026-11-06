@@ -3,7 +3,7 @@
 // Прилетает Игнар, затем появляется Пепельный Король — сценарное поражение: сила отнята, Искра расколота → пробуждение в Тлеющем Броде.
 // Во время пролога сохранение выключено (G.prologue), настоящее сохранение подменяется временным и возвращается целым.
 STAGE_TYPES.prologue={n:'Падение Златоверха',d:'Пролог: падение Златоверха.'};
-const PRO_FILES=['necromancer','knight','paladin','rogue_hooded','tiefling','skel_warrior','kit_weapons2'];
+const PRO_FILES=['necromancer','knight','paladin','rogue_hooded','tiefling','skel_warrior','kit_weapons2','kit_town']; // v27: kit_town — дома столицы и дворец из того же набора, что деревня (иначе новичок видит прежние KayKit)
 const PRO={on:false,t:0,ph:0,real:null,god:false,drag:null,king:null,cap:null,waves:0,replay:false};
 function prologueSave(){ const s=newSave(); s.started=true; s.look=S.look||0; s.set=S.set; s.hero.lvl=40; s.hero.tp=0; s.seen={joyHint:1,tut1:1,wake:1,prologue:1,keyTip:1}; for(const a of ACH) s.q.ach[a.id]=1;
   const gi=(slot,base,rar,el,name)=>{ const it=genItem(40,{base,rar}); it.el=el||it.el; if(name) it.name=name; return it; };
@@ -27,9 +27,11 @@ function prologueWorld(){
   const Z=Object.assign({},ZONES[4],{id:5,n:'Златоверх',fog:0x3a1810,fogN:22,fogF:64,hemi:[0xffb080,0x2a0a08,.8],sun:[0xffa060,.9],rim:0xffc080,ground:[0x5a4a44,0x4a3e3a,0x625048],path:0x7a6050,edge:0x3a2a24,cliff:0x2a1c18,amb:'ash'});
   newW('stage',Z); W.kind='prologue'; W.lvl=8; setZoneLook(Z);
   const R0=13; W.walk={nodes:[{x:0,z:0,r:R0}],segs:[]}; W.start={x:0,z:6}; const b={minX:-40,maxX:40,minZ:-40,maxZ:40}; W.bounds=b;
-  buildGround(Z,b,{noPath:true}); scatterWalls(Object.assign({},Z,{wall:['pillarBroken','wallSeg','pillar','basalt','pillar']}),b,Q.props*.7);
-  for(let i=0;i<10;i++){ const a=i/10*TAU+.15; const x=Math.cos(a)*11.5, z=Math.sin(a)*11.5; W.props.push({type:i%3?'pillar':'pillarBroken',x,z,s:1.2,ry:-a}); W.obst.push({x,z,r:.7}); }
-  for(const [x,z] of [[-3,-10.5],[3,-10.5],[-7,-9],[7,-9]]) W.props.push({type:'banner',x,z,s:1.2,ry:0});
+  // v27: при наборе зданий деревни — колонны и стены столицы из него же (иначе серые KayKit dungeon рядом с домами набора)
+  const tk=typeof townReady==='function'&&townReady()&&asCan('proCol'), PCOL=tk?'proCol':'pillar', PCOLB=tk?'proColB':'pillarBroken', PWALL=tk?'proWall':'wallSeg';
+  buildGround(Z,b,{noPath:true}); scatterWalls(Object.assign({},Z,{wall:[PCOLB,PWALL,PCOL,'basalt',PCOL]}),b,Q.props*.7);
+  for(let i=0;i<10;i++){ const a=i/10*TAU+.15; const x=Math.cos(a)*11.5, z=Math.sin(a)*11.5; W.props.push({type:i%3?PCOL:PCOLB,x,z,s:tk?1.05:1.2,ry:-a}); W.obst.push({x,z,r:.7}); }
+  for(const [x,z] of [[-3,-10.5],[3,-10.5],[-7,-9],[7,-9]]) W.props.push({type:tk?'proBanner':'banner',x,z,s:tk?1:1.2,ry:0});
   // the Heart-Ember of Vale on its altar (north)
   const hg=new THREE.Group(); hg.position.set(0,0,-8.5); worldRoot.add(hg); pmesh(heartGeoBase(),hg); const core=pmesh(cgeo('hcore2',b=>{ b.oct(.5,0xff7a2a,{s:[1,1.45,1],e:1}); b.oct(.3,0xffe0a0,{s:[1,1.5,1],e:1,ol:0}); },0.03),hg,0,2.3,0); core.scale.setScalar(1.9); W.obst.push({x:0,z:-8.5,r:2.2});
   W.proHeart={g:hg,core};

@@ -203,7 +203,8 @@ function proCityBuild(){ const list=[['hall',5,0,23],['temple',3,-.62,22],['tave
     const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,toneMapped:false,opacity:.7})); halo.scale.set(4.2,4.6,1); halo.position.set(0,2.35,0); W.proHeart.g.add(halo); W.proHeart.halo=halo; }
   // дворцовый балкон за Сердцем (король Остен)
   const g=new THREE.Group(); g.position.set(0,0,-16.5); worldRoot.add(g); W.proBalc=g;
-  pmesh(cgeo('pro_balc',b=>{ const st=0x6a5a52, st2=0x52463f, gold=0xc9973f; b.box(12,9,2.2,st2,{p:[0,4.5,-2.2],j:.03}); b.box(2.4,3.2,.3,0x1a0e08,{p:[0,4.2,-1.05]}); b.box(2.8,.3,.4,gold,{p:[0,5.9,-1.0]});
+  let tkp=null; if(typeof proPalaceGeo==='function'&&typeof townReady==='function'&&townReady()) try{ tkp=townMesh(proPalaceGeo()); g.add(tkp); }catch(e){ console.warn('palace',e); tkp=null; } // v27: дворец из набора зданий деревни
+  if(!tkp) pmesh(cgeo('pro_balc',b=>{ const st=0x6a5a52, st2=0x52463f, gold=0xc9973f; b.box(12,9,2.2,st2,{p:[0,4.5,-2.2],j:.03}); b.box(2.4,3.2,.3,0x1a0e08,{p:[0,4.2,-1.05]}); b.box(2.8,.3,.4,gold,{p:[0,5.9,-1.0]});
     b.box(8,.4,3.4,st,{p:[0,2.4,0]}); b.box(8.2,.12,3.5,gold,{p:[0,2.62,0]}); for(const x of [-3.4,3.4]) b.cyl(.32,.38,2.3,st,{p:[x,1.15,1.2],seg:10});
     for(let i=0;i<9;i++) b.cyl(.07,.09,.75,0xd8c8a8,{p:[-3.6+i*.9,3.0,1.55],seg:6}); b.box(8,.14,.22,gold,{p:[0,3.42,1.55]});
     for(const x of [-4.6,4.6]){ b.box(1.2,10,1.2,st,{p:[x,5,-1.6],j:.03}); b.cone(1.0,2.2,0x5a1a14,{p:[x,11.1,-1.6],seg:4,r:[0,PI/4,0]}); }
@@ -213,7 +214,7 @@ function proCityBuild(){ const list=[['hall',5,0,23],['temple',3,-.62,22],['tave
 // пересборка инстансов реквизита (старые группы убираются, иначе остаются висеть копией)
 function propRebuild(){ if(!W) return; for(const k in (W.propIM||{})){ const o=W.propIM[k]; const m=o.grp||o.im; if(m&&m.parent) m.parent.remove(m); if(o.im&&o.im.dispose) o.im.dispose(); if(o.grp) for(const c of o.grp.children) c.dispose&&c.dispose(); } W.propIM={}; buildPropMeshes(); }
 // реквизит «руин» (обугленные деревья, базальт) прячется в золотом веке
-function bstRuins(show){ if(!W||!W.propIM) return; if(!BST.hidden){ BST.hidden={}; for(const t of ['charTree','basalt','pillarBroken']) if(W.propIM[t]){ BST.hidden[t]=W.propIM[t].list; } }
+function bstRuins(show){ if(!W||!W.propIM) return; if(!BST.hidden){ BST.hidden={}; for(const t of ['charTree','basalt','pillarBroken','proColB']) if(W.propIM[t]){ BST.hidden[t]=W.propIM[t].list; } }
   for(const t in BST.hidden){ if(W.propIM[t]) W.propIM[t].list=show?BST.hidden[t]:BST.hidden[t].filter(p=>Math.hypot(p.x,p.z)>60); } cullProps(CAMR.x,CAMR.z,true); }
 
 // ---------- предыстория: сценарий ----------

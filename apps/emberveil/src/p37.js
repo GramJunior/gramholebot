@@ -298,55 +298,104 @@ animHeroActor=function(P,dt){ const st=P.state, R=P.rig, a=R.actor;
   else if(st==='block'){ const k=a.clipMap&&a.clipMap.blocking&&PS.cls==='sword'?'blocking':'block'; if(R._st!=='block'){ a.play(k,{once:k==='block',clamp:true,fade:.08}); R._bk=k; }
     if(P.blkHitT>0&&!R._bh){ R._bh=1; if(a.clipMap&&a.clipMap.blockHit) a.play('blockHit',{once:true,clamp:true,fade:.04}); } else if(P.blkHitT<=0&&R._bh){ R._bh=0; a.play(R._bk||'block',{once:R._bk==='block',clamp:true,fade:.1}); } }
   R._st=st; if(P===G.P&&AS.trail) AS.trail.emit=false; SHADOW.add(P.x,P.z,.75); };
-const _animHeroV20=animHero;
+const _animHeroV20=animHero, _eBL=new THREE.Euler();
 animHero=function(P,dt){ _animHeroV20(P,dt); const R=P.rig; if(R.actor) return; const st=P.state; // процедурный герой (без моделей)
   if(st==='charge'){ const c=clamp(P.chg/(CH_T[PS.cls]||.8),0,1); R.armR.rotation.x+=-2.5*smooth(c); R.torso.rotation.y+=.6*c; if(PS.cls==='axe') R.armL.rotation.x+=-2.4*smooth(c); R.torso.rotation.x+=-.2*c; }
-  else if(st==='draw'){ const c=clamp(P.drw/bowDrawT(),0,1); R.root.rotation.y+=.9; R.armL.rotation.set(-1.55,0,-.1); R.armR.rotation.set(-1.45,0,.25+.9*c); R.torso.rotation.y=-.5; }
+  else if(st==='draw'){ const c=clamp(P.drw/bowDrawT(),0,1); // v27: боком к цели, рука с луком — на цель, другая тянет к подбородку (было: руки в стороны, «буквой Т», лук лежал)
+    // у процедурного героя лук — в правой руке: зеркально (правое плечо к цели, левая тянет)
+    R.root.rotation.y+=1.2; R.armR.quaternion.setFromEuler(_eBL.set(-1.52,-1.2,0,'YXZ')); R.armL.quaternion.setFromEuler(_eBL.set(-1.5-.3*c,-1.25-.25*c,0,'YXZ')); } 
   else if(st==='block'){ R.armL.rotation.set(-1.25,.3,.6); R.armR.rotation.x+=-.9; R.torso.rotation.x+=.12; } };
 
 // ---------- поза лучника на скелете UAL (после микшера, каждый кадр) ----------
 const _q1=new THREE.Quaternion(), _q2=new THREE.Quaternion(), _q3=new THREE.Quaternion(), _va=new THREE.Vector3(), _vb=new THREE.Vector3(), _vc=new THREE.Vector3(), _vd=new THREE.Vector3(), _ve=new THREE.Vector3();
 function boneAim(bone,child,target,w){ if(!bone||!child||!bone.parent) return; bone.getWorldPosition(_va); child.getWorldPosition(_vb); _vc.subVectors(_vb,_va).normalize(); _vd.subVectors(target,_va).normalize(); if(_vc.lengthSq()<1e-6||_vd.lengthSq()<1e-6) return;
   _q1.setFromUnitVectors(_vc,_vd); bone.getWorldQuaternion(_q2); _q1.multiply(_q2); bone.parent.getWorldQuaternion(_q3); _q3.invert(); _q3.multiply(_q1); bone.quaternion.slerp(_q3,w); bone.updateMatrixWorld(true); }
-// двухзвенная ИК: плечо → локоть → кисть к цели, локоть к «полюсу»
-function ik2(up,lo,hand,target,pole,w){ if(!up||!lo||!hand) return; up.getWorldPosition(_va); lo.getWorldPosition(_vb); hand.getWorldPosition(_vc); const l1=_va.distanceTo(_vb), l2=_vb.distanceTo(_vc);
-  const d=_ve.subVectors(target,_va); let L=d.length(); L=clamp(L,.05,(l1+l2)*.999); d.normalize(); const ca=clamp((l1*l1+L*L-l2*l2)/(2*l1*L),-1,1), sa=Math.sqrt(1-ca*ca);
-  const pv=_vd.subVectors(pole,_va); pv.sub(d.clone().multiplyScalar(pv.dot(d))).normalize(); const elbow=new THREE.Vector3().copy(_va).addScaledVector(d,ca*l1).addScaledVector(pv,sa*l1);
-  boneAim(up,lo,elbow,w); const tg=new THREE.Vector3().copy(_va).addScaledVector(d,L); boneAim(lo,hand,tg,w); }
+// двухзвенная ИК: плечо → локоть → кисть к цели, локоть к «полюсу».
+// v27: после «замаха» плеча — поворот плеча вокруг своей оси, чтобы локоть гнулся в своей плоскости (иначе предплечье
+// доворачивалось по кратчайшей дуге вокруг произвольной оси — рука и рукав «выкручивались», особенно у правой руки к щеке)
+function ik2(up,lo,hand,target,pole,w){ if(!up||!lo||!hand||w<=0) return; up.getWorldPosition(_va); lo.getWorldPosition(_vb); hand.getWorldPosition(_vc); const l1=_va.distanceTo(_vb), l2=_vb.distanceTo(_vc); if(l1<1e-4||l2<1e-4) return;
+  const d=_ve.subVectors(target,_va); let L=d.length(); L=clamp(L,Math.abs(l1-l2)+.01,(l1+l2)*.999); d.normalize(); const ca=clamp((l1*l1+L*L-l2*l2)/(2*l1*L),-1,1), sa=Math.sqrt(1-ca*ca);
+  const pv=_vd.subVectors(pole,_va); pv.sub(_IK.t.copy(d).multiplyScalar(pv.dot(d))); if(pv.lengthSq()<1e-8) pv.set(0,-1,0); pv.normalize(); const elbow=_IK.e.copy(_va).addScaledVector(d,ca*l1).addScaledVector(pv,sa*l1);
+  const tg=_IK.g.copy(_va).addScaledVector(d,L);
+  boneAim(up,lo,elbow,1);
+  // ось плеча после замаха; текущая кисть и цель — в плоскости, перпендикулярной оси: довернуть плечо на угол между ними
+  up.getWorldPosition(_va); lo.getWorldPosition(_vb); hand.getWorldPosition(_vc); const ax=_IK.a.subVectors(_vb,_va).normalize();
+  const h0=_IK.h.subVectors(_vc,_vb); h0.sub(_IK.t.copy(ax).multiplyScalar(h0.dot(ax))); const h1=_IK.k.subVectors(tg,_vb); h1.sub(_IK.t.copy(ax).multiplyScalar(h1.dot(ax)));
+  if(h0.lengthSq()>1e-6&&h1.lengthSq()>1e-6){ h0.normalize(); h1.normalize(); let ang=Math.acos(clamp(h0.dot(h1),-1,1)); if(_IK.t.crossVectors(h0,h1).dot(ax)<0) ang=-ang; boneTwistW(up,ax,ang); }
+  boneAim(lo,hand,tg,1); }
+// поворот кости на угол вокруг оси в мировых координатах
+function boneTwistW(bone,axis,ang){ if(!bone.parent||!ang) return; _q1.setFromAxisAngle(axis,ang); bone.parent.getWorldQuaternion(_q3); _q2.copy(_q3).invert(); _q2.multiply(_q1).multiply(_q3); bone.quaternion.premultiply(_q2); bone.updateMatrixWorld(true); }
+const _IK={t:new THREE.Vector3(),e:new THREE.Vector3(),g:new THREE.Vector3(),a:new THREE.Vector3(),h:new THREE.Vector3(),k:new THREE.Vector3()};
 const BOWV={line:null,arrow:null,yaw:-1.05,blend:0,snap:0};
 function bowVisInit(){ if(BOWV.s1) return; const mat=new THREE.MeshBasicMaterial({color:0xf4ecd8,fog:false}); const g=new THREE.CylinderGeometry(.011,.011,1,4,1,true); g.translate(0,.5,0);
   BOWV.s1=new THREE.Mesh(g,mat); BOWV.s2=new THREE.Mesh(g,mat); for(const m of [BOWV.s1,BOWV.s2]){ m.frustumCulled=false; m.renderOrder=4; scene.add(m); }
   BOWV.arrow=new THREE.Mesh(PROJ_GEO.arrowC(),MT); BOWV.arrow.visible=false; scene.add(BOWV.arrow); BOWV.line={set visible(v){ BOWV.s1.visible=BOWV.s2.visible=v; }}; }
 const _sUp=new THREE.Vector3(0,1,0);
 function strSeg(m,a,b){ const d=_ve.subVectors(b,a); const L=d.length(); if(L<1e-4){ m.visible=false; return; } m.position.copy(a); m.quaternion.setFromUnitVectors(_sUp,d.multiplyScalar(1/L)); m.scale.set(1,L,1); }
+// v27: кости позы — по именам рига: UAL/UBC (upperarm_l…, spine_01–03, neck_01, Head) и KayKit «классические»
+// (upperarml, lowerarml, wristl, handl, spine/chest, head). Раньше брались только имена UAL: у классических героев
+// обращение к B.upperarm_l падало («bowPose … getWorldPosition»), а разворот корпуса успевал примениться — герой стоял
+// боком без натяжения, тетива тянулась от лука в пустоту.
+function bowRig(a){ if(a._bowRig!==undefined) return a._bowRig; const B=a.bones||{}, g=(...n)=>{ for(const k of n) if(B[k]) return B[k]; return null; };
+  const r={uaL:g('upperarm_l','upperarml'),laL:g('lowerarm_l','lowerarml'),hL:g('hand_l','wristl','handl'),uaR:g('upperarm_r','upperarmr'),laR:g('lowerarm_r','lowerarmr'),hR:g('hand_r','wristr','handr'),
+    gripR:g('hand_r','handr','wristr'),head:g('Head','head'),neck:g('neck_01','neck'),sp:[g('spine_01','spine'),g('spine_02'),g('spine_03','chest')].filter(Boolean)};
+  if(!(r.uaL&&r.laL&&r.hL&&r.uaR&&r.laR&&r.hR&&r.head)) return a._bowRig=null;
+  r.all=[...r.sp,r.neck,r.head,r.uaL,r.laL,r.uaR,r.laR].filter(Boolean); return a._bowRig=r; }
+// поза кладётся поверх клипа. Если микшер в этом кадре кость не трогал (пауза, стоп-кадр, анимационный LOD через кадр),
+// сначала вернуть позу клипа — иначе повороты копятся кадр за кадром и героя «скручивает»
+function bpBase(b){ const u=b.userData; if(u._bpPost&&u._bpPost.equals(b.quaternion)) b.quaternion.copy(u._bpPre); else (u._bpPre||(u._bpPre=new THREE.Quaternion())).copy(b.quaternion); }
+function bpPost(b){ const u=b.userData; (u._bpPost||(u._bpPost=new THREE.Quaternion())).copy(b.quaternion); }
+const _bwUp=new THREE.Vector3(0,1,0);
+// куда смотрит грудь (горизонталь), по линии плеч: для взгляда d правая сторона — (−d.z,0,d.x)
+function bwChest(rig){ rig.uaL.getWorldPosition(_va); rig.uaR.getWorldPosition(_vb); const lr=_vb.sub(_va); lr.y=0; if(lr.lengthSq()<1e-6) return null; lr.normalize(); return new THREE.Vector3(lr.z,0,-lr.x); }
 function bowPose(rdt){ const P=G.P; if(!P||!P.rig) return; const cls=PS.cls; const R=P.rig, a=R.actor;
-  const on=cls==='bow'&&!P.dead&&(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid'||G.mode==='village'); if(!on){ if(BOWV.s1){ BOWV.line.visible=false; BOWV.arrow.visible=false; } const wq=P.rig.meshes&&P.rig.meshes.weapon; if(wq&&wq.userData.q0){ wq.quaternion.copy(wq.userData.q0); } return; }
+  // корень: вернуть свой прошлый доворот, если игра его в этом кадре не переписала
+  if(R._bwRY!==undefined){ if(R.root.rotation.y===R._bwRYp) R.root.rotation.y-=R._bwRY; R._bwRY=undefined; }
+  const rig=a&&bowRig(a);
+  const on=cls==='bow'&&!P.dead&&(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid'||G.mode==='village'); if(!on){ if(BOWV.s1){ BOWV.line.visible=false; BOWV.arrow.visible=false; } const wq=P.rig.meshes&&P.rig.meshes.weapon; if(wq&&wq.userData.q0){ wq.quaternion.copy(wq.userData.q0); } if(rig&&BOWV.posed){ for(const b of rig.all) bpBase(b); BOWV.posed=false; } BOWV.blend=0; return; }
   bowVisInit(); const dt=Math.min(.05,rdt||.016);
   const drawing=P.state==='draw'; const since=P.lastShot?G.time-P.lastShot.t:9;
   BOWV.blend=clamp(BOWV.blend+(drawing||since<.22?1:-1)*dt*(drawing?9:4),0,1); const w=smooth(BOWV.blend);
-  const c=drawing?clamp(P.drw/bowDrawT(),0,1):since<.22?0:0;
-  const wpn=R.meshes&&R.meshes.weapon; const fwd=_va.set(Math.sin(P.face),0,Math.cos(P.face)).clone(); const right=new THREE.Vector3(-fwd.z,0,fwd.x).negate(); // правая сторона героя
-  if(a&&a.bones&&w>.001){ const B=a.bones; R.root.rotation.y+=BOWV.yaw*w; R.root.updateMatrixWorld(true);
-    const sh=new THREE.Vector3(); B.upperarm_l.getWorldPosition(sh); const head=new THREE.Vector3(); B.Head.getWorldPosition(head);
-    const arm=(()=>{ const x=new THREE.Vector3(), y=new THREE.Vector3(), z=new THREE.Vector3(); B.upperarm_l.getWorldPosition(x); B.lowerarm_l.getWorldPosition(y); B.hand_l.getWorldPosition(z); return x.distanceTo(y)+y.distanceTo(z); })();
-    const tgL=sh.clone().addScaledVector(fwd,arm*.97); tgL.y=sh.y+.02; const poleL=sh.clone().addScaledVector(right,-.5).add(new THREE.Vector3(0,-.3,0));
-    ik2(B.upperarm_l,B.lowerarm_l,B.hand_l,tgL,poleL,w);
-    const grip=new THREE.Vector3(); B.hand_l.getWorldPosition(grip);
-    const cheek=head.clone().addScaledVector(right,.1).addScaledVector(fwd,.16); cheek.y+=.06;
-    let tgR; if(drawing) tgR=grip.clone().addScaledVector(fwd,-.12).lerp(cheek,easeOut(c)); else { const u=clamp(since/.22,0,1); tgR=cheek.clone().addScaledVector(fwd,-.18*Math.sin(u*PI)).addScaledVector(right,.1*Math.sin(u*PI)); }
-    const poleR=tgR.clone().addScaledVector(right,.6).addScaledVector(fwd,-.3); poleR.y+=.1;
-    ik2(B.upperarm_r,B.lowerarm_r,B.hand_r,tgR,poleR,w);
-    if(B.spine_03){ B.spine_03.getWorldQuaternion(_q2); } }
+  const c=drawing?clamp(P.drw/bowDrawT(),0,1):0;
+  const wpn=R.meshes&&R.meshes.weapon; const fwd=_IK.k.set(Math.sin(P.face),0,Math.cos(P.face)).clone(); const right=new THREE.Vector3(-fwd.z,0,fwd.x); // правая сторона героя (v27: было с минусом — это левая сторона: правая кисть тянулась к левой щеке через лицо, рука заворачивалась за голову)
+  if(rig){ for(const b of rig.all) bpBase(b); R.root.updateMatrixWorld(true); }
+  // калибровка «куда смотрит голова» — в покое (голова смотрит туда же, куда грудь)
+  if(rig&&!drawing&&w<=.001&&P.state==='idle'&&P.move<.1&&since>1){ const d=bwChest(rig); if(d){ rig.head.getWorldQuaternion(_q2); rig.hf=d.applyQuaternion(_q2.invert()); } }
+  if(rig&&w>.001){ BOWV.posed=true;
+    // разворот боком к цели. Клип натяжения (aimIdle) у UAL уже стоит вполоборота, бег — прямо: поэтому доворачиваем
+    // не на постоянные −60° (было: клип + 60° = грудь почти спиной к цели, голова выворачивалась назад), а до нужного угла
+    // груди (по линии плеч). Стоя — частью ногами (корень), на бегу — только корпусом; голова — к цели.
+    const run=smooth(clamp((P.move-.15)/.5,0,1)); const d0=bwChest(rig); const phi=d0?Math.atan2(d0.dot(right),d0.dot(fwd)):0;
+    const want=-BOWV.yaw*(1-.2*run); const turn=-clamp(angWrap(want-phi),-1.3,1.3)*w, rootY=turn*.55*(1-run), spY=turn-rootY;
+    R.root.rotation.y+=rootY; R._bwRY=rootY; R._bwRYp=R.root.rotation.y; R.root.updateMatrixWorld(true);
+    const sh=[.3,.35,.35].slice(3-rig.sp.length); const shs=sh.reduce((x,y)=>x+y,0); rig.sp.forEach((b,i)=>boneTwistW(b,_bwUp,spY*sh[i]/shs));
+    let look; if(rig.hf){ rig.head.getWorldQuaternion(_q2); const hf=_IK.h.copy(rig.hf).applyQuaternion(_q2); look=clamp(Math.atan2(hf.dot(right),hf.dot(fwd))-.1,-1.2,1.2)*w; } else look=-turn*.8;
+    if(rig.neck){ boneTwistW(rig.neck,_bwUp,look*.4); boneTwistW(rig.head,_bwUp,look*.6); } else boneTwistW(rig.head,_bwUp,look);
+    const sh0=new THREE.Vector3(); rig.uaL.getWorldPosition(sh0); const head=new THREE.Vector3(); rig.head.getWorldPosition(head);
+    const arm=(()=>{ const x=new THREE.Vector3(), y=new THREE.Vector3(), z=new THREE.Vector3(); rig.uaL.getWorldPosition(x); rig.laL.getWorldPosition(y); rig.hL.getWorldPosition(z); return x.distanceTo(y)+y.distanceTo(z); })();
+    const hgt=R.h||1.9;
+    const tgL=sh0.clone().addScaledVector(fwd,arm*.96); tgL.y=sh0.y+.02*hgt; const poleL=sh0.clone().addScaledVector(right,-.5).add(new THREE.Vector3(0,-.4,0));
+    ik2(rig.uaL,rig.laL,rig.hL,tgL,poleL,w);
+    const grip=new THREE.Vector3(); rig.hL.getWorldPosition(grip);
+    const cheek=head.clone().addScaledVector(right,.06*hgt).addScaledVector(fwd,.07*hgt); cheek.y+=.03*hgt;
+    let tgR; if(drawing) tgR=grip.clone().addScaledVector(fwd,-.12).lerp(cheek,easeOut(c)); else { const u=clamp(since/.22,0,1); tgR=cheek.clone().addScaledVector(fwd,-.16*Math.sin(u*PI)).addScaledVector(right,.08*Math.sin(u*PI)); }
+    const poleR=tgR.clone().addScaledVector(right,.5).addScaledVector(fwd,-.5); poleR.y+=.05;
+    ik2(rig.uaR,rig.laR,rig.hR,tgR,poleR,w);
+    // смешивание с клипом: ИК считалась на полный вес, вес — сферической интерполяцией к позе клипа
+    if(w<.999) for(const b of rig.all){ const u=b.userData; if(u._bpPre){ _q1.copy(u._bpPre); b.quaternion.copy(_q1.slerp(b.quaternion,w)); } }
+    if(w<.999) R.root.updateMatrixWorld(true);
+    for(const b of rig.all) bpPost(b); }
+  else if(rig&&BOWV.posed){ BOWV.posed=false; }
   // лук стоит вертикально, «спинкой» к цели (иначе в кисти он лежит вдоль предплечья)
-  if(wpn&&a){ if(!wpn.userData.q0) wpn.userData.q0=wpn.quaternion.clone(); const q0=wpn.userData.q0; if(w>.001&&wpn.parent){ const up=new THREE.Vector3(0,1,0).addScaledVector(fwd,-.08).addScaledVector(right,.12).normalize(); const zA=fwd.clone().addScaledVector(up,-fwd.dot(up)).normalize(); const yA=new THREE.Vector3().crossVectors(zA,up);
-      const m4=new THREE.Matrix4().makeBasis(up,yA,zA); /* лук: длинная ось — локальная X, изгиб — Z (концы плеч — к лучнику) */ const qW=new THREE.Quaternion().setFromRotationMatrix(m4); if(BOWV.flip) qW.multiply(new THREE.Quaternion().setFromAxisAngle(_sUp,PI)); wpn.parent.getWorldQuaternion(_q3); _q3.invert().multiply(qW); wpn.quaternion.copy(q0).slerp(_q3,w); }
+  if(wpn&&(a||R.armL)){ if(!wpn.userData.q0) wpn.userData.q0=wpn.quaternion.clone(); const q0=wpn.userData.q0; if((rig||!a)&&w>.001&&wpn.parent){ const up=new THREE.Vector3(0,1,0).addScaledVector(fwd,-.08).addScaledVector(right,.12).normalize(); const zA=fwd.clone().addScaledVector(up,-fwd.dot(up)).normalize(); const yA=new THREE.Vector3().crossVectors(zA,up);
+      const m4=wpn.userData.evBox?new THREE.Matrix4().makeBasis(up,yA,zA):new THREE.Matrix4().makeBasis(zA.clone().negate(),up,new THREE.Vector3().crossVectors(zA.clone().negate(),up)); /* процедурный лук: длинная ось Y, концы плеч — +X */ /* лук: длинная ось — локальная X, изгиб — Z (концы плеч — к лучнику) */ const qW=new THREE.Quaternion().setFromRotationMatrix(m4); if(BOWV.flip) qW.multiply(new THREE.Quaternion().setFromAxisAngle(_sUp,PI)); wpn.parent.updateMatrixWorld(true); wpn.parent.getWorldQuaternion(_q3); _q3.invert().multiply(qW); wpn.quaternion.copy(q0).slerp(_q3,w); }
     else wpn.quaternion.copy(q0); }
   // тетива: концы лука → (натяжение: правая кисть); стрела на тетиве
   if(wpn&&wpn.userData&&wpn.userData.evBox){ wpn.updateMatrixWorld(true); const bb=wpn.userData.evBox; const ex=bb.max.x-bb.min.x, ey=bb.max.y-bb.min.y; const lx=ex>=ey; const zt=BOWV.sz===undefined?bb.min.z*.86:BOWV.sz;
     const top=(lx?new THREE.Vector3(bb.max.x*.97,0,zt):new THREE.Vector3(0,bb.max.y*.97,zt)).applyMatrix4(wpn.matrixWorld), bot=(lx?new THREE.Vector3(bb.min.x*.97,0,zt):new THREE.Vector3(0,bb.min.y*.97,zt)).applyMatrix4(wpn.matrixWorld);
     let nock=top.clone().add(bot).multiplyScalar(.5); let pulled=false;
-    if(a&&a.bones&&drawing&&w>.3){ const hr=new THREE.Vector3(); a.bones.hand_r.getWorldPosition(hr); nock.lerp(hr,clamp(c*1.2,0,1)*w); pulled=true; }
-    else if(!a&&drawing){ nock.addScaledVector(fwd,-.45*c); pulled=true; }
+    if(rig&&drawing&&w>.3){ const hr=new THREE.Vector3(); rig.gripR.getWorldPosition(hr); nock.lerp(hr,clamp(c*1.2,0,1)*w); pulled=true; }
+    else if(!rig&&drawing){ nock.addScaledVector(fwd,-.45*c); pulled=true; }
     else if(since<.18){ nock.addScaledVector(fwd,.06*Math.sin(since/.18*PI*3)*(1-since/.18)); }
     const vis=R.root.visible!==false; BOWV.s1.visible=BOWV.s2.visible=vis; strSeg(BOWV.s1,top,nock); strSeg(BOWV.s2,nock,bot);
     if(pulled&&c>.05){ const mid=top.clone().add(bot).multiplyScalar(.5); const dir=fwd.clone(); dir.y=(mid.y-nock.y)*.3; dir.normalize(); BOWV.arrow.visible=vis; BOWV.arrow.position.copy(nock).addScaledVector(dir,.5); BOWV.arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),dir); BOWV.arrow.scale.setScalar(.85);
