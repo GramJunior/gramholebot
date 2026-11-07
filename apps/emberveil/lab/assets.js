@@ -211,10 +211,10 @@ vec3 evHsv2Rgb( vec3 c ) { vec3 p = abs( fract( c.xxx + vec3( 1.0, 2.0 / 3.0, 1.
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
     m.userData.U = U; m.userData.char = ch;
     m.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, m.userData.U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat;
+      Object.assign(sh.uniforms, m.userData.U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat; sh.uniforms.uVoidC = S.voidU || (S.voidU = { value: new T.Vector4(0, 0, 0, -1) });
       sh.vertexShader = 'varying vec3 vObjPos;\n' + (ub ? UBC_VS_PARS : '') + (ch ? 'uniform float uTime;\n' + CHAR_VS_PARS : '') + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (ub ? UBC_VS : '') + (ch ? CHAR_VS : '') + '\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
       if (ch) sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = normalize( mix( vec3( normal ), onormal, uSoft ) );');
-      sh.fragmentShader = 'uniform float uSatG; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' + (ch ? CHAR_FS_PARS : '') +
+      sh.fragmentShader = 'uniform float uSatG; uniform vec4 uVoidC; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' + (ch ? CHAR_FS_PARS : '') +
         (ub ? UBC_FS_PARS : '') + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + (ub ? UBC_FS : '') + (ch ? CHAR_FS : '')).replace(OUT_RE, (m0) => `
   float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
   float rim = smoothstep(0.55, 0.72, rimF);
@@ -235,7 +235,8 @@ vec3 evHsv2Rgb( vec3 c ) { vec3 p = abs( fract( c.xxx + vec3( 1.0, 2.0 / 3.0, 1.
     outgoingLight = mix(outgoingLight, uGlow.rgb * 1.5, smoothstep(0.35, 0.85, b) * (0.55 + 0.25*sin(uTime*4.0)));
   }
   outgoingLight += uGlow.rgb * uGlow.a * rim;
-  outgoingLight = max(mix(vec3(dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722))), outgoingLight, uSatG), 0.0); // shared mid-tone saturation (game: SATG)
+  float satV = uSatG; if (uVoidC.w > 0.0) { float kV = max(smoothstep(uVoidC.w + 1.2, uVoidC.w - 1.8, length(-vViewPosition - uVoidC.xyz)), uGlow.a * 0.6); satV = mix(0.06, uSatG, kV); outgoingLight *= mix(vec3(0.84, 0.84, 0.92), vec3(1.0), kV); } // v30: Изнанка — цвет только в Свете Искры
+  outgoingLight = max(mix(vec3(dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722))), outgoingLight, satV), 0.0); // shared mid-tone saturation (game: SATG)
   outgoingLight = mix(outgoingLight, vec3(1.0, 0.93, 0.8), uFlash);
 ` + m0);
     };
@@ -1109,7 +1110,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     return { files: Object.keys(S.files).length, textures: seen.size, textureMB: +(texBytes / 1048576).toFixed(2), actors: S.actors.size, clips: Object.keys(S.clips.medium).length + Object.keys(S.clips.large).length + Object.keys(S.clips.ubc || {}).length, chars: S.chars };
   }
   function init(o = {}) {
-    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.paint = o.paint || null; S.paintU = o.paintU || null;
+    S.renderer = o.renderer || null; S.base = o.base || S.base; S.grad = o.gradientMap || defaultGrad(); S.rim = o.rim || { value: new T.Color(0xfff0c8) }; S.sat = o.sat || { value: 1.0 }; S.voidU = o.voidU || { value: new T.Vector4(0, 0, 0, -1) }; S.paint = o.paint || null; S.paintU = o.paintU || null;
     S.charFX = o.charFX !== false; S.brush = { value: o.brush || whiteTex() }; S.charSoft = { value: o.charSoft === undefined ? 0.5 : o.charSoft };
     S.linear = !S.renderer || S.renderer.outputEncoding === T.LinearEncoding;
     S.loader = new T.GLTFLoader();

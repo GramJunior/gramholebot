@@ -53,6 +53,8 @@ const LOOK={expo:1.0,zoneExpo:1.0}; // экспозиция зоны (setZoneLoo
 function applyExposure(){ const b=S&&S.set&&S.set.bright!=null?S.set.bright:1; LOOK.expo=LOOK.zoneExpo*clamp(b,.6,1.4); R.toneMappingExposure=LOOK.expo; }
 // общая насыщенность средних тонов для toon-материалов (игровых и KayKit): один uniform на всех
 const SATG={value:1.16};
+// v30: Изнанка Хмари — мир цветной только в радиусе Света Искры (xyz — герой в координатах камеры, w — радиус; w < 0 — выключено)
+const VOIDU={value:new THREE.Vector4(0,0,0,-1)};
 // потолок PR для текущего пресета; ?rs=0.75 в адресе фиксирует PR (замеры), ?drs=0 выключает динамическое разрешение
 // v15 «Чёткость» (Настройки): auto — на телефонах с плотным экраном (DPR ≥ 2: iPhone, Pixel, Telegram) разрешение важнее эффектов:
 // потолок не ниже 1,25–1,5 и пол динамического разрешения 1,0–1,1 CSS px (раньше пол 0,5–0,7 CSS px = 17–23 % пикселей экрана
@@ -98,15 +100,16 @@ function toonMat(tint,tintA,flash){
   const U={uFlash:{value:flash||0},uTint:{value:new THREE.Vector4(...(tint?[C3(tint).r,C3(tint).g,C3(tint).b]:[0,0,0]),tintA||0)}};
   m.userData.U=U;
   m.onBeforeCompile=(sh)=>{
-    sh.uniforms.uFlash=U.uFlash; sh.uniforms.uTint=U.uTint; sh.uniforms.uRim=RIM; sh.uniforms.uSatG=SATG;
+    sh.uniforms.uFlash=U.uFlash; sh.uniforms.uTint=U.uTint; sh.uniforms.uRim=RIM; sh.uniforms.uSatG=SATG; sh.uniforms.uVoidC=VOIDU;
     sh.vertexShader='attribute float aE;\nvarying float vE;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vE=aE;');
     // r128: meshtoon_frag заканчивается строкой gl_FragColor = vec4( outgoingLight, diffuseColor.a ); (чанка <output_fragment> ещё нет)
-    sh.fragmentShader='uniform float uFlash;\nuniform vec4 uTint;\nuniform vec3 uRim;\nuniform float uSatG;\nvarying float vE;\n'+sh.fragmentShader.replace(TOON_OUT_RE,m0=>
+    sh.fragmentShader='uniform float uFlash;\nuniform vec4 uTint;\nuniform vec3 uRim;\nuniform float uSatG;\nuniform vec4 uVoidC;\nvarying float vE;\n'+sh.fragmentShader.replace(TOON_OUT_RE,m0=>
 `  float rimF=1.0-clamp(dot(normalize(normal),normalize(vViewPosition)),0.0,1.0);
   outgoingLight+=uRim*smoothstep(0.6,0.7,rimF)*(1.0-vE)*0.32*diffuseColor.rgb;
   outgoingLight=mix(outgoingLight,diffuseColor.rgb,vE);
   outgoingLight=mix(outgoingLight,uTint.rgb*(0.4+0.8*dot(outgoingLight,vec3(0.33))),uTint.a);
-  outgoingLight=max(mix(vec3(dot(outgoingLight,vec3(0.2126,0.7152,0.0722))),outgoingLight,uSatG),0.0);
+  float satV=uSatG; if(uVoidC.w>0.0){ float kV=max(smoothstep(uVoidC.w+1.2,uVoidC.w-1.8,length(-vViewPosition-uVoidC.xyz)),vE); satV=mix(0.06,uSatG,kV); outgoingLight*=mix(vec3(0.84,0.84,0.92),vec3(1.0),kV); }
+  outgoingLight=max(mix(vec3(dot(outgoingLight,vec3(0.2126,0.7152,0.0722))),outgoingLight,satV),0.0);
   outgoingLight=mix(outgoingLight,vec3(1.0,0.93,0.8),uFlash);
 `+m0);
   };

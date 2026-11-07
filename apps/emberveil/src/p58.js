@@ -181,6 +181,15 @@ function atIsle(g,R,x,y,s){ g.fillStyle='rgba(90,60,20,.16)'; g.beginPath(); g.e
   g.beginPath(); g.ellipse(x,y,s*.72,s*.14,0,0,TAU); g.fillStyle='#8aa050'; g.fill(); g.stroke(); atTemple(g,R,x+s*.05,y+s*.02,s*.55,{c:'#ecd8a8',d:'rgba(120,80,30,.45)',ruin:R()<.5}); }
 function atRift(g,R,x,y,r){ for(let k=0;k<5;k++){ g.strokeStyle=k%2?'rgba(120,100,170,.55)':'rgba(40,30,60,.6)'; g.lineWidth=r*(.06-k*.008); g.beginPath(); for(let i=0;i<=60;i++){ const t=i/60, a=t*TAU*1.7+k*1.25, rr=r*t*(1-k*.08); const px=x+Math.cos(a)*rr, py=y+Math.sin(a)*rr*.6; i?g.lineTo(px,py):g.moveTo(px,py); } g.stroke(); }
   const gr=g.createRadialGradient(x,y,0,x,y,r*.35); gr.addColorStop(0,'rgba(20,10,30,.9)'); gr.addColorStop(1,'rgba(20,10,30,0)'); g.fillStyle=gr; g.beginPath(); g.ellipse(x,y,r*.35,r*.22,0,0,TAU); g.fill(); }
+// v30: Изнанка — перевёрнутые острова пепла с кусками чужих мест, звёзды в пустоте
+function atAshIsle(g,R,x,y,s,kind){ g.fillStyle='rgba(40,30,60,.16)'; g.beginPath(); g.ellipse(x+s*.25,y+s*1.25,s*.55,s*.12,0,0,TAU); g.fill();
+  g.strokeStyle=AT_INK; g.lineWidth=Math.max(.8,s*.045); g.lineJoin='round'; g.beginPath(); g.moveTo(x-s*.62,y); g.quadraticCurveTo(x-s*.3,y+s*.5,x+s*.05,y+s*1.05); g.quadraticCurveTo(x+s*.25,y+s*.45,x+s*.62,y); g.closePath();
+  const gr=g.createLinearGradient(x,y,x,y+s); gr.addColorStop(0,'#8a849a'); gr.addColorStop(1,'#4a4458'); g.fillStyle=gr; g.fill(); g.stroke();
+  g.beginPath(); g.ellipse(x,y,s*.62,s*.16,0,0,TAU); g.fillStyle='#b8b2c6'; g.fill(); g.stroke();
+  if(kind===0){ g.fillStyle='#d8ccb4'; g.fillRect(x-s*.2,y-s*.42,s*.26,s*.34); g.strokeRect(x-s*.2,y-s*.42,s*.26,s*.34); g.beginPath(); g.moveTo(x-s*.26,y-s*.42); g.lineTo(x-s*.07,y-s*.6); g.lineTo(x+s*.12,y-s*.42); g.closePath(); g.fillStyle='#a84a32'; g.fill(); g.stroke(); }
+  else if(kind===1){ g.fillStyle='#c8b8a0'; g.beginPath(); g.moveTo(x-s*.08,y-s*.05); g.lineTo(x-s*.14,y-s*.55); g.lineTo(x+s*.14,y-s*.55); g.lineTo(x+s*.08,y-s*.05); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.moveTo(x-s*.32,y-s*.75); g.lineTo(x+s*.32,y-s*.35); g.moveTo(x+s*.32,y-s*.75); g.lineTo(x-s*.32,y-s*.35); g.stroke(); }
+  else { g.fillStyle='#9a96aa'; for(const dx of [-.28,.22]){ g.fillRect(x+s*dx,y-s*.5,s*.1,s*.46); g.strokeRect(x+s*dx,y-s*.5,s*.1,s*.46); } g.beginPath(); g.arc(x-s*.03,y-s*.5,s*.25,PI,0); g.stroke(); g.fillStyle='rgba(200,170,255,.55)'; g.beginPath(); g.arc(x-s*.03,y-s*.5,s*.18,PI,0); g.lineTo(x+s*.15,y-s*.06); g.lineTo(x-s*.21,y-s*.06); g.fill(); } }
+function atVoidStars(g,R,x,y,r){ for(let i=0;i<46;i++){ const a=R()*TAU, d=Math.sqrt(R())*r; const px=x+Math.cos(a)*d, py=y+Math.sin(a)*d*.62; const s=.8+R()*1.8; g.fillStyle=R()<.2?'rgba(255,232,190,.9)':'rgba(220,210,255,.85)'; g.beginPath(); g.moveTo(px,py-s*2); g.lineTo(px+s*.5,py); g.lineTo(px,py+s*2); g.lineTo(px-s*.5,py); g.closePath(); g.fill(); } }
 function atCrystal(g,R,x,y,s,col){ g.strokeStyle=AT_INK; g.lineWidth=Math.max(.7,s*.05); g.lineJoin='round'; for(let i=0;i<3;i++){ const dx=(i-1)*s*.3, h=s*(i===1?1:.65); g.beginPath(); g.moveTo(x+dx-s*.12,y); g.lineTo(x+dx-s*.1,y-h*.75); g.lineTo(x+dx,y-h); g.lineTo(x+dx+s*.1,y-h*.75); g.lineTo(x+dx+s*.12,y); g.closePath(); g.fillStyle=col||'#bfe0f4'; g.fill(); g.fillStyle='rgba(40,70,110,.35)'; g.fill(); g.stroke(); } }
 
 // ---------- текстура пергамента (бесшовная, 256²) ----------
@@ -310,6 +319,8 @@ function atBuild(ch){ const t0=performance.now(); const C=AT_CH[ch], R=mulberry(
     scat(16,9,12,(x,y)=>{ const s=8+R()*8; obj(x,y,s*1.2,s,.5,(g,Rr)=>atRock(g,Rr,x,y,s,'#d8b878','#9a7038')); });
     // ---- 10: Изнанка Хмари
     resv(640,380,160); add(3,380,[440,240,840,520],0,(g,Rr)=>atRift(g,Rr,640,380,200));
+    add(3,382,[420,220,860,540],0,(g,Rr)=>atVoidStars(g,Rr,640,380,230));
+    for(const [x,y,sz,k] of [[930,180,46,0],[300,250,40,1],[1040,560,38,2],[420,560,44,0],[820,620,34,1],[200,600,36,2]]){ resv(x,y,sz); obj(x,y,sz*.7,sz*1.3,.2,(g,Rr)=>atAshIsle(g,Rr,x,y,sz,k)); }
     scat(30,10,16,(x,y)=>{ const s=8+R()*10; obj(x,y,s*1.2,s,.5,(g,Rr)=>atRock(g,Rr,x,y,s,'#9a94a8','#4a4458')); });
     scat(26,10,14,(x,y)=>{ const h=24+R()*14; obj(x,y,h*.5,h,.5,(g,Rr)=>atDead(g,Rr,x,y,h,'#3a3448')); });
     range(10,7,90,260,60,1150,80,120,{lt:'#c8c4d4',dk:'#6a6480',ink:'#24203a'});

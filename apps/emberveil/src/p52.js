@@ -80,7 +80,7 @@ function nmPanel(z,s){ const I=stageInfo(z,s); const key=I.key; const st=S.prog.
     bindPanel(); }catch(e){ console.error(e); } return r; }; }
 // карта: значок лучшей ступени на узле (узел ищем по позиции — у кнопок нет ключа этапа)
 { const _dm=drawMap; drawMap=function(){ const r=_dm.apply(this,arguments); try{ if(!nmOpen()) return r; const box=$('mapNodes'), sc=$('mapScroll'); if(!box||!sc) return r; const w=MAP.W; const off=(sc.clientWidth-w)/2;
-    const nodes=[...box.querySelectorAll('.mnode')]; const zs=MAP.ch===2?[7,8,9]:[1,2,3,4,5,6];
+    const nodes=[...box.querySelectorAll('.mnode')]; const zs=MAP.ch===2?[7,8,9,10]:[1,2,3,4,5,6];
     for(const z of zs) for(let s=1;s<=5;s++){ const st=S.prog.stages[z+'-'+s]; if(!st||!st.nm) continue; const [x,y]=nodePos(z,s,w); const b=nodes.find(n=>Math.abs(parseFloat(n.style.left)-(x+off))<1.5&&Math.abs(parseFloat(n.style.top)-y)<1.5); if(b&&!b.querySelector('.nm52m')) b.insertAdjacentHTML('beforeend',`<i class="nm52m">К·${ROMAN[st.nm]}</i>`); } }catch(e){ console.error(e); } return r; }; }
 // настройки: «Кошмар» → «Испытание»
 { const _ps=pSettings; pSettings=function(){ const h=_ps.apply(this,arguments); return typeof h==='string'?h.replace(/>Кошмар</g,'>Испытание<'):h; }; }
