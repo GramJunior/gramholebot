@@ -22,7 +22,7 @@ function layout(){
   // phone in portrait: short side < 600 → ask to rotate. Tablets / desktop windows stay usable in portrait.
   const needRot=!land&&touch&&Math.min(w,h)<600;
   let k,ak;
-  if(land){ k=clamp(Math.min(h/400,w/860),.8,1.32); ak=clamp(h/440,.72,1.12); if(w>=1100&&h>=700){ ak=Math.min(ak,1.05); } }
+  if(land){ const big=w>=1280&&h>=700; k=clamp(Math.min(h/400,w/860),.8,big?1.5:1.32); ak=clamp(h/440,.72,1.12); if(w>=1100&&h>=700){ ak=Math.min(ak,1.05); } if(big) ak=clamp(h/600,1.05,touch?1.3:1.18); } // v31: на больших экранах (≥1280×700) HUD крупнее — не пустует
   else { k=clamp(w/400,.86,1.25); ak=1; }
   LAYOUT.land=land; LAYOUT.k=k; LAYOUT.ak=ak; LAYOUT.w=w; LAYOUT.h=h; LAYOUT.touch=touch;
   root.style.setProperty('--k',k.toFixed(3)); root.style.setProperty('--ak',ak.toFixed(3));

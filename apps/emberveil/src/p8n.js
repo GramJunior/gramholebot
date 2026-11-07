@@ -35,7 +35,7 @@ function netConflict(srv,loc){
 function applyCloud(d){
   if(!d||(G.mode!=='title'&&G.mode!=='boot')) return; d=netUnwire(d);
   try{ if(sessionStorage.getItem('ev_cloud')==='1') return; sessionStorage.setItem('ev_cloud','1'); }catch(e){}
-  try{ Store.set(SKEY,JSON.stringify(d)); }catch(e){ return; } window.__evReload=1;
+  try{ if(!saveWrite(JSON.stringify(d))) return; }catch(e){ return; } window.__evReload=1;
   toast('Летопись загружена из облака'); setTimeout(()=>location.reload(),600);
 }
 // server/src/lib/savecheck.js still accepts only v===1 saves: upload as v:1 and keep the real version in `sv`

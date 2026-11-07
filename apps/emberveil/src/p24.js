@@ -97,7 +97,7 @@ forgeBody=function(tab){
       return `<div class="rcard bg-r${rar} ${lock||!known||setSlot?'lock':''}"><span class="rlbl">${Rc.set?'Комплект':RAR[rar].n}</span><span class="rtime">${ico('hourglass')} ${Rc.t?fmtDur(Rc.t*1000):'сразу'}</span>${pv?itHtml(pv,{cmp:false,lv:false}):`<span class="ri">${ico(Rc.ic)}</span>`}<b>${Rc.n}</b><small>${Rc.d}</small>${costHtml(c)}${lock?`<small class="muted">Кузница ${Rc.lv} ур.</small>`:!known?'<small class="muted">Чертёж не найден</small>':setSlot?'<small class="muted">Нет такой вещи в комплекте</small>':''}<button class="btn ${ok?'leather':'woodb'} small" ${ok?'':'disabled'} ${act(()=>{ if(craftStart(rid,slot,cls,el)){ AU.sfx('build'); rerender(); } })}>${ico('anvil')} Ковать</button></div>`; }).join('')}</div>`;
   return h; };
 // кольца-таймеры ковки обновляются раз в секунду
-setInterval(()=>{ for(const r of document.querySelectorAll('.ring[data-re]')){ const s=+r.dataset.rs, e=+r.dataset.re; r.style.setProperty('--p',Math.round(Math.min(1,(Date.now()-s)/Math.max(1,e-s))*100)); } },1000);
+setInterval(()=>{ if(document.hidden) return; for(const r of document.querySelectorAll('.ring[data-re]')){ const s=+r.dataset.rs, e=+r.dataset.re; r.style.setProperty('--p',Math.round(Math.min(1,(Date.now()-s)/Math.max(1,e-s))*100)); } },1000);
 
 // ---------- алхимик: котёл и карточки зелий ----------
 const BREW_COL={potion:'#ff5a5a',bomb:'#ffb04a',elixir_str:'#ff7a3a',elixir_def:'#6cc6ff',elixir_spd:'#9cff7a',scroll:'#ffd27a',prot:'#c8a8ff'};
@@ -203,7 +203,7 @@ function wheelSvg(){ const N=SPIN.length, R=100; let seg='', deco='';
   for(let i=0;i<N;i++){ const a0=(i*360/N-90)*PI/180, a1=((i+1)*360/N-90)*PI/180; const x0=Math.cos(a0)*R, y0=Math.sin(a0)*R, x1=Math.cos(a1)*R, y1=Math.sin(a1)*R; const rare=i===7;
     seg+=`<path d="M0 0L${x0.toFixed(2)} ${y0.toFixed(2)}A${R} ${R} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}Z" fill="url(#${rare?'wgR':i%2?'wgA':'wgB'})" stroke="#2a1604" stroke-width="1.2"/>`;
     const mid=(i+.5)*360/N; const s=SPIN[i];
-    seg+=`<g transform="rotate(${mid})"><text y="-86" text-anchor="middle" font-family="Alegreya SC,Georgia,serif" font-weight="800" font-size="8.2" fill="#ffe7b0" stroke="#1a0c04" stroke-width="2" paint-order="stroke">${esc(SPIN_SHORT[i])}</text><use href="#i-${icoId(SPIN_IC[i])||'star'}" x="-16" y="-79" width="32" height="32" style="filter:drop-shadow(0 0 3px ${SPIN_COL[i]})"/><text y="-35" text-anchor="middle" font-family="Ruslan Display,Georgia,serif" font-size="14" fill="#fff4d2" stroke="#1a0c04" stroke-width="2.8" paint-order="stroke">${SPIN_AMT(s)||'★'}</text></g>`; }
+    seg+=`<g transform="rotate(${mid})"><text y="-86" text-anchor="middle" font-family="Alegreya SC,Georgia,serif" font-weight="800" font-size="11" fill="#ffe7b0" stroke="#1a0c04" stroke-width="2" paint-order="stroke">${esc(SPIN_SHORT[i])}</text><use href="#i-${icoId(SPIN_IC[i])||'star'}" x="-16" y="-79" width="32" height="32" style="filter:drop-shadow(0 0 3px ${SPIN_COL[i]})"/><text y="-35" text-anchor="middle" font-family="Ruslan Display,Georgia,serif" font-size="14" fill="#fff4d2" stroke="#1a0c04" stroke-width="2.8" paint-order="stroke">${SPIN_AMT(s)||'★'}</text></g>`; }
   for(let i=0;i<24;i++){ const a=(i*15-90)*PI/180; deco+=`<circle class="bulb ${i%2?'b2':''}" cx="${(Math.cos(a)*107).toFixed(1)}" cy="${(Math.sin(a)*107).toFixed(1)}" r="2.6"/>`; }
   return `<svg class="wh" viewBox="-116 -116 232 232"><defs>
     <radialGradient id="wgA" r="1"><stop offset=".15" stop-color="#7a2a12"/><stop offset="1" stop-color="#3a0e06"/></radialGradient>

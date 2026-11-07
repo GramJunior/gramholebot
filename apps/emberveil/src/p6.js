@@ -135,10 +135,23 @@ function unloadWorld(){
   if(!W) return;
   if(W.vbatch){ W.vbatch.geometry.dispose(); W.vbatch=null; }
   for(const m of (W.propBaked||[])) m.geometry.dispose();
-  for(const c of worldRoot.children.slice()){ worldRoot.remove(c); if(c.isMesh&&c===W.ground){ c.geometry.dispose(); } if(c===W.liquid){ c.geometry.dispose(); c.material.dispose(); } if(c.isInstancedMesh){ c.dispose&&c.dispose(); } if(c.userData&&c.userData.evInst){ for(const k of c.children) k.dispose&&k.dispose(); } }
+  const gone=worldRoot.children.slice();
+  for(const c of gone){ worldRoot.remove(c); if(c.isMesh&&c===W.ground){ c.geometry.dispose(); } if(c===W.liquid){ c.geometry.dispose(); c.material.dispose(); } if(c.isInstancedMesh){ c.dispose&&c.dispose(); } if(c.userData&&c.userData.evInst){ for(const k of c.children) k.dispose&&k.dispose(); } }
+  try{ worldGpuFree(gone); }catch(e){ console.warn('worldGpuFree',e); }
   DECALS.clear(); PA.clear(); PN.clear();
   W=null;
 }
+// v31: освобождение видеопамяти мира. Геометрии и текстуры убранного мира, которыми больше ничего в сцене не пользуется
+// (герой, пулы эффектов, враги — остаются), удаляются с GPU. Кэши (cgeo, propGeo, наборы KayKit/Quaternius) держат свои
+// массивы в памяти JS: если следующий мир снова возьмёт ту же геометрию, three.js загрузит её заново при первой отрисовке
+// (во время экрана загрузки). Материалы не трогаем: общий шейдер иначе пришлось бы компилировать заново посреди боя.
+const TEXK=['map','alphaMap','emissiveMap','normalMap','bumpMap','aoMap','lightMap','specularMap','gradientMap','matcap','envMap','displacementMap'];
+function worldGpuFree(list){ const keepG=new Set(), keepT=new Set(); const texOf=(m,out)=>{ if(!m) return; for(const k of TEXK){ const t=m[k]; if(t&&t.isTexture) out.add(t); } if(m.uniforms) for(const u in m.uniforms){ const v=m.uniforms[u]&&m.uniforms[u].value; if(v&&v.isTexture) out.add(v); } };
+  scene.traverse(o=>{ if(o.geometry) keepG.add(o.geometry); if(o.material) for(const m of [].concat(o.material)) texOf(m,keepT); });
+  const G2=new Set(), T2=new Set(); for(const c of list) c.traverse(o=>{ if(o.geometry&&!keepG.has(o.geometry)) G2.add(o.geometry); if(o.material) for(const m of [].concat(o.material)) texOf(m,T2); });
+  for(const g of G2) g.dispose();
+  for(const t of T2){ if(keepT.has(t)||t.userData&&t.userData.keep) continue; const im=t.image; const ok=im&&((typeof HTMLCanvasElement!=='undefined'&&im instanceof HTMLCanvasElement)||(typeof HTMLImageElement!=='undefined'&&im instanceof HTMLImageElement)||(typeof ImageBitmap!=='undefined'&&im instanceof ImageBitmap)||(t.isDataTexture&&im.data)); if(ok) t.dispose(); }
+  return {geo:G2.size,tex:T2.size}; }
 // v6 свет: глубже туман (светлота ×~0.6, насыщенность +15%), меньше заливки полусферы, сильнее ключевой «солнце» — у тени есть объём,
 // а не серая каша; экспозиция и насыщенность по зоне (ACES в материалах — одинаково на всех пресетах, в т.ч. «Низк.»)
 const LOOK6={0:{h:.36,s:.8,e:.88,sat:1.12},title:{h:.42,s:.85,e:.86,sat:1.02},1:{h:.36,s:.8,e:.86,sat:1.12},2:{h:.38,s:.85,e:.96,sat:1.12},3:{h:.46,s:.85,e:1.1,sat:1.08},4:{h:.54,s:.85,e:1.14,sat:1.06},5:{h:.5,s:.82,e:1.12,sat:1.04},6:{h:.52,s:.82,e:1.12,sat:.98}};

@@ -7,9 +7,10 @@ D=$(cd "$(dirname "$0")" && pwd)
 [ -f "$D/../../server/client/ev-net.js" ] && cp "$D/../../server/client/ev-net.js" "$D/src/ev-net.js"
 # p58 — карта и карточки этапов (v29, параллельная работа): включается, когда файл есть; p59 — обучение и подсказки (v29)
 # p60–p63 — Глава II, веха 4: Изнанка Хмари и финал (v30): данные, системы, боссы и концовки, мир
+# p70 — v31: оптимизация и стабильность (вызовы отрисовки, прогрев шейдеров, Telegram, сохранения)
 # p64 — правки по аудиту боя и графики (v31): жесты героя, «Клинок Зари», баннер и всплывашки
 P58=""; [ -f "$D/src/p58.js" ] && P58="p58.js"
-PARTS="p0.html p1.js p1i.js p2.js p2a.js p3.js p3b.js p3c.js p4.js p5.js p6.js p6b.js p6c.js p6t.js p7.js p7b.js p8.js p8b.js p8n.js p10.js p11.js p12.js p13.js p14.js p15.js p9.js p16.js p17.js p18.js p19.js p20.js p21.js p22.js p23.js p24.js p25.js p26.js p27.js p28.js p29.js p30.js p31.js p32.js p33.js p34.js p35.js p36.js p37.js p38.js p39.js p40.js p41.js p42.js p43.js p44.js p45.js p46.js p47.js p48.js p49.js p50.js p51.js p52.js p53.js p54.js p55.js p56.js p57.js $P58 p59.js p60.js p61.js p62.js p63.js p64.js pz.html"
+PARTS="p0.html p1.js p1i.js p2.js p2a.js p3.js p3b.js p3c.js p4.js p5.js p6.js p6b.js p6c.js p6t.js p7.js p7b.js p8.js p8b.js p8n.js p10.js p11.js p12.js p13.js p14.js p15.js p9.js p16.js p17.js p18.js p19.js p20.js p21.js p22.js p23.js p24.js p25.js p26.js p27.js p28.js p29.js p30.js p31.js p32.js p33.js p34.js p35.js p36.js p37.js p38.js p39.js p40.js p41.js p42.js p43.js p44.js p45.js p46.js p47.js p48.js p49.js p50.js p51.js p52.js p53.js p54.js p55.js p56.js p57.js $P58 p59.js p60.js p61.js p62.js p63.js p64.js p70.js pz.html"
 python3 - "$D" $PARTS <<'PY'
 import sys,json
 d=sys.argv[1]; parts=sys.argv[2:]
@@ -17,20 +18,55 @@ s=''.join(open(d+'/src/'+f,encoding='utf-8').read() for f in parts)
 import os
 M=json.load(open(d+'/lab/manifest.json',encoding='utf-8'))
 M['sizes']={k:os.path.getsize(d+'/assets/'+v) for k,v in M['files'].items() if os.path.exists(d+'/assets/'+v)}
+# v31: короткий хэш содержимого — в адрес файла (?v=…): ассеты можно долго кэшировать (apps/_headers), а обновление файла меняет адрес
+import hashlib
+M['hash']={k:hashlib.sha1(open(d+'/assets/'+v,'rb').read()).hexdigest()[:10] for k,v in M['files'].items() if os.path.exists(d+'/assets/'+v)}
 man=json.dumps(M,ensure_ascii=False,separators=(',',':'))
-mods=('<script>\n'+open(d+'/lab/assets.js',encoding='utf-8').read()+'\n</script>\n'
-      '<script>\n'+open(d+'/lab/postfx.js',encoding='utf-8').read()+'\n</script>\n'
-      '<script>window.EV_MANIFEST='+man.replace('</','<\\/')+';</script>\n'
-      '<script>\n'+open(d+'/src/ev-net.js',encoding='utf-8').read()+'\n</script>')
+# v31: модули выполняются после движка (vendor/*.js с defer): регистрируются в __evParts и запускаются на DOMContentLoaded
+wrap=lambda f:'<script>__evParts.push(function(){\n'+open(d+f,encoding='utf-8').read()+'\n});</script>\n'
+mods=(wrap('/lab/assets.js')+wrap('/lab/postfx.js')+
+      '<script>window.EV_MANIFEST='+man.replace('</','<\\/')+';</script>\n'+
+      wrap('/src/ev-net.js'))
 assert '<!--@@MODULES@@-->' in s
 s=s.replace('<!--@@MODULES@@-->',mods)
+# v31: предзагрузка ядра (.glb, без которых игра не стартует; детальные персонажи — «Авто») с низким приоритетом: движок важнее
+G=dict(M['groups']); G.update(M.get('ubcGroups') or {})
+pre=[]
+for g in ['core']:
+  for k in G.get(g,[]):
+    f=M['files'].get(k)
+    if f: f=f+('?v='+M['hash'][k] if k in M['hash'] else '')
+    if f and f not in pre: pre.append(f)
+# (не <link rel=preload>: разбор начинается позже, чем через 3 с после load, и Chrome ругается; ранний fetch отдаётся загрузчику в p70.js)
+# пропуск: «Модели: простые» или «Классические» персонажи в сохранении — им этот набор не нужен
+links=('<script>window.__evPre={};(function(L){ try{ var r=localStorage.getItem("emberveil_save_v1")||""; if(r.indexOf(\'"models":"simple"\')>=0||r.indexOf(\'"chars":"classic"\')>=0||/[?&]chars=classic/.test(location.search)) return; }catch(e){}'
+       ' if(!window.fetch) return; L.forEach(function(u){ try{ __evPre[u]=fetch(u,{credentials:"same-origin",priority:"low"}).then(function(r){ return r.ok?r.arrayBuffer():null; }).catch(function(){ return null; }); }catch(e){} }); })('
+       +json.dumps(['assets/'+f for f in pre])+');</script>')
+assert '<!--@@PRELOAD@@-->' in s
+s=s.replace('<!--@@PRELOAD@@-->',links)
+# v31: основной код — без пробелов и с упрощённым синтаксисом (имена не меняются: __game.x() и инструменты ищут их по имени),
+# если рядом есть esbuild (server/node_modules или ESBUILD=путь); EV_MINIFY=0 — собрать как есть
+import subprocess,shutil
+esb=os.environ.get('ESBUILD') or (d+'/../../server/node_modules/.bin/esbuild')
+if os.environ.get('EV_MINIFY','1')!='0' and os.path.exists(esb):
+  i=s.index('__evParts.push(function(){\n"use strict"; /*@@MAIN@@*/'); j=s.rindex('</script>')
+  try:
+    r=subprocess.run([esb,'--minify-whitespace','--minify-syntax','--charset=utf8','--log-level=error','--loader=js'],input=('var __evParts=[];'+s[i:j]).encode('utf-8'),capture_output=True,check=True)
+    out=r.stdout.decode('utf-8').strip()
+    out=out[out.index('__evParts.push('):]
+    assert '</script' not in out.lower()
+    s=s[:i]+out+'\n'+s[j:]
+    print('minified main JS:',j-i,'->',len(out))
+  except Exception as e:
+    print('minify skipped:',e)
 open(d+'/index.html','w',encoding='utf-8').write(s)
 PY
 T=${TMPDIR:-/tmp}/ev_main_check.js
 python3 - "$D" "$T" <<'PY'
 import sys;d=sys.argv[1];s=open(d+'/index.html',encoding='utf-8').read()
-i=s.index('"use strict"; /*@@MAIN@@*/'); j=s.rindex('</script>')
-open(sys.argv[2],'w',encoding='utf-8').write(s[i:j])
+import re
+m=re.search(r'__evParts\.push\(function\(\)\{\s*"use strict";',s); i=m.start(); j=s.rindex('</script>')
+open(sys.argv[2],'w',encoding='utf-8').write('var __evParts=[];'+s[i:j])
 PY
 node --check "$T" && echo SYNTAX_OK
 for f in lab/assets.js lab/postfx.js src/ev-net.js; do node --check "$D/$f"; done

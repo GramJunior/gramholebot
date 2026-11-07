@@ -488,7 +488,9 @@ openMap=function(){ if(G.dialog) return; const t0=performance.now(); AU.sfx('pag
   atInput($('mapScroll')); atLayout(); drawMap(); atSnap(true); atRender(); atStart(); bindPanel();
   AT.stat.open=+(performance.now()-t0).toFixed(1); };
 drawMap=function(){ if(!$('mapCv')||!$('map').classList.contains('atlas')) return; atLayout(); atScene(MAP.ch); atOverlay(); AT.dirty=1; };
-{ const _cm=closeMap; closeMap=function(){ atStop(); return _cm.apply(this,arguments); }; }
+{ const _cm=closeMap; closeMap=function(){ atStop(); atFree(); return _cm.apply(this,arguments); }; }
+// v31: закрытая карта не держит плитки (30–44 холста 512² ≈ 30–45 МБ): обзорный слой остаётся, плитки дорисуются при открытии
+function atFree(){ for(const c of AT.tiles.values()){ try{ c.width=c.height=0; }catch(e){} } AT.tiles.clear(); AT.q.length=0; }
 nodePos=function(z,s){ const C=AT_CH[z>=7?2:1]; const p=C.nodes[z]&&C.nodes[z][s-1]; return p?[p[0],p[1]]:[0,0]; };
 { const _ev=enterVillage; enterVillage=function(){ const r=_ev.apply(this,arguments); try{ atPrewarm(); }catch(e){} return r; }; }
 function atPrewarm(){ const L=[()=>{ if(!AT.sc[1]) atScene(1); }]; if(typeof chestImg==='function'&&stageDone('1-1')) for(const k of ['wood','iron','gold','leg']) L.push(()=>chestImg(k));

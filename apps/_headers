@@ -1,0 +1,23 @@
+# Cloudflare Pages: заголовки для apps/ (корень публикации). Сжатие (brotli/gzip) Pages включает сам для HTML/JS/JSON/CSS.
+# Одно правило на путь для Cache-Control: при совпадении нескольких правил Pages склеивает значения через запятую.
+
+# страницы: всегда сверяться с сервером (ETag → 304), чтобы обновление игры доходило сразу, в т.ч. в WebView Telegram
+/*.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+/emberveil/
+  Cache-Control: no-cache
+
+# движок Three.js r128 и его дополнения не меняются — кэш на год
+/emberveil/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# модели, анимации, атласы: игра запрашивает .glb с ?v=<хэш содержимого> (build.sh → EV_MANIFEST.hash), новая версия = новый адрес;
+# внешние атласы (.jpg/.png) — без хэша, поэтому неделя + фоновая перепроверка
+/emberveil/assets/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/*.glb
+  Content-Type: model/gltf-binary
+  X-Content-Type-Options: nosniff

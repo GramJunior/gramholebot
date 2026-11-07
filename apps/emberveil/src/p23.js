@@ -4,7 +4,7 @@
 function timerBar(start,end){ const tot=Math.max(1,end-start), left=Math.max(0,end-Date.now()); const p=Math.round((1-left/tot)*100); return `<div class="tbar"><i style="width:${p}%"></i><b data-end="${end}">${fmtTimer(left)}</b></div>`; }
 function fmtTimer(ms){ const s=Math.ceil(ms/1000); if(s<=0) return 'готово'; const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return h?`${h} ч ${String(m).padStart(2,'0')} мин`:m?`${m}:${String(x).padStart(2,'0')}`:`${x} с`; }
 // live countdowns in any open panel / overlay
-setInterval(()=>{ for(const b of document.querySelectorAll('[data-end]')){ const e=+b.dataset.end; b.textContent=fmtTimer(e-Date.now()); const bar=b.parentElement&&b.parentElement.querySelector('i'); if(bar&&bar.parentElement.classList.contains('tbar')&&b.dataset.start){} } },1000);
+setInterval(()=>{ if(document.hidden) return; for(const b of document.querySelectorAll('[data-end]')){ const e=+b.dataset.end; b.textContent=fmtTimer(e-Date.now()); const bar=b.parentElement&&b.parentElement.querySelector('i'); if(bar&&bar.parentElement.classList.contains('tbar')&&b.dataset.start){} } },1000);
 ADS.lim.build=4; ADS.lim.dealref=2; ADS.lim.fchest=3; ADS.lim.craft=3;
 function speedBtns(j,kind){ // kind: 'bld'|'craft'
   const left=kind==='bld'?bqLeft(j):Math.max(0,j.end-Date.now()); const p=skipPrice(left); let h='';
