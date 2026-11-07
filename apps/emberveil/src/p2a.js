@@ -103,7 +103,8 @@ function asTipTo(rig){
 function asPlay(a,name,o){ if(!o&&a.currentName===name) return; a.play(name,o||{}); }
 const HERO_ATK={slashR:0,slashL:1,overhead:1,sweep:0,shoot:0,cast:0,cast2:0};
 // v31: клип удара серии — по номеру удара в серии (топор: Axe_1 → Axe_2 → Axe_3; раньше Axe_3 не играл никогда)
-function heroAtkCombo(P,mv){ const L=typeof MOVES!=='undefined'&&MOVES[(P.rig&&P.rig.cls)||P.cls||PS.cls]; const i=L?L.indexOf(mv):-1; return i>=0?i:(HERO_ATK[mv.a]||0); }
+function heroAtkCombo(P,mv){ const cls=(P.rig&&P.rig.cls)||P.cls||PS.cls; if(cls==='axe'&&P===G.P&&P.combo>0) return (P.combo-1)%3; /* серия из 2 ударов: третий взмах цепочки — Axe_3 (добивающий) */
+  const L=typeof MOVES!=='undefined'&&MOVES[cls]; const i=L?L.indexOf(mv):-1; return i>=0?i:(HERO_ATK[mv.a]||0); }
 const RUN_NAT=3.1; // v31: скорость (м/с), под которую снят клип бега при timeScale=1 — шаг подстраивается под настоящую скорость (ноги не скользят)
 const HERO_BUSY=new Set(['attack','heavy','dash','skill','leap','cast','hit','roll','cheer','throw','use','blockAttack','castLoop','rise','summon','knock']);
 // v31: жест героя поверх покоя/бега (бросок бомбы, зелье, заклинание, подъём у костра): один клип, затем возврат в покой
@@ -129,7 +130,7 @@ function animHeroActor(P,dt){
   } else if(st==='skill'&&P.sk){
     if(R._st!=='skill'||R._sk!==P.sk){ const k=P.sk, key=k.cls+'_'+k.id, d=Math.max(.3,P.skDur||.6);
       // v31: Стойкость — удар щитом с кличем (было: блок и сразу покой), Берсерк — удар оземь (было: сжатая серия из 3 ударов),
-      // Ледяное кольцо — взмах-подъём, Метеоритный дождь — долгое заклинание (было: быстрый выстрел), Капкан — кувырок назад
+      // Ледяное кольцо — взмах-подъём, Пламя Сердца (метеоры) — долгое заклинание (было: быстрый выстрел), Капкан — кувырок назад
       let clip={sword_s1:'skill',sword_s2:'dash',sword_s3:'blockAttack',sword_ult:'heavy',axe_s1:'leap',axe_s2:'heavy',axe_s3:'heavy',axe_ult:'skill',bow_s1:'attack',bow_s2:'roll',bow_s3:'aim',bow_ult:'heavy',staff_s1:'attack',staff_s2:'heavy',staff_s3:'skill',staff_ult:'castLoop'}[key]||'skill';
       if(a.clipMap&&!a.clipMap[clip]) clip=clip==='blockAttack'?'block':clip==='castLoop'?'cast':'skill';
       R._bwBack=key==='bow_s2'?(a.clipMap&&a.clipMap.dodgeBack&&a.clipMap.dodgeBack!==a.clipMap.roll?'clip':'yaw'):null; if(R._bwBack==='clip') clip='dodgeBack';
