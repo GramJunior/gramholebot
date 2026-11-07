@@ -231,7 +231,7 @@ function v28Beetles(){ if(!_v28B&&typeof MTscarab==='undefined') return; let n=0
     const was=W.propCullAt; _cp(cx,cz,force); if(W.propCullAt===was) return;
     if(!(G.mode==='stage'||G.mode==='abyss')||W.cullAll||CAMR.override||cineTarget()) return; try{ v28PropFrustum(); }catch(e){ console.warn('v28 cull',e); } }; }
 const _v28q=new THREE.Quaternion(), _v28v=new THREE.Vector3(), _v28y=new THREE.Vector3(0,1,0), _v28sc=new THREE.Vector3();
-function v28PropFrustum(){ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P);
+function v28PropFrustum(){ if(!W||!W.propCullAt||!W.propIM) return; /* v31: до первого отсечения propCullAt ещё нет */ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P);
   const [cx,cz]=W.propCullAt; const asp=cam.aspect, xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
   for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0; const f=pfoot(t,1);
     for(const p of list){ const dx=p.x-cx, dz=p.z-cz; if(dx<-xr||dx>xr||dz<z0||dz>z1) continue; const s=p.s*(p.sy||1);

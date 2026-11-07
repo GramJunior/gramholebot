@@ -109,7 +109,8 @@ document.addEventListener('click',e=>{ try{ const t=e.target&&e.target.closest&&
 .it .slab{font-size:11px;color:rgba(240,210,160,.7)}
 .a2tag{font-size:11px;padding:0 4px;vertical-align:1px}
 .h24f small{font-size:11px}
-.ft em,.pity span,.fkl small,.lvring small{font-size:11px}
+.ft em,.pity span,.fk49r .fkl small,.lvring small{font-size:11px}
+#spirit b{font-size:max(11px,.8em)}
 .slot .lv,.it .lv{font-size:max(11px,calc(10px*var(--k,1)))}
 /* «Стужа»/«Воздух»: полоса чуть выше, подпись 11 px внутри неё по центру — не наезжает на заполнение */
 .bar.bm{height:12px}

@@ -201,7 +201,7 @@ const A9E={
   wings:()=>cgeo('a9e_wings',b=>{ for(const s of [-1,1]) for(let i=0;i<4;i++) b.box(.9-i*.16,.04,.22,i%2?0xf0e0b0:0xffffff,{p:[s*(.5+i*.08),.15-i*.12,-.12-i*.02],r:[0,s*.25,s*(.35+i*.18)],ol:i?0:1}); },.015)
 };
 const a9EnemyLook={
-  driedPriest:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xc8a870,.55); a.setGlow('#ffd27a',.3); if(QL!=='perf') try{ a.attach('back',new THREE.Mesh(A9E.bandages(),MTP)); }catch(er){} } },
+  driedPriest:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xc8a870,.55); a.setGlow('#ffd27a',.3); if(QL==='high') try{ a.attach('back',new THREE.Mesh(A9E.bandages(),MTP)); }catch(er){} } },
   duneStalker:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xb8905a,.55); try{ a.attach('head',new THREE.Mesh(A9E.scarf(),MTP)); }catch(er){} } },
   windwing:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xe8c060,.78); a.setGlow('#ffd27a',.15); } }
 };

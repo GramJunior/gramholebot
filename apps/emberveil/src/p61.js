@@ -121,7 +121,7 @@ Object.assign(ERES,{facelessTwin:{},memMoth:{fire:-1},puppeteer:{light:-.3},mute
 NO_FLEE.add('memMoth'); NO_FLEE.add('asker'); NO_FLEE.add('a10doll');
 const a10Look={
   facelessTwin:e=>{ const a=e.rig.actor; const m=new THREE.Mesh(A10E.mask(),new THREE.MeshBasicMaterial({color:0xf2f0f8})); if(a){ a.setTint(0x8a8696,.72); try{ const h=a.attach('head',m); h.position.set(0,.1,.12); h.scale.setScalar(1.6); }catch(er){} } else { (e.rig.head||e.rig.torso||e.rig.body).add(m); m.position.set(0,.2,.1); } },
-  puppeteer:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x6a6680,.62); a.setGlow('#b8a8ff',.2); if(QL!=='perf') try{ a.attach('back',new THREE.Mesh(A10E.dolls(),MTP)).position.set(0,-.3,.25); }catch(er){} } },
+  puppeteer:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x6a6680,.62); a.setGlow('#b8a8ff',.2); if(QL==='high') try{ a.attach('back',new THREE.Mesh(A10E.dolls(),MTP)).position.set(0,-.3,.25); }catch(er){} } },
   muteGiant:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x4a4858,.7); try{ a.attach('head',new THREE.Mesh(A10E.stitch(),MTP)).position.set(0,.05,.28); }catch(er){} } },
   asker:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xb8a8ff,.55); a.setGlow('#d8c8ff',.45); a.setOpacity(.62); try{ a.attach('r',new THREE.Mesh(A10E.cup(),MTP)); }catch(er){} } else { e.baseMat=MTask10; setMat(e,MTask10); } e.hover=.5; e.y=.5; },
   a10doll:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x9a96aa,.75); } else { e.baseMat=MTash10; setMat(e,MTash10); } }
