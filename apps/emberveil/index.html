@@ -10128,7 +10128,7 @@ function layout(){
   // phone in portrait: short side < 600 → ask to rotate. Tablets / desktop windows stay usable in portrait.
   const needRot=!land&&touch&&Math.min(w,h)<600;
   let k,ak;
-  if(land){ k=clamp(Math.min(h/400,w/860),.8,1.32); ak=clamp(h/440,.72,1.12); if(w>=1100&&h>=700){ ak=Math.min(ak,1.05); } }
+  if(land){ const big=w>=1280&&h>=700; k=clamp(Math.min(h/400,w/860),.8,big?1.5:1.32); ak=clamp(h/440,.72,1.12); if(w>=1100&&h>=700){ ak=Math.min(ak,1.05); } if(big) ak=clamp(h/600,1.05,touch?1.3:1.18); } // v31: на больших экранах (≥1280×700) HUD крупнее — не пустует
   else { k=clamp(w/400,.86,1.25); ak=1; }
   LAYOUT.land=land; LAYOUT.k=k; LAYOUT.ak=ak; LAYOUT.w=w; LAYOUT.h=h; LAYOUT.touch=touch;
   root.style.setProperty('--k',k.toFixed(3)); root.style.setProperty('--ak',ak.toFixed(3));
@@ -25165,6 +25165,20 @@ function mergeStaticChildren(g,mat){ if(!g||!THREE.BufferGeometryUtils) return 0
     let mg=null; try{ mg=THREE.BufferGeometryUtils.mergeBufferGeometries(geos,false); }catch(e){ mg=null; } geos.forEach(c=>c.dispose()); if(!mg) continue;
     const m=new THREE.Mesh(mg,list[0].material); m.userData.merged=list.length; g.add(m); for(const o of list) g.remove(o); n+=list.length-1; }
   return n; }
+// процедурные существа (жабошаман, пыхгриб, кабан…): детали на одной «косточке»-группе двигаются вместе — сливаем их в одну сетку
+// (на детали, на которые ссылается риг, — не трогаем: их вращают/прячут по имени). Геометрия слияния кэшируется по набору деталей.
+const RIG_MERGE=new Map();
+function mergeRig(rig){ if(!rig||!rig.root||rig.actor||!THREE.BufferGeometryUtils) return 0; const ref=new Set();
+  for(const k in rig){ const v=rig[k]; if(v&&v.isObject3D) ref.add(v); else if(Array.isArray(v)) for(const x of v) if(x&&x.isObject3D) ref.add(x); }
+  let n=0; const nodes=[]; rig.root.traverse(o=>{ if(o.children&&o.children.length>1) nodes.push(o); });
+  for(const g of nodes){ const L=g.children.filter(o=>o.isMesh&&!o.isInstancedMesh&&!o.isSkinnedMesh&&!ref.has(o)&&!o.children.length&&o.visible&&!Array.isArray(o.material)&&!o.material.transparent&&o.geometry&&o.geometry.attributes.position&&o.geometry.attributes.position.array instanceof Float32Array&&!o.userData.noMerge);
+    const by=new Map(); for(const o of L){ const k=o.material.uuid+'|'+Object.keys(o.geometry.attributes).sort().join(',')+(o.geometry.index?'i':''); if(!by.has(k)) by.set(k,[]); by.get(k).push(o); }
+    for(const list of by.values()){ if(list.length<2) continue; for(const o of list) o.updateMatrix();
+      const key=list.map(o=>o.geometry.uuid+':'+Array.from(o.matrix.elements,x=>x.toFixed(3)).join(',')).join('|');
+      let mg=RIG_MERGE.get(key); if(mg===undefined){ const geos=list.map(o=>{ const c=o.geometry.clone(); c.applyMatrix4(o.matrix); return c; }); try{ mg=THREE.BufferGeometryUtils.mergeBufferGeometries(geos,false); }catch(e){ mg=null; } geos.forEach(c=>c.dispose()); RIG_MERGE.set(key,mg); if(mg) mg.userData.keep=1; }
+      if(!mg) continue; const m=new THREE.Mesh(mg,list[0].material); g.add(m); for(const o of list) g.remove(o); n+=list.length-1; } }
+  return n; }
+{ for(const k in ENEMY_MODELS){ const f=ENEMY_MODELS[k]; ENEMY_MODELS[k]=function(){ const r=f.apply(this,arguments); try{ mergeRig(r); }catch(e){} return r; }; } }
 { const _cvd=cosVillageDeco; cosVillageDeco=function(){ const r=_cvd.apply(this,arguments); try{ if(W&&W.decoG) mergeStaticChildren(W.decoG,null); }catch(e){ console.warn('deco merge',e); } return r; }; }
 
 // ---------- сохранения: предупреждение о повреждённой летописи (см. loadGame, p1.js) ----------
@@ -25238,6 +25252,48 @@ document.addEventListener('click',e=>{ try{ const t=e.target&&e.target.closest&&
     try{ const Ld=EVAssets._S.loader, ld=Ld.load; Ld.load=function(url,onLoad,onProg,onErr){ const P=window.__evPre&&__evPre[url]; if(!P) return ld.apply(this,arguments); delete __evPre[url];
         P.then(buf=>{ if(!buf) return ld.call(Ld,url,onLoad,onProg,onErr); try{ Ld.parse(buf,THREE.LoaderUtils.extractUrlBase(url),onLoad,onErr); }catch(e){ onErr&&onErr(e); } }); }; }catch(e){ console.warn('pre',e); }
     return r; }; }
+
+// ---------- интерфейс (v31): цели касания ≥44 px на сенсорных экранах, шрифт ≥11 px, наложения HUD ----------
+(function v31Css(){ const st=document.createElement('style'); st.id='v31css'; st.textContent=`
+/* мелкие подписи: не меньше 11 px */
+.it .slab{font-size:11px;color:rgba(240,210,160,.7)}
+.a2tag{font-size:11px;padding:0 4px;vertical-align:1px}
+.h24f small{font-size:11px}
+.ft em,.pity span,.fkl small,.lvring small{font-size:11px}
+.slot .lv,.it .lv{font-size:max(11px,calc(10px*var(--k,1)))}
+/* «Стужа»/«Воздух»: полоса чуть выше, подпись 11 px внутри неё по центру — не наезжает на заполнение */
+.bar.bm{height:12px}
+.bar.bm .bmt{top:0;right:auto;left:calc(100% + 7px);font:600 11px/12px var(--sc,serif);letter-spacing:.08em;white-space:nowrap}
+/* «Ульта» не наезжает на второе умение; бомба и зелье — не меньше 44 px при любом масштабе HUD */
+#bS2{right:97px;bottom:84px}
+#bUlt{right:158px;bottom:142px}
+#bPot{width:54px;height:54px}
+#bBomb{width:54px;height:54px;left:-64px;bottom:70px}
+#acts.left #bBomb{right:-64px}
+/* карточка врага на низких экранах — у самого верха и компактно, не закрывает центр боя */
+@media (max-height:430px){ #tgtCard{top:calc(var(--st,0px) + 4px);padding:3px 9px 4px;font-size:12px;min-width:150px} #tgtCard .hpb{margin:2px 0} #tgtCard .er{font-size:11px} }
+/* задание в «плашке»-ленте: две строки вместо обрезки многоточием */
+#hQuest.slim .ftq{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25;border-radius:11px}
+/* фильтры сумки: на узких экранах у неактивных — только значок (все 5 помещаются, без прокрутки за край/вырез) */
+@media (max-width:980px){ .invbar .chip:not(.on) span{display:none} .invbar .chip:not(.on){padding:6px 11px} }
+/* «В путь» в карточке этапа всегда видна внизу прокрутки */
+#stageCard .goBtn{position:sticky;bottom:0;z-index:3;box-shadow:0 -10px 14px rgba(18,10,4,.85),0 4px 8px rgba(0,0,0,.5)}
+/* колесо: на низком экране описание мельче, но целиком */
+html.land.short .wheelSide p{font-size:13px;-webkit-line-clamp:5}
+@media (pointer:coarse){
+  #map.atlas #atCtl button{width:44px!important;height:44px!important}
+  .zs51c{width:44px;height:44px}
+  #tutO .tcf .btn{min-height:44px}
+  .seg button{min-height:44px;min-width:44px}
+  .chip{min-height:44px}
+  .invbar .chip,.chips .chip{min-height:44px}
+  .hbtn{min-width:44px;min-height:44px}
+}`; document.head.appendChild(st); })();
+// задание (#hQuest) — под полосами здоровья/стамины/«Стужи»/опыта, а не поверх; подсказка «касайтесь слева» — над меню деревни
+function v31Layout(){ try{ const q=$('hQuest'), b=$('hBars'); if(q&&q.classList.contains('slim')&&q._v31y){ q._v31y=0; q.style.removeProperty('top'); } if(q&&b&&!q.classList.contains('slim')&&getComputedStyle(q).display!=='none'){ const r=b.getBoundingClientRect(); let bot=r.bottom; for(const el of b.querySelectorAll('.bar')){ const e=el.getBoundingClientRect(); if(e.height&&e.bottom>bot) bot=e.bottom; } const qr=q.getBoundingClientRect(); for(const id of ['hPort','hLvl']){ const el=$(id); if(!el) continue; const e=el.getBoundingClientRect(); if(e.height&&e.right>qr.left&&e.left<qr.right&&e.bottom>bot) bot=e.bottom; } const pr=q.offsetParent?q.offsetParent.getBoundingClientRect().top:0; const y=Math.round(bot-pr+6); if(r.height&&Math.abs((q._v31y||0)-y)>1){ q._v31y=y; q.style.setProperty('top',y+'px','important'); } }
+    const j=$('joyHint'), m=$('hMenu'); if(j&&m){ const mr=m.getBoundingClientRect(); const jr=j.getBoundingClientRect(); const over=mr.height&&jr.height&&jr.right>mr.left&&jr.left<mr.right&&jr.bottom>mr.top&&jr.top<mr.bottom; if(over&&!j._v31){ j._v31=1; j.style.setProperty('bottom',Math.round(innerHeight-mr.top+8)+'px','important'); } else if(!mr.height&&j._v31){ j._v31=0; j.style.removeProperty('bottom'); } } }catch(e){} }
+setInterval(()=>{ if(!document.hidden) v31Layout(); },400); window.addEventListener('resize',()=>setTimeout(v31Layout,60));
+{ const _sc=stageCard; stageCard=function(){ const r=_sc.apply(this,arguments); try{ const c=$('stageCard'); const b=c&&[...c.querySelectorAll('button')].find(x=>/В путь/.test(x.textContent)); if(b) b.classList.add('goBtn'); }catch(e){} return r; }; }
 // ================= pz: boot =================
 boot();
 })();
