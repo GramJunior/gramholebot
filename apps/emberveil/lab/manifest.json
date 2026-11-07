@@ -1,0 +1,6150 @@
+{
+ "version": 1,
+ "three": "r128",
+ "base": "../assets/",
+ "files": {
+  "anim_medium": "anim/anim_medium.glb",
+  "anim_medium_extra": "anim/anim_medium_extra.glb",
+  "anim_large": "anim/anim_large.glb",
+  "hero_parts": "chars/hero_parts.glb",
+  "kit_weapons": "kits/kit_weapons.glb",
+  "kit_items": "kits/kit_items.glb",
+  "kit_nature": "kits/kit_nature.glb",
+  "kit_village": "kits/kit_village.glb",
+  "kit_dungeon": "kits/kit_dungeon.glb",
+  "kit_crypt": "kits/kit_crypt.glb",
+  "kit_weapons2": "kits/kit_weapons2.glb",
+  "kit_items2": "kits/kit_items2.glb",
+  "kit_village2": "kits/kit_village2.glb",
+  "knight": "chars/knight.glb",
+  "barbarian": "chars/barbarian.glb",
+  "mage": "chars/mage.glb",
+  "rogue": "chars/rogue.glb",
+  "rogue_hooded": "chars/rogue_hooded.glb",
+  "ranger": "chars/ranger.glb",
+  "druid": "chars/druid.glb",
+  "engineer": "chars/engineer.glb",
+  "paladin": "chars/paladin.glb",
+  "cleric": "chars/cleric.glb",
+  "ninja": "chars/ninja.glb",
+  "avian": "chars/avian.glb",
+  "tiefling": "chars/tiefling.glb",
+  "witch": "chars/witch.glb",
+  "lorekeeper": "chars/lorekeeper.glb",
+  "farmer_a": "chars/farmer_a.glb",
+  "farmer_b": "chars/farmer_b.glb",
+  "vampire": "chars/vampire.glb",
+  "werewolf": "chars/werewolf.glb",
+  "plant_warrior": "chars/plant_warrior.glb",
+  "necromancer": "chars/necromancer.glb",
+  "skel_warrior": "chars/skel_warrior.glb",
+  "skel_rogue": "chars/skel_rogue.glb",
+  "skel_mage": "chars/skel_mage.glb",
+  "skel_minion": "chars/skel_minion.glb",
+  "orc_raider": "chars/orc_raider.glb",
+  "orc_brute": "chars/orc_brute.glb",
+  "black_knight": "chars/black_knight.glb",
+  "frost_golem": "chars/frost_golem.glb",
+  "monstrosity": "chars/monstrosity.glb",
+  "skel_golem": "chars/skel_golem.glb",
+  "barbarian_large": "chars/barbarian_large.glb",
+  "pet_wolf": "chars/pet_wolf.glb",
+  "pet_drake": "chars/pet_drake.glb",
+  "pet_mush": "chars/pet_mush.glb",
+  "pet_owl": "chars/pet_owl.glb",
+  "ubc_m": "chars/ubc_m.glb",
+  "ubc_f": "chars/ubc_f.glb",
+  "anim_ual": "anim/anim_ual.glb",
+  "kit_town": "kits/kit_town.glb"
+ },
+ "groups": {
+  "core": [
+   "anim_medium",
+   "hero_parts",
+   "kit_weapons",
+   "kit_items"
+  ],
+  "village": [
+   "kit_village",
+   "kit_nature",
+   "witch",
+   "engineer",
+   "mage",
+   "druid",
+   "rogue_hooded",
+   "farmer_a",
+   "farmer_b"
+  ],
+  "village_late": [
+   "kit_village2",
+   "kit_items2",
+   "anim_medium_extra",
+   "necromancer",
+   "lorekeeper"
+  ],
+  "z1": [
+   "kit_nature",
+   "orc_raider",
+   "plant_warrior",
+   "werewolf",
+   "orc_brute",
+   "anim_large"
+  ],
+  "z2": [
+   "kit_nature",
+   "werewolf",
+   "plant_warrior",
+   "orc_raider",
+   "kit_weapons2"
+  ],
+  "z3": [
+   "kit_nature",
+   "monstrosity",
+   "witch",
+   "anim_large",
+   "kit_weapons2"
+  ],
+  "z4": [
+   "kit_dungeon",
+   "kit_crypt",
+   "skel_warrior",
+   "skel_rogue",
+   "skel_mage",
+   "rogue_hooded",
+   "black_knight",
+   "anim_medium_extra",
+   "anim_large",
+   "kit_weapons2"
+  ],
+  "z5": [
+   "kit_dungeon",
+   "kit_crypt",
+   "kit_nature",
+   "frost_golem",
+   "tiefling",
+   "rogue_hooded",
+   "skel_rogue",
+   "anim_large",
+   "kit_weapons2"
+  ],
+  "z6": [
+   "kit_dungeon",
+   "kit_crypt",
+   "frost_golem",
+   "tiefling",
+   "rogue_hooded",
+   "skel_mage",
+   "necromancer",
+   "anim_large",
+   "kit_weapons2",
+   "kit_items2"
+  ],
+  "abyss": [
+   "kit_dungeon",
+   "kit_crypt",
+   "kit_nature",
+   "orc_raider",
+   "werewolf",
+   "plant_warrior",
+   "monstrosity",
+   "skel_warrior",
+   "skel_rogue",
+   "skel_mage",
+   "rogue_hooded",
+   "frost_golem",
+   "tiefling",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2"
+  ],
+  "companions": [
+   "knight",
+   "barbarian",
+   "mage",
+   "ranger",
+   "rogue",
+   "druid",
+   "cleric",
+   "paladin",
+   "ninja",
+   "avian",
+   "tiefling",
+   "barbarian_large",
+   "kit_weapons2",
+   "anim_large"
+  ],
+  "pets": [
+   "frost_golem",
+   "anim_large",
+   "pet_wolf",
+   "pet_drake",
+   "pet_mush",
+   "pet_owl"
+  ],
+  "all": [
+   "anim_large",
+   "anim_medium",
+   "anim_medium_extra",
+   "avian",
+   "barbarian",
+   "barbarian_large",
+   "black_knight",
+   "cleric",
+   "druid",
+   "engineer",
+   "farmer_a",
+   "farmer_b",
+   "frost_golem",
+   "hero_parts",
+   "kit_crypt",
+   "kit_dungeon",
+   "kit_items",
+   "kit_items2",
+   "kit_nature",
+   "kit_village",
+   "kit_village2",
+   "kit_weapons",
+   "kit_weapons2",
+   "knight",
+   "lorekeeper",
+   "mage",
+   "monstrosity",
+   "necromancer",
+   "ninja",
+   "orc_brute",
+   "orc_raider",
+   "paladin",
+   "plant_warrior",
+   "ranger",
+   "rogue",
+   "rogue_hooded",
+   "skel_golem",
+   "skel_mage",
+   "skel_minion",
+   "skel_rogue",
+   "skel_warrior",
+   "tiefling",
+   "vampire",
+   "werewolf",
+   "witch"
+  ],
+  "z7": [
+   "kit_nature",
+   "kit_dungeon",
+   "knight",
+   "werewolf",
+   "mage",
+   "engineer",
+   "paladin",
+   "kit_weapons2",
+   "anim_large"
+  ],
+  "town": [
+   "kit_town"
+  ],
+  "z8": [
+   "kit_dungeon",
+   "kit_crypt",
+   "skel_warrior",
+   "rogue",
+   "skel_golem",
+   "vampire",
+   "monstrosity",
+   "lorekeeper",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2",
+   "kit_items2"
+  ],
+  "z9": [
+   "kit_dungeon",
+   "kit_nature",
+   "lorekeeper",
+   "ninja",
+   "avian",
+   "rogue",
+   "frost_golem",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2"
+  ],
+  "z10": [
+   "kit_dungeon",
+   "kit_crypt",
+   "farmer_a",
+   "farmer_b",
+   "necromancer",
+   "barbarian_large",
+   "witch",
+   "cleric",
+   "orc_raider",
+   "skel_warrior",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2"
+  ]
+ },
+ "rigs": {
+  "medium": {
+   "anims": [
+    "anim_medium",
+    "anim_medium_extra"
+   ]
+  },
+  "large": {
+   "anims": [
+    "anim_large"
+   ]
+  },
+  "ubc": {
+   "anims": [
+    "anim_ual"
+   ]
+  }
+ },
+ "fileRecolor": {
+  "kit_nature": [
+   {
+    "h": [
+     55,
+     150
+    ],
+    "s": [
+     0.2,
+     1
+    ],
+    "sMul": 0.78,
+    "lMul": 0.9
+   }
+  ],
+  "kit_village": [
+   {
+    "h": [
+     0.94,
+     0.045
+    ],
+    "s": [
+     0.4,
+     1
+    ],
+    "sMul": 0.4,
+    "lMul": 0.74,
+    "hShift": 0.018
+   },
+   {
+    "h": [
+     0.045,
+     0.13
+    ],
+    "s": [
+     0.55,
+     1
+    ],
+    "sMul": 0.38,
+    "lMul": 0.64
+   },
+   {
+    "h": [
+     0.13,
+     0.2
+    ],
+    "s": [
+     0.5,
+     1
+    ],
+    "sMul": 0.62,
+    "lMul": 0.9
+   },
+   {
+    "h": [
+     0.2,
+     0.48
+    ],
+    "s": [
+     0.35,
+     1
+    ],
+    "sMul": 0.6,
+    "lMul": 0.88
+   },
+   {
+    "h": [
+     0.48,
+     0.75
+    ],
+    "s": [
+     0.35,
+     1
+    ],
+    "sMul": 0.55,
+    "lMul": 0.88
+   },
+   {
+    "l": [
+     0.8,
+     1
+    ],
+    "s": [
+     0,
+     0.5
+    ],
+    "lMul": 0.86,
+    "sSet": 0.2,
+    "hSet": 0.09
+   }
+  ],
+  "kit_village2": [
+   {
+    "h": [
+     0.94,
+     0.045
+    ],
+    "s": [
+     0.4,
+     1
+    ],
+    "sMul": 0.4,
+    "lMul": 0.74,
+    "hShift": 0.018
+   },
+   {
+    "h": [
+     0.045,
+     0.13
+    ],
+    "s": [
+     0.55,
+     1
+    ],
+    "sMul": 0.38,
+    "lMul": 0.64
+   },
+   {
+    "h": [
+     0.13,
+     0.2
+    ],
+    "s": [
+     0.5,
+     1
+    ],
+    "sMul": 0.62,
+    "lMul": 0.9
+   },
+   {
+    "h": [
+     0.2,
+     0.48
+    ],
+    "s": [
+     0.35,
+     1
+    ],
+    "sMul": 0.6,
+    "lMul": 0.88
+   },
+   {
+    "h": [
+     0.48,
+     0.75
+    ],
+    "s": [
+     0.35,
+     1
+    ],
+    "sMul": 0.55,
+    "lMul": 0.88
+   },
+   {
+    "l": [
+     0.8,
+     1
+    ],
+    "s": [
+     0,
+     0.5
+    ],
+    "lMul": 0.86,
+    "sSet": 0.2,
+    "hSet": 0.09
+   }
+  ]
+ },
+ "clipsets": {
+  "medium": {
+   "idle": "Idle_A",
+   "idle2": "Idle_B",
+   "walk": "Walking_A",
+   "walkB": "Walking_B",
+   "run": "Running_A",
+   "runB": "Running_B",
+   "hit": "Hit_A",
+   "hit2": "Hit_B",
+   "death": "Death_A",
+   "death2": "Death_B",
+   "roll": "Dodge_Forward",
+   "dodgeBack": "Dodge_Backward",
+   "dodgeL": "Dodge_Left",
+   "dodgeR": "Dodge_Right",
+   "interact": "Interact",
+   "pickup": "PickUp",
+   "use": "Use_Item",
+   "throw": "Throw",
+   "jump": "Jump_Full_Short",
+   "spawn": "Spawn_Ground",
+   "spawnAir": "Spawn_Air",
+   "cast": "Ranged_Magic_Raise",
+   "castLoop": "Ranged_Magic_Spellcasting",
+   "castLong": "Ranged_Magic_Spellcasting_Long",
+   "summon": "Ranged_Magic_Summon",
+   "shoot": "Ranged_Magic_Shoot",
+   "block": "Melee_Block",
+   "blocking": "Melee_Blocking",
+   "blockHit": "Melee_Block_Hit",
+   "blockAttack": "Melee_Block_Attack",
+   "punch": "Melee_Unarmed_Attack_Punch_A",
+   "attack": [
+    "Melee_1H_Attack_Slice_Diagonal",
+    "Melee_1H_Attack_Slice_Horizontal",
+    "Melee_1H_Attack_Chop"
+   ],
+   "heavy": "Melee_1H_Attack_Jump_Chop",
+   "stab": "Melee_1H_Attack_Stab",
+   "spin": "Melee_2H_Attack_Spinning",
+   "cheer": "Cheering",
+   "wave": "Waving",
+   "sit": "Sit_Chair_Idle",
+   "sitFloor": "Sit_Floor_Idle",
+   "hammer": "Hammering",
+   "work": "Working_A",
+   "chop": "Chopping",
+   "mine": "Pickaxing",
+   "hold": "Holding_A",
+   "taunt": "Skeletons_Taunt",
+   "rise": "Skeletons_Awaken_Floor",
+   "skelSpawn": "Skeletons_Spawn_Ground",
+   "backpedal": "Walking_Backwards"
+  },
+  "large": {
+   "idle": "Idle_A",
+   "idle2": "Idle_B",
+   "walk": "Walking_A",
+   "run": "Running_A",
+   "hit": "Hit_A",
+   "death": "Death_A",
+   "roll": "Dodge_Forward",
+   "dodgeBack": "Dodge_Backwards",
+   "attack": [
+    "Melee_2H_Attack",
+    "Melee_1H_Slash",
+    "Melee_Unarmed_Punch"
+   ],
+   "heavy": "Melee_2H_Slam",
+   "slam": "Melee_2H_Slam",
+   "smash": "Melee_Unarmed_Smash",
+   "stab": "Melee_1H_Stab",
+   "kick": "Melee_Unarmed_Kick",
+   "spin": "Melee_Dualwield_SlashCombo",
+   "block": "Melee_Block",
+   "blocking": "Melee_Blocking",
+   "blockHit": "Melee_Block_Hit",
+   "taunt": "Flexing",
+   "cast": "Melee_Unarmed_Smash",
+   "summon": "Flexing",
+   "spawn": "Flexing",
+   "cheer": "Flexing",
+   "interact": "Melee_Unarmed_Punch"
+  },
+  "sword": {
+   "idle": "Idle_A",
+   "attack": [
+    "Melee_1H_Attack_Slice_Diagonal",
+    "Melee_1H_Attack_Slice_Horizontal",
+    "Melee_1H_Attack_Stab"
+   ],
+   "heavy": "Melee_1H_Attack_Jump_Chop",
+   "skill": "Melee_2H_Attack_Spinning",
+   "dash": "Melee_Block_Attack"
+  },
+  "axe": {
+   "idle": "Melee_2H_Idle",
+   "attack": [
+    "Melee_2H_Attack_Slice",
+    "Melee_2H_Attack_Chop",
+    "Melee_2H_Attack_Stab"
+   ],
+   "heavy": "Melee_2H_Attack_Chop",
+   "skill": "Melee_2H_Attack_Spin",
+   "leap": "Jump_Full_Short"
+  },
+  "bow": {
+   "idle": "Ranged_Bow_Idle",
+   "run": "Running_HoldingBow",
+   "attack": [
+    "Ranged_Bow_Release"
+   ],
+   "aim": "Ranged_Bow_Draw",
+   "aimIdle": "Ranged_Bow_Aiming_Idle",
+   "skill": "Ranged_Bow_Release",
+   "heavy": "Ranged_Bow_Draw"
+  },
+  "staff": {
+   "idle": "Idle_A",
+   "attack": [
+    "Ranged_Magic_Shoot"
+   ],
+   "heavy": "Ranged_Magic_Raise",
+   "skill": "Ranged_Magic_Spellcasting_Long",
+   "cast": "Ranged_Magic_Raise"
+  },
+  "caster": {
+   "attack": [
+    "Ranged_Magic_Shoot"
+   ],
+   "heavy": "Ranged_Magic_Summon",
+   "idle": "Idle_B"
+  },
+  "archer": {
+   "attack": [
+    "Ranged_Bow_Release"
+   ],
+   "idle": "Ranged_Bow_Idle",
+   "run": "Running_HoldingBow",
+   "aim": "Ranged_Bow_Draw"
+  },
+  "crossbow": {
+   "attack": [
+    "Ranged_2H_Shoot"
+   ],
+   "idle": "Idle_A"
+  },
+  "skeleton": {
+   "walk": "Skeletons_Walking",
+   "spawn": "Skeletons_Spawn_Ground",
+   "death": "Death_B",
+   "taunt": "Skeletons_Taunt",
+   "rise": "Skeletons_Awaken_Floor"
+  },
+  "npc": {
+   "idle": "Idle_B",
+   "talk": "Interact"
+  },
+  "smith": {
+   "idle": "Idle_B",
+   "work": "Hammering",
+   "talk": "Interact"
+  },
+  "brute2h": {
+   "idle": "Melee_2H_Idle",
+   "attack": [
+    "Melee_2H_Attack_Chop",
+    "Melee_2H_Attack_Slice"
+   ],
+   "heavy": "Melee_2H_Attack_Spin"
+  },
+  "unarmed": {
+   "idle": "Melee_Unarmed_Idle",
+   "attack": [
+    "Melee_Unarmed_Attack_Punch_A",
+    "Melee_Unarmed_Attack_Kick"
+   ]
+  },
+  "largeUnarmed": {
+   "idle": "Melee_Unarmed_Idle",
+   "attack": [
+    "Melee_Unarmed_Punch",
+    "Melee_Unarmed_Kick",
+    "Melee_Unarmed_Smash"
+   ],
+   "happy": "Melee_Unarmed_Idle"
+  },
+  "petAnimal": {
+   "idle": "Idle",
+   "run": "Gallop",
+   "walk": "Walk",
+   "attack": "Attack",
+   "happy": "Gallop_Jump",
+   "ability": "Attack"
+  },
+  "petFly": {
+   "idle": "Flying_Idle",
+   "run": "Fast_Flying",
+   "walk": "Flying_Idle",
+   "attack": "Headbutt",
+   "happy": "Yes",
+   "ability": "Headbutt",
+   "hit": "HitReact"
+  },
+  "petBlob": {
+   "idle": "Idle",
+   "run": "Walk",
+   "walk": "Walk",
+   "attack": "Bite_Front",
+   "happy": "Dance",
+   "ability": "Jump",
+   "hit": "HitRecieve"
+  },
+  "ubc": {
+   "idle": "Idle_Loop",
+   "idle2": "Idle_FoldArms_Loop",
+   "walk": "Walk_Loop",
+   "walkB": "Walk_Formal_Loop",
+   "run": "Jog_Fwd_Loop",
+   "runB": "Sprint_Loop",
+   "sprint": "Sprint_Loop",
+   "hit": "Hit_Chest",
+   "hit2": "Hit_Head",
+   "knock": "Hit_Knockback",
+   "death": "Death01",
+   "death2": "Death01",
+   "roll": "Roll",
+   "dodgeBack": "Roll",
+   "interact": "Interact",
+   "pickup": "PickUp_Table",
+   "use": "Consume",
+   "throw": "OverhandThrow",
+   "jump": "NinjaJump_Start",
+   "land": "NinjaJump_Land",
+   "spawn": "LayToIdle",
+   "spawnAir": "NinjaJump_Land",
+   "rise": "LayToIdle",
+   "skelSpawn": "LayToIdle",
+   "cast": "Spell_Simple_Shoot",
+   "castLoop": "Spell_Simple_Idle_Loop",
+   "castLong": "Spell_Simple_Idle_Loop",
+   "summon": "Spell_Simple_Enter",
+   "shoot": "Spell_Simple_Shoot",
+   "block": "Sword_Block",
+   "blocking": "Idle_Shield_Loop",
+   "blockHit": "Idle_Shield_Break",
+   "blockAttack": "Shield_OneShot",
+   "punch": "Punch_Jab",
+   "attack": [
+    "Punch_Jab",
+    "Punch_Cross"
+   ],
+   "heavy": "Melee_Hook",
+   "stab": "Punch_Jab",
+   "spin": "Sword_Regular_C",
+   "cheer": "Yes",
+   "wave": "Idle_Rail_Call",
+   "sit": "Sitting_Idle_Loop",
+   "sitFloor": "Crouch_Idle_Loop",
+   "hammer": "TreeChopping_Loop",
+   "work": "Fixing_Kneeling",
+   "chop": "TreeChopping_Loop",
+   "mine": "TreeChopping_Loop",
+   "hold": "Idle_Lantern_Loop",
+   "taunt": "Idle_No_Loop",
+   "talk": "Idle_Talking_Loop",
+   "backpedal": "Walk_Loop",
+   "dash": "Sword_Dash",
+   "leap": "NinjaJump_Start",
+   "skill": "Sword_Regular_C",
+   "aim": "Pistol_Aim_Neutral",
+   "harvest": "Farm_Harvest",
+   "plant": "Farm_PlantSeed",
+   "water": "Farm_Watering",
+   "carry": "Walk_Carry_Loop",
+   "torch": "Idle_Torch_Loop",
+   "push": "Push_Loop",
+   "yes": "Yes",
+   "no": "Idle_No_Loop"
+  },
+  "u_sword": {
+   "idle": "Sword_Idle",
+   "attack": [
+    "Sword_Regular_A",
+    "Sword_Regular_B",
+    "Sword_Attack"
+   ],
+   "heavy": "Sword_Attack",
+   "skill": "Sword_Regular_C",
+   "dash": "Sword_Dash",
+   "block": "Sword_Block"
+  },
+  "u_axe": {
+   "idle": "Sword_Idle",
+   "attack": [
+    "Axe_1",
+    "Axe_2",
+    "Axe_3"
+   ],
+   "heavy": "Slam",
+   "skill": "Sword_Heavy_Combo",
+   "leap": "NinjaJump_Start",
+   "dash": "Shield_Dash"
+  },
+  "u_bow": {
+   "idle": "Idle_Loop",
+   "attack": [
+    "Bow_Shot"
+   ],
+   "aim": "Bow_Draw",
+   "aimIdle": "Bow_Hold",
+   "heavy": "Bow_Shot",
+   "skill": "Bow_Shot"
+  },
+  "u_staff": {
+   "idle": "Idle_Loop",
+   "attack": [
+    "Spell_Simple_Shoot"
+   ],
+   "heavy": "Spell_Simple_Enter",
+   "skill": "Spell_Simple_Shoot",
+   "cast": "Spell_Simple_Shoot"
+  },
+  "u_caster": {
+   "attack": [
+    "Spell_Simple_Shoot"
+   ],
+   "heavy": "Spell_Simple_Enter",
+   "idle": "Spell_Simple_Idle_Loop"
+  },
+  "u_npc": {
+   "idle": "Idle_Loop",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_smith": {
+   "idle": "Idle_Loop",
+   "work": "TreeChopping_Loop",
+   "hammer": "TreeChopping_Loop",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_alch": {
+   "idle": "Idle_Loop",
+   "work": "Consume",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_farmer": {
+   "idle": "Idle_Loop",
+   "work": "Farm_Harvest",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_guard": {
+   "idle": "Idle_Torch_Loop",
+   "talk": "Idle_Talking_Loop"
+  },
+  "u_king": {
+   "idle": "Idle_FoldArms_Loop",
+   "talk": "Idle_Talking_Loop",
+   "cast": "Spell_Simple_Shoot"
+  },
+  "u_brute": {
+   "idle": "Sword_Idle",
+   "attack": [
+    "Sword_Regular_A",
+    "Sword_Attack",
+    "Axe_2"
+   ],
+   "heavy": "Slam",
+   "spin": "Axe_1",
+   "taunt": "Idle_No_Loop"
+  },
+  "u_archer": {
+   "attack": [
+    "Bow_Shot"
+   ],
+   "idle": "Idle_Loop",
+   "aim": "Bow_Draw"
+  }
+ },
+ "glow": {
+  "fire": "#ff6a1a",
+  "ice": "#6fd8ff",
+  "poison": "#8ae03a",
+  "light": "#f6e85a"
+ },
+ "zones": {
+  "meadow": {
+   "zone": 1,
+   "fog": "#cfe3c2",
+   "fogN": 42,
+   "fogF": 110,
+   "hemi": [
+    "#fff4d8",
+    "#7a9a4a",
+    0.85
+   ],
+   "sun": [
+    "#fff0c8",
+    1.0
+   ],
+   "rim": "#fff0c8",
+   "ground": "#8cc05a",
+   "grade": {
+    "lift": [
+     0,
+     0,
+     0
+    ],
+    "gamma": [
+     1,
+     1,
+     1
+    ],
+    "gain": [
+     1.0,
+     0.98,
+     0.94
+    ],
+    "sat": 1.04,
+    "contrast": 1.08,
+    "vignette": 0.45,
+    "bloom": 0.22,
+    "bloomTh": 0.9
+   }
+  },
+  "forest": {
+   "zone": 2,
+   "fog": "#6a8a5a",
+   "fogN": 34,
+   "fogF": 90,
+   "hemi": [
+    "#ffe0a0",
+    "#2a4a2a",
+    0.75
+   ],
+   "sun": [
+    "#ffd890",
+    0.95
+   ],
+   "rim": "#ffe0a0",
+   "ground": "#4a7a32",
+   "grade": {
+    "lift": [
+     0,
+     0.005,
+     0
+    ],
+    "gamma": [
+     1.0,
+     0.99,
+     1.0
+    ],
+    "gain": [
+     1.0,
+     1.02,
+     0.94
+    ],
+    "sat": 1.04,
+    "contrast": 1.08,
+    "vignette": 0.5,
+    "bloom": 0.28,
+    "bloomTh": 0.86
+   }
+  },
+  "swamp": {
+   "zone": 3,
+   "fog": "#4a5a48",
+   "fogN": 26,
+   "fogF": 72,
+   "hemi": [
+    "#c8d8b0",
+    "#2a3a2a",
+    0.7
+   ],
+   "sun": [
+    "#d8e0b0",
+    0.7
+   ],
+   "rim": "#b8e8a0",
+   "ground": "#4a5a32",
+   "grade": {
+    "lift": [
+     0,
+     0.01,
+     0
+    ],
+    "gamma": [
+     1.02,
+     1.0,
+     1.02
+    ],
+    "gain": [
+     1.02,
+     1.06,
+     0.98
+    ],
+    "sat": 1.0,
+    "contrast": 1.06,
+    "vignette": 0.55,
+    "bloom": 0.32,
+    "bloomTh": 0.8
+   }
+  },
+  "crypt": {
+   "zone": 4,
+   "fog": "#2a2a3e",
+   "fogN": 24,
+   "fogF": 66,
+   "hemi": [
+    "#9ab0e8",
+    "#2a2030",
+    0.8
+   ],
+   "sun": [
+    "#a0b8ff",
+    0.7
+   ],
+   "rim": "#9ab8ff",
+   "ground": "#4a4856",
+   "grade": {
+    "lift": [
+     0,
+     0,
+     0.02
+    ],
+    "gamma": [
+     1.0,
+     1.0,
+     0.98
+    ],
+    "gain": [
+     0.94,
+     0.98,
+     1.08
+    ],
+    "sat": 0.98,
+    "contrast": 1.08,
+    "vignette": 0.6,
+    "bloom": 0.4,
+    "bloomTh": 0.78
+   }
+  },
+  "ashlands": {
+   "zone": 5,
+   "fog": "#4a2a22",
+   "fogN": 26,
+   "fogF": 70,
+   "hemi": [
+    "#ffa070",
+    "#2a1010",
+    0.75
+   ],
+   "sun": [
+    "#ff9a5a",
+    0.9
+   ],
+   "rim": "#ffa070",
+   "ground": "#3a3230",
+   "grade": {
+    "lift": [
+     0.01,
+     0,
+     0
+    ],
+    "gamma": [
+     0.98,
+     1.0,
+     1.04
+    ],
+    "gain": [
+     1.06,
+     0.97,
+     0.9
+    ],
+    "sat": 1.04,
+    "contrast": 1.08,
+    "vignette": 0.58,
+    "bloom": 0.42,
+    "bloomTh": 0.76
+   }
+  },
+  "lair": {
+   "zone": 6,
+   "fog": "#2a0a0a",
+   "fogN": 22,
+   "fogF": 64,
+   "hemi": [
+    "#ff8a5a",
+    "#2a0a0a",
+    0.8
+   ],
+   "sun": [
+    "#ff7a4a",
+    0.95
+   ],
+   "rim": "#ff8a5a",
+   "ground": "#3a2222",
+   "grade": {
+    "lift": [
+     0.02,
+     0,
+     0
+    ],
+    "gamma": [
+     0.97,
+     1.0,
+     1.05
+    ],
+    "gain": [
+     1.06,
+     0.95,
+     0.9
+    ],
+    "sat": 1.04,
+    "contrast": 1.08,
+    "vignette": 0.62,
+    "bloom": 0.45,
+    "bloomTh": 0.74
+   }
+  },
+  "village": {
+   "zone": 0,
+   "fog": "#d8e4c8",
+   "fogN": 48,
+   "fogF": 120,
+   "hemi": [
+    "#fff4d8",
+    "#7a8a4a",
+    0.85
+   ],
+   "sun": [
+    "#fff0c8",
+    1.0
+   ],
+   "rim": "#fff0c8",
+   "ground": "#86b85a",
+   "grade": {
+    "lift": [
+     0,
+     0,
+     0
+    ],
+    "gamma": [
+     1,
+     1,
+     1.01
+    ],
+    "gain": [
+     1.0,
+     0.99,
+     0.94
+    ],
+    "sat": 1.04,
+    "contrast": 1.08,
+    "vignette": 0.42,
+    "bloom": 0.2,
+    "bloomTh": 0.92
+   }
+  }
+ },
+ "entities": {
+  "hero": {
+   "type": "hero",
+   "file": "hero_parts",
+   "rig": "medium",
+   "h": 2.1,
+   "base": {
+    "head": "head_knight",
+    "body": "body_tunic",
+    "armL": "armL_leather",
+    "armR": "armR_leather",
+    "legL": "legL_leather",
+    "legR": "legR_leather",
+    "cape": "cape_red"
+   },
+   "helm": {
+    "hm_hood": {
+     "replaceHead": "head_hood",
+     "parts": [
+      "mask_hood"
+     ]
+    },
+    "hm_guard": {
+     "parts": [
+      "helm_guard"
+     ]
+    },
+    "hm_horn": {
+     "parts": [
+      "helm_horn"
+     ]
+    },
+    "hm_circ": {
+     "parts": [
+      "helm_circ"
+     ]
+    },
+    "hm_crown": {
+     "parts": [
+      "helm_crown"
+     ]
+    },
+    "hm_wizard": {
+     "parts": [
+      "helm_wizard"
+     ]
+    },
+    "hm_paladin": {
+     "hideHead": true,
+     "parts": [
+      "helm_paladin"
+     ]
+    },
+    "hm_bear": {
+     "parts": [
+      "helm_bear"
+     ]
+    }
+   },
+   "chest": {
+    "ch_cloth0": "body_tunic",
+    "ch_cloth": "body_cloth",
+    "ch_mail": "body_mail",
+    "ch_plate": "body_plate",
+    "ch_robe": "body_robe",
+    "ch_bare": "body_bare"
+   },
+   "chestCape": {
+    "ch_cloth0": "cape_red",
+    "ch_cloth": "cape_blue",
+    "ch_mail": "cape_red",
+    "ch_plate": "cape_paladin",
+    "ch_robe": "cape_mage"
+   },
+   "gloves": {
+    "gl_leather": [
+     "armL_leather",
+     "armR_leather"
+    ],
+    "gl_plate": [
+     "armL_plate",
+     "armR_plate"
+    ],
+    "gl_mage": [
+     "armL_mage",
+     "armR_mage"
+    ],
+    "gl_mail": [
+     "armL_mail",
+     "armR_mail"
+    ]
+   },
+   "boots": {
+    "bt_leather": [
+     "legL_leather",
+     "legR_leather"
+    ],
+    "bt_plate": [
+     "legL_plate",
+     "legR_plate"
+    ],
+    "bt_cloth": [
+     "legL_cloth",
+     "legR_cloth"
+    ],
+    "bt_heavy": [
+     "legL_heavy",
+     "legR_heavy"
+    ]
+   },
+   "weapons": {
+    "sw0": {
+     "cls": "sword",
+     "r": "w_sword_wood"
+    },
+    "sw1": {
+     "cls": "sword",
+     "r": "w_sword_1h"
+    },
+    "sw2": {
+     "cls": "sword",
+     "r": "w_sword_broad"
+    },
+    "sw3": {
+     "cls": "sword",
+     "r": "w_sword_flame",
+     "glow": "fire"
+    },
+    "ax1": {
+     "cls": "axe",
+     "r": "w_axe_2h"
+    },
+    "ax2": {
+     "cls": "axe",
+     "r": "w_hammer"
+    },
+    "ax3": {
+     "cls": "axe",
+     "r": "w_axe_spiked",
+     "glow": "fire"
+    },
+    "bw1": {
+     "cls": "bow",
+     "l": "w_bow_short"
+    },
+    "bw2": {
+     "cls": "bow",
+     "l": "w_bow_long"
+    },
+    "bw3": {
+     "cls": "bow",
+     "l": "w_bow_horn"
+    },
+    "st1": {
+     "cls": "staff",
+     "r": "w_staff_branch"
+    },
+    "st2": {
+     "cls": "staff",
+     "r": "w_staff_crystal",
+     "glow": "ice"
+    },
+    "st3": {
+     "cls": "staff",
+     "r": "w_staff_skull",
+     "glow": "poison"
+    }
+   },
+   "offhand": {
+    "sh1": {
+     "l": "w_shield_round"
+    },
+    "sh2": {
+     "l": "w_shield_kite"
+    },
+    "sh3": {
+     "l": "w_shield_tower"
+    },
+    "qv1": {
+     "back": "back_quiver"
+    },
+    "tm1": {
+     "l": "w_tome"
+    },
+    "or1": {
+     "l": "@orb"
+    }
+   },
+   "lookParts": [
+    "head_knight",
+    "head_hood",
+    "head_rogue",
+    "head_ranger"
+   ],
+   "looks": [
+    {
+     "recolor": [
+      {
+       "h": [
+        27,
+        38
+       ],
+       "s": [
+        0.4,
+        0.72
+       ],
+       "l": [
+        0.45,
+        0.85
+       ],
+       "hSet": 14,
+       "sSet": 0.62,
+       "lMul": 0.62
+      }
+     ]
+    },
+    {
+     "recolor": [
+      {
+       "h": [
+        27,
+        38
+       ],
+       "s": [
+        0.4,
+        0.72
+       ],
+       "l": [
+        0.45,
+        0.85
+       ],
+       "hSet": 22,
+       "sSet": 0.3,
+       "lMul": 0.25
+      },
+      {
+       "h": [
+        17,
+        28
+       ],
+       "s": [
+        0.74,
+        0.96
+       ],
+       "l": [
+        0.6,
+        0.9
+       ],
+       "lMul": 0.72,
+       "sMul": 0.8
+      }
+     ]
+    },
+    {
+     "recolor": [
+      {
+       "h": [
+        27,
+        38
+       ],
+       "s": [
+        0.4,
+        0.72
+       ],
+       "l": [
+        0.45,
+        0.85
+       ],
+       "hSet": 45,
+       "sSet": 0.45,
+       "lMul": 1.2
+      }
+     ]
+    }
+   ]
+  },
+  "goblin": {
+   "type": "char",
+   "file": "orc_raider",
+   "rig": "medium",
+   "h": 1.45,
+   "r": "e_orc_axe",
+   "clips": "medium",
+   "recolor": [
+    {
+     "h": [
+      60,
+      160
+     ],
+     "hShift": 12,
+     "sMul": 0.9,
+     "lMul": 0.85
+    }
+   ],
+   "note": "Orc Raider scaled down as a goblin"
+  },
+  "goblinArcher": {
+   "type": "char",
+   "file": "orc_raider",
+   "rig": "medium",
+   "h": 1.4,
+   "l": "w_bow_short",
+   "clips": "archer",
+   "hide": [
+    "Orc_Warpack"
+   ],
+   "tint": [
+    "#c8a060",
+    0.12
+   ]
+  },
+  "boar": {
+   "type": "procedural",
+   "note": "no quadruped boar in CC0 KayKit packs — keep ENEMY_MODELS.boar"
+  },
+  "mushroom": {
+   "type": "procedural",
+   "note": "keep ENEMY_MODELS.mushroom (exploder); kit_items has no mushroom creature"
+  },
+  "wolf": {
+   "type": "char",
+   "file": "werewolf",
+   "rig": "medium",
+   "h": 1.9,
+   "clips": "unarmed",
+   "recolor": [
+    {
+     "h": [
+      340,
+      20
+     ],
+     "s": [
+      0.4,
+      1
+     ],
+     "hShift": 200,
+     "sMul": 0.25,
+     "lMul": 0.55
+    }
+   ],
+   "note": "werewolf, red shirt recoloured to dark grey"
+  },
+  "sapling": {
+   "type": "char",
+   "file": "plant_warrior",
+   "rig": "medium",
+   "h": 2.6,
+   "r": "e_plant_spear",
+   "clips": "brute2h",
+   "tint": [
+    "#6a4528",
+    0.25
+   ]
+  },
+  "bogling": {
+   "type": "char",
+   "file": "monstrosity",
+   "rig": "large",
+   "h": 2.3,
+   "r": "e_pitchfork_large",
+   "clips": "largeUnarmed",
+   "tint": [
+    "#3a7454",
+    0.45
+   ]
+  },
+  "toad": {
+   "type": "procedural",
+   "note": "keep ENEMY_MODELS.toad (frog shaman)"
+  },
+  "skelShield": {
+   "type": "char",
+   "file": "skel_warrior",
+   "rig": "medium",
+   "h": 2.0,
+   "r": "e_skel_blade",
+   "l": "e_skel_shield",
+   "clips": "skeleton"
+  },
+  "skelArcher": {
+   "type": "char",
+   "file": "skel_rogue",
+   "rig": "medium",
+   "h": 1.95,
+   "r": "e_skel_crossbow",
+   "clips": "crossbow+skeleton"
+  },
+  "wraith": {
+   "type": "char",
+   "file": "skel_mage",
+   "rig": "medium",
+   "h": 2.1,
+   "r": "w_staff_skull",
+   "clips": "caster",
+   "mat": "ghost",
+   "glow": "#6fd8ff",
+   "hover": 0.35
+  },
+  "cultist": {
+   "type": "char",
+   "file": "rogue_hooded",
+   "rig": "medium",
+   "h": 2.0,
+   "r": "e_skel_dagger",
+   "clips": "caster",
+   "recolor": [
+    {
+     "h": [
+      100,
+      200
+     ],
+     "hShift": -150,
+     "sMul": 0.9,
+     "lMul": 0.6
+    }
+   ],
+   "tint": [
+    "#6a1a1a",
+    0.15
+   ],
+   "glow": "#ff6a1a"
+  },
+  "ashGolem": {
+   "type": "char",
+   "file": "frost_golem",
+   "rig": "large",
+   "h": 2.6,
+   "clips": "largeUnarmed",
+   "mat": "lava",
+   "note": "Frost Golem re-skinned: dark basalt + lava glow"
+  },
+  "imp": {
+   "type": "char",
+   "file": "tiefling",
+   "rig": "medium",
+   "h": 1.35,
+   "r": "e_tiefling_sword",
+   "clips": "medium",
+   "tint": [
+    "#d8401e",
+    0.25
+   ]
+  },
+  "whelp": {
+   "type": "procedural",
+   "note": "keep ENEMY_MODELS.whelp (wyvern flyer); option: vampire with wings",
+   "alt": "vampire"
+  },
+  "gobKing": {
+   "type": "char",
+   "file": "orc_brute",
+   "rig": "large",
+   "h": 3.4,
+   "r": "e_orc_axe_large",
+   "clips": "large",
+   "boss": true
+  },
+  "rotroot": {
+   "type": "char",
+   "file": "plant_warrior",
+   "rig": "medium",
+   "h": 4.2,
+   "r": "e_plant_spear",
+   "l": "e_plant_shield",
+   "clips": "brute2h",
+   "boss": true,
+   "tint": [
+    "#3a2a18",
+    0.35
+   ]
+  },
+  "bogMother": {
+   "type": "char",
+   "file": "witch",
+   "rig": "medium",
+   "h": 3.6,
+   "r": "e_broom",
+   "clips": "caster",
+   "boss": true,
+   "recolor": [
+    {
+     "h": [
+      20,
+      50
+     ],
+     "hShift": 70,
+     "sMul": 0.8,
+     "lMul": 0.7
+    }
+   ],
+   "tint": [
+    "#3a5a2a",
+    0.15
+   ]
+  },
+  "morven": {
+   "type": "char",
+   "file": "black_knight",
+   "rig": "large",
+   "h": 3.0,
+   "r": "e_bk_sword",
+   "l": "e_bk_shield",
+   "clips": "large",
+   "boss": true,
+   "tint": [
+    "#9ab8ff",
+    0.18
+   ],
+   "glow": "#6fd8ff"
+  },
+  "colossus": {
+   "type": "char",
+   "file": "frost_golem",
+   "rig": "large",
+   "h": 4.6,
+   "clips": "largeUnarmed",
+   "mat": "lava",
+   "boss": true
+  },
+  "dragon": {
+   "type": "procedural",
+   "note": "no dragon in CC0 KayKit packs — keep BOSS_MODELS.dragon (+ new toon shading)"
+  },
+  "ashKing": {
+   "type": "char",
+   "file": "necromancer",
+   "rig": "medium",
+   "h": 3.0,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "boss": true,
+   "tint": [
+    "#ff6a1a",
+    0.18
+   ],
+   "glow": "#ff6a1a"
+  },
+  "elder": {
+   "type": "char",
+   "file": "witch",
+   "rig": "medium",
+   "h": 1.9,
+   "clips": "npc",
+   "hide": [
+    "Witch_Hat"
+   ],
+   "recolor": [
+    {
+     "h": [
+      354,
+      13
+     ],
+     "s": [
+      0.42,
+      0.88
+     ],
+     "l": [
+      0.42,
+      0.76
+     ],
+     "sMul": 0.07,
+     "lMul": 1.22
+    }
+   ],
+   "note": "Ведана: witch without hat, hair recoloured grey, glasses kept"
+  },
+  "smith": {
+   "type": "char",
+   "file": "engineer",
+   "rig": "medium",
+   "h": 2.1,
+   "r": "t_hammer",
+   "clips": "smith",
+   "note": "Горан: red beard + goggles"
+  },
+  "alch": {
+   "type": "char",
+   "file": "mage",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "npc",
+   "r": "w_wand_orb",
+   "recolor": [
+    {
+     "h": [
+      180,
+      260
+     ],
+     "s": [
+      0,
+      0.5
+     ],
+     "l": [
+      0.03,
+      0.3
+     ],
+     "hSet": 280,
+     "sSet": 0.6,
+     "lMul": 2.4
+    }
+   ],
+   "note": "Мира: mage, dark hair recoloured purple"
+  },
+  "beast": {
+   "type": "char",
+   "file": "druid",
+   "rig": "medium",
+   "h": 1.8,
+   "clips": "npc",
+   "note": "Ойка: druid (antler hood)"
+  },
+  "stranger": {
+   "type": "char",
+   "file": "rogue_hooded",
+   "rig": "medium",
+   "h": 2.15,
+   "clips": "npc",
+   "recolor": [
+    {
+     "h": [
+      100,
+      200
+     ],
+     "sMul": 0.08,
+     "lMul": 0.7
+    }
+   ],
+   "note": "Серый: grey hooded rogue"
+  },
+  "king": {
+   "type": "char",
+   "file": "necromancer",
+   "rig": "medium",
+   "h": 2.3,
+   "r": "e_lore_staff",
+   "clips": "npc",
+   "tint": [
+    "#3a1010",
+    0.25
+   ],
+   "glow": "#ff6a1a",
+   "glowA": 0.25
+  },
+  "v0": {
+   "type": "char",
+   "file": "farmer_a",
+   "rig": "medium",
+   "h": 1.9,
+   "clips": "npc"
+  },
+  "v1": {
+   "type": "char",
+   "file": "farmer_b",
+   "rig": "medium",
+   "h": 1.85,
+   "clips": "npc"
+  },
+  "v2": {
+   "type": "char",
+   "file": "farmer_a",
+   "rig": "medium",
+   "h": 1.8,
+   "clips": "npc",
+   "hide": [
+    "Farmer_A_Hat"
+   ],
+   "recolor": [
+    {
+     "h": [
+      190,
+      230
+     ],
+     "hShift": -160,
+     "sMul": 0.8
+    }
+   ]
+  },
+  "v3": {
+   "type": "char",
+   "file": "lorekeeper",
+   "rig": "medium",
+   "h": 1.8,
+   "clips": "npc",
+   "hide": [
+    "Lorekeeper_Backpack"
+   ],
+   "note": "old villager (extra, not in the first-load group)"
+  },
+  "comp:knight": {
+   "type": "char",
+   "file": "knight",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_sword_1h",
+   "l": "w_shield_kite"
+  },
+  "comp:barbarian": {
+   "type": "char",
+   "file": "barbarian",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "axe",
+   "r": "w_axe_2h"
+  },
+  "comp:mage": {
+   "type": "char",
+   "file": "mage",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "staff",
+   "r": "w_staff_crystal"
+  },
+  "comp:ranger": {
+   "type": "char",
+   "file": "ranger",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "bow",
+   "l": "w_bow_long"
+  },
+  "comp:rogue": {
+   "type": "char",
+   "file": "rogue",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_dagger",
+   "l": "w_dagger"
+  },
+  "comp:druid": {
+   "type": "char",
+   "file": "druid",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "staff",
+   "r": "w_staff_branch"
+  },
+  "comp:cleric": {
+   "type": "char",
+   "file": "cleric",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_cleric_mace",
+   "l": "w_shield_round"
+  },
+  "comp:paladin": {
+   "type": "char",
+   "file": "paladin",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "axe",
+   "r": "w_hammer"
+  },
+  "comp:ninja": {
+   "type": "char",
+   "file": "ninja",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_katana"
+  },
+  "comp:avian": {
+   "type": "char",
+   "file": "avian",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_sword_long",
+   "l": "w_shield_heater"
+  },
+  "comp:tiefling": {
+   "type": "char",
+   "file": "tiefling",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "e_tiefling_sword"
+  },
+  "comp:brute": {
+   "type": "char",
+   "file": "barbarian_large",
+   "rig": "large",
+   "h": 2.5,
+   "clips": "large",
+   "r": "e_golem_axe"
+  },
+  "pet:golem": {
+   "type": "char",
+   "file": "frost_golem",
+   "rig": "large",
+   "h": 1.0,
+   "clips": "largeUnarmed",
+   "mat": "stone",
+   "glow": "#5af0d0",
+   "glowA": 0.5,
+   "note": "tiny re-skinned golem (teal crystal glow like the egg colours)"
+  },
+  "pet:wolf": {
+   "type": "char",
+   "file": "pet_wolf",
+   "rig": "pet_wolf",
+   "h": 0.78,
+   "clips": "petAnimal",
+   "src": "Quaternius Ultimate Animated Animals (CC0)",
+   "note": "v13: wolf pup"
+  },
+  "pet:sala": {
+   "type": "procedural",
+   "note": "keep buildPet('sala')"
+  },
+  "pet:owl": {
+   "type": "char",
+   "file": "pet_owl",
+   "rig": "pet_owl",
+   "h": 0.95,
+   "clips": "petFly",
+   "src": "Quaternius Ultimate Monsters — Pigeon (CC0), owl tufts added in game",
+   "hover": -0.5
+  },
+  "pet:fairy": {
+   "type": "procedural",
+   "note": "keep buildPet('fairy')"
+  },
+  "pet:mush": {
+   "type": "char",
+   "file": "pet_mush",
+   "rig": "pet_mush",
+   "h": 0.75,
+   "clips": "petBlob",
+   "recolor": [
+    {
+     "h": [
+      175,
+      215
+     ],
+     "s": [
+      0.2,
+      1
+     ],
+     "hSet": 282,
+     "sMul": 1.05
+    }
+   ],
+   "src": "Quaternius Ultimate Monsters — Mushnub (CC0)"
+  },
+  "pet:drake": {
+   "type": "char",
+   "file": "pet_drake",
+   "rig": "pet_drake",
+   "h": 1.05,
+   "hover": 0.0,
+   "clips": "petFly",
+   "src": "Quaternius Ultimate Monsters — Dragon_Evolved (CC0)"
+  },
+  "treeRound": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_round",
+   "s": 0.849
+  },
+  "treeBirch": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_tall",
+   "s": 0.775
+  },
+  "bush": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "bush",
+   "s": 3.52
+  },
+  "rock": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock",
+   "s": 1.4
+  },
+  "fence": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "fence_wood_straight",
+   "s": 1.6
+  },
+  "hay": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_haybale",
+   "s": 2.6
+  },
+  "grass": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "grass",
+   "s": 0.8
+  },
+  "flowers": {
+   "type": "procedural",
+   "note": "keep (cheap instanced quads)"
+  },
+  "pine": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "pine",
+   "s": 0.775
+  },
+  "oakDark": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "oak_dark",
+   "s": 0.849
+  },
+  "log": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_resource_lumber",
+   "s": 1.7
+  },
+  "shrooms": {
+   "type": "procedural"
+  },
+  "fern": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "grass_dark",
+   "s": 0.9
+  },
+  "stone2": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_round",
+   "s": 1.2
+  },
+  "deadTree": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "dead_tree",
+   "s": 0.997
+  },
+  "reeds": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "grass_swamp",
+   "s": 1.98
+  },
+  "stump": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_tree_dead_small",
+   "s": 0.36
+  },
+  "glowShroom": {
+   "type": "procedural",
+   "note": "emissive, keep"
+  },
+  "bogRock": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_bog",
+   "s": 1.4
+  },
+  "pillar": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "pillar",
+   "s": 0.805
+  },
+  "pillarBroken": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "pillar_decorated",
+   "s": 0.747
+  },
+  "tomb": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_grave_A",
+   "s": 0.55
+  },
+  "wallSeg": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "wall_broken",
+   "s": 0.595
+  },
+  "candles": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "candle_triple",
+   "s": 0.8
+  },
+  "bones": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_ribcage",
+   "s": 0.7
+  },
+  "coffin": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_coffin",
+   "s": 0.55
+  },
+  "charTree": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "char_tree",
+   "s": 0.95
+  },
+  "obsidian": {
+   "type": "procedural",
+   "note": "keep (emissive accents)"
+  },
+  "lavaRock": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_dark",
+   "s": 1.4
+  },
+  "skulls": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_skull",
+   "s": 0.6
+  },
+  "vent": {
+   "type": "procedural"
+  },
+  "crystal": {
+   "type": "procedural",
+   "note": "emissive crystals, keep"
+  },
+  "rib": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_ribcage",
+   "s": 2.0
+  },
+  "goldPile": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "coin_stack_large",
+   "s": 0.7
+  },
+  "basalt": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_dark_round",
+   "s": 2.8
+  },
+  "lantern": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_post_lantern",
+   "s": 0.75
+  },
+  "barrelP": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "barrel_small",
+   "s": 0.75
+  },
+  "cart": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_wagon_hay",
+   "s": 0.5
+  },
+  "banner": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "banner_patternA_red",
+   "s": 0.9
+  },
+  "sign": {
+   "type": "procedural"
+  },
+  "obj:barrel": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "barrel_small",
+   "s": 0.75
+  },
+  "obj:crate": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_crate_A_big",
+   "s": 3.81
+  },
+  "obj:pot": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "i_potion_medium_red",
+   "s": 1.0
+  },
+  "obj:urn": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_skull_candle",
+   "s": 0.7
+  },
+  "obj:chest": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "chest",
+   "s": 0.55,
+   "lidNode": null
+  },
+  "obj:vault": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "chest_large_gold",
+   "s": 0.5
+  },
+  "obj:ore": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Iron_Nuggets",
+   "s": 1.3
+  },
+  "obj:wood": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_resource_lumber",
+   "s": 2.4
+  },
+  "obj:essNode": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Gem_Large",
+   "s": 1.4
+  },
+  "obj:totem": {
+   "type": "procedural",
+   "note": "keep (gameplay-readable)"
+  },
+  "obj:cage": {
+   "type": "procedural"
+  },
+  "obj:portal": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_arch_gate",
+   "s": 0.85
+  },
+  "obj:heart": {
+   "type": "procedural"
+  },
+  "obj:coin": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Money_Pile_Small",
+   "s": 0.5
+  },
+  "obj:potion": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "i_potion_small_red",
+   "s": 1.0
+  },
+  "obj:bomb": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "i_smokebomb",
+   "s": 0.8
+  },
+  "obj:key": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "t_key_A",
+   "s": 1.2
+  },
+  "obj:scroll": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "t_map_rolled",
+   "s": 1.2
+  },
+  "obj:matOre": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Iron_Nuggets",
+   "s": 0.5
+  },
+  "obj:matWood": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_resource_lumber",
+   "s": 0.8
+  },
+  "obj:matEss": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Gem_Large",
+   "s": 0.4
+  },
+  "n:tree_wide": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_wide",
+   "s": 0.849
+  },
+  "n:tree_bloom": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_bloom",
+   "s": 0.744
+  },
+  "n:fir": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "fir",
+   "s": 0.868
+  },
+  "n:tree_block": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_block",
+   "s": 0.775
+  },
+  "n:pine_dark": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "pine_dark",
+   "s": 0.775
+  },
+  "n:fir_dark": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "fir_dark",
+   "s": 0.868
+  },
+  "n:tree_wide_dark": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_wide_dark",
+   "s": 0.849
+  },
+  "n:tree_swamp": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_swamp",
+   "s": 0.806
+  },
+  "n:dead_tree_thin": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "dead_tree_thin",
+   "s": 0.744
+  },
+  "n:dead_tree_red": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "dead_tree_red",
+   "s": 0.868
+  },
+  "n:tree_autumn": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "tree_autumn",
+   "s": 0.849
+  },
+  "n:bush_box": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "bush_box",
+   "s": 1.65
+  },
+  "n:bush_tall": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "bush_tall",
+   "s": 1.65
+  },
+  "n:bush_dark": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "bush_dark",
+   "s": 3.45
+  },
+  "n:bush_swamp": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "bush_swamp",
+   "s": 3.45
+  },
+  "n:bush_berry": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "bush_berry",
+   "s": 3.45
+  },
+  "n:rock_small": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_small",
+   "s": 3.9
+  },
+  "n:rock_pebble": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_pebble",
+   "s": 2.55
+  },
+  "n:rock_block": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_block",
+   "s": 2.7
+  },
+  "n:rock_bog_round": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_bog_round",
+   "s": 1.5
+  },
+  "n:rock_red": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "rock_red",
+   "s": 1.5
+  },
+  "n:grass_blade": {
+   "type": "prop",
+   "file": "kit_nature",
+   "node": "grass_blade",
+   "s": 0.675
+  },
+  "d:column": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "column",
+   "s": 0.5
+  },
+  "d:wall": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "wall",
+   "s": 0.5
+  },
+  "d:wall_arched": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "wall_arched",
+   "s": 0.5
+  },
+  "d:wall_half": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "wall_half",
+   "s": 0.5
+  },
+  "d:wall_corner": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "wall_corner",
+   "s": 0.5
+  },
+  "d:floor_tile_large": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "floor_tile_large",
+   "s": 0.5
+  },
+  "d:floor_tile_large_rocks": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "floor_tile_large_rocks",
+   "s": 0.5
+  },
+  "d:floor_dirt_large": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "floor_dirt_large",
+   "s": 0.5
+  },
+  "d:rubble_large": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "rubble_large",
+   "s": 0.5
+  },
+  "d:rubble_half": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "rubble_half",
+   "s": 0.5
+  },
+  "d:barrel_large": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "barrel_large",
+   "s": 0.5
+  },
+  "d:box_stacked": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "box_stacked",
+   "s": 0.5
+  },
+  "d:crates_stacked": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "crates_stacked",
+   "s": 0.5
+  },
+  "d:chest_gold": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "chest_gold",
+   "s": 0.5
+  },
+  "d:chest_mimic": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "chest_mimic",
+   "s": 0.5
+  },
+  "d:torch_lit": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "torch_lit",
+   "s": 0.5
+  },
+  "d:torch_mounted": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "torch_mounted",
+   "s": 0.5
+  },
+  "d:candle_lit": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "candle_lit",
+   "s": 0.5
+  },
+  "d:banner_shield_red": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "banner_shield_red",
+   "s": 0.5
+  },
+  "d:table_long_decorated_A": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "table_long_decorated_A",
+   "s": 0.5
+  },
+  "d:bookcase_double_decoratedA": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "bookcase_double_decoratedA",
+   "s": 0.5
+  },
+  "d:keg": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "keg",
+   "s": 0.5
+  },
+  "d:rocks": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "rocks",
+   "s": 0.5
+  },
+  "d:rocks_gold": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "rocks_gold",
+   "s": 0.5
+  },
+  "d:sword_shield_broken": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "sword_shield_broken",
+   "s": 0.5
+  },
+  "d:trunk_large_A": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "trunk_large_A",
+   "s": 0.5
+  },
+  "d:shelf_small_candles": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "shelf_small_candles",
+   "s": 0.5
+  },
+  "d:bench": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "bench",
+   "s": 0.5
+  },
+  "d:stool": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "stool",
+   "s": 0.5
+  },
+  "d:bucket_pickaxes": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "bucket_pickaxes",
+   "s": 0.5
+  },
+  "d:stairs": {
+   "type": "prop",
+   "file": "kit_dungeon",
+   "node": "stairs",
+   "s": 0.5
+  },
+  "h:tree_dead_large": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_tree_dead_large",
+   "s": 0.5
+  },
+  "h:tree_dead_medium": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_tree_dead_medium",
+   "s": 0.5
+  },
+  "h:grave_B": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_grave_B",
+   "s": 0.5
+  },
+  "h:gravestone": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_gravestone",
+   "s": 0.5
+  },
+  "h:gravemarker_A": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_gravemarker_A",
+   "s": 0.5
+  },
+  "h:coffin_decorated": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_coffin_decorated",
+   "s": 0.5
+  },
+  "h:crypt": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_crypt",
+   "s": 0.5
+  },
+  "h:fence": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_fence",
+   "s": 0.5
+  },
+  "h:fence_broken": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_fence_broken",
+   "s": 0.5
+  },
+  "h:fence_pillar": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_fence_pillar",
+   "s": 0.5
+  },
+  "h:lantern_standing": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_lantern_standing",
+   "s": 0.5
+  },
+  "h:post_skull": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_post_skull",
+   "s": 0.5
+  },
+  "h:bone_A": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_bone_A",
+   "s": 0.5
+  },
+  "h:candle_triple": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_candle_triple",
+   "s": 0.5
+  },
+  "h:shrine_candles": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_shrine_candles",
+   "s": 0.5
+  },
+  "h:pumpkin_orange_jackolantern": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_pumpkin_orange_jackolantern",
+   "s": 0.5
+  },
+  "h:haybale": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_haybale",
+   "s": 0.5
+  },
+  "h:scarecrow": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_scarecrow",
+   "s": 0.5
+  },
+  "h:pillar": {
+   "type": "prop",
+   "file": "kit_crypt",
+   "node": "h_pillar",
+   "s": 0.5
+  },
+  "v:barrel": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_barrel",
+   "s": 4.2
+  },
+  "v:crate_B_small": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_crate_B_small",
+   "s": 4.2
+  },
+  "v:sack": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_sack",
+   "s": 4.2
+  },
+  "v:weaponrack": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_weaponrack",
+   "s": 4.2
+  },
+  "v:wheelbarrow": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_wheelbarrow",
+   "s": 4.2
+  },
+  "v:target": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_target",
+   "s": 4.2
+  },
+  "v:trough": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_trough",
+   "s": 4.2
+  },
+  "v:bucket_water": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_bucket_water",
+   "s": 4.2
+  },
+  "v:resource_lumber": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_resource_lumber",
+   "s": 4.2
+  },
+  "v:resource_stone": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_resource_stone",
+   "s": 4.2
+  },
+  "v:flag_red": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_flag_red",
+   "s": 4.2
+  },
+  "v:ladder": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_ladder",
+   "s": 4.2
+  },
+  "v:pallet": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_pallet",
+   "s": 4.2
+  },
+  "v:tent": {
+   "type": "prop",
+   "file": "kit_village",
+   "node": "p_tent",
+   "s": 4.2
+  },
+  "r:Gold_Nuggets": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "r_Gold_Nuggets",
+   "s": 0.8
+  },
+  "r:Gems_Chest": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "r_Gems_Chest",
+   "s": 0.8
+  },
+  "r:Stone_Chunks_Large": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "r_Stone_Chunks_Large",
+   "s": 0.8
+  },
+  "r:Containers_Crate_Medium_Wood": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "r_Containers_Crate_Medium_Wood",
+   "s": 0.8
+  },
+  "r:Wood_Planks_Stack_Medium": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "r_Wood_Planks_Stack_Medium",
+   "s": 0.8
+  },
+  "r:Gold_Bars_Stack_Small": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Gold_Bars_Stack_Small",
+   "s": 0.8
+  },
+  "r:Food_Barrel_Empty": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Food_Barrel_Empty",
+   "s": 0.8
+  },
+  "r:Iron_Bars_Stack_Small": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "r_Iron_Bars_Stack_Small",
+   "s": 0.8
+  },
+  "t:anvil": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "t_anvil",
+   "s": 0.8
+  },
+  "t:grindstone": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "t_grindstone",
+   "s": 0.8
+  },
+  "t:torch": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "t_torch",
+   "s": 0.8
+  },
+  "t:lantern": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "t_lantern",
+   "s": 0.8
+  },
+  "t:journal_open": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "t_journal_open",
+   "s": 0.8
+  },
+  "t:pickaxe": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "t_pickaxe",
+   "s": 0.8
+  },
+  "t:saw": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "t_saw",
+   "s": 0.8
+  },
+  "t:bucket_metal": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "t_bucket_metal",
+   "s": 0.8
+  },
+  "i:cauldron": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "i_cauldron",
+   "s": 0.9
+  },
+  "i:potionstation": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "i_potionstation",
+   "s": 0.9
+  },
+  "i:throne": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "i_throne",
+   "s": 0.9
+  },
+  "i:wardrum": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "i_wardrum",
+   "s": 0.9
+  },
+  "i:orc_banner": {
+   "type": "prop",
+   "file": "kit_items2",
+   "node": "i_orc_banner",
+   "s": 0.9
+  },
+  "i:mug_full": {
+   "type": "prop",
+   "file": "kit_items",
+   "node": "i_mug_full",
+   "s": 0.9
+  },
+  "bld:hall": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_home_B",
+     "s": 4.68,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_townhall",
+     "s": 4.42,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_townhall",
+     "s": 4.68,
+     "extras": [
+      {
+       "id": "v:flag_red",
+       "x": -3.38,
+       "z": 2.86,
+       "ry": 0,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_townhall",
+     "s": 4.81,
+     "extras": [
+      {
+       "id": "b_tower_A",
+       "x": -4.68,
+       "z": -1.56,
+       "ry": 0,
+       "s": 3.9
+      },
+      {
+       "id": "v:flag_red",
+       "x": -3.38,
+       "z": 2.86,
+       "ry": 0,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_castle",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "v:flag_red",
+       "x": -3.9,
+       "z": 3.9,
+       "ry": 0,
+       "s": 4.42
+      },
+      {
+       "id": "v:flag_red",
+       "x": 3.9,
+       "z": 3.9,
+       "ry": 0,
+       "s": 4.42
+      }
+     ],
+     "file": "kit_village2"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:forge": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_blacksmith",
+     "s": 3.9,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_blacksmith",
+     "s": 4.16,
+     "extras": [
+      {
+       "id": "t:anvil",
+       "x": 2.08,
+       "z": 2.34,
+       "ry": 0.5,
+       "s": 1.17
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_blacksmith",
+     "s": 4.29,
+     "extras": [
+      {
+       "id": "t:anvil",
+       "x": 2.08,
+       "z": 2.34,
+       "ry": 0.5,
+       "s": 1.17
+      },
+      {
+       "id": "v:weaponrack",
+       "x": -2.34,
+       "z": 2.47,
+       "ry": 0,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_blacksmith",
+     "s": 4.42,
+     "extras": [
+      {
+       "id": "t:anvil",
+       "x": 2.08,
+       "z": 2.34,
+       "ry": 0.5,
+       "s": 1.17
+      },
+      {
+       "id": "v:weaponrack",
+       "x": -2.34,
+       "z": 2.47,
+       "ry": 0,
+       "s": 3.9
+      },
+      {
+       "id": "t:grindstone",
+       "x": 3.12,
+       "z": -0.78,
+       "ry": 1.2,
+       "s": 1.04
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_blacksmith",
+     "s": 4.68,
+     "extras": [
+      {
+       "id": "t:anvil",
+       "x": 2.08,
+       "z": 2.34,
+       "ry": 0.5,
+       "s": 1.3
+      },
+      {
+       "id": "v:weaponrack",
+       "x": -2.34,
+       "z": 2.47,
+       "ry": 0,
+       "s": 4.16
+      },
+      {
+       "id": "t:grindstone",
+       "x": 3.12,
+       "z": -0.78,
+       "ry": 1.2,
+       "s": 1.17
+      },
+      {
+       "id": "v:flag_red",
+       "x": -2.86,
+       "z": -1.95,
+       "ry": 0,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:alch": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_tower_A",
+     "s": 3.38,
+     "extras": [
+      {
+       "id": "i:cauldron",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0,
+       "s": 0.78
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tower_A",
+     "s": 3.64,
+     "extras": [
+      {
+       "id": "i:cauldron",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0,
+       "s": 0.78
+      },
+      {
+       "id": "r:Food_Barrel_Empty",
+       "x": -2.08,
+       "z": 1.82,
+       "ry": 0,
+       "s": 0.91
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_workshop",
+     "s": 4.16,
+     "extras": [
+      {
+       "id": "i:cauldron",
+       "x": 2.86,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.78
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_workshop",
+     "s": 4.29,
+     "extras": [
+      {
+       "id": "i:cauldron",
+       "x": 2.86,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.78
+      },
+      {
+       "id": "i:potionstation",
+       "x": -2.86,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 0.715
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_workshop",
+     "s": 4.55,
+     "extras": [
+      {
+       "id": "i:cauldron",
+       "x": 2.86,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.845
+      },
+      {
+       "id": "i:potionstation",
+       "x": -2.86,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 0.78
+      },
+      {
+       "id": "b_tower_A",
+       "x": -3.12,
+       "z": -2.08,
+       "ry": 0,
+       "s": 2.34
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:pen": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_stables",
+     "s": 3.38,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_stables",
+     "s": 3.64,
+     "extras": [
+      {
+       "id": "v:trough",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_stables",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "v:trough",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 3.9
+      },
+      {
+       "id": "h:haybale",
+       "x": -2.34,
+       "z": 1.95,
+       "ry": 0.6,
+       "s": 0.65
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_stables",
+     "s": 4.03,
+     "extras": [
+      {
+       "id": "v:trough",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 3.9
+      },
+      {
+       "id": "h:haybale",
+       "x": -2.34,
+       "z": 1.95,
+       "ry": 0.6,
+       "s": 0.65
+      },
+      {
+       "id": "v:flag_red",
+       "x": 0.0,
+       "z": -2.6,
+       "ry": 0,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_stables",
+     "s": 4.29,
+     "extras": [
+      {
+       "id": "v:trough",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 4.16
+      },
+      {
+       "id": "h:haybale",
+       "x": -2.34,
+       "z": 1.95,
+       "ry": 0.6,
+       "s": 0.715
+      },
+      {
+       "id": "v:flag_red",
+       "x": 0.0,
+       "z": -2.6,
+       "ry": 0,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:tavern": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_home_A",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "d:keg",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 0.52
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tavern",
+     "s": 3.64,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tavern",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "d:keg",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 0.52
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tavern",
+     "s": 4.16,
+     "extras": [
+      {
+       "id": "d:keg",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 0.52
+      },
+      {
+       "id": "d:bench",
+       "x": -2.08,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.585
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tavern",
+     "s": 4.42,
+     "extras": [
+      {
+       "id": "d:keg",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.3,
+       "s": 0.585
+      },
+      {
+       "id": "d:bench",
+       "x": -2.08,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.65
+      },
+      {
+       "id": "v:flag_red",
+       "x": 2.86,
+       "z": -2.08,
+       "ry": 0,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:temple": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_shrine",
+     "s": 3.9,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_shrine",
+     "s": 4.42,
+     "extras": [
+      {
+       "id": "h:shrine_candles",
+       "x": 2.08,
+       "z": 2.08,
+       "ry": 0,
+       "s": 0.78
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_church",
+     "s": 3.64,
+     "extras": [],
+     "file": "kit_village2"
+    },
+    {
+     "model": "b_church",
+     "s": 4.03,
+     "extras": [
+      {
+       "id": "h:shrine_candles",
+       "x": 2.34,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.78
+      }
+     ],
+     "file": "kit_village2"
+    },
+    {
+     "model": "b_church",
+     "s": 4.42,
+     "extras": [
+      {
+       "id": "h:shrine_candles",
+       "x": 2.34,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.845
+      },
+      {
+       "id": "h:shrine_candles",
+       "x": -2.34,
+       "z": 2.34,
+       "ry": 0,
+       "s": 0.845
+      }
+     ],
+     "file": "kit_village2"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:store": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_market",
+     "s": 3.38,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_market",
+     "s": 3.64,
+     "extras": [
+      {
+       "id": "v:crate_B_small",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_market",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "v:crate_B_small",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 4.16
+      },
+      {
+       "id": "v:sack",
+       "x": -2.34,
+       "z": 2.08,
+       "ry": 0,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_barracks",
+     "s": 3.38,
+     "extras": [
+      {
+       "id": "v:crate_B_small",
+       "x": 2.34,
+       "z": 2.34,
+       "ry": 0.4,
+       "s": 4.16
+      }
+     ],
+     "file": "kit_village2"
+    },
+    {
+     "model": "b_barracks",
+     "s": 3.77,
+     "extras": [
+      {
+       "id": "v:crate_B_small",
+       "x": 2.34,
+       "z": 2.34,
+       "ry": 0.4,
+       "s": 4.42
+      },
+      {
+       "id": "v:sack",
+       "x": -2.34,
+       "z": 2.34,
+       "ry": 0,
+       "s": 4.42
+      }
+     ],
+     "file": "kit_village2"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:saw": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_lumbermill",
+     "s": 3.38,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_lumbermill",
+     "s": 3.64,
+     "extras": [
+      {
+       "id": "v:resource_lumber",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_lumbermill",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "v:resource_lumber",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_lumbermill",
+     "s": 4.03,
+     "extras": [
+      {
+       "id": "v:resource_lumber",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 3.9
+      },
+      {
+       "id": "t:saw",
+       "x": -2.08,
+       "z": 2.08,
+       "ry": 0,
+       "s": 1.04
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_lumbermill",
+     "s": 4.29,
+     "extras": [
+      {
+       "id": "v:resource_lumber",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 4.16
+      },
+      {
+       "id": "t:saw",
+       "x": -2.08,
+       "z": 2.08,
+       "ry": 0,
+       "s": 1.17
+      },
+      {
+       "id": "v:flag_red",
+       "x": 0.0,
+       "z": -2.6,
+       "ry": 0,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:mine": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_mine",
+     "s": 3.38,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_mine",
+     "s": 3.64,
+     "extras": [
+      {
+       "id": "v:resource_stone",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_mine",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "v:resource_stone",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 3.9
+      },
+      {
+       "id": "d:bucket_pickaxes",
+       "x": -2.08,
+       "z": 2.08,
+       "ry": 0,
+       "s": 0.65
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_mine",
+     "s": 4.03,
+     "extras": [
+      {
+       "id": "v:resource_stone",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 3.9
+      },
+      {
+       "id": "d:bucket_pickaxes",
+       "x": -2.08,
+       "z": 2.08,
+       "ry": 0,
+       "s": 0.65
+      },
+      {
+       "id": "r:Iron_Bars_Stack_Small",
+       "x": 0.0,
+       "z": 2.86,
+       "ry": 0,
+       "s": 1.04
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_mine",
+     "s": 4.29,
+     "extras": [
+      {
+       "id": "v:resource_stone",
+       "x": 2.34,
+       "z": 2.08,
+       "ry": 0.4,
+       "s": 4.16
+      },
+      {
+       "id": "d:bucket_pickaxes",
+       "x": -2.08,
+       "z": 2.08,
+       "ry": 0,
+       "s": 0.715
+      },
+      {
+       "id": "r:Gold_Bars_Stack_Small",
+       "x": 0.0,
+       "z": 2.86,
+       "ry": 0,
+       "s": 1.04
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:well": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_well",
+     "s": 3.38,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_well",
+     "s": 3.64,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_well",
+     "s": 3.9,
+     "extras": [
+      {
+       "id": "r:Gems_Chest",
+       "x": 1.82,
+       "z": 1.3,
+       "ry": 0.3,
+       "s": 0.65
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_well",
+     "s": 4.03,
+     "extras": [
+      {
+       "id": "r:Gems_Chest",
+       "x": 1.82,
+       "z": 1.3,
+       "ry": 0.3,
+       "s": 0.65
+      }
+     ],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_well",
+     "s": 4.29,
+     "extras": [
+      {
+       "id": "r:Gems_Chest",
+       "x": 1.82,
+       "z": 1.3,
+       "ry": 0.3,
+       "s": 0.715
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:walls": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_watchtower",
+     "s": 3.38,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_watchtower",
+     "s": 3.64,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tower_A",
+     "s": 3.64,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tower_A",
+     "s": 3.9,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_tower_A",
+     "s": 4.16,
+     "extras": [
+      {
+       "id": "v:flag_red",
+       "x": 0.0,
+       "z": 0.0,
+       "ry": 0,
+       "s": 3.9
+      }
+     ],
+     "file": "kit_village"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "bld:houses": {
+   "type": "building",
+   "file": "kit_village",
+   "levels": [
+    {
+     "model": "b_home_A",
+     "s": 3.9,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_home_B",
+     "s": 3.9,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_home_A",
+     "s": 4.16,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_home_B",
+     "s": 4.16,
+     "extras": [],
+     "file": "kit_village"
+    },
+    {
+     "model": "b_windmill",
+     "s": 3.64,
+     "extras": [],
+     "file": "kit_village2"
+    }
+   ],
+   "plot": "building_stage_A",
+   "scaffold": "building_scaffolding"
+  },
+  "frostRanker": {
+   "type": "char",
+   "file": "knight",
+   "rig": "medium",
+   "h": 2.1,
+   "clips": "sword",
+   "r": "w_sword_long",
+   "l": "w_shield_tower",
+   "tint": [
+    "#9ac8f0",
+    0.45
+   ],
+   "glow": "#7ad0ff",
+   "note": "v19: frozen legion soldier"
+  },
+  "driftWolf": {
+   "type": "char",
+   "file": "werewolf",
+   "rig": "medium",
+   "h": 1.75,
+   "clips": "unarmed",
+   "tint": [
+    "#eef4fa",
+    0.62
+   ],
+   "glow": "#7ad0ff",
+   "recolor": [
+    {
+     "h": [
+      340,
+      20
+     ],
+     "s": [
+      0.4,
+      1
+     ],
+     "hShift": 200,
+     "sMul": 0.1,
+     "lMul": 1.3
+    }
+   ],
+   "note": "v19: white snow wolf"
+  },
+  "rimeWailer": {
+   "type": "char",
+   "file": "mage",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "caster",
+   "mat": "ghost",
+   "tint": [
+    "#a8d8ff",
+    0.5
+   ],
+   "glow": "#a8d8ff",
+   "hover": 0.3,
+   "note": "v19: frost widow ghost"
+  },
+  "frostSapper": {
+   "type": "char",
+   "file": "engineer",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "caster",
+   "tint": [
+    "#6a8ab0",
+    0.3
+   ],
+   "note": "v19: frost sapper"
+  },
+  "stuzhen": {
+   "type": "char",
+   "file": "paladin",
+   "rig": "medium",
+   "h": 3.4,
+   "clips": "axe",
+   "r": "w_sword_long",
+   "boss": true,
+   "tint": [
+    "#8ab0d8",
+    0.35
+   ],
+   "glow": "#7ad0ff",
+   "note": "v19: voevoda Stuzhen"
+  },
+  "belava": {
+   "type": "char",
+   "file": "mage",
+   "rig": "medium",
+   "h": 3.0,
+   "clips": "caster",
+   "boss": true,
+   "tint": [
+    "#bfe6ff",
+    0.45
+   ],
+   "glow": "#7ad0ff",
+   "hover": 0.6,
+   "note": "v19: tsarevna Belava"
+  },
+  "comp:irga": {
+   "type": "char",
+   "file": "knight",
+   "rig": "medium",
+   "h": 2.05,
+   "clips": "sword",
+   "r": "w_sword_1h",
+   "l": "w_shield_tower",
+   "tint": [
+    "#9ab8d8",
+    0.3
+   ],
+   "note": "v19: Irga"
+  },
+  "drownedGuard": {
+   "type": "char",
+   "file": "skel_warrior",
+   "rig": "medium",
+   "h": 2.0,
+   "r": "e_skel_scythe",
+   "clips": "skeleton",
+   "tint": [
+    "#5a9a8a",
+    0.45
+   ],
+   "glow": "#6af0d0",
+   "note": "v23: drowned guard of Zlatoverkh (boat hook)"
+  },
+  "sirenSinger": {
+   "type": "char",
+   "file": "rogue",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "caster",
+   "tint": [
+    "#4ac0b0",
+    0.35
+   ],
+   "glow": "#7af0e0",
+   "hover": 0.15,
+   "note": "v23: siren of the pool"
+  },
+  "shellback": {
+   "type": "char",
+   "file": "skel_golem",
+   "rig": "large",
+   "h": 2.4,
+   "clips": "largeUnarmed",
+   "tint": [
+    "#8a7a6a",
+    0.45
+   ],
+   "note": "v23: shellback (shell — procedural)"
+  },
+  "chamberlain": {
+   "type": "char",
+   "file": "vampire",
+   "rig": "medium",
+   "h": 2.6,
+   "clips": "caster",
+   "r": "e_lore_staff",
+   "boss": true,
+   "tint": [
+    "#9ab8b0",
+    0.3
+   ],
+   "glow": "#7af0e0",
+   "note": "v23: Chamberlain Drowned"
+  },
+  "inkmaw": {
+   "type": "char",
+   "file": "monstrosity",
+   "rig": "large",
+   "h": 4.6,
+   "clips": "largeUnarmed",
+   "boss": true,
+   "tint": [
+    "#0e0e1a",
+    0.85
+   ],
+   "glow": "#9ad8ff",
+   "note": "v23: Inkmaw (book tentacles — procedural)"
+  },
+  "scribe": {
+   "type": "char",
+   "file": "lorekeeper",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "npc",
+   "tint": [
+    "#2a3a5a",
+    0.35
+   ],
+   "glow": "#9ad8ff",
+   "note": "v23: chronicler Dobromir"
+  },
+  "driedPriest": {
+   "type": "char",
+   "file": "lorekeeper",
+   "rig": "medium",
+   "h": 2.0,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "tint": [
+    "#c8a870",
+    0.55
+   ],
+   "glow": "#ffd27a",
+   "note": "v27: dried priest of the First"
+  },
+  "duneStalker": {
+   "type": "char",
+   "file": "ninja",
+   "rig": "medium",
+   "h": 1.95,
+   "r": "w_dagger",
+   "l": "w_dagger",
+   "clips": "sword",
+   "tint": [
+    "#b8905a",
+    0.5
+   ],
+   "note": "v27: dune stalker (two bronze blades)"
+  },
+  "windwing": {
+   "type": "char",
+   "file": "avian",
+   "rig": "medium",
+   "h": 2.1,
+   "r": "e_plant_spear",
+   "clips": "sword",
+   "tint": [
+    "#e8c060",
+    0.78
+   ],
+   "glow": "#ffd27a",
+   "hover": 1.8,
+   "note": "v27: windwing, golden guard of the isles"
+  },
+  "zenith": {
+   "type": "char",
+   "file": "frost_golem",
+   "rig": "large",
+   "h": 5.6,
+   "clips": "largeUnarmed",
+   "boss": true,
+   "tint": [
+    "#d8a840",
+    0.62
+   ],
+   "glow": "#ffd27a",
+   "note": "v27: Zenith, golden colossus (lens, halo, dark core — procedural)"
+  },
+  "attal": {
+   "type": "char",
+   "file": "lorekeeper",
+   "rig": "medium",
+   "h": 3.0,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "boss": true,
+   "tint": [
+    "#e8c878",
+    0.45
+   ],
+   "glow": "#ffd27a",
+   "hover": 0.4,
+   "note": "v27: Attal, the First Firemaker (sun crown — procedural)"
+  },
+  "comp:sabira": {
+   "type": "char",
+   "file": "rogue",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "bow",
+   "l": "w_bow_long",
+   "tint": [
+    "#d8a85a",
+    0.3
+   ],
+   "note": "v27: Sabira, daughter of the wind"
+  },
+  "facelessTwin": {
+   "type": "char",
+   "file": "farmer_a",
+   "rig": "medium",
+   "h": 1.95,
+   "clips": "medium",
+   "hide": [
+    "Farmer_A_Hat"
+   ],
+   "recolor": [
+    {
+     "sMul": 0.22,
+     "lMul": 0.92
+    }
+   ],
+   "tint": [
+    "#8a8696",
+    0.55
+   ],
+   "note": "v30: faceless twin — a Brod villager as she remembers them (mask: procedural)"
+  },
+  "facelessTwin2": {
+   "type": "char",
+   "file": "farmer_b",
+   "rig": "medium",
+   "h": 1.9,
+   "clips": "medium",
+   "hide": [
+    "Farmer_B_Hat"
+   ],
+   "recolor": [
+    {
+     "sMul": 0.22,
+     "lMul": 0.92
+    }
+   ],
+   "tint": [
+    "#8a8696",
+    0.55
+   ],
+   "note": "v30: faceless twin, variant B"
+  },
+  "puppeteer": {
+   "type": "char",
+   "file": "necromancer",
+   "rig": "medium",
+   "h": 2.15,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "hide": [
+    "Necromancer_Crown"
+   ],
+   "tint": [
+    "#6a6680",
+    0.55
+   ],
+   "glow": "#b8a8ff",
+   "glowA": 0.2,
+   "note": "v30: puppeteer of the Fog"
+  },
+  "muteGiant": {
+   "type": "char",
+   "file": "barbarian_large",
+   "rig": "large",
+   "h": 3.2,
+   "clips": "largeUnarmed",
+   "hide": [
+    "Barbarian_Large_BearHat"
+   ],
+   "recolor": [
+    {
+     "sMul": 0.22,
+     "lMul": 0.92
+    }
+   ],
+   "tint": [
+    "#4a4858",
+    0.6
+   ],
+   "note": "v30: the Mute (stitched mouth, empty frame — procedural)"
+  },
+  "asker": {
+   "type": "char",
+   "file": "witch",
+   "rig": "medium",
+   "h": 1.6,
+   "clips": "caster",
+   "hide": [
+    "Witch_Hat"
+   ],
+   "mat": "ghost",
+   "glow": "#d8c8ff",
+   "hover": 0.5,
+   "note": "v30: the Asker — offers deals, never attacks"
+  },
+  "ostenMem": {
+   "type": "char",
+   "file": "necromancer",
+   "rig": "medium",
+   "h": 2.55,
+   "r": "e_lore_staff",
+   "clips": "caster",
+   "boss": true,
+   "hide": [
+    "Necromancer_Crown"
+   ],
+   "recolor": [
+    {
+     "sMul": 0.5,
+     "lMul": 0.95
+    }
+   ],
+   "tint": [
+    "#6a6680",
+    0.45
+   ],
+   "note": "v30: Osten without the crown — an old man"
+  },
+  "faceless": {
+   "type": "char",
+   "file": "cleric",
+   "rig": "medium",
+   "h": 6.4,
+   "clips": "caster",
+   "boss": true,
+   "hide": [
+    "Cleric_HolyWater"
+   ],
+   "recolor": [
+    {
+     "sMul": 0.5,
+     "lMul": 0.95
+    }
+   ],
+   "tint": [
+    "#4a4458",
+    0.6
+   ],
+   "glow": "#d8c8ff",
+   "note": "v30: the Faceless (mask, ring of given things — procedural)"
+  },
+  "child": {
+   "type": "char",
+   "file": "witch",
+   "rig": "medium",
+   "h": 1.15,
+   "clips": "npc",
+   "hide": [
+    "Witch_Hat"
+   ],
+   "recolor": [
+    {
+     "h": [
+      354,
+      13
+     ],
+     "s": [
+      0.42,
+      0.88
+     ],
+     "l": [
+      0.42,
+      0.76
+     ],
+     "hShift": 18,
+     "sMul": 0.6,
+     "lMul": 0.55
+    }
+   ],
+   "note": "v30: little Vedana (glasses kept — too big for her)"
+  },
+  "veila": {
+   "type": "char",
+   "file": "cleric",
+   "rig": "medium",
+   "h": 2.0,
+   "clips": "npc",
+   "hide": [
+    "Cleric_HolyWater"
+   ],
+   "tint": [
+    "#b8b0e8",
+    0.3
+   ],
+   "glow": "#d8c8ff",
+   "glowA": 0.3,
+   "note": "v30: Veila — the night with her name back"
+  }
+ },
+ "ubc": {
+  "headScale": 1.14,
+  "slots": {
+   "r": {
+    "p": [
+     -0.035,
+     0.105,
+     -0.003
+    ],
+    "y": [
+     0.0,
+     -0.25,
+     0.97
+    ],
+    "x": [
+     -0.978,
+     0.207,
+     0.0
+    ],
+    "s": 0.6
+   },
+   "l": {
+    "p": [
+     0.035,
+     0.105,
+     -0.003
+    ],
+    "y": [
+     0.0,
+     0.256,
+     0.967
+    ],
+    "x": [
+     0.978,
+     0.207,
+     0.0
+    ],
+    "s": 0.6
+   },
+   "back": {
+    "p": [
+     0.0,
+     0.05,
+     -0.2
+    ],
+    "r": [
+     0.25,
+     0.0,
+     0.0
+    ],
+    "s": 0.7
+   },
+   "head": {
+    "p": [
+     0.0,
+     0.1,
+     0.0
+    ]
+   }
+  },
+  "cuts": {
+   "Axe_1": [
+    "Sword_Heavy_Combo",
+    0.0,
+    0.95
+   ],
+   "Axe_2": [
+    "Sword_Heavy_Combo",
+    0.95,
+    1.95
+   ],
+   "Axe_3": [
+    "Sword_Heavy_Combo",
+    1.95,
+    3.35
+   ],
+   "Bow_Draw": [
+    "OverhandThrow",
+    0.0,
+    0.24
+   ],
+   "Bow_Shot": [
+    "OverhandThrow",
+    0.06,
+    0.34
+   ],
+   "Bow_Hold": [
+    "OverhandThrow",
+    0.2,
+    0.24
+   ],
+   "Slam": [
+    "Sword_Regular_C",
+    0.2,
+    1.3
+   ]
+  }
+ },
+ "ubcEntities": {
+  "hero": {
+   "type": "hero",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.25,
+   "clipPrefix": "u_",
+   "base": [
+    "head",
+    "eyes",
+    "brows"
+   ],
+   "cols": {
+    "skin": {}
+   },
+   "looks": [
+    {
+     "hair": "hair_slick",
+     "hairCol": {
+      "mul": "#a0461e"
+     }
+    },
+    {
+     "hair": "hair_buzzed",
+     "beard": [
+      "beard"
+     ],
+     "hairCol": {
+      "mul": "#2e2420"
+     }
+    },
+    {
+     "hair": "hair_long",
+     "hairCol": {
+      "mul": "#e2c487"
+     },
+     "skin": {
+      "mul": "#fff2ea"
+     }
+    }
+   ],
+   "chest": {
+    "ch_cloth0": {
+     "parts": [
+      "peasant_body",
+      "peasant_legs"
+     ],
+     "arms": [
+      "peasant_arms"
+     ],
+     "feet": [
+      "peasant_feet"
+     ],
+     "cape": {
+      "mul": "#a8322a"
+     }
+    },
+    "ch_cloth": {
+     "parts": [
+      "ranger_body",
+      "ranger_legs",
+      "ranger_pauldron"
+     ],
+     "arms": [
+      "ranger_arms"
+     ],
+     "feet": [
+      "ranger_boots"
+     ],
+     "cape": {
+      "mul": "#2f5f8a"
+     }
+    },
+    "ch_mail": {
+     "parts": [
+      "knight_cloth",
+      "knight_legs",
+      "knight_spikes"
+     ],
+     "arms": [
+      "knight_arms"
+     ],
+     "feet": [
+      "knight_feet"
+     ],
+     "cape": {
+      "mul": "#a8322a"
+     }
+    },
+    "ch_plate": {
+     "parts": [
+      "knight_armor",
+      "knight_legs",
+      "knight_pauldrons",
+      "knight_scarf"
+     ],
+     "arms": [
+      "knight_arms"
+     ],
+     "feet": [
+      "knight_feet"
+     ],
+     "cape": {
+      "mul": "#c8b48a"
+     },
+     "capePart": "cape"
+    },
+    "ch_robe": {
+     "parts": [
+      "wizard_body",
+      "wizard_belt",
+      "wizard_orn",
+      "wizard_legs"
+     ],
+     "arms": [
+      "wizard_arms"
+     ],
+     "feet": [
+      "wizard_feet"
+     ],
+     "cape": {
+      "mul": "#4a2a6a"
+     }
+    },
+    "ch_bare": {
+     "parts": [
+      "peasant_body",
+      "peasant_legs"
+     ],
+     "cape": false
+    }
+   },
+   "gloves": {
+    "_": [
+     "peasant_arms"
+    ],
+    "gl_leather": [
+     "ranger_arms"
+    ],
+    "gl_plate": [
+     "knight_arms"
+    ],
+    "gl_mage": [
+     "wizard_arms"
+    ],
+    "gl_mail": [
+     "noble_arms",
+     "noble_guards"
+    ]
+   },
+   "boots": {
+    "_": [
+     "peasant_feet"
+    ],
+    "bt_leather": [
+     "ranger_boots"
+    ],
+    "bt_plate": [
+     "knight_feet"
+    ],
+    "bt_cloth": [
+     "wizard_feet"
+    ],
+    "bt_heavy": [
+     "noble_feet"
+    ]
+   },
+   "helm": {
+    "hm_hood": {
+     "parts": [
+      "ranger_hood"
+     ],
+     "hide": [
+      "hair"
+     ]
+    },
+    "hm_guard": {
+     "parts": [
+      "knight_armet"
+     ],
+     "hide": [
+      "hair",
+      "beard",
+      "brows"
+     ]
+    },
+    "hm_horn": {
+     "parts": [
+      "knight_horns"
+     ],
+     "hide": [
+      "hair"
+     ]
+    },
+    "hm_circ": {
+     "parts": [
+      "noble_crown"
+     ],
+     "cols": {
+      "noble_crown": {
+       "s": 0.05,
+       "v": 1.25
+      }
+     }
+    },
+    "hm_crown": {
+     "parts": [
+      "noble_crown"
+     ]
+    },
+    "hm_wizard": {
+     "parts": [
+      "ranger_hood"
+     ],
+     "hide": [
+      "hair"
+     ],
+     "cols": {
+      "ranger_hood": {
+       "h": 150,
+       "s": 0.8,
+       "v": 0.8
+      }
+     }
+    },
+    "hm_paladin": {
+     "parts": [
+      "knight_armet"
+     ],
+     "hide": [
+      "hair",
+      "beard",
+      "brows"
+     ],
+     "cols": {
+      "knight_armet": {
+       "mul": "#ffe2a0"
+      }
+     }
+    },
+    "hm_bear": {
+     "parts": [
+      "knight_horns"
+     ],
+     "hide": [
+      "hair"
+     ],
+     "cols": {
+      "knight_horns": {
+       "mul": "#c8a070"
+      }
+     }
+    }
+   },
+   "weapons": {
+    "sw0": {
+     "cls": "sword",
+     "r": "w_sword_wood"
+    },
+    "sw1": {
+     "cls": "sword",
+     "r": "w_sword_1h"
+    },
+    "sw2": {
+     "cls": "sword",
+     "r": "w_sword_broad"
+    },
+    "sw3": {
+     "cls": "sword",
+     "r": "w_sword_flame",
+     "glow": "fire"
+    },
+    "ax1": {
+     "cls": "axe",
+     "r": "w_axe_2h"
+    },
+    "ax2": {
+     "cls": "axe",
+     "r": "w_hammer"
+    },
+    "ax3": {
+     "cls": "axe",
+     "r": "w_axe_spiked",
+     "glow": "fire"
+    },
+    "bw1": {
+     "cls": "bow",
+     "l": "w_bow_short"
+    },
+    "bw2": {
+     "cls": "bow",
+     "l": "w_bow_long"
+    },
+    "bw3": {
+     "cls": "bow",
+     "l": "w_bow_horn"
+    },
+    "st1": {
+     "cls": "staff",
+     "r": "w_staff_branch"
+    },
+    "st2": {
+     "cls": "staff",
+     "r": "w_staff_crystal",
+     "glow": "ice"
+    },
+    "st3": {
+     "cls": "staff",
+     "r": "w_staff_skull",
+     "glow": "poison"
+    }
+   },
+   "offhand": {
+    "sh1": {
+     "l": "w_shield_round"
+    },
+    "sh2": {
+     "l": "w_shield_kite"
+    },
+    "sh3": {
+     "l": "w_shield_tower"
+    },
+    "qv1": {
+     "backProp": "w_quiver"
+    },
+    "tm1": {
+     "l": "w_tome"
+    },
+    "or1": {
+     "l": "@orb"
+    }
+   }
+  },
+  "elder": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_npc",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c8c4bc"
+    },
+    "skin": {
+     "mul": "#fff2ea"
+    },
+    "peasant": {
+     "h": 70,
+     "s": 0.55,
+     "v": 0.95
+    },
+    "cape": {
+     "mul": "#6a7a5a"
+    }
+   },
+   "note": "Ведана: седая знахарка, зелёная накидка"
+  },
+  "smith": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.15,
+   "clips": "u_smith",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_buzzed",
+    "beard",
+    "moustache",
+    "peasant_body",
+    "peasant_legs",
+    "knight_arms",
+    "knight_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c04a1c"
+    },
+    "skin": {},
+    "peasant": {
+     "s": 0.7,
+     "v": 0.8
+    }
+   },
+   "r": "t_hammer",
+   "ws": 0.55,
+   "note": "Горан: рыжая борода, кузнечные наручи"
+  },
+  "alch": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_alch",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_belt",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#7a4aa0"
+    },
+    "skin": {
+     "mul": "#fff2ea"
+    },
+    "ranger": {
+     "h": 200,
+     "s": 0.7
+    }
+   },
+   "r": "w_wand_orb",
+   "note": "Мира: алхимик, фиолетовые волосы"
+  },
+  "beast": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_npc",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots",
+    "ranger_pauldron"
+   ],
+   "cols": {
+    "skin": {
+     "mul": "#e8d2b8"
+    }
+   },
+   "note": "Ойка: следопытка в капюшоне"
+  },
+  "stranger": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.2,
+   "clips": "u_npc",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots",
+    "cape_dark"
+   ],
+   "cols": {
+    "skin": {},
+    "ranger": {
+     "s": 0.08,
+     "v": 0.7
+    },
+    "cape": {
+     "mul": "#8a8a8a"
+    }
+   },
+   "note": "Серый: странник в сером капюшоне и плаще"
+  },
+  "king": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.35,
+   "clips": "u_king",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "noble_lion",
+    "noble_crown",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eeeae4"
+    },
+    "skin": {
+     "mul": "#cfc6c0",
+     "v": 0.9
+    },
+    "noble": {
+     "s": 0.35,
+     "v": 0.55
+    },
+    "cape": {
+     "mul": "#5a1414"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "tint": [
+    "#3a1010",
+    0.2
+   ],
+   "glow": "#ff6a1a",
+   "glowA": 0.22,
+   "note": "Пепельный Король"
+  },
+  "v0": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_balding",
+    "moustache",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#5a3a26"
+    },
+    "peasant": {
+     "h": -15
+    }
+   }
+  },
+  "v1": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.9,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e2c487"
+    },
+    "peasant": {
+     "h": 25,
+     "s": 1.1
+    }
+   }
+  },
+  "v2": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_slick",
+    "beard",
+    "peasant_body",
+    "ranger_arms",
+    "peasant_legs",
+    "ranger_boots"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2e2420"
+    },
+    "skin": {
+     "mul": "#e8d2b8"
+    },
+    "peasant": {
+     "h": 170,
+     "s": 0.6
+    }
+   }
+  },
+  "v3": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.9,
+   "clips": "u_farmer",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2e2420"
+    },
+    "skin": {
+     "mul": "#a87c64",
+     "v": 0.9
+    },
+    "peasant": {
+     "h": 300,
+     "s": 0.8
+    }
+   }
+  },
+  "comp:knight": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_slick",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e2c487"
+    },
+    "cape": {
+     "mul": "#2f5f8a"
+    }
+   },
+   "r": "w_sword_1h",
+   "l": "w_shield_kite"
+  },
+  "comp:ranger": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_bow",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_bracer",
+    "ranger_legs",
+    "ranger_boots",
+    "ranger_pauldron",
+    "ranger_belt",
+    "ranger_belt2"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#a0461e"
+    }
+   },
+   "l": "w_bow_long"
+  },
+  "comp:druid": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_staff",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "wizard_body",
+    "wizard_belt",
+    "wizard_legs",
+    "peasant_arms",
+    "ranger_boots",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#5a3a26"
+    },
+    "wizard": {
+     "h": -110,
+     "s": 0.6,
+     "v": 0.9
+    },
+    "cape": {
+     "mul": "#5a7a3a"
+    }
+   },
+   "r": "w_staff_branch"
+  },
+  "comp:mage": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_staff",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "ranger_body",
+    "peasant_arms",
+    "ranger_legs",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#1c1a1c"
+    },
+    "ranger": {
+     "h": 160,
+     "s": 0.9
+    },
+    "peasant": {
+     "h": 200,
+     "s": 0.6
+    },
+    "cape": {
+     "mul": "#4a3a8a"
+    }
+   },
+   "r": "w_staff_crystal"
+  },
+  "comp:rogue": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots"
+   ],
+   "cols": {
+    "ranger": {
+     "h": -40,
+     "s": 0.45,
+     "v": 0.7
+    }
+   },
+   "r": "w_dagger",
+   "l": "w_dagger"
+  },
+  "comp:barbarian": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.2,
+   "clips": "u_axe",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "moustache",
+    "peasant_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_spikes",
+    "peasant_body"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c04a1c"
+    },
+    "peasant": {
+     "h": -10,
+     "s": 0.6,
+     "v": 0.75
+    }
+   },
+   "r": "w_axe_2h"
+  },
+  "comp:cleric": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_bob",
+    "knight_armor",
+    "knight_legs",
+    "peasant_arms",
+    "knight_feet",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e2c487"
+    },
+    "knight": {
+     "mul": "#fff4d8"
+    },
+    "cape": {
+     "mul": "#e8e0c8"
+    }
+   },
+   "r": "w_cleric_mace",
+   "l": "w_shield_round"
+  },
+  "comp:paladin": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.2,
+   "clips": "u_axe",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "knight_armet",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "cape"
+   ],
+   "cols": {
+    "knight": {
+     "mul": "#ffe6b0"
+    },
+    "cape": {
+     "mul": "#c8b48a"
+    }
+   },
+   "r": "w_hammer"
+  },
+  "morven": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_brute",
+   "parts": [
+    "head",
+    "eyes",
+    "knight_horns",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_spikes",
+    "cape_dark"
+   ],
+   "cols": {
+    "knight": {
+     "s": 0.4,
+     "v": 0.5
+    },
+    "skin": {
+     "mul": "#9ab0c8",
+     "v": 0.8
+    },
+    "cape": {
+     "mul": "#2a4a5a"
+    }
+   },
+   "r": "e_bk_sword",
+   "l": "e_bk_shield",
+   "ws": 0.6,
+   "boss": true,
+   "tint": [
+    "#9ab8ff",
+    0.16
+   ],
+   "glow": "#6fd8ff"
+  },
+  "ashKing": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "noble_lion",
+    "noble_crown",
+    "cape_dark"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eeeae4"
+    },
+    "skin": {
+     "mul": "#c8bab0",
+     "v": 0.85
+    },
+    "noble": {
+     "s": 0.4,
+     "v": 0.5
+    },
+    "cape": {
+     "mul": "#5a1414"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "boss": true,
+   "tint": [
+    "#ff6a1a",
+    0.16
+   ],
+   "glow": "#ff6a1a"
+  },
+  "cultist": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.1,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "ranger_hood",
+    "wizard_body",
+    "wizard_belt",
+    "wizard_legs",
+    "peasant_arms",
+    "peasant_feet"
+   ],
+   "cols": {
+    "skin": {
+     "mul": "#d8c8c0",
+     "v": 0.85
+    },
+    "wizard": {
+     "h": 150,
+     "s": 0.85,
+     "v": 0.55
+    },
+    "ranger": {
+     "h": -95,
+     "s": 0.9,
+     "v": 0.45
+    },
+    "peasant": {
+     "s": 0.4,
+     "v": 0.5
+    }
+   },
+   "r": "w_dagger",
+   "tint": [
+    "#6a1a1a",
+    0.12
+   ],
+   "glow": "#ff6a1a",
+   "glowA": 0.25
+  },
+  "frostRanker": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.15,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "knight_armet",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons"
+   ],
+   "cols": {
+    "knight": {
+     "mul": "#b8d4f0",
+     "s": 0.45
+    },
+    "skin": {
+     "mul": "#b8d0e8",
+     "v": 0.85
+    }
+   },
+   "r": "w_sword_long",
+   "l": "w_shield_tower",
+   "tint": [
+    "#9ac8f0",
+    0.35
+   ],
+   "glow": "#7ad0ff",
+   "glowA": 0.15,
+   "note": "Стылый ратник: латник легиона во льду"
+  },
+  "frostSapper": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.05,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "beard",
+    "ranger_hood",
+    "peasant_body",
+    "ranger_arms",
+    "peasant_legs",
+    "ranger_boots",
+    "ranger_pauldron"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c8c4bc"
+    },
+    "skin": {
+     "mul": "#c8d4e0",
+     "v": 0.9
+    },
+    "ranger": {
+     "h": 110,
+     "s": 0.5,
+     "v": 0.75
+    },
+    "peasant": {
+     "h": 180,
+     "s": 0.55,
+     "v": 0.8
+    }
+   },
+   "r": "t_pickaxe",
+   "ws": 0.8,
+   "tint": [
+    "#6a8ab0",
+    0.2
+   ],
+   "note": "Стылый сапёр: шуба, кирка, бочонок морозного пороха"
+  },
+  "rimeWailer": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eef6ff"
+    },
+    "skin": {
+     "mul": "#c8dcf0",
+     "v": 0.95
+    },
+    "peasant": {
+     "h": 195,
+     "s": 0.45,
+     "v": 1.15
+    },
+    "cape": {
+     "mul": "#a8d8ff"
+    }
+   },
+   "tint": [
+    "#a8d8ff",
+    0.4
+   ],
+   "glow": "#a8d8ff",
+   "glowA": 0.35,
+   "note": "Плакальщица Инея: вдова легиона, призрачная"
+  },
+  "stuzhen": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.4,
+   "clips": "u_brute",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "beard",
+    "knight_horns",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "knight_spikes",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "knight": {
+     "mul": "#7a96c0",
+     "s": 0.6
+    },
+    "skin": {
+     "mul": "#a8c0d8",
+     "v": 0.85
+    },
+    "hair": {
+     "mul": "#e8eef6"
+    },
+    "cape": {
+     "mul": "#e8eef6"
+    }
+   },
+   "r": "w_sword_long",
+   "ws": 0.95,
+   "boss": true,
+   "tint": [
+    "#8ab0d8",
+    0.25
+   ],
+   "glow": "#7ad0ff",
+   "note": "Воевода Стужень"
+  },
+  "belava": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#eef6ff"
+    },
+    "skin": {
+     "mul": "#dce8f6"
+    },
+    "peasant": {
+     "h": 205,
+     "s": 0.7,
+     "v": 0.95
+    },
+    "knight": {
+     "mul": "#cfe6ff"
+    },
+    "cape": {
+     "mul": "#7aa8d8"
+    }
+   },
+   "boss": true,
+   "tint": [
+    "#9ac8f0",
+    0.15
+   ],
+   "glow": "#7ad0ff",
+   "note": "Белава, Царевна Стужи"
+  },
+  "comp:irga": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "knight_armor",
+    "knight_legs",
+    "knight_arms",
+    "knight_feet",
+    "knight_pauldrons",
+    "knight_scarf",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#d8c8a8"
+    },
+    "skin": {
+     "mul": "#fff2ea"
+    },
+    "knight": {
+     "mul": "#b0c8e4",
+     "s": 0.6
+    },
+    "cape": {
+     "mul": "#e8e0d0"
+    }
+   },
+   "note": "Ирга Стылая: сотница легиона",
+   "r": "w_sword_1h",
+   "l": "w_shield_tower"
+  },
+  "sirenSinger": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "peasant_body",
+    "peasant_arms",
+    "peasant_legs",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2a6a6a"
+    },
+    "skin": {
+     "mul": "#9ad0c0",
+     "v": 0.95
+    },
+    "peasant": {
+     "h": 170,
+     "s": 0.6,
+     "v": 0.85
+    },
+    "cape": {
+     "mul": "#4ac0b0"
+    }
+   },
+   "tint": [
+    "#4ac0b0",
+    0.2
+   ],
+   "glow": "#7af0e0",
+   "glowA": 0.25,
+   "note": "Певунья Омута: придворная певица-утопленница"
+  },
+  "chamberlain": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.6,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_slick",
+    "moustache",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#c8d8d0"
+    },
+    "skin": {
+     "mul": "#9ab8b0",
+     "v": 0.9
+    },
+    "noble": {
+     "h": 175,
+     "s": 0.55,
+     "v": 0.6
+    },
+    "cape": {
+     "mul": "#2a4a5a"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "boss": true,
+   "tint": [
+    "#7af0e0",
+    0.1
+   ],
+   "glow": "#7af0e0",
+   "note": "Камергер Утоплый"
+  },
+  "comp:sabira": {
+   "type": "char",
+   "file": "ubc_f",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_bow",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_bracer",
+    "ranger_legs",
+    "ranger_boots",
+    "ranger_belt",
+    "knight_scarf"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#2a1a10"
+    },
+    "skin": {
+     "mul": "#d8a882",
+     "v": 0.92
+    },
+    "ranger": {
+     "h": 28,
+     "s": 0.62,
+     "v": 0.92
+    },
+    "knight": {
+     "mul": "#c84a2a"
+    }
+   },
+   "l": "w_bow_long",
+   "note": "Сабира, Дочь ветра: проводница караванов"
+  },
+  "duneStalker": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 1.95,
+   "clips": "u_sword",
+   "parts": [
+    "head",
+    "eyes",
+    "ranger_hood",
+    "ranger_body",
+    "ranger_arms",
+    "ranger_legs",
+    "ranger_boots",
+    "knight_scarf"
+   ],
+   "cols": {
+    "skin": {
+     "mul": "#c89a72",
+     "v": 0.8
+    },
+    "ranger": {
+     "h": 30,
+     "s": 0.5,
+     "v": 0.58
+    },
+    "knight": {
+     "mul": "#8a5a3a"
+    }
+   },
+   "r": "w_dagger",
+   "l": "w_dagger",
+   "tint": [
+    "#b8905a",
+    0.18
+   ],
+   "note": "Ловчий барханов"
+  },
+  "driedPriest": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 2.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "beard",
+    "wizard_body",
+    "wizard_belt",
+    "wizard_legs",
+    "peasant_arms",
+    "peasant_feet",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#e8e0d0"
+    },
+    "skin": {
+     "mul": "#c8b08a",
+     "v": 0.78
+    },
+    "wizard": {
+     "h": 40,
+     "s": 0.35,
+     "v": 0.85
+    },
+    "peasant": {
+     "h": 35,
+     "s": 0.3,
+     "v": 0.7
+    },
+    "cape": {
+     "mul": "#e8dcc0"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "tint": [
+    "#c8a870",
+    0.22
+   ],
+   "glow": "#ffd27a",
+   "glowA": 0.3,
+   "note": "Иссохший жрец Первых"
+  },
+  "attal": {
+   "type": "char",
+   "file": "ubc_m",
+   "rig": "ubc",
+   "h": 3.0,
+   "clips": "u_caster",
+   "parts": [
+    "head",
+    "eyes",
+    "brows",
+    "hair_long",
+    "beard",
+    "noble_body",
+    "noble_belt",
+    "noble_arms",
+    "noble_guards",
+    "noble_legs",
+    "noble_feet",
+    "noble_gorget",
+    "cape"
+   ],
+   "cols": {
+    "hair": {
+     "mul": "#f4f0e8"
+    },
+    "skin": {
+     "mul": "#d8b890",
+     "v": 0.86
+    },
+    "noble": {
+     "mul": "#fff0c8",
+     "s": 0.45
+    },
+    "cape": {
+     "mul": "#e8c878"
+    }
+   },
+   "r": "e_lore_staff",
+   "ws": 0.42,
+   "boss": true,
+   "tint": [
+    "#e8c878",
+    0.12
+   ],
+   "glow": "#ffd27a",
+   "hover": 0.4,
+   "note": "Аттал, Первый Огнедел"
+  }
+ },
+ "ubcGroups": {
+  "core": [
+   "anim_medium",
+   "kit_weapons",
+   "kit_items",
+   "anim_ual",
+   "ubc_m"
+  ],
+  "village": [
+   "kit_village",
+   "kit_nature",
+   "rogue_hooded",
+   "ubc_f"
+  ],
+  "village_late": [
+   "kit_village2",
+   "kit_items2",
+   "anim_medium_extra"
+  ],
+  "companions": [
+   "ninja",
+   "avian",
+   "tiefling",
+   "barbarian_large",
+   "kit_weapons2",
+   "anim_large",
+   "ubc_f"
+  ],
+  "z7": [
+   "kit_nature",
+   "kit_dungeon",
+   "werewolf",
+   "kit_weapons2",
+   "anim_large",
+   "ubc_f"
+  ],
+  "z8": [
+   "kit_dungeon",
+   "kit_crypt",
+   "skel_warrior",
+   "skel_golem",
+   "monstrosity",
+   "lorekeeper",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2",
+   "kit_items2",
+   "ubc_f"
+  ],
+  "z9": [
+   "kit_dungeon",
+   "kit_nature",
+   "avian",
+   "frost_golem",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2",
+   "ubc_f"
+  ],
+  "z10": [
+   "kit_dungeon",
+   "kit_crypt",
+   "farmer_a",
+   "farmer_b",
+   "necromancer",
+   "barbarian_large",
+   "witch",
+   "cleric",
+   "orc_raider",
+   "skel_warrior",
+   "anim_large",
+   "anim_medium_extra",
+   "kit_weapons2"
+  ]
+ }
+}

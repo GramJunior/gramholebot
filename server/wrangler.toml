@@ -1,0 +1,44 @@
+# ЭМБЕРВЕЙЛ backend — Cloudflare Worker + D1.
+# Секреты (BOT_TOKEN, JWT_SECRET, ADMIN_SECRET, WEBHOOK_SECRET) НЕ пишутся сюда:
+#   npx wrangler secret put BOT_TOKEN
+# Для локальной разработки положите их в файл .dev.vars (он в .gitignore).
+
+name = "emberveil-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Напоминания бота и уборка старых записей — каждые 10 минут.
+[triggers]
+crons = ["*/10 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "emberveil"
+# Вставьте сюда id из вывода `npx wrangler d1 create emberveil`:
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[vars]
+# Откуда разрешены запросы (адрес, где лежит игра). Через запятую. "*" — откуда угодно.
+ALLOWED_ORIGINS = "https://YOUR-GAME-HOST.example"
+# Адрес Mini App (кнопка «Играть» в боте).
+WEBAPP_URL = "https://YOUR-GAME-HOST.example/apps/emberveil/"
+# Имя бота без @ и короткое имя Mini App из @BotFather (для реферальных ссылок).
+BOT_USERNAME = "your_bot"
+APP_SHORT_NAME = "play"
+# Гостевой вход без Telegram (только для теста!). В бою — "0".
+ALLOW_GUEST = "0"
+# 1 = тестовая среда Telegram (оплата без настоящих Stars).
+TG_TEST_ENV = "0"
+# Смещение игровых суток от UTC в минутах (180 = Москва).
+DAY_OFFSET_MIN = "180"
+# Лимиты (можно не трогать).
+SESSION_TTL_SEC = "21600"
+INITDATA_MAX_AGE_SEC = "86400"
+MAX_SAVE_BYTES = "262144"
+CLAN_MAX_MEMBERS = "30"
+RAID_DAILY_LIMIT = "5"
+ABYSS_MAX_FLOORS_PER_MIN = "3"
+ABYSS_MIN_FLOOR_MS = "8000"
+NOTIFY_MAX_PER_DAY = "3"
+NOTIFY_MIN_GAP_MIN = "60"
