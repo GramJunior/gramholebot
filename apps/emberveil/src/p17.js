@@ -25,7 +25,7 @@ function nqPump(){
     const t=NQ.q.splice(i,1)[0]; t.el=toastEl(t.html,t.icon,t.rar,t.kind); t.until=now+(t.kind==='quest'?3600:3000)+Math.min(1500,t.key.length*12); NQ.vis.push(t);
   }
 }
-setInterval(()=>{ try{ nqPump(); lootTick(); }catch(e){} },250);
+setInterval(()=>{ if(document.hidden) return; try{ nqPump(); lootTick(); }catch(e){} },250); // v31: в фоне не тикает
 // compact loot feed (left side, under the quest tracker): newest on top, same item collapses into ×N
 function lootFeed(html,icon,rar){
   let box=$('lootFeed'); if(!box){ box=document.createElement('div'); box.id='lootFeed'; document.body.appendChild(box); }

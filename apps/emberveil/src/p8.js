@@ -231,8 +231,13 @@ function renderPanel(){
 }
 function rerender(){ const sc=$('pBody')?$('pBody').scrollTop:0; renderPanel(); if($('pBody')) $('pBody').scrollTop=sc; hudRefresh(); }
 const ACT={};
-function act(fn){ const id='a'+Math.random().toString(36).slice(2,8); ACT[id]=fn; return `data-act="${id}"`; }
-function bindPanel(){ for(const el of document.querySelectorAll('#panel [data-act],#map [data-act],#stageCard [data-act],#res [data-act],#boons [data-act],#title [data-act]')){ if(el._b) continue; el._b=1; el.addEventListener('click',ev=>{ ev.stopPropagation(); AU.init(); const f=ACT[el.dataset.act]; if(f){ AU.sfx('ui'); f(ev); } }); } }
+// v31: обработчики живут, пока их кнопка в документе. Раньше карта ACT только росла (23 тыс. замыканий за долгую сессию, +20 МБ кучи):
+// раз в ~400 новых обработчиков (и при привязке панели, не чаще раза в 5 с) удаляются те, чьей кнопки нет в DOM дольше 60 с.
+const ACT_T=new Map(); let _actN=0, _actSw=0;
+function act(fn){ const id='a'+Math.random().toString(36).slice(2,8); ACT[id]=fn; ACT_T.set(id,performance.now()); if(++_actN%400===0) setTimeout(actSweep,0); return `data-act="${id}"`; }
+function actSweep(force){ const now=performance.now(); if(!force&&now-_actSw<5000) return; _actSw=now; const live=new Set(); for(const el of document.querySelectorAll('[data-act]')) live.add(el.dataset.act);
+  for(const [id,t] of ACT_T){ if(live.has(id)) ACT_T.set(id,now); else if(now-t>60000){ delete ACT[id]; ACT_T.delete(id); } } }
+function bindPanel(){ actSweep(); for(const el of document.querySelectorAll('#panel [data-act],#map [data-act],#stageCard [data-act],#res [data-act],#boons [data-act],#title [data-act]')){ if(el._b) continue; el._b=1; el.addEventListener('click',ev=>{ ev.stopPropagation(); AU.init(); const f=ACT[el.dataset.act]; if(f){ AU.sfx('ui'); f(ev); } }); } }
 
 // ---------- hero: gear ----------
 let _dollUrl='', _dollKey='';
@@ -382,7 +387,7 @@ function pSettings(pause){
   ${typeof controlsHtml==='function'?controlsHtml():''}
   ${!pause&&typeof yardStart==='function'?`<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn woodb small" ${act(()=>{ closePanel(); if(G.mode==='village') yardStart(true); })}>${ico('sword')} Учебный плац${S.seen.yard?'':' · новое'}</button></div>`:''}
   ${!Store.ok?'<div class="card" style="margin-top:8px">Хранилище браузера недоступно — прогресс не сохранится после закрытия.</div>':''}
-  ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ Store.del(SKEY); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
+  ${!pause?`<div class="sect">Опасная зона</div><button class="btn woodb small" ${act(()=>{ PANEL.opts.reset=!PANEL.opts.reset; rerender(); })}>Сбросить прогресс…</button>${PANEL.opts.reset?`<div class="card" style="margin-top:6px">Точно? Всё будет потеряно. <button class="btn leather small" ${act(()=>{ saveWipe(); S=newSave(); location.reload(); })}>Да, начать заново</button></div>`:''}`:''}`;
   setTimeout(()=>{ const nm=$('sName'), nb=$('sNameOk'); if(nb) nb.onclick=ev=>{ ev.stopPropagation(); if(nameSave(nm.value)) rerender(); }; if(nm) nm.onkeydown=ev=>{ ev.stopPropagation(); if(ev.key==='Enter'){ if(nameSave(nm.value)) rerender(); } }; const br=$('sBri'); if(br) br.oninput=()=>{ S.set.bright=+br.value; applyExposure(); const v=$('sBriV'); if(v) v.textContent=Math.round(S.set.bright*100)+'%'; saveGame(); }; const a=$('sSfx'),b=$('sMus'); if(a) a.oninput=()=>{ S.set.sfx=+a.value; AU.setVol(); saveGame(); }; if(b) b.oninput=()=>{ S.set.mus=+b.value; AU.setVol(); saveGame(); }; a&&a.addEventListener('change',()=>AU.sfx('pick')); },0);
   return h;
 }

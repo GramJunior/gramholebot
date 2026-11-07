@@ -51,7 +51,8 @@
   }
   function url(fileKey) {
     const p = S.manifest.files[fileKey]; if (!p) throw new Error('EVAssets: unknown file ' + fileKey);
-    return S.base + p;
+    const h = S.manifest.hash && S.manifest.hash[fileKey]; // v31: адрес меняется вместе с содержимым (долгий кэш, см. apps/_headers)
+    return S.base + p + (h ? '?v=' + h : '');
   }
   function entity(id) {
     const e = S.manifest.entities[id];
@@ -243,7 +244,16 @@ vec3 evHsv2Rgb( vec3 c ) { vec3 p = abs( fract( c.xxx + vec3( 1.0, 2.0 / 3.0, 1.
     m.customProgramCacheKey = () => 'evtoon' + (o.skinning ? 's' : '') + (o.transparent ? 't' : '') + (o.paint && S.paint ? 'p' : '') + (ch ? 'c' : '') + (ub ? 'u' : '');
     m.userData.ubc = ub;
     if (o.paint && S.paint) { const base = m.onBeforeCompile; m.onBeforeCompile = (sh, r) => { base(sh, r); S.paint(sh); }; m.userData.paint = 1; }
+    if (o.skinning && !ub) emPatch(m); // v31: у всех скиннинговых KayKit — один вариант шейдера с aEm (нет атрибута — 0), иначе слитый скелет с глазами компилировал бы свой посреди боя
     return m;
+  }
+  // v31: материал слитой сетки с вершинным свечением aEm (глаза скелетов): свечение заменяет тун-цвет этих вершин
+  function emPatch(m) {
+    if (m.userData.em) return; m.userData.em = 1; const base = m.onBeforeCompile, key = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => { base(sh, r);
+      sh.vertexShader = 'attribute vec3 aEm;\nvarying vec3 vEm;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vEm = aEm;');
+      sh.fragmentShader = 'varying vec3 vEm;\n' + sh.fragmentShader.replace(/gl_FragColor = vec4\( outgoingLight, diffuseColor\.a \);|#include <output_fragment>/, (m0) => 'if (vEm.r + vEm.g + vEm.b > 0.01) outgoingLight = mix(vEm, vec3(1.0), 0.35) * 1.15;\n' + m0); };
+    m.customProgramCacheKey = () => key() + 'e'; m.needsUpdate = true;
   }
   // Inverted-hull outline: constant screen-space width, works for SkinnedMesh and InstancedMesh.
   const OUTLINE_VS = `
@@ -503,14 +513,15 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   // float skinned geometry from skinned parts (as-is) + rigid bone children (rebased into bind space, weight 1 on their bone).
   // world(rest) of a rigid vertex = meshWorld·v; skinned (attached mode) gives boneWorld·boneInverse·bindMatrix·v', so
   // v' = bindMatrix⁻¹ · boneInverse⁻¹ · boneWorld⁻¹ · meshWorld · v — then it follows the bone in every pose.
-  function mergeFloatSkinned(skin, rigid) {
+  function mergeFloatSkinned(skin, rigid, emis) {
     const first = skin[0], sk = first.skeleton, bindInv = new T.Matrix4().copy(first.bindMatrix).invert();
-    const parts = skin.map((m) => ({ g: m.geometry, M: null })).concat(rigid.map((r) => {
+    const parts = skin.map((m) => ({ g: m.geometry, M: null })).concat((emis || []).map((e) => ({ g: e.m.geometry, M: null, em: e.em }))).concat(rigid.map((r) => {
       const M = new T.Matrix4().copy(bindInv).multiply(new T.Matrix4().copy(sk.boneInverses[r.b]).invert()).multiply(new T.Matrix4().copy(r.bone.matrixWorld).invert()).multiply(r.o.matrixWorld);
       return { g: r.o.geometry, M, b: r.b }; }));
     let nv = 0, ni = 0; for (const p of parts) { nv += p.g.attributes.position.count; ni += p.g.index ? p.g.index.count : p.g.attributes.position.count; }
     const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), UV = new Float32Array(nv * 2), SI = new Uint16Array(nv * 4), SW = new Float32Array(nv * 4), FX = new Float32Array(nv * 4);
     const IDX = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+    const EM = emis && emis.length ? new Float32Array(nv * 3) : null; // v31: светящиеся части (глаза скелетов) — в той же сетке, свечение вершинным атрибутом
     const v = new T.Vector3(), nm = new T.Matrix3(); let o = 0, oi = 0;
     for (const p of parts) {
       const A = p.g.attributes, pos = A.position, nor = A.normal, uv = A.uv, n = pos.count;
@@ -521,6 +532,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         v.set(pos.getX(i) * ps, pos.getY(i) * ps, pos.getZ(i) * ps); if (p.M) v.applyMatrix4(p.M); P[k] = v.x; P[k + 1] = v.y; P[k + 2] = v.z;
         v.set(nor.getX(i) * ns, nor.getY(i) * ns, nor.getZ(i) * ns); if (p.M) v.applyMatrix3(nm); v.normalize(); N[k] = v.x; N[k + 1] = v.y; N[k + 2] = v.z;
         if (uv) { UV[(o + i) * 2] = uv.getX(i) * us; UV[(o + i) * 2 + 1] = uv.getY(i) * us; }
+        if (EM && p.em) { EM[k] = p.em.r; EM[k + 1] = p.em.g; EM[k + 2] = p.em.b; }
         const fa = A.aFx; if (fa && !p.M) { FX[k4] = fa.getX(i); FX[k4 + 1] = fa.getY(i); FX[k4 + 2] = fa.getZ(i); FX[k4 + 3] = fa.getW(i); } else FX[k4 + 3] = 1;
         if (p.M) { SI[k4] = p.b; SW[k4] = 1; }
         else { const si = A.skinIndex, sw = A.skinWeight, ws = normScale(sw); SI[k4] = si.getX(i); SI[k4 + 1] = si.getY(i); SI[k4 + 2] = si.getZ(i); SI[k4 + 3] = si.getW(i);
@@ -533,6 +545,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     const g = new T.BufferGeometry();
     g.setAttribute('position', new T.BufferAttribute(P, 3)); g.setAttribute('normal', new T.BufferAttribute(N, 3)); g.setAttribute('uv', new T.BufferAttribute(UV, 2));
     g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); g.setAttribute('aFx', new T.BufferAttribute(FX, 4)); g.setIndex(new T.BufferAttribute(IDX, 1));
+    if (EM) { g.setAttribute('aEm', new T.BufferAttribute(EM, 3)); g.userData.evEm = 1; }
     return g;
   }
 
@@ -772,13 +785,18 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
           for (const [src, g] of groups) if (src.map === map && !src.userData.emissive && !src.transparent) { g.rigid.push({ o, b: boneIdx.get(bone), bone }); break; }
         });
       }
+      // v31: глаза-«Glow» (свой материал без текстуры, только свечение) — в сетку тела: −1 вызов на скелета
+      if (sk0 && !this.def.recolor && !this.def.mat && S.Q.mergeRigid !== false) {
+        let main = null; for (const [src, g] of groups) if (src.map && !src.userData.emissive && !src.transparent && (!main || g.skin.length > main.skin.length)) main = g;
+        if (main) for (const [src, g] of [...groups]) if (g !== main && !src.map && src.userData.emissive && !src.transparent && g.skin.every((m) => m.skeleton === main.skin[0].skeleton)) { main.emis = (main.emis || []).concat(g.skin.map((m) => ({ m, em: src.userData.emissive }))); groups.delete(src); }
+      }
       for (const [src, G] of groups) {
-        const list = G.skin, rigid = G.rigid;
-        if (list.length + rigid.length < 2) continue;
-        const key = this.def.file + '|' + (this.def.hide || []).join(',') + '|' + src.uuid + (rigid.length ? '|r:' + rigid.map((r) => r.o.name + '@' + r.b).join(',') : '');
+        const list = G.skin, rigid = G.rigid, emis = G.emis || [];
+        if (list.length + rigid.length + emis.length < 2) continue;
+        const key = this.def.file + '|' + (this.def.hide || []).join(',') + '|' + src.uuid + (rigid.length ? '|r:' + rigid.map((r) => r.o.name + '@' + r.b).join(',') : '') + (emis.length ? '|e:' + emis.map((e) => e.m.name).join(',') : '');
         let merged = S.mergeCache[key];
         if (merged === undefined) {
-          if (rigid.length) merged = mergeFloatSkinned(list, rigid);
+          if (rigid.length || emis.length) merged = mergeFloatSkinned(list, rigid, emis);
           else {
             const KEEP = ['position', 'normal', 'uv', 'skinIndex', 'skinWeight', 'aFx', 'onormal'];
             const geos = list.map((m) => { const gg = new T.BufferGeometry(); for (const k of KEEP) if (m.geometry.attributes[k]) gg.setAttribute(k, plainAttr(m.geometry.attributes[k])); gg.setIndex(m.geometry.index ? plainAttr(m.geometry.index) : null); return gg; });
@@ -791,11 +809,12 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         }
         if (!merged) continue;
         const first = list[0];
+        if (merged.userData.evEm) emPatch(first.material);
         const sm = new T.SkinnedMesh(merged, first.material); sm.name = 'merged_' + src.name; sm.frustumCulled = false;
         first.parent.add(sm); sm.bind(first.skeleton, first.bindMatrix);
-        for (const m of list) { if (m.userData.evOutline) m.remove(m.userData.evOutline); m.parent.remove(m); }
+        for (const m of list.concat(emis.map((e) => e.m))) { if (m.userData.evOutline) m.remove(m.userData.evOutline); m.parent && m.parent.remove(m); }
         for (const r of rigid) { r.o.visible = false; r.o.userData.evMerged = true; } // stays in the tree: weapon tips / trails still follow it
-        this.meshes = this.meshes.filter((m) => list.indexOf(m) < 0 && !m.userData.evMerged); this.meshes.push(sm);
+        this.meshes = this.meshes.filter((m) => list.indexOf(m) < 0 && !m.userData.evMerged && !emis.some((e) => e.m === m)); this.meshes.push(sm);
         if (this._outline) addOutline(sm, { color: this.def.outline });
       }
     }

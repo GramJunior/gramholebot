@@ -8,8 +8,17 @@
 <title>Эмбервейл</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Kurale&family=Ruslan+Display&display=swap" rel="stylesheet">
+<!-- v31: шрифты не блокируют первую отрисовку (preload → stylesheet), до их прихода — системные с тем же видом -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Kurale&family=Ruslan+Display&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Kurale&family=Ruslan+Display&display=swap" rel="stylesheet"></noscript>
+<!--@@PRELOAD@@-->
 <script src="https://telegram.org/js/telegram-web-app.js" async></script>
+<script>
+/* v31: Telegram — один ранний ready() (как только пришёл telegram-web-app.js), цвета шапки/фона/нижней панели под экран загрузки */
+(function(){ var n=0; function go(){ var w=window.Telegram&&window.Telegram.WebApp; if(!w||!w.initData){ if(++n<100) setTimeout(go,50); return; } if(window.__tgReady) return; window.__tgReady=1;
+  try{ w.ready(); }catch(e){} try{ w.expand(); }catch(e){} try{ w.setHeaderColor&&w.setHeaderColor('#1c120b'); }catch(e){} try{ w.setBackgroundColor&&w.setBackgroundColor('#140c07'); }catch(e){} try{ w.setBottomBarColor&&w.setBottomBarColor('#140c07'); }catch(e){} }
+  go(); })();
+</script>
 <script>window.EVNET_BASE_URL = window.EVNET_BASE_URL_OVERRIDE || 'https://emberveil-api.emberveil.workers.dev';</script>
 <style>
 :root{
@@ -1770,15 +1779,27 @@ html.short #cutCard{top:13%} html.short #cutCard h2{font-size:clamp(28px,3.4vw +
   var L=document.getElementById('load');
   for(var i=0;i<18;i++){var e=document.createElement('i');e.className='emb';e.style.left=(5+Math.random()*90)+'%';e.style.bottom=(Math.random()*20)+'%';e.style.animationDelay=(Math.random()*4)+'s';e.style.animationDuration=(3+Math.random()*3)+'s';L.appendChild(e);}
   window.__loadErr=function(m){var b=document.getElementById('loadMsg');b.className='err';b.innerHTML=m;};
-  window.addEventListener('error',function(ev){ if(!window.__booted){ window.__loadErr('Не удалось разжечь очаг: '+(ev.message||'ошибка')+'<br><small>Попробуйте обновить страницу.</small>'); } });
+  window.addEventListener('error',function(ev){ if(!window.THREE&&ev&&/vendor\//.test(ev.filename||'')) return; if(!window.__booted){ window.__loadErr('Не удалось разжечь очаг: '+(ev.message||'ошибка')+'<br><small>Попробуйте обновить страницу.</small>'); } });
 })();
 </script>
-<!-- движок: сначала локальная копия (vendor/, работает офлайн и в обёртке-приложении), при сбое — cdnjs -->
-<script src="vendor/three.min.js"></script>
-<script>if(!window.THREE) document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
-<script>if(window.THREE){ document.write(['GLTFLoader.js','SkeletonUtils.js','BufferGeometryUtils.js','libs/meshopt_decoder.js','shaders/CopyShader.js','shaders/LuminosityHighPassShader.js','shaders/FXAAShader.js','postprocessing/EffectComposer.js','postprocessing/UnrealBloomPass.js','shaders/BokehShader.js','postprocessing/BokehPass.js'].map(function(f){ return '<script src="vendor/'+f+'"><\/script>'; }).join('')); }</script>
+<!-- движок: сначала локальная копия (vendor/, работает офлайн и в обёртке-приложении), при сбое — cdnjs.
+     v31: без document.write — скрипты с defer качаются параллельно с разбором страницы и выполняются по порядку;
+     код игры ниже лишь регистрируется (__evParts) и запускается на DOMContentLoaded, когда движок уже выполнен.
+     FXAA и глубина резкости (только пресет «Выс.») догружаются по требованию (postfxLazy, p70.js); UnrealBloom больше не нужен. -->
+<script src="vendor/three.min.js" defer fetchpriority="high"></script>
+<script src="vendor/GLTFLoader.js" defer fetchpriority="high"></script>
+<script src="vendor/SkeletonUtils.js" defer fetchpriority="high"></script>
+<script src="vendor/BufferGeometryUtils.js" defer fetchpriority="high"></script>
+<script src="vendor/libs/meshopt_decoder.js" defer fetchpriority="high"></script>
+<script>window.__evParts=[];
+window.__evRun=function(){ if(window.__evRan) return; window.__evRan=1; for(var i=0;i<__evParts.length;i++){ try{ __evParts[i](); }catch(e){ console.error(e); if(window.__loadErr) window.__loadErr('Не удалось разжечь очаг: '+(e&&e.message||e)+'<br><small>Попробуйте обновить страницу.</small>'); return; } } };
+document.addEventListener('DOMContentLoaded',function(){ if(window.THREE) return __evRun();
+  // локальная копия движка не пришла — cdnjs, затем дополнения из vendor/ по порядку
+  var L=['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','vendor/GLTFLoader.js','vendor/SkeletonUtils.js','vendor/BufferGeometryUtils.js','vendor/libs/meshopt_decoder.js'], k=0;
+  (function next(){ if(k>=L.length||(k>0&&!window.THREE)) return __evRun(); var s=document.createElement('script'); s.src=L[k++]; s.onload=next; s.onerror=next; document.head.appendChild(s); })(); });
+</script>
 <!--@@MODULES@@-->
-<script>
+<script>__evParts.push(function(){
 "use strict"; /*@@MAIN@@*/
 (function(){
 if(!window.THREE){ window.__loadErr('Не удалось загрузить движок (Three.js).<br><small>Проверьте подключение к интернету и обновите страницу.</small>'); return; }

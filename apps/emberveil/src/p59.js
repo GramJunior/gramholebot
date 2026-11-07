@@ -472,7 +472,7 @@ function tutReplay(id){ const d=TOUR[id]; if(!d) return; AU.sfx&&AU.sfx('ui'); c
 @media (prefers-reduced-motion:reduce){ #tutO .tar svg,#tutJ .tar svg,#tutO .tsp::after,#tutO .tdo{animation:none} }
 `; document.head.appendChild(st); })();
 
-TUT.poll=setInterval(()=>{ try{ tutPoll(); }catch(e){ console.error(e); } },250);
+TUT.poll=setInterval(()=>{ if(document.hidden) return; try{ tutPoll(); }catch(e){ console.error(e); } },250);
 Object.assign(window.__game,{ tut:{ list:()=>TOURS.map(d=>d.id), jits:()=>Object.keys(JITD), state:()=>({mode:tutMode(),off:tutOff(),cur:TUT.cur&&{id:TUT.cur.d.id,i:TUT.cur.i,n:TUT.cur.steps.length,do:!!TUT.cur.do},jit:JIT.cur&&JIT.cur.id,q:JIT.q.map(x=>x.id),seen:Object.assign({},tutS().seen),jitSeen:Object.assign({},tutS().jit),vet:!!tutS().vet}),
   force:(on)=>{ TUT.force=on!==false&&on!==0; return !tutOff(); }, start:(id)=>tutStart(id,{force:true}), next:()=>{ if(TUT.cur){ TUT.cur.st=0; tutNext(); } }, skip:()=>tutEnd(false), replay:(id)=>tutReplay(id),
   jit:(id,o)=>{ const T=tutS(); delete T.jit[id]; return jitWant(id,o||{}); }, reset:()=>{ S.tut=null; return tutS(); }, mode:(m)=>{ if(m) S.set.tut=m; return tutMode(); } } });

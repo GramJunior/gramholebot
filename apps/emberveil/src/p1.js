@@ -63,10 +63,28 @@ function newSave(){
   };
 }
 let S=newSave();
+// v31: два слота с контрольной суммой. Основной — SKEY (обычный JSON, как раньше: его читают облако и старые версии),
+// запасной — SKEY_B (пишется перед основным). Сумма (FNV-1a + длина) — в SKEY_SUM / SKEY_B_SUM. Если основной не читается
+// или сумма не сошлась, берётся запасной; испорченная копия откладывается в SKEY_BAD (не затирается автосохранением), игрок видит тост.
+const SKEY_B=SKEY+'_b', SKEY_SUM=SKEY+'_sum', SKEY_B_SUM=SKEY_B+'_sum', SKEY_BAD=SKEY+'_bad';
+function saveSum(s){ let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return s.length.toString(36)+':'+(h>>>0).toString(36); }
+function saveParse(raw,sum){ if(!raw) return null; if(sum&&sum!==saveSum(raw)) return null; try{ const d=JSON.parse(raw); return d&&typeof d==='object'&&d.v>=1?d:null; }catch(e){ return null; } }
+// записать сохранение в оба слота (облако и импорт тоже идут сюда)
+function saveWrite(js){ const sum=saveSum(js); let ok=Store.set(SKEY_B,js); if(ok) Store.set(SKEY_B_SUM,sum); else { Store.del(SKEY_B); Store.del(SKEY_B_SUM); } const ok2=Store.set(SKEY,js); if(ok2) Store.set(SKEY_SUM,sum); return ok2; }
+function saveWipe(){ for(const k of [SKEY,SKEY_SUM,SKEY_B,SKEY_B_SUM]) Store.del(k); }
+let SAVE_WARN=null;
 function loadGame(){
-  const raw=Store.get(SKEY); if(!raw) return false;
+  const raw=Store.get(SKEY), rawB=Store.get(SKEY_B); if(!raw&&!rawB) return false;
+  let d=saveParse(raw,Store.get(SKEY_SUM));
+  // сумма не сошлась, но JSON целый (запись старой версией без суммы) — принимаем
+  if(!d&&raw&&!Store.get(SKEY_SUM)) d=saveParse(raw,null);
+  if(!d){ const b=saveParse(rawB,Store.get(SKEY_B_SUM));
+    if(raw){ try{ Store.set(SKEY_BAD,JSON.stringify({t:Date.now(),raw})); }catch(e){} }
+    if(b){ d=b; SAVE_WARN='Сохранение было повреждено — летопись восстановлена из резервной копии.'; try{ Store.set(SKEY,rawB); Store.set(SKEY_SUM,saveSum(rawB)); }catch(e){} }
+    else { const r2=saveParse(raw,null); if(r2) d=r2; // сумма не сошлась у обоих, но основной JSON целый — берём его
+      else { SAVE_WARN='Сохранение повреждено и не читается — начата новая летопись. Повреждённая копия сохранена отдельно.'; return false; } } }
   try{
-    const d=JSON.parse(raw); if(!d||typeof d!=='object'||!(d.v>=1)) return false;
+    if(!d||typeof d!=='object'||!(d.v>=1)) return false;
     migrateSave(d);
     const base=newSave();
     (function merge(t,s){for(const k in s){ if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])&&t[k]&&typeof t[k]==='object'&&!Array.isArray(t[k])) merge(t[k],s[k]); else if(s[k]!==undefined&&s[k]!==null||t[k]===undefined) t[k]=s[k]; }})(base,d);
@@ -75,15 +93,15 @@ function loadGame(){
 }
 // миграции старых сохранений: каждая ступень поднимает версию на 1, новые поля заполняются значениями из newSave()
 function migrateSave(d){
-  if(d.v<3){ // v2 → v3: реальные модели, постэффекты, онлайн. Новые поля необязательные; адаптивное качество сбрасываем
-    d.set=d.set||{}; if(d.set.post===undefined) d.set.post='auto'; if(d.set.models===undefined) d.set.models='real'; if(d.set.chars===undefined) d.set.chars='auto'; d.set.qAuto=null;
-    if(d.syn&&typeof d.syn==='object'&&d.syn.unread===undefined) d.syn.unread=0;
-  }
   if(d.v<2){ // v1 → v2: набеги, спутники, походы, синергии, загадки, знаки доблести
     d.res=d.res||{}; if(d.res.marks===undefined) d.res.marks=0;
     if(d.raid&&typeof d.raid!=='object') delete d.raid;
     if(d.exp&&!Array.isArray(d.exp.list)) d.exp.list=[];
     d.v=2; }
+  if(d.v<3){ // v2 → v3: реальные модели, постэффекты, онлайн. Новые поля необязательные; адаптивное качество сбрасываем (v31: ступень после v<2 и сама ставит v=3)
+    d.set=d.set||{}; if(d.set.post===undefined) d.set.post='auto'; if(d.set.models===undefined) d.set.models='real'; if(d.set.chars===undefined) d.set.chars='auto'; d.set.qAuto=null;
+    if(d.syn&&typeof d.syn==='object'&&d.syn.unread===undefined) d.syn.unread=0;
+    d.v=3; }
   if(d.v<4){ // v3 → v4: пролог, обучение, выборы сюжета, календарь, пропуск, коллекция. Старым героям пролог и обучение не показываем
     d.seen=d.seen||{}; d.q=d.q||{}; d.q.flags=d.q.flags||{};
     if(d.started){ d.seen.prologue=1; d.seen.wake=1; d.seen.ftue_done=1; }
@@ -114,7 +132,7 @@ function migrateSave(d){
   return d;
 }
 let _saveT=0;
-function saveGame(now){ if(window.__evReload||(typeof G!=='undefined'&&G.prologue)) return; if(!now){_saveT=1;return;} _saveT=0; try{Store.set(SKEY,JSON.stringify(S));}catch(e){} try{ if(typeof netPush==='function') netPush(); }catch(e){} }
+function saveGame(now){ if(window.__evReload||(typeof G!=='undefined'&&G.prologue)) return; if(!now){_saveT=1;return;} _saveT=0; try{ saveWrite(JSON.stringify(S)); }catch(e){} try{ if(typeof netPush==='function') netPush(); }catch(e){} }
 setInterval(()=>{if(_saveT)saveGame(true);},1500);
 
 // ---------- haptics / telegram ----------
@@ -133,7 +151,7 @@ const AU=(()=>{
   let ctx=null, master, sfxG, musG, rev, revG, noiseBuf, started=false;
   const A={};
   function init(){
-    if(ctx) { if(ctx.state==='suspended') ctx.resume().catch(()=>{}); return; }
+    if(ctx) { if(ctx.state==='suspended'||ctx.state==='interrupted') ctx.resume().catch(()=>{}); return; } // v31: iOS — «interrupted» (звонок, Siri) тоже будим
     try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ ctx=null; return; }
     master=ctx.createGain(); master.gain.value=0.9; master.connect(ctx.destination);
     const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4; comp.connect(master);
@@ -252,7 +270,7 @@ const AU=(()=>{
     // fade
     const t=ctx.currentTime; musG.gain.cancelScheduledValues(t); musG.gain.setValueAtTime(musG.gain.value,t); musG.gain.linearRampToValueAtTime(0.0001,t+0.4); musG.gain.linearRampToValueAtTime(S.set.mus*0.5,t+1.2);
     step=0; nextT=ctx.currentTime+0.5; melIdx=2;
-    if(!timer) timer=setInterval(tick,90);
+    if(!timer) timer=setInterval(()=>{ if(!document.hidden) tick(); },90); // v31: в фоне музыка не планируется
   }
   function deg(d,oct){ const sc=cur.scale; const n=sc.length; const o=Math.floor(d/n); return cur.root+sc[((d%n)+n)%n]+12*(o+(oct||0)); }
   function pluck(m,t,v,dur){ osc('triangle',mtof(m),t,dur||.5,v,musG,{lp:2400}); osc('square',mtof(m)*1.003,t,(dur||.5)*.5,v*.25,musG,{lp:1400}); }

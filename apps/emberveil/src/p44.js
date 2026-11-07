@@ -148,8 +148,8 @@ const A8E={ // procedural accessories (attached to actor bones or to the procedu
 };
 let _a8ShMat=null; function a8ShieldMat(){ if(_a8ShMat) return _a8ShMat; const m=a8BubMat().clone(); m.uniforms={uC:{value:new THREE.Color(0x9af8ff)},uT:TER_U.uTime,uA:{value:.9}}; return _a8ShMat=m; }
 const a8EnemyLook={
-  drownedGuard:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x3e7a6a,.62); a.setGlow('#6af0d0',.12); try{ a.attach('back',new THREE.Mesh(A8E.kelp(),MTP)); }catch(er){} } },
-  sirenSinger:e=>{ const a=e.rig.actor; if(a){ a.setGlow('#7af0e0',.25); try{ a.attach('back',new THREE.Mesh(A8E.fins(),MTP)); a.attach('head',new THREE.Mesh(A8E.pearls(),MTP)); }catch(er){} } e.hover=.15; },
+  drownedGuard:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x3e7a6a,.62); a.setGlow('#6af0d0',.12); if(QL!=='perf') try{ a.attach('back',new THREE.Mesh(A8E.kelp(),MTP)); }catch(er){} /* v31: мелкие украшения врагов на «Произв.» не рисуются (−1 вызов на врага) */ } },
+  sirenSinger:e=>{ const a=e.rig.actor; if(a){ a.setGlow('#7af0e0',.25); try{ a.attach('back',new THREE.Mesh(A8E.fins(),MTP)); if(QL!=='perf') a.attach('head',new THREE.Mesh(A8E.pearls(),MTP)); }catch(er){} } e.hover=.15; },
   shellback:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x8a7a6a,.45); try{ const s=new THREE.Mesh(A8E.shell(),MTP); a.attach('back',s); e._shell=s; }catch(er){} } },
   jelly:e=>{ }
 };

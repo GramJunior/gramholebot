@@ -47,17 +47,21 @@ function asBoot(onProg){
   return Promise.race([initP.then(()=>asLoad(first,onProg)).then(()=>{ AS.ok=asCoreOk(); asTintInit(); return AS.ok; },e=>{ console.warn(e); AS.failed=true; return false; }),
     new Promise(r=>setTimeout(()=>r('timeout'),30000))]).then(v=>{ if(v==='timeout'){ AS.ok=window.EVAssets&&EVAssets.manifest&&asCoreOk(); asTintInit(); } if(AS.ok) setTimeout(asPrefetch,1500); return AS.ok; });
 }
-// v17: какие модели персонажей: детальные (UBC, Quaternius) или классические (KayKit). «Авто» — детальные, кроме пресета «Производительность».
-function asCharsMode(){ const q=(location.search.match(/[?&]chars=(\w+)/)||[])[1]; if(q==='classic'||q==='detail') return q; const c=S.set.chars||'auto'; return c==='auto'?(QL==='perf'?'classic':'detail'):c; }
+// v17: какие модели персонажей: детальные (UBC, Quaternius) или классические (KayKit). «Авто» — детальные (v31: и на «Произв.» — они дешевле по вызовам).
+function asCharsMode(){ const q=(location.search.match(/[?&]chars=(\w+)/)||[])[1]; if(q==='classic'||q==='detail') return q; const c=S.set.chars||'auto'; return c==='auto'?'detail':c; } // v31: «Авто» — детальные на всех пресетах (один вызов отрисовки на героя; KayKit-герой ≈9 вызовов)
 // ядро готово: анимации + герой (детальные — UBC, классические — KayKit hero_parts)
 function asCoreOk(){ const H=asInfo('hero'); if(!H) return false; const rg=EVAssets.manifest.rigs[H.rig]; return EVAssets.isLoaded(H.file)&&EVAssets.isLoaded(rg&&rg.anims?rg.anims[0]:'anim_medium')&&EVAssets.isLoaded('kit_weapons'); }
 // background streaming: next zones, late village, companions in use
+// v31: фоном — только то, что понадобится скоро: деревня-город, текущая и следующая зона (+ поздняя деревня и спутник, если есть).
+// Остальное (питомцы, Бездна, все спутники, прочие зоны) грузится при входе (asZone/asLoad). Экономия трафика / медленная сеть
+// (navigator.connection: saveData, 2g/3g) — без фоновой догрузки следующей зоны.
+function asNetSlow(){ try{ const c=navigator.connection; return !!(c&&(c.saveData||/(^|-)(2g|3g)$/.test(c.effectiveType||''))); }catch(e){ return false; } }
 function asPrefetch(){
-  if(!asOn()) return; const z=clamp(S.prog.zone||1,1,6); const q=['town',asZoneGroup(z),'village_late',asZoneGroup(z+1),'pets'];
+  if(!asOn()) return; const z=clamp(S.prog.zone||1,1,10); const slow=asNetSlow(); const q=['town',asZoneGroup(z)];
+  if(!slow){ if(BLD_ORDER.some(k=>(S.bld[k]||0)>=4)) q.push('village_late'); if(z<10) q.push(asZoneGroup(z+1)); }
   const c=S.comp&&S.comp.active&&COMP_ASSET[S.comp.active]; if(c){ const d=asInfo(c); if(d) q.push(d.file); }
-  if(S.endless&&S.endless.runs>0||stageDone('1-5')) q.push('abyss');
-  q.push('companions');
-  for(let i=1;i<=6;i++) q.push(asZoneGroup(i));
+  try{ for(const k of (S.pets&&S.pets.active)||[]){ const d=k&&asInfo('pet:'+k); if(d&&d.file&&q.indexOf(d.file)<0) q.push(d.file); } }catch(e){} // питомцы в походе — их модели
+  if(!slow&&(S.endless&&S.endless.runs>0)) q.push('abyss');
   // разбор .glb идёт в главном потоке: в бою (враги рядом) пакеты догружаются реже, чтобы не было рывков
   let i=0; const busy=()=>(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid')&&G.enemies&&G.enemies.some(e=>e.alive&&(e.state==='chase'||e.state==='wind'||e.state==='act')); const next=()=>{ if(i>=q.length) return; if(busy()&&i>2){ setTimeout(next,1200); return; } asLoad(q[i++]).then(()=>setTimeout(next,250)); }; next();
 }

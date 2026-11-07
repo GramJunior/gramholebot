@@ -102,7 +102,7 @@ const A10E={
   stitch:()=>cgeo('a10e_stitch',b=>{ b.box(.18,.02,.03,0x2a2430,{ol:0}); for(let i=0;i<5;i++) b.box(.012,.06,.032,0xd8c8b0,{p:[-.08+i*.04,0,.004],ol:0}); b.box(.34,.42,.04,0x3a3446,{p:[0,-.55,.12]}); b.box(.26,.34,.05,0x16141e,{p:[0,-.55,.13],ol:0}); },0),
   cup:()=>cgeo('a10e_cup',b=>{ b.lathe([[0,0],[.1,0],[.03,.06],[.03,.18],[.15,.28],[.16,.38],[0,.38]],0xd8c8ff,{seg:9,e:.8}); },0),
   dolls:()=>cgeo('a10e_dolls',b=>{ for(let i=0;i<3;i++){ const a=-.5+i*.5; b.sph(.05,0x9a96aa,{p:[Math.sin(a)*.24,.0,Math.cos(a)*.16]}); b.box(.06,.1,.04,0x8a8696,{p:[Math.sin(a)*.24,-.08,Math.cos(a)*.16]}); } },0),
-  moth:()=>{ const g=new THREE.PlaneGeometry(.36,.22); return g; }
+  moth:()=>A10E._moth||(A10E._moth=new THREE.PlaneGeometry(.36,.22)) // v31: одна геометрия на всех мотыльков (была новая на каждого — утечка)
 };
 const MTash10=toonMat(0x8a8696,.55), MTmute10=toonMat(0x4a4858,.5), MTpup10=toonMat(0x6a6680,.5), MTask10=toonMat(0xb8a8ff,.4);
 ENEMY_MODELS.facelessTwin=()=>{ const f=ENEMY_PROC.goblin||ENEMY_MODELS.goblin; const r=f(); r.root.scale.setScalar(1.3); return r; };
@@ -121,7 +121,7 @@ Object.assign(ERES,{facelessTwin:{},memMoth:{fire:-1},puppeteer:{light:-.3},mute
 NO_FLEE.add('memMoth'); NO_FLEE.add('asker'); NO_FLEE.add('a10doll');
 const a10Look={
   facelessTwin:e=>{ const a=e.rig.actor; const m=new THREE.Mesh(A10E.mask(),new THREE.MeshBasicMaterial({color:0xf2f0f8})); if(a){ a.setTint(0x8a8696,.72); try{ const h=a.attach('head',m); h.position.set(0,.1,.12); h.scale.setScalar(1.6); }catch(er){} } else { (e.rig.head||e.rig.torso||e.rig.body).add(m); m.position.set(0,.2,.1); } },
-  puppeteer:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x6a6680,.62); a.setGlow('#b8a8ff',.2); try{ a.attach('back',new THREE.Mesh(A10E.dolls(),MTP)).position.set(0,-.3,.25); }catch(er){} } },
+  puppeteer:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x6a6680,.62); a.setGlow('#b8a8ff',.2); if(QL!=='perf') try{ a.attach('back',new THREE.Mesh(A10E.dolls(),MTP)).position.set(0,-.3,.25); }catch(er){} } },
   muteGiant:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x4a4858,.7); try{ a.attach('head',new THREE.Mesh(A10E.stitch(),MTP)).position.set(0,.05,.28); }catch(er){} } },
   asker:e=>{ const a=e.rig.actor; if(a){ a.setTint(0xb8a8ff,.55); a.setGlow('#d8c8ff',.45); a.setOpacity(.62); try{ a.attach('r',new THREE.Mesh(A10E.cup(),MTP)); }catch(er){} } else { e.baseMat=MTask10; setMat(e,MTask10); } e.hover=.5; e.y=.5; },
   a10doll:e=>{ const a=e.rig.actor; if(a){ a.setTint(0x9a96aa,.75); } else { e.baseMat=MTash10; setMat(e,MTash10); } }
@@ -134,10 +134,19 @@ spawnEnemy=function(kind,x,z,L,o={}){ const e=_spawnEnemyA10(kind,x,z,L,o); cons
   if(!(e.rig&&e.rig.actor)){ if(kind==='facelessTwin'){ e.baseMat=MTash10; setMat(e,MTash10); } if(kind==='muteGiant'){ e.baseMat=MTmute10; setMat(e,MTmute10); } if(kind==='puppeteer'){ e.baseMat=MTpup10; setMat(e,MTpup10); } }
   return e; };
 const _animEnemyA10=animEnemy;
-animEnemy=function(e,dt){ if(e.kind==='memMoth'){ const R=e.rig; R.root.position.set(e.x,0,e.z); if(!e.alive){ e.deadT=(e.deadT||0)+dt; R.root.scale.setScalar(Math.max(.01,1-e.deadT*1.6)); return; } const t=G.time, glow=e.touchGlow>0?1.6:1;
-    const m4=_a10m4, q=_a10q, v=_a10v, s=_a10s; for(let i=0;i<R.mo.length;i++){ const o=R.mo[i]; const a=o.a+t*1.3, b=o.b+t*.9; v.set(Math.cos(a)*o.r,o.y+Math.sin(b)*.25+(e.y||1.2),Math.sin(a)*o.r); q.setFromEuler(_a10e.set(-PI/2+.4,a+PI/2,0)); const fl=.35+Math.abs(Math.sin(t*o.f))*.65; s.set(o.s*fl*glow*(e.elite?1.4:1),o.s*glow*(e.elite?1.4:1),1); m4.compose(v,q,s); R.im.setMatrixAt(i,m4); } R.im.instanceMatrix.needsUpdate=true; if(!e.noShadow) SHADOW.add(e.x,e.z,.6); return; }
+animEnemy=function(e,dt){ if(e.kind==='memMoth'){ const R=e.rig; R.root.position.set(e.x,0,e.z); if(!e.alive){ e.deadT=(e.deadT||0)+dt; R.root.scale.setScalar(Math.max(.01,1-e.deadT*1.6)); a10MothPool(e,R); return; } const t=G.time, glow=e.touchGlow>0?1.6:1;
+    const m4=_a10m4, q=_a10q, v=_a10v, s=_a10s; for(let i=0;i<R.mo.length;i++){ const o=R.mo[i]; const a=o.a+t*1.3, b=o.b+t*.9; v.set(Math.cos(a)*o.r,o.y+Math.sin(b)*.25+(e.y||1.2),Math.sin(a)*o.r); q.setFromEuler(_a10e.set(-PI/2+.4,a+PI/2,0)); const fl=.35+Math.abs(Math.sin(t*o.f))*.65; s.set(o.s*fl*glow*(e.elite?1.4:1),o.s*glow*(e.elite?1.4:1),1); m4.compose(v,q,s); R.im.setMatrixAt(i,m4); } R.im.instanceMatrix.needsUpdate=true; a10MothPool(e,R); if(!e.noShadow) SHADOW.add(e.x,e.z,.6); return; }
   _animEnemyA10(e,dt); if(e.hover&&e.alive&&e.rig&&e.rig.root&&W&&a10Lit()&&e.kind==='asker'){ e.rig.root.position.y=(e.hover||.5)+Math.sin(G.time*1.4+e.id)*.12; } };
 const _a10m4=new THREE.Matrix4(), _a10q=new THREE.Quaternion(), _a10v=new THREE.Vector3(), _a10s=new THREE.Vector3(), _a10e=new THREE.Euler();
+// v31: все облака мотыльков мира — один InstancedMesh (было: свой InstancedMesh у каждого врага = +1 вызов отрисовки на мотылька).
+// Враг пишет свои 12 матриц (мировые) в общий пул; слоты врага, не обновлённого за кадр (убран из мира), гасятся перед отрисовкой.
+const _a10pm=new THREE.Matrix4(), _a10z=new THREE.Matrix4().makeScale(0,0,0);
+function a10MothPool(e,R){ if(!W||!worldRoot) return; let P=W.mothPool; const n=R.mo.length;
+  if(!P){ const im=new THREE.InstancedMesh(A10E.moth(),a10MothMat(),12*32); im.frustumCulled=false; im.count=0; im.renderOrder=R.im.renderOrder||0; worldRoot.add(im); P=W.mothPool={im,own:[],tick:0};
+    im.onBeforeRender=()=>{ for(let k=0;k<P.own.length;k++){ const o=P.own[k]; if(!o||o.seen===P.tick) continue; for(let i=0;i<o.n;i++) im.setMatrixAt(k*12+i,_a10z); if(o.e._mp===P) o.e._mpK=-1; P.own[k]=null; im.instanceMatrix.needsUpdate=true; } P.tick++; }; }
+  let k=e._mp===P?e._mpK:-1; if(k<0){ k=P.own.indexOf(null); if(k<0) k=P.own.length; if(k>=32||n>12){ R.im.visible=true; return; } P.own[k]={e,n,seen:P.tick}; e._mp=P; e._mpK=k; P.im.count=Math.max(P.im.count,(k+1)*12); }
+  P.own[k].seen=P.tick; R.im.visible=false; R.root.updateMatrixWorld(true); let vis=true; for(let o=R.im.parent;o;o=o.parent){ if(!o.visible){ vis=false; break; } if(o===scene) break; }
+  for(let i=0;i<n;i++){ if(vis){ R.im.getMatrixAt(i,_a10pm); _a10pm.premultiply(R.im.matrixWorld); P.im.setMatrixAt(k*12+i,_a10pm); } else P.im.setMatrixAt(k*12+i,_a10z); } P.im.instanceMatrix.needsUpdate=true; }
 
 // ---------- ИИ: Подражание, Забвение, нити Кукловода, Тишина Немого, сделки Просящего ----------
 const _updateEnemyA10=updateEnemy;

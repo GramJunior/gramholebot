@@ -97,7 +97,7 @@ forgeBody=function(tab){
       return `<div class="rcard bg-r${rar} ${lock||!known||setSlot?'lock':''}"><span class="rlbl">${Rc.set?'Комплект':RAR[rar].n}</span><span class="rtime">${ico('hourglass')} ${Rc.t?fmtDur(Rc.t*1000):'сразу'}</span>${pv?itHtml(pv,{cmp:false,lv:false}):`<span class="ri">${ico(Rc.ic)}</span>`}<b>${Rc.n}</b><small>${Rc.d}</small>${costHtml(c)}${lock?`<small class="muted">Кузница ${Rc.lv} ур.</small>`:!known?'<small class="muted">Чертёж не найден</small>':setSlot?'<small class="muted">Нет такой вещи в комплекте</small>':''}<button class="btn ${ok?'leather':'woodb'} small" ${ok?'':'disabled'} ${act(()=>{ if(craftStart(rid,slot,cls,el)){ AU.sfx('build'); rerender(); } })}>${ico('anvil')} Ковать</button></div>`; }).join('')}</div>`;
   return h; };
 // кольца-таймеры ковки обновляются раз в секунду
-setInterval(()=>{ for(const r of document.querySelectorAll('.ring[data-re]')){ const s=+r.dataset.rs, e=+r.dataset.re; r.style.setProperty('--p',Math.round(Math.min(1,(Date.now()-s)/Math.max(1,e-s))*100)); } },1000);
+setInterval(()=>{ if(document.hidden) return; for(const r of document.querySelectorAll('.ring[data-re]')){ const s=+r.dataset.rs, e=+r.dataset.re; r.style.setProperty('--p',Math.round(Math.min(1,(Date.now()-s)/Math.max(1,e-s))*100)); } },1000);
 
 // ---------- алхимик: котёл и карточки зелий ----------
 const BREW_COL={potion:'#ff5a5a',bomb:'#ffb04a',elixir_str:'#ff7a3a',elixir_def:'#6cc6ff',elixir_spd:'#9cff7a',scroll:'#ffd27a',prot:'#c8a8ff'};
