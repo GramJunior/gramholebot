@@ -106,7 +106,7 @@ function animEnemy(e,dt){
   const R=e.rig, t=e.t; const mv=e.moving||0; e.ph=(e.ph||0)+dt*mv*e.spd*2.4; const ph=e.ph;
   const sc=R.root.scale.x;
   R.root.position.set(e.x,e.y,e.z); R.root.rotation.y=e.face;
-  if(!e.alive){ e.deadT=(e.deadT||0)+dt; const u=clamp(e.deadT*2.5,0,1); if(R.type==='quad'||R.type==='dragon') R.root.rotation.z=u*PI/2*(e.id%2?1:-1); else R.root.rotation.x=-u*PI/2; if(e.deadT>.8) R.root.position.y=-(e.deadT-.8)*1.2*sc; return; }
+  if(!e.alive){ e.deadT=(e.deadT||0)+dt; const u=clamp(e.deadT*2.5,0,1); if(R.type==='quad'||R.type==='dragon') R.root.rotation.z=u*PI/2*(e.id%2?1:-1); else R.root.rotation.x=-u*PI/2; if(e.deadT>.8) R.root.position.y=-(e.deadT-.8)*1.2*sc; const sr=clamp(1-(e.deadT-.6)/.8,0,1); if(sr>.02) SHADOW.add(e.x,e.z,e.r*1.4*sr); /* v31: тень гаснет, а не пропадает */ return; }
   const wind=e.state==='wind'?clamp(e.st/e.wind.t,0,1):0, act=e.state==='act'?clamp(e.st/.3,0,1):0; const wk=e.wind&&e.wind.k;
   if(R.type==='biped'){
     R.body.position.y=R.hip+Math.abs(Math.cos(ph))*.06*mv; R.body.rotation.set(0,0,0);

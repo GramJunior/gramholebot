@@ -81,9 +81,14 @@ updateEnemy=function(e,dt){ _updateEnemy48.apply(this,arguments); const s=e.pz; 
   if(e.brkT>0) e.brkT-=dt; if(e.kdT>0) e.kdT-=dt; };
 // упал на спину / поднимается
 const _animEnemy48=animEnemy;
-animEnemy=function(e,dt){ _animEnemy48.apply(this,arguments); if(!e.alive||!(e.kdT>0)||e.boss) return; const R=e.rig; if(!R||!R.root) return;
+// v31: падает от удара (в сторону «от героя»), наклон — в собственных осях врага (порядок YXZ; было: вокруг мировой оси X);
+// наклон снимается, когда враг встал или погиб (раньше труп оставался наклонённым)
+animEnemy=function(e,dt){ _animEnemy48.apply(this,arguments); const R=e.rig; if(!R||!R.root) return;
+  if(!e.alive||!(e.kdT>0)||e.boss){ if(e._kdOn){ e._kdOn=0; R.root.rotation.z=0; if(e.alive||R.actor) R.root.rotation.x=0; } return; }
+  if(!e._kdOn){ e._kdOn=1; const P=G.P; e._kdA=P&&Math.hypot(e.x-P.x,e.z-P.z)>.05?Math.atan2(e.x-P.x,e.z-P.z):e.face+PI; }
   const T=e.kd0||1, el=T-e.kdT; const fall=clamp(el/.22,0,1), up=clamp(e.kdT/.35,0,1); const u=Math.min(smooth(fall),smooth(up));
-  if(R.type==='quad'||R.type==='dragon') R.root.rotation.z=u*1.25*(e.id%2?1:-1); else R.root.rotation.x=-u*1.3;
+  R.root.rotation.order='YXZ'; const rel=e._kdA-R.root.rotation.y;
+  if(R.type==='quad'||R.type==='dragon'){ R.root.rotation.z=u*1.25*(e.id%2?1:-1); R.root.rotation.x=0; } else { R.root.rotation.x=u*1.3*Math.cos(rel); R.root.rotation.z=-u*1.3*Math.sin(rel); }
   if(e.brkT>0&&Math.random()<dt*8) fx('trail',e.x+rand(-.5,.5),(R.h||1.4)*.5+.4,e.z+rand(-.5,.5),{col:0xffe08a,l:.35}); };
 
 

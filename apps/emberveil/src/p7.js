@@ -85,7 +85,7 @@ function skillTick(P,dt){
     case 'sword_s2': { if(u<.3){ const sp=22; P.x+=fx0*sp*dt; P.z+=fz0*sp*dt; P.iframe=.1; fx('dust',P.x,0,P.z,{k:1});
         for(const e of G.enemies){ if(e.alive&&!e.burrowed&&!k.done[e.id]&&Math.hypot(e.x-P.x,e.z-P.z)<1.6+e.r){ k.done[e.id]=1; const h=heroDmg(1.5+.4*r,{skill:1}); dmgEnemy(e,h.amt,{crit:h.crit,els:h.els,kb:9,dir:f,stun:1+.15*r,src:P,heavy:1}); AU.sfx('heavy'); shake(.3); G.hitstop=.08; } } } break; }
     case 'sword_s3': { if(once('a',.15)){ P.buff.guard=4+.5*r; P.buff.guardDr=.4+.05*r; fx('ring',P.x,.5,P.z,{r:3,col:0xffd27a}); AU.sfx('shield'); for(const e of G.enemies) if(e.alive&&dist(e,P)<10) e.taunt=P.buff.guard; } break; }
-    case 'sword_ult': { if(once('a',.45)){ const L=8; for(let i=1;i<=6;i++) later(i*.04,()=>{ const x=P.x+fx0*i*1.3,z=P.z+fz0*i*1.3; fx('boom',x,0,z,{r:1.6,col:0xffa040}); }); aoeLine(P.x,P.z,f,L,2.6,6+1.5*r,{skill:1,el:'fire',kb:6}); shake(.7); AU.sfx('boom'); AU.sfx('fire'); G.hitstop=.12; } break; }
+    case 'sword_ult': { if(once('a',.45)){ const L=8; bladeFx31(P.x,P.z,f,L,0xffa040); /* v31: огромный клинок вместо шести мелких взрывов */ for(let i=1;i<=3;i++) later(.1+i*.05,()=>{ const x=P.x+fx0*i*2.4,z=P.z+fz0*i*2.4; fx('boom',x,0,z,{r:1.3,col:0xffa040}); }); aoeLine(P.x,P.z,f,L,2.6,6+1.5*r,{skill:1,el:'fire',kb:6}); shake(.7); AU.sfx('boom'); AU.sfx('fire'); G.hitstop=.12; } break; }
     case 'axe_s1': { const tg=k.t&&k.t.alive?k.t:null; if(!k.from){ k.from=[P.x,P.z]; const d=tg?Math.max(0,Math.min(9,dist(P,tg)-1.2)):5; k.to=[P.x+fx0*d,P.z+fz0*d]; }
       if(u<.55){ const t=u/.55; P.x=lerp(k.from[0],k.to[0],t); P.z=lerp(k.from[1],k.to[1],t); P.y=Math.sin(t*PI)*2.6; P.iframe=.1; }
       if(once('land',.55)){ P.y=0; aoeDamage(P.x,P.z,3.6,2.2+.5*r,{skill:1,kb:5,stun:.6}); fx('boom',P.x,0,P.z,{r:3.2,col:0xd8a050,smoke:0x6a5a40}); fx('ring',P.x,.1,P.z,{r:3.6}); shake(.6); AU.sfx('boom'); G.hitstop=.1; vib('heavy'); } break; }
@@ -317,23 +317,27 @@ function updateEnemy(e,dt){
   constrain(e,e.r*.8);
 }
 function hasLOS(e,t){ const n=6; for(let i=1;i<n;i++){ const x=lerp(e.x,t.x,i/n), z=lerp(e.z,t.z,i/n); for(const o of W.obst){ if(!o.dead&&(o.hx?Math.max(o.hx,o.hz)>.6:o.r>.6)&&(o.h===undefined||o.h>1.2)&&Math.abs(x-o.x)<o.r+.1&&Math.abs(z-o.z)<o.r+.1&&obDist(o,x,z)<0&&obDist(o,t.x,t.z)>.7) return false; } } return true; }
+// v31: одна геометрия для телеграфа и удара (радиус от центра врага, полуугол конуса; тело цели «касается» края)
+const MELEE_HALF=.75, BREATH_R=5.6, BREATH_HALF=.5;
+function meleeReach(e,k){ return e.D.rng+e.r+.5+(k==='emerge'?.6:0); }
+function coneHit(ang,d,r,half){ return ang<half+Math.atan2(r||0,Math.max(d,.6)); }
 function startWind(e,k,t){
   e.state='wind'; e.st=0; e.wind={k,t}; e.hitDone=false; const P=G.P; const tg=enemyTarget(e);
   const fdir=Math.atan2(tg.x-e.x,tg.z-e.z); e.face=fdir;
-  if(k==='melee') DECALS.spawn('cone',e.x,e.z,e.D.rng+e.r+.4,t,{dir:fdir,ang:.75,follow:e});
+  if(k==='melee') DECALS.spawn('cone',e.x,e.z,meleeReach(e,'melee'),t,{dir:fdir,ang:MELEE_HALF,follow:e});
   if(k==='slam'){ const cx=e.x+Math.sin(fdir)*1.6, cz=e.z+Math.cos(fdir)*1.6; e.wind.cx=cx; e.wind.cz=cz; DECALS.spawn('circle',cx,cz,2.4,t); }
   if(k==='charge') DECALS.spawn('line',e.x,e.z,11,t,{dir:fdir,w:e.r*2+.4});
   if(k==='explode') DECALS.spawn('circle',e.x,e.z,2.4,t,{follow:e,col:e.D.el==='poison'?0x8ad03a:0xff6a1a});
   if(k==='emerge') DECALS.spawn('circle',e.x,e.z,2,t);
   if(k==='lob'){ e.wind.tx=tg.x; e.wind.tz=tg.z; DECALS.spawn('circle',tg.x,tg.z,1.8,t+.5,{col:e.D.el==='fire'?0xff6a1a:e.D.el==='poison'?0x8ad03a:0xff3a1a}); }
-  if(k==='breath') DECALS.spawn('cone',e.x,e.z,5.5,t,{dir:fdir,ang:.5,follow:e,col:0xff6a1a});
+  if(k==='breath') DECALS.spawn('cone',e.x,e.z,BREATH_R,t+.22,{dir:fdir,ang:BREATH_HALF,follow:e,col:0xff6a1a}); /* v31: декаль держится до тика урона (+0.2 с) */
   if(k==='shoot'||k==='bolt'){ e.wind.dir=fdir; }
 }
 function enemyAct(e,tg){
   const P=G.P, k=e.wind.k, D=e.D; const dToP=Math.hypot(P.x-e.x,P.z-e.z);
   const hitTarget=(x)=>{ if(tg===P) hurtPlayer(e.dmg*x,{src:e,lvl:e.lvl,el:D.el,kb:3,dir:Math.atan2(P.x-e.x,P.z-e.z)}); else if(tg.type==='pet'){ tg.hitT=.2; fx('hit',tg.x,.6,tg.z); } else if(tg===W.cart) cartHurt(e.dmg*x); else if(tg.type==='ally') allyHurt(tg,e.dmg*x,e); else if(tg.raidHurt) tg.raidHurt(e.dmg*x,e); if(e.mods.includes('vamp')) e.hp=Math.min(e.maxHp,e.hp+e.dmg*x*.5); if(e.mods.includes('fire')) fx('fire',tg.x,.5,tg.z,{k:6}); if(e.mods.includes('ice')&&tg===P) P.slowT=1.5; };
-  if(k==='melee'||k==='emerge'){ const range=e.D.rng+e.r+.5+(k==='emerge'?.6:0); const td=Math.hypot(tg.x-e.x,tg.z-e.z); const ang=Math.abs(angWrap(Math.atan2(tg.x-e.x,tg.z-e.z)-e.face)); sfxAt('swing',e.x,e.z,.6);
-    if(td<range+(tg.r||0)&&(ang<1||k==='emerge')) hitTarget(k==='emerge'?1.3:1); e.kx+=Math.sin(e.face)*3; e.kz+=Math.cos(e.face)*3; }
+  if(k==='melee'||k==='emerge'){ const range=meleeReach(e,k); const td=Math.hypot(tg.x-e.x,tg.z-e.z); const ang=Math.abs(angWrap(Math.atan2(tg.x-e.x,tg.z-e.z)-e.face)); sfxAt('swing',e.x,e.z,.6);
+    if(td<range+(tg.r||0)*.5&&(coneHit(ang,td,tg.r||0,MELEE_HALF)||k==='emerge')) hitTarget(k==='emerge'?1.3:1); e.kx+=Math.sin(e.face)*3; e.kz+=Math.cos(e.face)*3; }
   if(k==='slam'){ const cx=e.wind.cx,cz=e.wind.cz; fx('dust',cx,0,cz,{k:8}); fx('ring',cx,.1,cz,{r:2.4,col:0xd8b080}); sfxAt('heavy',cx,cz); shake(.2); if(Math.hypot(P.x-cx,P.z-cz)<2.4+P.r) hurtPlayer(e.dmg*1.4,{src:e,lvl:e.lvl,el:D.el,kb:6,dir:Math.atan2(P.x-cx,P.z-cz)}); if(W.cart&&Math.hypot(W.cart.x-cx,W.cart.z-cz)<3) cartHurt(e.dmg); splashAllies(cx,cz,2.4,e.dmg*1.4,e); if(D.el==='fire') addHazard(cx,cz,1.5,'fire',3,e.dmg*.2,e.lvl); }
   if(k==='shoot'){ spawnProj(e.kind==='skelArcher'?'earrowB':'earrow',e.x,e.z,e.face,{team:'e',dmg:e.dmg,lvl:e.lvl,spd:15,src:e,el:D.el}); sfxAt('arrow',e.x,e.z,.6); }
   if(k==='bolt'){ for(let i=-1;i<=1;i++) spawnProj('eorb',e.x,e.z,e.face+i*.22,{team:'e',dmg:e.dmg*.8,lvl:e.lvl,spd:10,src:e,el:D.el,col:0x7ae8ff}); sfxAt('ice',e.x,e.z,.5); if(D.blink&&Math.random()<.4){ later(.4,()=>{ if(!e.alive) return; fx('magic',e.x,1,e.z,{col:0x7ae8ff}); const a=rand(TAU); const nx=P.x+Math.cos(a)*7,nz=P.z+Math.sin(a)*7; if(walkable(nx,nz,.5)){ e.x=nx; e.z=nz; fx('magic',e.x,1,e.z,{col:0x7ae8ff}); } }); } }
@@ -341,7 +345,7 @@ function enemyAct(e,tg){
   if(k==='summon'){ const sk=e.kind==='cultist'?'imp':e.kind==='toad'?'bogling':e.kind==='driedPriest'?'goldBeetle':'goblin'; /* v28: жрец зоны 9 призывает Златожуков (а не гоблинов) */ for(let i=0;i<2;i++){ const a=rand(TAU); const m=spawnEnemy(sk,e.x+Math.cos(a)*1.5,e.z+Math.sin(a)*1.5,e.lvl,{summon:1,aggro:1}); m.owner=e; m.maxHp*=.5; m.hp=m.maxHp; fx('magic',m.x,.5,m.z,{col:0xff6a3a}); } sfxAt('tele',e.x,e.z,.5); }
   if(k==='explode'){ e.exploded=true; enemyExplode(e,1); e.hp=0; killEnemy(e); }
   if(k==='charge'){ e.st=0; sfxAt('roar',e.x,e.z,.25); }
-  if(k==='breath'){ for(let i=0;i<10;i++) later(i*.06,()=>{ if(!e.alive) return; const a=e.face+rand(-.4,.4),r=rand(1,5.5); fx('fire',e.x+Math.sin(a)*r,1,e.z+Math.cos(a)*r,{k:2}); }); later(.2,()=>{ if(!e.alive) return; const ang=Math.abs(angWrap(Math.atan2(P.x-e.x,P.z-e.z)-e.face)); if(Math.hypot(P.x-e.x,P.z-e.z)<5.8&&ang<.55) hurtPlayer(e.dmg*1.3,{src:e,lvl:e.lvl,el:'fire',kb:3}); }); sfxAt('fire',e.x,e.z,.7); }
+  if(k==='breath'){ for(let i=0;i<10;i++) later(i*.06,()=>{ if(!e.alive) return; const a=e.face+rand(-.4,.4),r=rand(1,5.5); fx('fire',e.x+Math.sin(a)*r,1,e.z+Math.cos(a)*r,{k:2}); }); later(.2,()=>{ if(!e.alive) return; const ang=Math.abs(angWrap(Math.atan2(P.x-e.x,P.z-e.z)-e.face)); const bd=Math.hypot(P.x-e.x,P.z-e.z); if(bd<BREATH_R+P.r*.5&&coneHit(ang,bd,P.r,BREATH_HALF)) hurtPlayer(e.dmg*1.3,{src:e,lvl:e.lvl,el:'fire',kb:3}); }); sfxAt('fire',e.x,e.z,.7); }
 }
 
 // ---------- hazards ----------

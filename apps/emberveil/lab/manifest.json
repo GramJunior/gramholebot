@@ -4374,12 +4374,12 @@
    "recolor": [
     {
      "sMul": 0.5,
-     "lMul": 0.95
+     "lMul": 0.6
     }
    ],
    "tint": [
-    "#4a4458",
-    0.6
+    "#1c1824",
+    0.9
    ],
    "glow": "#d8c8ff",
    "note": "v30: the Faceless (mask, ring of given things — procedural)"

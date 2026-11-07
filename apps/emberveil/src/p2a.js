@@ -67,14 +67,17 @@ const AS_META={};
 function asMeta(key,fn){ if(AS_META[key]) return AS_META[key]; let m={h:1.8,r:.5}; try{ const r=fn(); m={h:r.h,r:r.r,type:r.type}; }catch(e){} return AS_META[key]=m; }
 function asRig(id,meta,opts){
   try{ const a=EVAssets.spawn(id,opts||{}); if(!a||!a.root) return null;
-    a.root.userData.evActor=a; AS.live.add(a); a._seen=AS.frame;
+    a.root.userData.evActor=a; AS.live.add(a); a._seen=AS.frame; asTintHook(a);
     return {root:a.root,actor:a,type:'actor',h:(meta&&meta.h)||a.height,r:(meta&&meta.r)||Math.max(.4,a.radius*.8),hip:0,meshes:{},kind:id}; }
   catch(e){ AS.errors++; AS.lastErr=String(e&&e.message||e).slice(0,140); console.warn('EVAssets.spawn '+id+': '+e.message); return null; }
 }
+// v31: тинт, заданный игрой при одевании (двойники, кукловод, Безликая…), запоминается и возвращается после вспышки удара/заморозки
+// (раньше после первого же удара тинт сбрасывался на манифестный — враги Изнанки светлели)
+function asTintHook(a){ const pr=Object.getPrototypeOf(a); if(!pr||pr.__v31t||typeof pr.setTint!=='function') return; pr.__v31t=1; const st=pr.setTint; pr.setTint=function(c,amt){ if(!AS._matTint) this._rtTint=c?[c,amt]:null; return st.call(this,c,amt); }; }
 function actorMat(a,m){
   if(a._m===m) return; a._m=m;
   if(m===MTF){ a.setFlash(a._boss?.32:.55); return; }
-  a.setFlash(0); const t=AS_TINT.get(m); if(t) a.setTint(t[0],t[1]); else a.setTint(null);
+  a.setFlash(0); const t=AS_TINT.get(m); AS._matTint=1; try{ if(t) a.setTint(t[0],t[1]); else if(a._rtTint) a.setTint(a._rtTint[0],a._rtTint[1]); else a.setTint(null); } finally{ AS._matTint=0; }
 }
 // game gear (heroVis) -> EVAssets gear
 function asHeroGear(V){
@@ -99,29 +102,49 @@ function asTipTo(rig){
 // ---------- animation (state -> clip) ----------
 function asPlay(a,name,o){ if(!o&&a.currentName===name) return; a.play(name,o||{}); }
 const HERO_ATK={slashR:0,slashL:1,overhead:1,sweep:0,shoot:0,cast:0,cast2:0};
+// v31: клип удара серии — по номеру удара в серии (топор: Axe_1 → Axe_2 → Axe_3; раньше Axe_3 не играл никогда)
+function heroAtkCombo(P,mv){ const L=typeof MOVES!=='undefined'&&MOVES[(P.rig&&P.rig.cls)||P.cls||PS.cls]; const i=L?L.indexOf(mv):-1; return i>=0?i:(HERO_ATK[mv.a]||0); }
+const RUN_NAT=3.1; // v31: скорость (м/с), под которую снят клип бега при timeScale=1 — шаг подстраивается под настоящую скорость (ноги не скользят)
+const HERO_BUSY=new Set(['attack','heavy','dash','skill','leap','cast','hit','roll','cheer','throw','use','blockAttack','castLoop','rise','summon','knock']);
+// v31: жест героя поверх покоя/бега (бросок бомбы, зелье, заклинание, подъём у костра): один клип, затем возврат в покой
+function heroGesture(name,dur){ const P=G.P; if(!P||P.dead||!P.rig||!P.rig.actor) return false; if(P.state==='atk'||P.state==='skill'||P.state==='roll'||P.state==='charge'||P.state==='draw'||P.state==='block') return false;
+  const a=P.rig.actor; if(!a.clipMap||!a.clipMap[name]) return false; try{ a.play(name,{once:true,duration:dur,fade:.08,returnTo:'idle',returnFade:.2}); }catch(e){ return false; } return true; }
 function animHeroActor(P,dt){
-  const R=P.rig, a=R.actor; R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,heroYaw(P,R,dt),0);
+  const R=P.rig, a=R.actor;
+  // v31: настоящая скорость героя (по смещению за кадр, сглаженная) — для темпа клипа бега
+  if(dt>0){ if(R._px!==undefined){ const v=Math.min(14,Math.hypot(P.x-R._px,P.z-R._pz)/dt); R._vs=(R._vs||0)+(v-(R._vs||0))*Math.min(1,dt*10); } R._px=P.x; R._pz=P.z; }
+  R.root.position.set(P.x,P.y||0,P.z); R.root.rotation.set(0,heroYaw(P,R,dt),0);
   const cls=R.cls||P.cls||'sword', st=P.state;
   if(P.dead||st==='dead'){ if(a.currentName!=='death') a.play('death',{once:true,clamp:true,fade:.12}); R._st=st; SHADOW.add(P.x,P.z,.75); return; }
   if(st==='atk'&&P.mv){
     const fresh=R._st!=='atk'||P.st<(R._ast||0)-1e-4||R._amv!==P.mv;
     if(fresh){ const mv=P.mv, aspd=(P===G.P?PS.aspdT*(P.buff&&P.buff.berserk>0?1+P.buff.berserkA:1):1)||1; const dur=Math.max(.22,mv.d/aspd*1.15);
-      if(mv.a==='bash') a.play('dash',{once:true,duration:dur,fade:.06});
+      if(mv.a==='bash') a.play(a.clipMap&&a.clipMap.blockAttack?'blockAttack':'attack',{once:true,combo:2,duration:dur,fade:.06}); // v31: удар щитом (было: рывок Sword_Dash)
       else if(mv.a==='castBig'||mv.a==='shootP') a.play('heavy',{once:true,duration:dur*1.1,fade:.06});
-      else a.play('attack',{once:true,combo:HERO_ATK[mv.a]||0,duration:dur,fade:.06}); }
+      else if(mv.wm==='sw4') a.play('attack',{once:true,combo:1,duration:dur,fade:.06});
+      else a.play('attack',{once:true,combo:heroAtkCombo(P,mv),duration:dur,fade:.06}); }
+    // v31: «Разворот» (дуга 360°) — горизонтальный взмах с полным оборотом корпуса
+    if(P.mv.wm==='sw4'){ const u=clamp((P.st-P.mv.d*.06)/(P.mv.d*.72),0,1); R.root.rotation.y=P.face-TAU*smooth(u); R._yaw=P.face; }
     R._ast=P.st; R._amv=P.mv;
   } else if(st==='skill'&&P.sk){
     if(R._st!=='skill'||R._sk!==P.sk){ const k=P.sk, key=k.cls+'_'+k.id, d=Math.max(.3,P.skDur||.6);
-      const clip={sword_s1:'skill',sword_s2:'dash',sword_s3:'block',sword_ult:'heavy',axe_s1:'leap',axe_s2:'heavy',axe_s3:'skill',axe_ult:'skill',bow_s1:'attack',bow_s2:'roll',bow_s3:'aim',bow_ult:'heavy',staff_s1:'attack',staff_s2:'cast',staff_s3:'skill',staff_ult:'cast'}[key]||'skill';
-      a.play(clip,{once:true,duration:clip==='block'||clip==='aim'?undefined:d,fade:.08,returnTo:'idle',returnFade:.24}); R._sk=P.sk; }
+      // v31: Стойкость — удар щитом с кличем (было: блок и сразу покой), Берсерк — удар оземь (было: сжатая серия из 3 ударов),
+      // Ледяное кольцо — взмах-подъём, Метеоритный дождь — долгое заклинание (было: быстрый выстрел), Капкан — кувырок назад
+      let clip={sword_s1:'skill',sword_s2:'dash',sword_s3:'blockAttack',sword_ult:'heavy',axe_s1:'leap',axe_s2:'heavy',axe_s3:'heavy',axe_ult:'skill',bow_s1:'attack',bow_s2:'roll',bow_s3:'aim',bow_ult:'heavy',staff_s1:'attack',staff_s2:'heavy',staff_s3:'skill',staff_ult:'castLoop'}[key]||'skill';
+      if(a.clipMap&&!a.clipMap[clip]) clip=clip==='blockAttack'?'block':clip==='castLoop'?'cast':'skill';
+      R._bwBack=key==='bow_s2'?(a.clipMap&&a.clipMap.dodgeBack&&a.clipMap.dodgeBack!==a.clipMap.roll?'clip':'yaw'):null; if(R._bwBack==='clip') clip='dodgeBack';
+      const dd=clip==='castLoop'?Math.max(d,1):d;
+      a.play(clip,{once:true,duration:clip==='block'||clip==='aim'?undefined:dd,fade:.08,returnTo:'idle',returnFade:.24}); R._sk=P.sk; }
     if(P.sk.cls==='sword'&&P.sk.id==='s1'){ R.root.rotation.y=P.face+P.st*22; R._yaw=P.face; }
+    // v31: Капкан — отскок назад: кувырок спиной вперёд (раньше кувырок вперёд при движении назад — «лунная походка»)
+    if(R._bwBack==='yaw'&&P.sk.cls==='bow'&&P.sk.id==='s2'){ const y=P.face+PI; R.root.rotation.y=y; R._yaw=y; }
   } else if(st==='roll'){ if(R._st!=='roll') a.play('roll',{once:true,duration:.5,fade:.07,returnFade:.26}); }
   else {
     // v10: выход из кувырка/рывка-умения — всегда мягкий переход (поза кувырка удерживается, бег/покой наплывают за 0,26 с)
     if((R._st==='roll'||R._st==='skill')&&DASH_CLIPS[a.currentName]){ const run=P.move>.15||Math.hypot(G.input.mx,G.input.mz)>.2; a.play(run?'run':'idle',{fade:.26}); }
-    const busy=a.current&&a.current.loop===THREE.LoopOnce&&a.current.isRunning()&&['attack','heavy','dash','skill','leap','cast','hit','roll','cheer'].includes(a.currentName);
+    const busy=a.current&&a.current.loop===THREE.LoopOnce&&a.current.isRunning()&&HERO_BUSY.has(a.currentName);
     if(P.hitT>0&&R._hit!==P._hitId&&!busy&&P.move<.3){ a.play('hit',{once:true,fade:.06}); }
-    else if(!busy||(P.move>.35&&a.currentName!=='attack'&&a.currentName!=='heavy')){ const run=P.move>.15; asPlay(a,run?'run':'idle'); if(run&&a.current) a.current.timeScale=clamp(.55+P.move*.6,.6,1.25); }
+    else if(!busy||(P.move>.35&&a.currentName!=='attack'&&a.currentName!=='heavy'&&a.currentName!=='rise')){ const run=P.move>.15; asPlay(a,run?'run':'idle'); if(run&&a.current) a.current.timeScale=clamp((R._vs||0)/RUN_NAT,.6,2.1); }
   }
   R._st=st;
   // weapon trail (hero only, melee)
@@ -134,7 +157,9 @@ const POSE_CLIP={raise:'heavy',slam:'heavy',swing:'attack',spin:'spin',cast:'cas
 function animEnemyActor(e,dt){
   const R=e.rig, a=R.actor, t=e.t;
   R.root.position.set(e.x,e.y,e.z); R.root.rotation.y=e.face;
-  if(!e.alive){ e.deadT=(e.deadT||0)+dt; if(a.currentName!=='death') a.play('death',{once:true,clamp:true,fade:.1}); if(e.deadT>1.3) R.root.position.y=e.y-(e.deadT-1.3)*1.1; return; }
+  // v31: тело опускается под землю только когда клип смерти доигран (клипы 1,7–2,6 с; раньше — с 1,3 с), тень гаснет вместе с ним
+  if(!e.alive){ e.deadT=(e.deadT||0)+dt; if(a.currentName!=='death'){ const ac=a.play('death',{once:true,clamp:true,fade:.1}); let L=1.3; try{ if(ac) L=ac.getClip().duration/Math.max(.2,Math.abs(ac.timeScale)||1); }catch(er){} e.deathLen=clamp(L,1,2.8); e.deathEnd=e.deathLen+.85; }
+    const L=e.deathLen||1.3, sk=e.deadT-(L+.1); if(sk>0) R.root.position.y=e.y-sk*1.1; const sr=clamp(1-sk/.7,0,1); if(sr>.02) SHADOW.add(e.x,e.z,Math.min(e.r*1.4,(a.radius||e.r)*1.5+.35)*sr); return; }
   if(e._spawnT>0){ e._spawnT-=dt; if(e.ring){ e.ring.position.set(e.x,.08,e.z); e.ring.rotation.y=t; } SHADOW.add(e.x,e.z,e.r*1.4); return; }
   const s=e.stat||{}; const wk=e.wind&&e.wind.k;
   let key, play=null;

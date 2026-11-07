@@ -81,7 +81,7 @@ function updateStage(dt){
   const P=G.P; G.run.t+=dt;
   updatePlayer(dt);
   for(const e of G.enemies){ updateEnemy(e,dt); animEnemy(e,dt); }
-  for(let i=G.enemies.length-1;i>=0;i--){ const e=G.enemies[i]; if(!e.alive&&e.deadT>1.6){ worldRoot.remove(e.rig.root); G.enemies.splice(i,1); } }
+  for(let i=G.enemies.length-1;i>=0;i--){ const e=G.enemies[i]; if(!e.alive&&e.deadT>(e.deathEnd||1.6)){ /* v31: по длине клипа смерти */ worldRoot.remove(e.rig.root); G.enemies.splice(i,1); } }
   updatePets(dt); updateAllies(dt); updateProjs(dt); updateDrops(dt); updateHazards(dt); updateWaves(dt); synTick(dt); if(W.puzzle) puzzleTick(dt); if(G.boss) bossMechTick(dt);
   if(!P.dead) interactObjs();
   // objective logic
@@ -274,8 +274,8 @@ function loop(now){
   PA.update(Math.max(dt,frozen?0:rdt*.2)); PN.update(Math.max(dt,frozen?0:rdt*.2)); DECALS.update(dt,G.time);
   SHADOW.end();
   const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z); try{ cineOccTick(); }catch(e){}
-  if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; }
-    else { const zid=W.zone.id; emberLight.position.set(P.x,2.6,P.z+.6); emberLight.intensity=(zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05; emberLight.distance=14; } }
+  if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; emberLight.decay=1.6; }
+    else { const zid=W.zone.id; emberLight.position.set(P.x,4.2,P.z+.6); emberLight.intensity=((zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05)*.92; emberLight.distance=16; emberLight.decay=1.2; /* v31: свет Искры выше и мягче — пропы рядом с героем не «выгорают» */ } }
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid){ if(typeof waterTick==='function'&&W.liquid.material.uniforms.uSh) waterTick(Math.min(.1,dt||0)); else W.liquid.material.uniforms.uT.value=now/1000; }
   try{ if(typeof spiritWorldTick==='function') spiritWorldTick(rdt); }catch(e){}
   wlBegin(); updateDmgNums(rdt); if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid') updateHpBars(); hudTick(rdt); if(typeof sysLabels==='function') sysLabels(rdt); wlEnd();

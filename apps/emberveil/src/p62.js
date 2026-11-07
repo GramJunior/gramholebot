@@ -20,7 +20,7 @@ function a10BossDress(e){ const a=e.rig&&e.rig.actor; try{
   if(e.kind==='ostenMem'){ if(a){ a.setTint(0x6a6680,.55); } }
   if(e.kind==='shade'){ if(a){ a.setTint(0x1a1824,.82); a.setGlow('#b8a8ff',.7); } e.y=0; }
   if(e.kind==='faceless'){ const host=a?null:(e.rig.torso||e.rig.body); const mask=new THREE.Mesh(A10B.maskBig(),MTP); const ring=new THREE.Mesh(A10B.itemRing(),MTP); e._mask=mask; e._ring=ring;
-    if(a){ a.setTint(0x4a4458,.62); a.setGlow('#d8c8ff',.35); try{ a.attach('head',mask).position.set(0,.12,.05); }catch(er){} worldRoot.add(ring); ring.scale.setScalar(2.4); } else { host.add(mask); mask.position.set(0,2.3,.2); mask.scale.setScalar(2.2); worldRoot.add(ring); ring.scale.setScalar(2.4); }
+    if(a){ a.setTint(0x1c1824,.9); a.setGlow('#d8c8ff',.4); try{ const mk=a.attach('head',mask); mk.position.set(0,.16,.17); mk.scale.setScalar(1.55); }catch(er){} worldRoot.add(ring); /* v31: почти чёрная (ACT2.md: тинт 0x3a3648·0,9), маска-овал поверх лица (была внутри головы) */ ring.scale.setScalar(2.4); } else { host.add(mask); mask.position.set(0,2.3,.2); mask.scale.setScalar(2.2); worldRoot.add(ring); ring.scale.setScalar(2.4); }
     e.hover=3.2; e.y=3.2; }
   }catch(err){ console.warn('a10 dress',err); } }
 const _animEnemyA10b=animEnemy;

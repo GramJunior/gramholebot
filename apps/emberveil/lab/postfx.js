@@ -206,11 +206,13 @@ void main(){
   const FX_LIST = new Set();
   const EVFX = {};
 
-  /** Weapon slash trail: ribbon between weapon base & tip sampled over the last N frames.
-   *  const tr = EVFX.slashTrail({color:'#ffd27a', segments:14}); scene.add(tr.mesh);
-   *  tr.follow(weaponObj, new THREE.Vector3(0,0.2,0), new THREE.Vector3(0,1.1,0)); tr.emit = true; ... tr.update(dt) */
+  /** Weapon slash trail: ribbon between weapon base & tip over the last `life` seconds (time-based, v31).
+   *  const tr = EVFX.slashTrail({color:'#ffd27a', segments:14, life:0.14}); scene.add(tr.mesh);
+   *  tr.follow(weaponObj, new THREE.Vector3(0,0.2,0), new THREE.Vector3(0,1.1,0)); tr.emit = true; ... tr.update(dt)
+   *  Samples are taken only while emitting and the history is cleared at the start of every swing (no stale shards
+   *  from the previous swing / idle pose); brightness is capped so additive blending does not saturate to white. */
   EVFX.slashTrail = function (o = {}) {
-    const N = o.segments || 14, col = new T.Color(o.color || '#ffe2a0');
+    const N = o.segments || 14, LIFE = o.life || 0.14, col = new T.Color(o.color || '#ffe2a0');
     const pos = new Float32Array(N * 2 * 3), a = new Float32Array(N * 2), idx = [];
     for (let i = 0; i < N - 1; i++) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
     for (let i = 0; i < N; i++) { a[i * 2] = a[i * 2 + 1] = 1 - i / (N - 1); }
@@ -218,18 +220,28 @@ void main(){
     const side = new Float32Array(N * 2); for (let i = 0; i < N; i++) { side[i * 2] = 0; side[i * 2 + 1] = 1; } g.setAttribute('aS', new T.BufferAttribute(side, 1));
     const m = new T.ShaderMaterial({ uniforms: { uColor: { value: col }, uAlpha: { value: 0 } }, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
       vertexShader: 'attribute float aT; attribute float aS; varying float vT; varying float vS; void main(){ vT=aT; vS=aS; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-      fragmentShader: 'uniform vec3 uColor; uniform float uAlpha; varying float vT; varying float vS; void main(){ float e = smoothstep(0.0,0.35,vS)*vT*vT; vec3 c = mix(uColor, vec3(1.0), vS*vT*0.6); gl_FragColor=vec4(c*e*uAlpha*1.6, 1.0);}' });
-    const mesh = new T.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 5;
-    const hist = []; const vb = new T.Vector3(), vt = new T.Vector3();
-    const tr = { mesh, emit: false, alpha: 0, target: null, base: new T.Vector3(), tip: new T.Vector3(0, 1, 0),
+      fragmentShader: 'uniform vec3 uColor; uniform float uAlpha; varying float vT; varying float vS; void main(){ float e = smoothstep(0.0,0.45,vS)*smoothstep(1.0,0.82,vS)*vT*vT; vec3 c = mix(uColor, vec3(1.0), vS*vT*0.22); gl_FragColor=vec4(min(c*e*uAlpha*0.95, vec3(0.7)), 1.0);}' });
+    const mesh = new T.Mesh(g, m); mesh.frustumCulled = false; mesh.renderOrder = 5; mesh.visible = false;
+    const hist = []; const vb = new T.Vector3(), vt = new T.Vector3(), pb = new T.Vector3(), pt = new T.Vector3();
+    const tr = { mesh, emit: false, alpha: 0, target: null, time: 0, base: new T.Vector3(), tip: new T.Vector3(0, 1, 0), _was: false,
       follow(obj, base, tip) { tr.target = obj; if (base) tr.base.copy(base); if (tip) tr.tip.copy(tip); return tr; },
-      push(b, t) { hist.unshift([b.clone(), t.clone()]); if (hist.length > N) hist.pop(); },
+      push(b, t) { hist.unshift([b.clone(), t.clone(), tr.time]); if (hist.length > 48) hist.pop(); },
+      clear() { hist.length = 0; },
       update(dt) {
-        if (tr.target) { tr.target.updateWorldMatrix(true, false); vb.copy(tr.base).applyMatrix4(tr.target.matrixWorld); vt.copy(tr.tip).applyMatrix4(tr.target.matrixWorld); tr.push(vb, vt); }
-        tr.alpha += ((tr.emit ? 1 : 0) - tr.alpha) * Math.min(1, dt * (tr.emit ? 30 : 9)); m.uniforms.uAlpha.value = tr.alpha;
-        if (!hist.length) return;
-        for (let i = 0; i < N; i++) { const h = hist[Math.min(i, hist.length - 1)]; pos.set([h[0].x, h[0].y, h[0].z], i * 6); pos.set([h[1].x, h[1].y, h[1].z], i * 6 + 3); }
-        g.attributes.position.needsUpdate = true; mesh.visible = tr.alpha > 0.01;
+        dt = dt || 0; tr.time += dt;
+        if (tr.emit && !tr._was) hist.length = 0; // new swing: drop the previous one
+        tr._was = tr.emit;
+        if (tr.emit && tr.target && (dt > 0 || !hist.length)) { tr.target.updateWorldMatrix(true, false); vb.copy(tr.base).applyMatrix4(tr.target.matrixWorld); vt.copy(tr.tip).applyMatrix4(tr.target.matrixWorld); tr.push(vb, vt); }
+        while (hist.length && hist[hist.length - 1][2] < tr.time - LIFE) hist.pop();
+        tr.alpha += ((tr.emit ? 1 : 0) - tr.alpha) * Math.min(1, dt * (tr.emit ? 30 : 12)); m.uniforms.uAlpha.value = tr.alpha;
+        if (hist.length < 2 || tr.alpha < 0.01) { mesh.visible = false; return; }
+        const t0 = hist[0][2], span = Math.max(1e-4, t0 - hist[hist.length - 1][2]); let k = 0;
+        for (let i = 0; i < N; i++) { const tt = t0 - span * i / (N - 1);
+          while (k < hist.length - 2 && hist[k + 1][2] > tt) k++;
+          const A = hist[k], B = hist[k + 1], f = Math.min(1, Math.max(0, (A[2] - tt) / Math.max(1e-5, A[2] - B[2])));
+          pb.copy(A[0]).lerp(B[0], f); pt.copy(A[1]).lerp(B[1], f);
+          pos[i * 6] = pb.x; pos[i * 6 + 1] = pb.y; pos[i * 6 + 2] = pb.z; pos[i * 6 + 3] = pt.x; pos[i * 6 + 4] = pt.y; pos[i * 6 + 5] = pt.z; }
+        g.attributes.position.needsUpdate = true; mesh.visible = true;
       },
       dispose() { g.dispose(); m.dispose(); mesh.parent && mesh.parent.remove(mesh); } };
     return tr;

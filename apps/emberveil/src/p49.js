@@ -113,7 +113,7 @@ const FKI={
       if(m.b){ const z=pZone(P.x,P.z,2.6,'fire',dur,PS.atk*.6); if(z) z.follow=P; }
       if(m.c){ P.retal={acc:0,mult:1}; } } },
   sword_ult(P,dt,k,m){ const u=P.st, r=k.rank, f=P.face; if(u>=.45&&!k.done.a){ k.done.a=1; const dirs=m.a?[[f,1],[f-.6,.55],[f+.6,.55]]:[[f,1]]; const el=m.b?'ice':'fire';
-      for(const [d,mk] of dirs){ for(let i=1;i<=6;i++) later(i*.04,()=>{ const x=P.x+Math.sin(d)*i*1.3,z=P.z+Math.cos(d)*i*1.3; fx('boom',x,0,z,{r:1.6,col:m.b?0x9fe8ff:0xffa040}); if(m.b) fx('ice',x,.5,z,{k:3}); });
+      for(const [d,mk] of dirs){ bladeFx31(P.x,P.z,d,8*Math.sqrt(mk),m.b?0x9fe8ff:0xffa040); /* v31: огромный клинок */ for(let i=1;i<=3;i++) later(.1+i*.05,()=>{ const x=P.x+Math.sin(d)*i*2.4,z=P.z+Math.cos(d)*i*2.4; fx('boom',x,0,z,{r:1.3,col:m.b?0x9fe8ff:0xffa040}); if(m.b) fx('ice',x,.5,z,{k:3}); });
         const hit=m.b?fkLineHits(P.x,P.z,d,8,2.6):null; fkLine(P.x,P.z,d,8,2.6,(6+1.5*r)*mk,{el,kb:6,ex:m.a?(k.ex=k.ex||new Set()):null}); if(hit) for(const e of hit){ fkFreeze(e,2.5); if(e.boss) poiseAdd(e,40,{}); }
         if(m.c) for(let i=1;i<=3;i++) pZone(P.x+Math.sin(d)*i*2.4,P.z+Math.cos(d)*i*2.4,1.6,'fire',4,PS.atk*1.0*mk); }
       if(m.c) P.ember=Math.min(100,(P.ember||0)+30);

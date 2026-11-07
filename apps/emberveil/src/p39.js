@@ -45,7 +45,9 @@ enemyTarget=function(e){ const t=_enemyTargetV20(e); if(t!==G.P||G.mode==='raid'
 const NEED_TOK=new Set(['melee','slam','charge','emerge']);
 const _startWindV20b=startWind;
 startWind=function(e,k,t){ const P=G.P;
-  if(!e.boss&&NEED_TOK.has(k)&&G.mode!=='raid'&&P&&!P.dead){ G._aiReal=1; let tg; try{ tg=enemyTarget(e); } finally{ G._aiReal=0; } if(tg===P&&!tokTake(e)){ e.cd=rand(.35,.85); if(Math.random()<.35&&Math.hypot(P.x-e.x,P.z-e.z)<4.5) e.feintT=.45; return; } }
+  if(!e.boss&&NEED_TOK.has(k)&&G.mode!=='raid'&&P&&!P.dead){ G._aiReal=1; let tg; try{ tg=enemyTarget(e); } finally{ G._aiReal=0; } if(tg===P&&!tokTake(e)){ e.cd=rand(.35,.85); if(Math.random()<.35&&Math.hypot(P.x-e.x,P.z-e.z)<4.5) e.feintT=.45; return; }
+    // v31: замах начинали с кольца облёта (дистанция мерилась до виртуальной точки) — проверяем настоящую дистанцию; жетон остаётся, враг подходит вплотную
+    if(tg===P&&k!=='emerge'){ const dR=Math.hypot(P.x-e.x,P.z-e.z), D=e.D; const lim=k==='charge'?D.rng+.6:k==='slam'?D.rng+P.r+.4:D.rng+e.r+.45+P.r*.5; if(dR>lim){ e.cd=Math.max(e.cd,.1); return; } } }
   if(!e.boss){ const k2=zoneGentle()*(diffK()==='story'?1.2:diffK()==='night'?.92:1); t*=k2; }
   G._aiReal=1; try{ _startWindV20b(e,k,t); } finally{ G._aiReal=0; } };
 const _enemyActV20b=enemyAct;

@@ -288,6 +288,10 @@ dmgEnemy=function(e,amt,o={}){ if(!e||!e.alive) return _dmgEnemyV20(e,amt,o); co
 // ---------- анимация: заряд, натяжение, блок ----------
 const _animHeroActorV20=animHeroActor;
 animHeroActor=function(P,dt){ const st=P.state, R=P.rig, a=R.actor;
+  // v31: отпускание заряда продолжает тот же замах с места удержания (раньше клип начинался заново с t=0 — «отскок» назад)
+  if(st==='atk'&&P.mv&&P.mv.heavy&&R._st==='charge'&&a&&a.current&&a.currentName==='heavy'){ const cur=a.current; try{ const D=cur.getClip().duration; const aspd=(PS.aspdT*(P.buff&&P.buff.berserk>0?1+P.buff.berserkA:1))||1;
+      const rem=Math.max(.05,D-cur.time); cur.paused=false; cur.enabled=true; cur.timeScale=rem/Math.max(.2,P.mv.d/aspd*1.15); cur._evReturn='idle'; cur._evRetFade=.22; }catch(e){}
+    const mv=P.mv; const ap=mv.a==='castBig'?mv:(mv._ap=mv._ap||Object.assign({},mv,{a:'castBig'})); R._st='atk'; R._ast=P.st; R._amv=ap; }
   if(st==='atk'&&P.mv&&P.mv.heavy&&P.mv.a!=='castBig'){ const mv=P.mv; mv._ap=mv._ap||Object.assign({},mv,{a:'castBig'}); P.mv=mv._ap; try{ _animHeroActorV20(P,dt); } finally{ P.mv=mv; } return; }
   if(st!=='charge'&&st!=='draw'&&st!=='block'){ return _animHeroActorV20(P,dt); }
   R.root.position.set(P.x,P.y||0,P.z); const yaw=heroYaw(P,R,dt); R.root.rotation.set(0,yaw,0);
@@ -327,6 +331,7 @@ function ik2(up,lo,hand,target,pole,w){ if(!up||!lo||!hand||w<=0) return; up.get
 function boneTwistW(bone,axis,ang){ if(!bone.parent||!ang) return; _q1.setFromAxisAngle(axis,ang); bone.parent.getWorldQuaternion(_q3); _q2.copy(_q3).invert(); _q2.multiply(_q1).multiply(_q3); bone.quaternion.premultiply(_q2); bone.updateMatrixWorld(true); }
 const _IK={t:new THREE.Vector3(),e:new THREE.Vector3(),g:new THREE.Vector3(),a:new THREE.Vector3(),h:new THREE.Vector3(),k:new THREE.Vector3()};
 const BOWV={line:null,arrow:null,yaw:-1.05,blend:0,snap:0};
+const BOW_SK_REL={s1:.15,s3:.2,ult:.45}; // v31: момент выстрела умений лука (см. skillTick)
 function bowVisInit(){ if(BOWV.s1) return; const mat=new THREE.MeshBasicMaterial({color:0xf4ecd8,fog:false}); const g=new THREE.CylinderGeometry(.011,.011,1,4,1,true); g.translate(0,.5,0);
   BOWV.s1=new THREE.Mesh(g,mat); BOWV.s2=new THREE.Mesh(g,mat); for(const m of [BOWV.s1,BOWV.s2]){ m.frustumCulled=false; m.renderOrder=4; scene.add(m); }
   BOWV.arrow=new THREE.Mesh(PROJ_GEO.arrowC(),MT); BOWV.arrow.visible=false; scene.add(BOWV.arrow); BOWV.line={set visible(v){ BOWV.s1.visible=BOWV.s2.visible=v; }}; }
@@ -354,9 +359,13 @@ function bowPose(rdt){ const P=G.P; if(!P||!P.rig) return; const cls=PS.cls; con
   const rig=a&&bowRig(a);
   const on=cls==='bow'&&!P.dead&&(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid'||G.mode==='village'); if(!on){ if(BOWV.s1){ BOWV.line.visible=false; BOWV.arrow.visible=false; } const wq=P.rig.meshes&&P.rig.meshes.weapon; if(wq&&wq.userData.q0){ wq.quaternion.copy(wq.userData.q0); } if(rig&&BOWV.posed){ for(const b of rig.all) bpBase(b); BOWV.posed=false; } BOWV.blend=0; return; }
   bowVisInit(); const dt=Math.min(.05,rdt||.016);
-  const drawing=P.state==='draw'; const since=P.lastShot?G.time-P.lastShot.t:9;
-  BOWV.blend=clamp(BOWV.blend+(drawing||since<.22?1:-1)*dt*(drawing?9:4),0,1); const w=smooth(BOWV.blend);
-  const c=drawing?clamp(P.drw/bowDrawT(),0,1):0;
+  // v31: умения лука (Веер/Дождь стрел/Звезда) тоже стреляют из натянутого лука: поза ИК на время умения (раньше лук смотрел в землю)
+  const skA=P.state==='skill'&&P.sk&&P.sk.cls==='bow'&&BOW_SK_REL[P.sk.id]!==undefined; const skRel=skA?BOW_SK_REL[P.sk.id]:0;
+  const drawing=P.state==='draw'||skA&&P.st<skRel; let since=P.lastShot?G.time-P.lastShot.t:9; if(skA&&P.st>=skRel) since=Math.min(since,P.st-skRel);
+  BOWV.blend=clamp(BOWV.blend+(drawing||since<.22?1:-1)*dt*(drawing?(skA?14:9):4),0,1); const w=smooth(BOWV.blend);
+  const c=P.state==='draw'?clamp(P.drw/bowDrawT(),0,1):drawing?clamp(P.st/Math.max(.05,skRel),0,1):0;
+  // v31: лук в покое и на бегу — вертикально в опущенной руке (раньше лежал плашмя поперёк корпуса); в кувырке — как в клипе
+  BOWV.carry=clamp((BOWV.carry===undefined?1:BOWV.carry)+(P.state==='roll'||P.state==='skill'&&!skA?-1:1)*dt*8,0,1); const wW=Math.max(w,smooth(BOWV.carry));
   const wpn=R.meshes&&R.meshes.weapon; const fwd=_IK.k.set(Math.sin(P.face),0,Math.cos(P.face)).clone(); const right=new THREE.Vector3(-fwd.z,0,fwd.x); // правая сторона героя (v27: было с минусом — это левая сторона: правая кисть тянулась к левой щеке через лицо, рука заворачивалась за голову)
   if(rig){ for(const b of rig.all) bpBase(b); R.root.updateMatrixWorld(true); }
   // калибровка «куда смотрит голова» — в покое (голова смотрит туда же, куда грудь)
@@ -387,8 +396,8 @@ function bowPose(rdt){ const P=G.P; if(!P||!P.rig) return; const cls=PS.cls; con
     for(const b of rig.all) bpPost(b); }
   else if(rig&&BOWV.posed){ BOWV.posed=false; }
   // лук стоит вертикально, «спинкой» к цели (иначе в кисти он лежит вдоль предплечья)
-  if(wpn&&(a||R.armL)){ if(!wpn.userData.q0) wpn.userData.q0=wpn.quaternion.clone(); const q0=wpn.userData.q0; if((rig||!a)&&w>.001&&wpn.parent){ const up=new THREE.Vector3(0,1,0).addScaledVector(fwd,-.08).addScaledVector(right,.12).normalize(); const zA=fwd.clone().addScaledVector(up,-fwd.dot(up)).normalize(); const yA=new THREE.Vector3().crossVectors(zA,up);
-      const m4=wpn.userData.evBox?new THREE.Matrix4().makeBasis(up,yA,zA):new THREE.Matrix4().makeBasis(zA.clone().negate(),up,new THREE.Vector3().crossVectors(zA.clone().negate(),up)); /* процедурный лук: длинная ось Y, концы плеч — +X */ /* лук: длинная ось — локальная X, изгиб — Z (концы плеч — к лучнику) */ const qW=new THREE.Quaternion().setFromRotationMatrix(m4); if(BOWV.flip) qW.multiply(new THREE.Quaternion().setFromAxisAngle(_sUp,PI)); wpn.parent.updateMatrixWorld(true); wpn.parent.getWorldQuaternion(_q3); _q3.invert().multiply(qW); wpn.quaternion.copy(q0).slerp(_q3,w); }
+  if(wpn&&(a||R.armL)){ if(!wpn.userData.q0) wpn.userData.q0=wpn.quaternion.clone(); const q0=wpn.userData.q0; if((rig||!a)&&wW>.001&&wpn.parent){ const up=new THREE.Vector3(0,1,0).addScaledVector(fwd,-.08-.1*(1-w)).addScaledVector(right,.12*w).normalize(); const zA=fwd.clone().addScaledVector(up,-fwd.dot(up)).normalize(); const yA=new THREE.Vector3().crossVectors(zA,up);
+      const m4=wpn.userData.evBox?new THREE.Matrix4().makeBasis(up,yA,zA):new THREE.Matrix4().makeBasis(zA.clone().negate(),up,new THREE.Vector3().crossVectors(zA.clone().negate(),up)); /* процедурный лук: длинная ось Y, концы плеч — +X */ /* лук: длинная ось — локальная X, изгиб — Z (концы плеч — к лучнику) */ const qW=new THREE.Quaternion().setFromRotationMatrix(m4); if(BOWV.flip) qW.multiply(new THREE.Quaternion().setFromAxisAngle(_sUp,PI)); wpn.parent.updateMatrixWorld(true); wpn.parent.getWorldQuaternion(_q3); _q3.invert().multiply(qW); wpn.quaternion.copy(q0).slerp(_q3,wW); }
     else wpn.quaternion.copy(q0); }
   // тетива: концы лука → (натяжение: правая кисть); стрела на тетиве
   if(wpn&&wpn.userData&&wpn.userData.evBox){ wpn.updateMatrixWorld(true); const bb=wpn.userData.evBox; const ex=bb.max.x-bb.min.x, ey=bb.max.y-bb.min.y; const lx=ex>=ey; const zt=BOWV.sz===undefined?bb.min.z*.86:BOWV.sz;

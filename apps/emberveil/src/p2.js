@@ -419,7 +419,7 @@ const DECALS=(()=>{
     // shape: 'circle'|'cone'|'line'; x,z origin; dir angle; r radius/length; w width; dur seconds
     spawn(shape,x,z,r,dur,o={}){
       const d=pool.find(p=>!p.on); if(!d) return null;
-      d.on=true; d.t=0; d.dur=dur; d.follow=o.follow||null; d.c.set(o.col||0xff3a1a); d.a=o.a||1;
+      d.on=true; d.t=0; d.dur=dur; d.follow=o.follow||null; d.trackFace=o.follow&&o.track!==false; d.c.set(o.col||0xff3a1a); d.a=o.a||1;
       d.shape=shape==='circle'?0:shape==='cone'?1:2; d.ang=o.ang||0.6; d.ry=0; d.y=0.06+(o.y||0);
       if(shape==='line'){ const w=o.w||1.2, dir=o.dir||0; d.sx=w; d.sz=r; d.x=x+Math.sin(dir)*r/2; d.z=z+Math.cos(dir)*r/2; d.ry=dir+PI; }
       else { d.sx=d.sz=r*2; d.x=x; d.z=z; if(shape==='cone') d.ry=(o.dir||0)+PI; }
@@ -427,7 +427,7 @@ const DECALS=(()=>{
     },
     update(dt,time){ mat.uniforms.uT.value=time; let any=false;
       for(const d of pool){ if(!d.on) continue; any=true; d.t+=dt;
-        if(d.follow){ d.x=d.follow.x; d.z=d.follow.z; }
+        if(d.follow){ d.x=d.follow.x; d.z=d.follow.z; if(d.shape===1&&d.trackFace&&typeof d.follow.face==='number') d.ry=d.follow.face+PI; /* v31: конус поворачивается вместе с врагом */ }
         if(d.t>=d.dur) d.on=false; }
       if(any||im.count) sync();
     },
