@@ -332,6 +332,7 @@ const AU=(()=>{
   A.init=init; A.sfx=sfx; A.music=music; A.setVol=setVol; A.ctx=()=>ctx;
   // v20: свои звуки модулей (src/p37.js и дальше) — тот же синтез, общая громкость и реверберация
   A.synth=(name,fn)=>{ if(!ctx||ctx.state!=='running') return; const now=ctx.currentTime; if(name){ if(lastPlay[name]&&now-lastPlay[name]<0.03) return; lastPlay[name]=now; } try{ fn({t:now+0.005,osc,noise,ctx}); }catch(e){} };
+  A.bus=()=>ctx?{out:sfxG,rev}:null; // v37 (p75): своя цепочка узлов (голоса боссов) — в ту же громкость «Звуки» и реверберацию
   return A;
 })();
 
