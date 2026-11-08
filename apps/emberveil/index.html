@@ -28718,7 +28718,7 @@ function v75Emb(txt,c1,c2){ try{ const c=document.createElement('canvas'); c.wid
 const V75P={};
 function v75Port(sp){ if(!sp||sp==='narrator'||sp==='choice'||sp==='echo') return ''; if(V75P[sp]) return V75P[sp]; let p='';
   try{ p=portraitFor(sp)||''; }catch(e){}
-  if(!p&&BOSSES[sp]&&typeof BOSS_PROC!=='undefined'&&BOSS_PROC[sp]){ try{ const r=BOSS_PROC[sp](); const h=r.h||3; p=portraitOf(r,'v75b_'+sp,{hy:h*.8,dist:Math.max(2,h*.95),x:.4,bg:0x2a1a14}); }catch(e){ p=''; } }
+  if(!p&&BOSSES[sp]&&typeof BOSS_PROC!=='undefined'&&BOSS_PROC[sp]){ try{ const r=BOSS_PROC[sp](); const bb=new THREE.Box3().setFromObject(r.root); const h=Math.max(1,bb.max.y), w=Math.max(bb.max.x-bb.min.x,1); p=portraitOf(r,'v75b_'+sp,{hy:h*.82,dist:Math.max(1.6,Math.max(h*.55,w*.7)),x:.3,bg:0x2a1a14}); }catch(e){ p=''; } }
   if(!p&&sp==='ostenMem'){ try{ p=portraitFor('king'); }catch(e){} }
   if(!p){ const info=NPC_INFO[sp]||BOSS_NAMES_DLG[sp]||BOSSES[sp]||{n:sp}; p=v75Emb(String(info.n||'?').charAt(0).toUpperCase()); }
   if(p&&!/^c_|^hero$|^spirit$|^shade$/.test(sp)) V75P[sp]=p; return p; }
@@ -28735,7 +28735,7 @@ function v75Tgt(sp){ const P=G.P; if(!W||!P) return null; if(sp==='hero'||sp==='
 cineFocus=function(sp){ if(!W||!G.P) return; const t=v75Tgt(sp); V75D.spk=t; if(!t) return; if(!CINE.on){ CINE.on=true; CINE.prev=CAMR.override; }
   const P=G.P; const far=Math.hypot(t.x-P.x,t.z-P.z)>4.5||t===P; const k=far?1:.8; const mx=t.x*k+P.x*(1-k), mz=t.z*k+P.z*(1-k);
   const ub=!t.boss&&t.rig&&t.rig.actor&&t.rig.actor.ubc;
-  CAMR.override={x:mx,z:mz+(t.boss?-.6:ub?-1.2:.5),zoom:t.boss?.64:ub?.42:.38,pitch:.6}; cineBars(true); CINEO.t=t; CINEO.head=t.boss?Math.max(1.8,(t.rig&&t.rig.root?t.rig.root.scale.y:1)*1.6):ub?2.0:1.4; cullProps(CAMR.x,CAMR.z,true);
+  CAMR.override={x:mx,z:mz+(t.boss?-.6:ub?-.4:.5),zoom:t.boss?.64:ub?.42:.38,pitch:.6}; cineBars(true); CINEO.t=t; CINEO.head=t.boss?Math.max(1.8,(t.rig&&t.rig.root?t.rig.root.scale.y:1)*1.6):ub?2.0:1.4; cullProps(CAMR.x,CAMR.z,true);
   try{ if(AS.FX) AS.FX.setDOF(false); }catch(e){} };
 // размытие фона во время реплик выключено и в сценах-вставках (p33): в диалоге важно видеть, кто говорит
 { const fxOff=()=>{ try{ if(AS.FX&&AS.FX.setDOF&&!AS.FX._v75){ const s=AS.FX.setDOF.bind(AS.FX); AS.FX.setDOF=function(on,o){ return s((G.dialog||document.body.classList.contains('cine'))?false:on,o); }; AS.FX._v75=1; } }catch(e){} };
