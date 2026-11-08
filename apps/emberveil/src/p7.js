@@ -45,7 +45,7 @@ function doMeleeHit(P,mv){
   for(const e of G.enemies){ if(!e.alive||e.burrowed) continue; const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz); if(d>mv.rng+e.r) continue;
     const ang=Math.abs(angWrap(Math.atan2(dx,dz)-P.face)); if(ang>mv.arc/2&&d>e.r+.6) continue;
     const h=heroDmg(mv.m); dmgEnemy(e,h.amt,{crit:h.crit,els:h.els,kb:mv.kb||1.5,dir:Math.atan2(dx,dz),stun:mv.stun,src:P,heavy:mv.m>=1.7}); hits++; }
-  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
+  for(const o of W.objs){ if(!o.alive) continue; if(!(o.brk||o.res||o.kind==='totem'||o.pvp||o.kind==='cage'||o.kind==='secret'||o.kind==='lever'||o.hitme)) continue; const d=Math.hypot(o.x-P.x,o.z-P.z); if(d<mv.rng+o.r&&(!o.hitme||o===P.tgt||d<o.r+.5||Math.abs(angWrap(Math.atan2(o.x-P.x,o.z-P.z)-P.face))<=Math.max(.9,(mv.arc||1.6)/2))){ hitObj(o,heroDmg(mv.m).amt); hits++; } }
   if(mv.aoe){ const cx=P.x+fx0*1.8, cz=P.z+fz0*1.8; fx('dust',cx,0,cz,{k:8}); fx('ring',cx,0,cz,{r:mv.aoe,col:0xffd27a}); for(const e of G.enemies){ if(e.alive&&!e.burrowed&&Math.hypot(e.x-cx,e.z-cz)<mv.aoe+e.r&&!e._hitThis){ } } }
   if(PS.uniq.quake&&mv.aoe){ later(.12,()=>{ const cx=P.x+fx0*2.2, cz=P.z+fz0*2.2; fx('boom',cx,0,cz,{r:2.4,col:0xd8a050,smoke:0x6a5a40}); aoeDamage(cx,cz,2.6,.6,{}); }); }
   if(PS.uniq.blaze&&P.combo%3===0){ spawnProj('wave',P.x+fx0,P.z+fz0,P.face,{dmg:heroDmg(.9).amt,team:'p',pierce:99,life:.6,spd:16,el:'fire'}); }
@@ -453,7 +453,7 @@ function interactObjs(){
   const P=G.P;
   for(const o of W.objs){ if(!o.alive) continue; const d=Math.hypot(o.x-P.x,o.z-P.z);
     if((o.kind==='chest'||o.kind==='vault')&&!o.opened&&d<1.9){
-      if(o.sealed){ if(!o.warned){ o.warned=1; toast(o.sealTxt||'Сундук запечатан — решите загадку комнаты'); } continue; }
+      if(o.sealed){ if(!o.warned||G.time-o.warned>6){ o.warned=G.time; toast(o.sealTxt||'Сундук запечатан — решите загадку комнаты'); } continue; }
       if(o.puz){ o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++; puzzleLoot(o); continue; }
       if(o.kind==='vault'&&S.keys<=0){ if(!o.warned){ o.warned=1; toast('Сундук заперт — нужен ключ сокровищницы',null,null); } continue; }
       if(o.kind==='vault') S.keys--; o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++;

@@ -1,6 +1,6 @@
 // ================= p12: dungeon puzzles & reward vaults =================
 const PUZ_TYPES={
-  push:{n:'Плиты и валуны',hint:'Задвиньте каменные блоки на обе плиты — просто толкайте их, шагая в них.',ic:'crate'},
+  push:{n:'Плиты и валуны',hint:'Задвиньте каменные блоки на обе плиты — толкайте их, шагая в них. Камень застрял — ударьте рычаг у входа.',ic:'crate'},
   plates:{n:'Плиты-стражи',hint:'Наступите на все три плиты: каждая горит лишь пять секунд.',ic:'clock'},
   levers:{n:'Огни рычагов',hint:'Ударьте рычаги в том порядке, в каком горят огни над сундуком.',ic:'key'},
   mirrors:{n:'Зеркала света',hint:'Бейте по зеркалам, чтобы повернуть их, и направьте луч в кристалл.',ic:'sun'},
@@ -47,10 +47,10 @@ function puzzleBuild(){
   for(const sgn of [-1,1]){ const [px,pz]=at(-R.r+1.4,sgn*3.4); if(Z.type!=='corridor'){ addProp(W.zone.id>=4?'candles':'lantern',px,pz,1); } }
   const T=Z.type;
   if(T==='push'){ Z.plates=[at(-1.2,-2.6),at(-1.2,2.6)].map(([x,z])=>({x,z,m:pzMesh(PZG.plate(),x,z),on:false}));
-    Z.blocks=[at(2.6,-1.6),at(2.4,2.2)].map(([x,z])=>{ const b={x,z,r:.85,m:pzMesh(PZG.block(),x,z)}; b.ob={x,z,r:.95}; W.obst.push(b.ob); return b; });
+    Z.blocks=[at(2.6,-1.6),at(2.4,2.2)].map(([x,z])=>{ const b={x,z,r:.85,m:pzMesh(PZG.block(),x,z)}; b.ob={x,z,r:.95,dyn:1}; W.obst.push(b.ob); return b; });
     const [lx,lz]=at(R.r-1.6,R.r-3.2); Z.reset=pzObj('reset',lx,lz,{r:.7}); Z.reset.m=pzMesh(PZG.lever(),lx,lz); }
   if(T==='plates'){ Z.plates=[at(2.8,-3.6),at(-2.8,-3.2),at(.4,4)].map(([x,z])=>({x,z,m:pzMesh(PZG.plate(),x,z),t:0})); }
-  if(T==='levers'){ const n=W.zone.id>=3?4:3; const order=[...Array(n).keys()].sort(()=>Math.random()-.5); Z.order=order; Z.prog=0; Z.levers=[];
+  if(T==='levers'){ const n=W.zone.id>=6?5:W.zone.id>=3?4:3; const order=[...Array(n).keys()].sort(()=>Math.random()-.5); Z.order=order; Z.prog=0; Z.levers=[];
     for(let i=0;i<n;i++){ const a=-1.2+i/(n-1)*2.4; const [x,z]=at(Math.cos(a)*3.2+.6,Math.sin(a)*4.6); const o=pzObj('lever',x,z,{idx:i,r:.7}); o.m=pzMesh(PZG.lever(),x,z,0,Math.atan2(c.x-x,c.z-z)); o.cr=pzMesh(PZG.crystal(),x,z,1.9); o.cr.material=pzGlowMat(PZ_COL[i]); Z.levers.push(o); } }
   if(T==='mirrors'){ const g=2.3; const d1=Z.d1pre; const cell=(gx,gz)=>[c.x+gx*g,c.z+gz*g];
     Z.grid={g,d1}; const [ex,ez]=cell(-2,0); Z.emit={gx:-2,gz:0,m:pzMesh(PZG.emitter(),ex,ez)}; const [tx,tz]=cell(2,2*d1); Z.tgt={gx:2,gz:2*d1,m:pzMesh(PZG.target(),tx,tz)}; W.obst.push({x:ex,z:ez,r:.7},{x:tx,z:tz,r:.7});
@@ -79,7 +79,7 @@ function puzzleHit(o){
   if(o.pk==='mirror'){ o.ori^=1; o.m.rotation.y=o.ori?-PI/4:PI/4; AU.sfx('shield',.5); pzBeam(); }
   if(o.pk==='rune'&&Z.phase==='input'){ pzRuneFlash(o,.35); if(Z.seq[Z.inp]===o.idx){ Z.inp++; AU.sfx('pick',.7,1+Z.inp*.1); if(Z.inp>=Z.seq.length){ Z.round++; if(Z.round>=3) puzzleSolved(); else { Z.phase='show'; Z.showT=1.2; Z.seq.push(randi(0,3)); Z.si=0; dmgNum(Z.room.x,3,Z.room.z,'Круг '+(Z.round+1)+'/3','tag'); } } }
     else { AU.sfx('deny'); dmgNum(o.x,2.4,o.z,'Не та руна','txt'); Z.phase='show'; Z.showT=1.2; Z.si=0; } }
-  if(o.pk==='tlever'&&!Z.open){ o.m.rotation.x=-.9; Z.open=4.2; Z.bars.position.y=-1.7; Z.vault.sealed=false; AU.sfx('tele'); banner('Решётка поднята!','4 секунды'); }
+  if(o.pk==='tlever'&&!Z.open){ o.m.rotation.x=-.9; Z.open=Z.win||4.2; Z.bars.position.y=-1.7; Z.vault.sealed=false; AU.sfx('tele'); banner('Решётка поднята!',Math.round(Z.win||4.2)+' секунды'); }
 }
 function pzRuneFlash(o,t){ o.m.material=pzGlowMat(o.col); o.flashT=t; fx('magic',o.x,1.6,o.z,{col:o.col,k:8}); }
 function puzzleSolved(){ const Z=W.puzzle; if(Z.solved) return; Z.solved=true; S.puz=S.puz||{}; S.puz[Z.key]=(S.puz[Z.key]||0)+1; S.st.puzzles=(S.st.puzzles||0)+1; if(G.run) G.run.puzzle=1;
@@ -94,9 +94,9 @@ function puzzleTick(dt){
   const Z=W.puzzle, P=G.P, c=Z.room; const inRoom=Math.hypot(P.x-c.x,P.z-c.z)<c.r+.5;
   if(inRoom&&!Z.seen){ Z.seen=true; banner('Загадка: '+PUZ_TYPES[Z.type].n,''); later(1.2,()=>toast(`${PUZ_TYPES[Z.type].hint}${Z.first?'':' (уже решена — награда скромнее)'}`,null,null,'quest')); }
   const T=Z.type;
-  if(T==='push'){ for(const b of Z.blocks){ const dx=b.x-P.x, dz=b.z-P.z, d=Math.hypot(dx,dz); const mv=Math.hypot(G.input.mx,G.input.mz)>.2||P.state==='roll';
+  if(T==='push'){ for(const b of Z.blocks){ const dx=b.x-P.x, dz=b.z-P.z, d=Math.hypot(dx,dz); const im=Math.hypot(G.input.mx,G.input.mz), mv=(im>.2&&(G.input.mx*dx+G.input.mz*dz)/(im*(d||1))>.45)||P.state==='roll'&&(Math.sin(P.face)*dx+Math.cos(P.face)*dz)/(d||1)>.45;
       if(d<b.r+P.r+.25&&mv&&!Z.solved){ let px=Math.abs(dx)>Math.abs(dz)?Math.sign(dx):0, pz=px?0:Math.sign(dz); const sp=2.6*dt; const nx=b.x+px*sp, nz=b.z+pz*sp;
-        if(Math.hypot(nx-c.x,nz-c.z)<c.r-1.1&&!Z.blocks.some(o=>o!==b&&Math.hypot(o.x-nx,o.z-nz)<1.7)){ b.x=nx; b.z=nz; if(Math.random()<dt*8) fx('dust',b.x-px*.7,0,b.z-pz*.7,{k:1}); if(Math.random()<dt*3) AU.sfx('step',.3,.5); } }
+        if(Math.hypot(nx-c.x,nz-c.z)<c.r-1.1&&!Z.blocks.some(o=>o!==b&&Math.hypot(o.x-nx,o.z-nz)<1.7)&&!(typeof pz76BlockFree==='function'&&!pz76BlockFree(b,nx,nz))){ b.x=nx; b.z=nz; if(Math.random()<dt*8) fx('dust',b.x-px*.7,0,b.z-pz*.7,{k:1}); if(Math.random()<dt*3) AU.sfx('step',.3,.5); } }
       b.ob.x=b.x; b.ob.z=b.z; b.m.position.set(b.x,0,b.z); }
     let all=true; for(const p of Z.plates){ const on=Z.blocks.some(b=>Math.hypot(b.x-p.x,b.z-p.z)<.75); if(on!==p.on){ p.on=on; p.m.geometry=on?PZG.plateOn():PZG.plate(); if(on){ AU.sfx('pick'); fx('magic',p.x,.3,p.z,{col:0xffc860,k:8}); if(Math.hypot(p.x-Z.blocks[0].x,p.z-Z.blocks[0].z)<.75||true){ } } } if(!on) all=false; }
     if(all) puzzleSolved(); }
@@ -105,13 +105,13 @@ function puzzleTick(dt){
     if(all) puzzleSolved(); }
   if(T==='levers'){ for(const l of Z.levers){ l.cr.rotation.y+=dt*1.5; l.cr.position.y=1.9+Math.sin(G.time*2+l.idx)*.08; } }
   if(T==='runes'&&!Z.solved){ for(const r of Z.runes){ if(r.flashT>0){ r.flashT-=dt; if(r.flashT<=0) r.m.material=MT; } }
-    if(Z.phase==='wait'&&inRoom&&Math.hypot(P.x-c.x,P.z-c.z)<c.r-1){ Z.phase='show'; Z.seq=[randi(0,3),randi(0,3),randi(0,3)]; Z.si=0; Z.showT=1.4; }
-    if(Z.phase==='show'){ Z.showT-=dt; if(Z.showT<=0){ if(Z.si<Z.seq.length){ const r=Z.runes[Z.seq[Z.si]]; pzRuneFlash(r,.55); AU.sfx('pick',.6,1+Z.si*.12); Z.si++; Z.showT=.8; } else { Z.phase='input'; Z.inp=0; } } } }
+    if(Z.phase==='wait'&&inRoom&&Math.hypot(P.x-c.x,P.z-c.z)<c.r-1){ Z.phase='show'; Z.seq=[]; for(let q=0;q<(Z.seqN||3);q++) Z.seq.push(randi(0,3)); Z.si=0; Z.showT=1.4; }
+    if(Z.phase==='show'){ Z.showT-=dt; if(Z.showT<=0){ if(Z.si<Z.seq.length){ const r=Z.runes[Z.seq[Z.si]]; pzRuneFlash(r,.55); AU.sfx('pick',.6,1+Z.si*.12); Z.si++; Z.showT=Z.flashI||.8; } else { Z.phase='input'; Z.inp=0; } } } }
   if(T==='timed'&&Z.open>0&&!Z.solved){ Z.open-=dt; if(Z.vault.opened) puzzleSolved(); else if(Z.open<=0){ Z.open=0; Z.vault.sealed=true; Z.bars.position.y=0; Z.lever.m.rotation.x=0; AU.sfx('deny'); toast('Решётка захлопнулась. Ещё раз!'); } }
   if(T==='timed'&&Z.vault.opened&&!Z.solved) puzzleSolved();
-  if(T==='corridor'){ Z.cyc+=dt; const ph=Z.cyc%3.2; for(const j of Z.jets){ const tOn=j.grp?1.6:0; const u=(ph-tOn+3.2)%3.2;
+  if(T==='corridor'){ Z.cyc+=dt; const CY=Z.cycT||3.2; const ph=Z.cyc%CY; for(const j of Z.jets){ const tOn=j.grp?CY/2:0; const u=(ph-tOn+CY)%CY;
       if(Math.abs(u-0)<dt*1.01) DECALS.spawn('circle',j.x,j.z,1.25,.9,{col:0xff6a1a});
-      if(u>.9&&u<1.5){ if(Math.random()<.7) fx('fire',j.x+rand(-.4,.4),.2,j.z+rand(-.4,.4),{k:2}); if(!j.hitT||G.time>j.hitT){ if(Math.hypot(P.x-j.x,P.z-j.z)<1.35&&!P.dead){ j.hitT=G.time+.6; hurtPlayer(P.maxHp*.09,{true:1,el:'fire',kb:3,dir:Math.atan2(P.x-j.x,P.z-j.z)}); }
+      if(u>.9&&u<1.5){ j.fireT=G.time; if(Math.random()<.7) fx('fire',j.x+rand(-.4,.4),.2,j.z+rand(-.4,.4),{k:2}); if(!j.hitT||G.time>j.hitT){ if(Math.hypot(P.x-j.x,P.z-j.z)<1.35&&!P.dead){ j.hitT=G.time+.6; hurtPlayer(P.maxHp*.09,{true:1,el:'fire',kb:3,dir:Math.atan2(P.x-j.x,P.z-j.z)}); }
           for(const e of G.enemies) if(e.alive&&Math.hypot(e.x-j.x,e.z-j.z)<1.35) applyStatus(e,'fire',e.maxHp*.05); } } }
     if(!Z.solved&&Z.vault.opened) puzzleSolved(); }
 }
