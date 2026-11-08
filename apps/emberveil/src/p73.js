@@ -193,8 +193,8 @@ ${X} .wbt-d .synrow .grow>div.muted{font-style:italic;color:var(--ink2)!importan
 ${X} .wbt-d .prog{margin:calc(var(--u)*8) 0 calc(var(--u)*4)!important}
 ${X} .wbt-d .row{gap:calc(var(--u)*8)!important}
 ${X} .wbt-d .row:has(.chip2){display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:calc(var(--u)*6) calc(var(--u)*10)!important;margin-top:calc(var(--u)*6)!important}
-${X} .wbt-d .card>.row:last-of-type{justify-content:flex-end}
-${X} .wbt-d .card>.row:last-of-type .btn{min-width:calc(var(--u)*150)}
+${X} .wbt-d .card>.row:not(:has(.chip2)){justify-content:flex-end}
+${X} .wbt-d .card>.row:not(:has(.chip2)) .btn{min-width:calc(var(--u)*150)}
 ${X} .wbt-d .chip2{font-size:calc(var(--u)*14);padding:calc(var(--u)*4) calc(var(--u)*10)}
 ${X} .wbt-d .loyal{font-size:calc(var(--u)*14);color:var(--ink2);margin-top:calc(var(--u)*8)}
 ${X} .x-exp .exprow,${X}.x-exp .exprow{display:flex;align-items:center;gap:calc(var(--u)*10);padding:calc(var(--u)*7) calc(var(--u)*10);margin-top:calc(var(--u)*7)}
