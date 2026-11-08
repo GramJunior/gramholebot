@@ -209,16 +209,19 @@ if(typeof fadeTo==='function'){ fadeTo=function(fn){ const f=$('fade'); f.classL
     requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>f.classList.remove('on'),40))); },360); }; }
 // в) после победы над владыкой и на экране итогов — заранее: портреты сцен деревни, значки добычи
 const PW74={q:[],busy:false,last:0,runW:null};
-function pw74Speakers(){ const out=new Set(['hero','elder']); try{ const pend=(S.q&&S.q.flags&&S.q.flags.pend)||[]; for(const k of pend){ const D=DLG[k]; if(Array.isArray(D)) for(const l of D){ if(Array.isArray(l)&&typeof l[0]==='string') out.add(l[0]); } } }catch(e){}
+function pw74Speakers(){ const out=new Set(['hero','elder','stranger','beast','smith','alch']); try{ const pend=(S.q&&S.q.flags&&S.q.flags.pend)||[]; for(const k of pend){ const D=DLG[k]; if(Array.isArray(D)) for(const l of D){ if(Array.isArray(l)&&typeof l[0]==='string') out.add(l[0]); } } }catch(e){}
   for(const k of ['spirit','narrator','choice','echo','sys','']) out.delete(k); return [...out]; }
-function pw74Plan(){ const q=[]; for(const sp of pw74Speakers()) q.push(()=>{ try{ portraitFor(sp); }catch(e){} });
-  try{ const a=compS&&compS().active; if(a&&typeof compPortrait==='function') q.push(()=>{ try{ compPortrait(a); }catch(e){} }); }catch(e){}
+function pw74Plan(){ const q=[]; for(const sp of pw74Speakers()){ const f=()=>{ try{ portraitFor(sp); }catch(e){} }; f.p=1; q.push(f); }
+  try{ const a=compS&&compS().active; if(a&&typeof compPortrait==='function'){ const f=()=>{ try{ compPortrait(a); }catch(e){} }; f.p=1; q.push(f); } }catch(e){}
   try{ for(const it of ((G.run&&G.run.items)||[]).slice(0,12)) q.push(()=>{ try{ iconHQ(it); }catch(e){} }); }catch(e){}
+  try{ if(typeof CHESTS==='object'&&typeof chestImg==='function') for(const t of Object.keys(CHESTS)) q.push(()=>{ try{ chestImg(t); }catch(e){} }); }catch(e){}
+  try{ if(typeof WB_SUP!=='undefined'&&typeof supArt==='function') for(const k of WB_SUP) q.push(()=>{ try{ supArt({k},128); }catch(e){} }); }catch(e){}
   return q; }
 function pw74Tick(){ const now=performance.now(); const want=(G.mode==='stage'&&W&&W.kind==='stage'&&W.bossDead)||G.mode==='result';
   if(want&&PW74.runW!==W){ PW74.runW=W; PW74.q=pw74Plan(); PW74.last=now+(G.mode==='result'?1500:900); }
   if(!want||!PW74.q.length||G.dialog||G.cut||now<PW74.last) return; const f=$('fade'); if(f&&f.classList.contains('on')) return;
   if(G.mode==='stage'&&G.enemies.some(e=>e.alive&&e.state==='chase'&&Math.hypot(e.x-G.P.x,e.z-G.P.z)<10)) { PW74.last=now+400; return; }
+  if(G.mode==='stage'&&!PW74.q[0].p) return; // в бою — только портреты, остальное — на экране итогов
   const fn=PW74.q.shift(); PW74.last=now+320; fn(); }
 
 // ---------- оформление ----------
