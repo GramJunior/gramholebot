@@ -1,9 +1,9 @@
 // Стенд коллизий (v21): в каждом уровне герой упирается в каждый тип твёрдого пропа/объекта/здания и должен остановиться на его форме;
 // стрела, пущенная в высокое препятствие, должна погаснуть о него.
-// Запуск: node apps/emberveil/tools/collide.js [--stages=1-1,8-1] [--per=1] [--noassets]. Код выхода 1, если что-то проходимо.
+// Запуск: node apps/emberveil/tools/collide.js [--stages=1-1,8-1,c:c1a] [--per=1] [--noassets]. «c:id» — карта Испытания (v33). Код выхода 1, если что-то проходимо.
 const {open,serve}=require('./harness.js');
 const args=process.argv.slice(2); const arg=(k,d)=>{ const a=args.find(x=>x.startsWith('--'+k)); if(!a) return d; const v=a.split('=')[1]; return v===undefined?true:v; };
-const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,9-1,9-3,9-4,9-5,10-1,10-3,10-4,10-5,village,abyss')).split(','), PER=+arg('per',1);
+const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,9-1,9-3,9-4,9-5,10-1,10-3,10-4,10-5,c:c1a,c:c3b,c:c7a,c:c9b,village,abyss')).split(','), PER=+arg('per',1);
 (async()=>{ const base=await serve(); const H=await open({vp:{width:844,height:390},mobile:false,dpr:1,offline:true,noassets:!!arg('noassets',false),url:base+'/emberveil/index.html?q=low&noprologue'}); const {ev,wait}=H; await H.quick();
   for(let i=0;i<4;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); }); await wait(300); }
   await ev(()=>{ const S=__game.S; S.seen.ftue_done=1; for(const k of ['z7_intro','z8_intro','z8_square','z9_intro','z9_sunclock','z9_ascend','z10_intro','z10_memory','z10_mirror','z10_heart']) S.seen[k]=1; __game.mapTo(9); __game.god(true); });
@@ -11,6 +11,7 @@ const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,9-1,9-3,9-
   for(const key of KEYS){
     if(key==='village') await ev(()=>{ const S=__game.S; for(const b of ['hall','forge','alch','pen','tavern','temple','store','saw','mine','well','houses','walls']) S.bld[b]=Math.max(S.bld[b]||0,3); __game.village(); });
     else if(key==='abyss') await ev(()=>__game.abyss(1));
+    else if(key.startsWith('c:')) await ev(id=>__game.c33.start(id,true),key.slice(2));
     else await ev(k=>{ const [z,s]=k.split('-').map(Number); __game.stage(z,s); },key);
     for(let i=0;i<60;i++){ await wait(500); if(await ev(()=>['stage','village','abyss'].includes(__game.G.mode)&&!!__game.W)) break; }
     await wait(1500); for(let i=0;i<3;i++){ await ev(()=>{ try{ if(__game.G.cut) __game.cutSkip(); }catch(e){} __game.skipDialog(); try{ __game.closePanel(); }catch(e){} }); await wait(300); }
