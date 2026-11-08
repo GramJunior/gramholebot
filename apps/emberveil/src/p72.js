@@ -478,3 +478,234 @@ html .s-bld-forge-craft .rcard>.btn{grid-column:1/-1;grid-row:4;width:100%;margi
 .wb2b .scene p{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .wb2b .scene{margin-bottom:calc(var(--u)*10)}
 `; document.head.appendChild(st); })();
+
+// ================= v37: полировка — длинные вкладки героя листаются страницами (wbPager из p71), отряд — как в таверне =================
+const wb37Fr=h=>{ const t=document.createElement('template'); t.innerHTML=h; return t.content; };
+const wb37Out=n=>n?(n.nodeType===1?n.outerHTML:n.nodeType===3?esc(n.textContent):''):'';
+const WB37_LBL={'Синергии стихий':'Синергии','Как собрать билд':'Билды','Страницы летописи':'Летопись','Подсказки в бою':'Подсказки','Развилки умений':'Развилки','Контракты дня':'Контракты','Уголь мастерства':'Уголь'};
+function wb37Lbl(n){ const c=n.cloneNode(true); c.querySelectorAll('small,.fk49p,svg').forEach(x=>x.remove()); let t=c.textContent.replace(/\s+/g,' ').trim().split(/ — | · /)[0].replace(/\s+\d+\s*\/\s*\d+.*$/,'').trim(); for(const k in WB37_LBL) if(t.startsWith(k)) t=WB37_LBL[k]; return t; }
+// Знания: Обучение · Подсказки · Синергии · Состояния · Билды · Летопись · Счёт
+function wb37Know(h){ const fr=wb37Fr(h); const pages=[];
+  const k=fr.querySelector('.tut59k'); if(k){ const sects=[...k.querySelectorAll(':scope>.sect')]; sects.forEach((s,i)=>{ const part=[]; let n=s; do{ part.push(wb37Out(n)); n=n.nextSibling; }while(n&&!(n.nodeType===1&&n.matches('.sect')));
+    pages.push({n:wb37Lbl(s),ic:i?'help':'book',h:`<div class="tut59k ${i?'k37j':'k37t'}">${part.join('')}</div>`}); }); k.remove(); }
+  const c2=fr.querySelector('.cols2'); if(c2){ for(const d of [...c2.children]) for(const p of wbSplit(d.innerHTML,'.sect',{label:wb37Lbl})) pages.push({n:p.n,ic:/Синерг/.test(p.n)?'spark':/Билд/.test(p.n)?'hammer':'eye',h:`<div class="k37g">${p.h}</div>`}); c2.remove(); }
+  const rest=[...fr.childNodes].map(wb37Out).join(''); if(rest.trim()) for(const p of wbSplit(rest,'.sect',{label:wb37Lbl})) pages.push({n:p.n,ic:/Летоп/.test(p.n)?'book':'trophy',h:`<div class="k37g ${/Счёт/.test(p.n)?'k37s':''}">${p.h}</div>`});
+  return wbPager('know',pages,{cls:'k37'}); }
+// Задания (журнал): Сюжет и поручения · Контракты · Достижения (+ прочие разделы — своими страницами)
+function wb37Quests(h){ const fr=wb37Fr(h); const qp=fr.querySelector('.qparch'); if(!qp) return h; const ps=wbSplit(qp.innerHTML,'.sect',{label:wb37Lbl,keepHead:true});
+  const main=[], pages=[]; for(const p of ps){ if(/Контракт|Достиж/.test(p.n)) pages.push(p); else main.push(p); }
+  const box=p=>`<div class="j37b ${/Сюжет|Глава/.test(p.n)?'j37s':''}">${p.h}</div>`;
+  const P=[{n:'Сюжет',ic:'quest',h:`<div class="qparch j37m">${main.map(box).join('')}</div>`}].concat(pages.map(p=>({n:p.n,ic:/Достиж/.test(p.n)?'trophy':/Контр/.test(p.n)?'clock':'quest',h:`<div class="qparch j37g">${p.h}</div>`})));
+  return wbPager('quests',P,{cls:'j37'}); }
+// Умения: выбор оружия сверху, страницы «Умения · Таланты · Развилки»
+function wb37Skills(h){ const fr=wb37Fr(h); const head=fr.querySelector('.skhead'); const hh=head?head.outerHTML:''; if(head) head.remove();
+  const ps=wbSplit([...fr.childNodes].map(wb37Out).join(''),'.sect',{label:n=>{ const t=wb37Lbl(n); return /^Умения/.test(t)?'Умения':/^Мастерство/.test(t)?'Таланты':t; },keepHead:true});
+  const P=ps.map(p=>({n:p.n,ic:/Умения/.test(p.n)?'spark':/Таланты/.test(p.n)?'star':'swap',h:p.h,dot:/fk49r pend|fk49r\s+pend/.test(p.h)}));
+  return `<div class="sk37">${hh}${wbPager('skills',P,{cls:'sk37p'})}</div>`; }
+// Мастерство: оружие — страница с вехами в две колонки; «Уголь мастерства» — последняя
+function wb37Mast(h){ const fr=wb37Fr(h); const note=fr.querySelector('.sect.fk49s small'); const nt=note?note.textContent.replace(/^—\s*/,''):''; const P=[];
+  for(const c of fr.querySelectorAll('.wm53c')){ const nm=c.querySelector('.wm53h b'); P.push({n:nm?nm.textContent:'Оружие',ic:'sword',h:`<div class="wm53 m37">${c.outerHTML}</div>`}); }
+  const mb=fr.querySelector('.mb53'); if(mb){ const s=[...fr.querySelectorAll('.sect.fk49s')].pop(); P.push({n:'Уголь',ic:'fire',h:`<div class="m37u">${s?s.outerHTML:''}${mb.outerHTML}${nt?`<p class="m37n">${ico('help')} Очки мастерства — ${esc(nt)}</p>`:''}</div>`}); }
+  return P.length?wbPager('mast',P,{cls:'m37p'}):h; }
+// Материалы: разделы — страницами, карточка материала справа
+function wb37Mats(h){ const fr=wb37Fr(h); const L=fr.querySelector('.mt-l'); if(!L) return h; const P=[];
+  for(const s of L.querySelectorAll(':scope>.msect')){ const g=s.nextElementSibling; if(!g||!g.classList.contains('mgrid')) continue; const on=!!g.querySelector('.mtile.on'); P.push({n:s.textContent.trim(),h:g.outerHTML,on}); }
+  if(!P.length) return h; const cur=P.findIndex(p=>p.on); if(cur>=0&&WB_PG.mats==null) WB_PG.mats=cur; L.innerHTML=wbPager('mats',P,{cls:'mt37'}); return [...fr.childNodes].map(wb37Out).join(''); }
+{ const _ws=wb2Screen; wb2Screen=function(){ const o=_ws.apply(this,arguments); if(!o||PANEL.kind!=='hero') return o; const t=PANEL.tab;
+  try{ if(t==='know') o.body=wb37Know(o.body); else if(t==='quests') o.body=wb37Quests(o.body); else if(t==='skills') o.body=wb37Skills(o.body); else if(t==='mast') o.body=wb37Mast(o.body); else if(t==='mats') o.body=wb37Mats(o.body);
+    else if(t==='squad'&&typeof wbxRoster==='function'&&typeof COMP_ORDER!=='undefined') o.body=`<div class="wbx x-tavern x-roster x-sq37">${wbxRoster()}</div>`; }catch(e){ console.error(e); } return o; }; }
+(function(){ const st=document.createElement('style'); st.id='wb37Hero'; st.textContent=`
+html #panel .wb2 #pBody:is(.s-hero-know,.s-hero-quests,.s-hero-skills,.s-hero-mast,.s-hero-mats,.s-hero-squad){overflow:hidden;padding-bottom:calc(var(--u)*6 + var(--sb,0px))}
+.wb2b .wb-pp>:first-child{margin-top:0}
+/* Знания */
+.wb2b .k37 .wb-pp{padding-top:calc(var(--u)*2)}
+.wb2b .k37 .tut59k>.sect,.wb2b .k37g>.sect{display:none}
+.wb2b .k37 .tut59k .tkg{grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*215),1fr));gap:calc(var(--u)*10)}
+.wb2b .k37 .tut59k .tkgn{font-size:calc(var(--u)*14)}
+.wb2b .k37 .tut59k .tkb{font-size:calc(var(--u)*15);min-height:calc(var(--u)*44)}
+.wb2b .k37 .tkj{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(var(--u)*8);align-items:start}
+.wb2b .k37 .tkd summary{font-size:calc(var(--u)*15);min-height:calc(var(--u)*40);display:flex;align-items:center;gap:6px}
+.wb2b .k37 .tkd p{font-size:calc(var(--u)*14.5)}
+.wb2b .k37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*10);align-items:start}
+.wb2b .k37g>:is(.muted,.sect,p){grid-column:1/-1;margin:0}
+.wb2b .k37g>.card{margin:0}
+.wb2b .k37g .synrow{display:flex;gap:calc(var(--u)*10);align-items:flex-start}
+.wb2b .k37g .synic{width:calc(var(--u)*56);height:calc(var(--u)*56);flex:0 0 calc(var(--u)*56);display:grid;place-items:center;border-radius:50%}
+.wb2b .k37g .synic .ico{width:62%;height:62%}
+.wb2b .k37g .synrow h4{font-size:calc(var(--u)*17)}
+.wb2b .k37g .synrow .grow>div{font-size:calc(var(--u)*14.5)!important}
+.wb2b .k37g:has(>.card:only-of-type)>.card,.wb2b .k37s>.card{grid-column:1/-1}
+.wb2b .k37s>.card{columns:3!important;font-size:calc(var(--u)*16)!important;line-height:1.7}
+/* Задания: журнал */
+.wb2b .j37m{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*10);align-items:stretch}
+.wb2b .j37b{background:rgba(255,250,235,.55);box-shadow:inset 0 0 0 1.5px #c9a060;border-radius:calc(var(--u)*10);padding:calc(var(--u)*8) calc(var(--u)*12);min-width:0}
+.wb2b .j37b.j37s{grid-column:1/-1;background:linear-gradient(90deg,rgba(255,200,120,.45),rgba(255,250,235,.6))}
+.wb2b .j37t{font:800 calc(var(--u)*19)/1.1 var(--sc);color:#7a2a08;margin-bottom:calc(var(--u)*4)}
+.wb2b .j37b .card{background:transparent!important;box-shadow:none!important;padding:0;margin:0 0 calc(var(--u)*6)}
+.wb2b .j37b .card h4{font-size:calc(var(--u)*19)}
+.wb2b .j37b .muted{font-size:calc(var(--u)*15)}
+.wb2b .j37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*8);align-items:start}
+.wb2b .j37g>.row{display:flex;align-items:center;gap:calc(var(--u)*10);padding:calc(var(--u)*8) calc(var(--u)*10);border-radius:calc(var(--u)*9);background:rgba(255,250,235,.55);box-shadow:inset 0 0 0 1.5px #c9a060;margin:0;font-size:calc(var(--u)*15)}
+.wb2b .j37g>.row>span:first-child{font-size:calc(var(--u)*28);color:#a06a18;flex:none}
+.wb2b .j37g>.row>span:first-child .ico{width:calc(var(--u)*32);height:calc(var(--u)*32)}
+.wb2b .j37g>.row b{font:800 calc(var(--u)*16)/1.15 var(--sc)}
+.wb2b .j37g>.row .muted{font-size:calc(var(--u)*14)}
+.wb2b .j37g>.card{margin:0}
+.wb2b .j37g>.muted{grid-column:1/-1}
+/* Умения */
+.wb2b .sk37{display:flex;flex-direction:column;height:100%;gap:calc(var(--u)*6)}
+.wb2b .sk37>.skhead{flex:none;margin:0}
+.wb2b .sk37>.wb-pgw{flex:1;min-height:0}
+.wb2b .sk37 .wb-pp>.sect:first-child{display:none}
+.wb2b .sk37 .tree2{grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*10)}
+.wb2b .sk37 .tn2{min-height:calc(var(--u)*96)}
+.wb2b .sk37 .tn2 .ti{width:calc(var(--u)*60);height:calc(var(--u)*60);flex:0 0 calc(var(--u)*60)}
+.wb2b .sk37 .tn2 .ti .ico{width:60%;height:60%}
+.wb2b .sk37 .tn2 p{font-size:calc(var(--u)*14.5)}
+.wb2b .sk37 .tn2 .btn.pl{width:calc(var(--u)*48);height:calc(var(--u)*48);font-size:calc(var(--u)*26)}
+.wb2b .sk37 .fk49 .ft small{font-size:calc(var(--u)*14)}
+.wb2b .sk37 .fk49 .ft b{font-size:calc(var(--u)*15)}
+.wb2b .sk37 .fk49 .fkl b{font-size:calc(var(--u)*20)}
+.wb2b .skhead .chip span{font-size:calc(var(--u)*15)}
+.wb2b .skhead .tpbox{min-height:calc(var(--u)*44)}
+.wb2b .skhead .tpbox small{font-size:calc(var(--u)*14)}
+/* Мастерство */
+.wb2b .m37{display:block}
+.wb2b .m37 .wm53c{height:100%;display:flex;flex-direction:column;gap:calc(var(--u)*6)}
+.wb2b .m37 .wm53i{width:calc(var(--u)*56);height:calc(var(--u)*56);flex-basis:calc(var(--u)*56)}
+.wb2b .m37 .wm53i .ico{width:60%;height:60%}
+.wb2b .m37 .wm53h b{font-size:calc(var(--u)*20)}
+.wb2b .m37 .wm53r b{font-size:calc(var(--u)*30)}
+.wb2b .m37 .wm53g{grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*6) calc(var(--u)*12);margin-top:0}
+.wb2b .m37 .wm53u{grid-template-columns:calc(var(--u)*30) calc(var(--u)*24) 1fr;padding:calc(var(--u)*4);align-items:center}
+.wb2b .m37 .wm53u .wm53l{width:calc(var(--u)*28);height:calc(var(--u)*28);font-size:calc(var(--u)*14);display:grid;place-items:center;border-radius:50%}
+.wb2b .m37 .wm53u small{font-size:calc(var(--u)*14.5)}
+.wb2b .m37 .wm53u b{font-size:calc(var(--u)*15.5)}
+.wb2b .m37u{display:flex;flex-direction:column;gap:calc(var(--u)*10)}
+.wb2b .m37u .mb53{font-size:calc(var(--u)*16)}
+.wb2b .m37n{margin:0;font-size:calc(var(--u)*15);color:var(--ink2)}
+/* Материалы */
+html .wb2 .s-hero-mats .mtab{height:100%;grid-template-columns:minmax(0,1fr) minmax(calc(var(--u)*240),40%);gap:calc(var(--u)*14);align-items:stretch}
+.wb2b.s-hero-mats .mt-l{min-height:0;height:100%}
+.wb2b.s-hero-mats .mt-r{overflow-y:auto;min-height:0;height:100%;position:static}
+.wb2b .mt37 .mgrid{grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*112),1fr));gap:calc(var(--u)*10)}
+.wb2b .mt37 .mtile{padding:calc(var(--u)*8) calc(var(--u)*4);gap:calc(var(--u)*3);min-height:calc(var(--u)*120)}
+html .wb2b .mt37 .mtile .mti{width:calc(var(--u)*60);height:calc(var(--u)*60)}
+html .wb2b .mt37 .mtile .mti .ico{width:calc(var(--u)*44);height:calc(var(--u)*44)}
+.wb2b .mt37 .mtile b{font:800 calc(var(--u)*18)/1 var(--sc)}
+.wb2b .mt37 .mtile small{font-size:calc(var(--u)*14);line-height:1.1;text-align:center}
+.wb2b.s-hero-mats .mdet{font-size:calc(var(--u)*15)}
+/* Отряд — как в таверне */
+.wb2b .x-sq37{height:100%}
+.wb2b .x-sq37 .wbt{grid-template-columns:minmax(0,calc(var(--u)*290)) minmax(0,1fr);height:100%;min-height:0;padding-top:calc(var(--u)*12)}
+.wb2b .x-sq37 .wbt-grid{grid-template-columns:repeat(4,1fr)}
+.wb2b .x-sq37 .wbt-l,.wb2b .x-sq37 .wbt-r{overflow-y:auto;min-height:0}
+`; document.head.appendChild(st); })();
+// Здания: баннер-сцена — колонкой слева, разделы — страницами справа (алхимик, храм); Кодекс — «Извлечь · Аспекты»
+const WB37_P1={'alch:shop':['Варка','flask'],'temple:magic':['Фолианты','book'],'forge:codex':['Кодекс','book']};
+const WB37_LEAD={'alch:shop':1};
+function wb37Bld(id,tab,h){ const fr=wb37Fr(h); const key=id+':'+tab; const sc=fr.querySelector('.scene'); const head=fr.querySelector(':scope>.cx50')?fr.querySelector('.cx50h'):null;
+  let src=fr; if(fr.querySelector(':scope>.cx50')){ src=fr.querySelector(':scope>.cx50'); } if(sc) sc.remove(); if(head) head.remove();
+  const ic=t=>/Бомб/.test(t)?'bomb':/Эссенц|Перегон/.test(t)?'spark':/Рун/.test(t)?'gem':/Аспект/.test(t)?'star':/Извле/.test(t)?'hammer':(WB37_P1[key]||[])[1]||'book';
+  const ps=wbSplit([...src.childNodes].map(wb37Out).join(''),'.sect',{label:wb37Lbl,n:(WB37_P1[key]||['Всё'])[0],lead:WB37_LEAD[key]?(WB37_P1[key]||[])[0]:''});
+  const P=ps.map(p=>({n:p.n||(WB37_P1[key]||['Всё'])[0],ic:ic(p.n),h:`<div class="b37g">${p.h}</div>`}));
+  const pg=wbPager('b37'+key,P,{cls:'b37p'});
+  if(sc) return `<div class="b37 b37s">${sc.outerHTML}${pg}</div>`;
+  if(head) return `<div class="b37 b37h cx50">${head.outerHTML}${pg}</div>`;
+  return `<div class="b37">${pg}</div>`; }
+{ const _ws=wb2Screen; wb2Screen=function(){ const o=_ws.apply(this,arguments); if(!o||PANEL.kind!=='bld') return o; const id=PANEL.opts.id, t=PANEL.tab;
+  try{ if((id==='alch'&&t==='shop')||(id==='temple'&&t==='magic')||(id==='forge'&&t==='codex')) o.body=wb37Bld(id,t,o.body); }catch(e){ console.error(e); } return o; }; }
+(function(){ const st=document.createElement('style'); st.id='wb37Bld'; st.textContent=`
+html #panel .wb2 #pBody:is(.s-bld-alch-shop,.s-bld-temple-magic,.s-bld-forge-codex){overflow:hidden;padding-bottom:calc(var(--u)*6 + var(--sb,0px))}
+.wb2b .b37{height:100%;min-height:0}
+.wb2b .b37s{display:grid;grid-template-columns:calc(var(--u)*200) minmax(0,1fr);gap:calc(var(--u)*14)}
+.wb2b .b37h{display:flex;flex-direction:column;gap:calc(var(--u)*8)}
+.wb2b .b37h>.cx50h{flex:none;margin:0}.wb2b .b37h>.wb-pgw{flex:1;min-height:0}
+.wb2b .b37s>.scene{margin:0;display:flex!important;flex-direction:column!important;align-items:center;justify-content:flex-start;text-align:center;gap:calc(var(--u)*6);padding:calc(var(--u)*12) calc(var(--u)*10);min-height:0;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 26%,rgba(255,200,110,.85),rgba(255,210,120,0) 58%),linear-gradient(180deg,#f3dfb4,#ead0a0)}
+.wb2b .b37s>.scene .grow{display:flex;flex-direction:column;gap:calc(var(--u)*4)}
+.wb2b .b37s>.scene h3{font-size:calc(var(--u)*21)}
+.wb2b .b37s>.scene p{-webkit-line-clamp:5;font-size:calc(var(--u)*14.5)}
+.wb2b .b37s>.scene .who{display:none}
+.wb2b .b37s>.scene>*{flex:none;max-width:100%}
+.wb2b .b37s>.scene .grow{width:100%}
+.wb2b .b37s>.scene .btn{min-height:calc(var(--u)*44);width:100%;margin-top:auto;font-size:calc(var(--u)*15.5)}
+/* котёл: тёмная ниша и свечение варева — видно и на светлой доске */
+.wb2b .scene .cauldron{width:calc(var(--u)*120);height:calc(var(--u)*104);flex:none;margin-right:calc(var(--u)*40)}
+.wb2b .b37s>.scene .cauldron{margin:calc(var(--u)*4) calc(var(--u)*50) 0 0}
+.wb2b .scene .cauldron::before{content:'';position:absolute;left:-22%;right:-22%;top:-6%;bottom:-16%;border-radius:50%;background:radial-gradient(ellipse at 50% 62%,rgba(52,26,8,.9) 0 38%,rgba(52,26,8,.55) 52%,rgba(52,26,8,0) 72%);z-index:0}
+.wb2b .scene .cauldron::after{content:'';position:absolute;left:18%;right:18%;bottom:-10%;height:22%;border-radius:50%;background:radial-gradient(ellipse at 50% 30%,#fff2a0,#ff9a2a 45%,rgba(220,60,10,0) 72%);filter:blur(1px);z-index:0;animation:wb37fl 1.1s ease-in-out infinite alternate}
+@keyframes wb37fl{to{transform:scaleY(1.25) scaleX(.94);opacity:.85}}
+.wb2b .scene .cauldron>*{z-index:1}
+.wb2b .scene .cauldron .pot{box-shadow:inset 0 -8px 14px rgba(0,0,0,.6),0 0 0 2px #2a1404,0 6px 10px rgba(0,0,0,.45)}
+.wb2b .scene .cauldron .brew{box-shadow:0 0 18px 4px var(--bg1,#5aff5a),0 0 44px 10px var(--bg2,rgba(90,255,90,.55))!important;z-index:2}
+.s-bld-temple-magic .scene .cauldron .brew{--bg1:#7ad8ff;--bg2:rgba(110,190,255,.6)}
+.wb2b .scene .cauldron i{z-index:3}
+/* карточки разделов — по две в ряд */
+.wb2b .b37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*10);align-items:stretch}
+.wb2b .b37g>:is(.muted,p,.sect){grid-column:1/-1;margin:0}
+.wb2b .b37g>:is(.bcards,.rfcards,.cx50x,.cx50g){display:contents}
+.wb2b .b37g .bcard2{grid-template-columns:calc(var(--u)*60) minmax(0,1fr) auto;padding:calc(var(--u)*8) calc(var(--u)*10);margin:0}
+.wb2b .b37g .bcard2>.med{width:calc(var(--u)*60);height:calc(var(--u)*60)}
+.wb2b .b37g .bcard2>small{-webkit-line-clamp:2;font-size:calc(var(--u)*14)}
+.wb2b .b37g .bcard2>.have{font-size:calc(var(--u)*18);min-width:calc(var(--u)*30);text-align:right}
+html .wb2b .b37g .bcard2>.btn{min-width:calc(var(--u)*104);padding:0 calc(var(--u)*8)}
+.wb2b .b37g .rfcard{margin:0;display:flex;align-items:center;gap:calc(var(--u)*10)}
+.wb2b .b37g .rfcard .rfo{width:calc(var(--u)*56);height:calc(var(--u)*56);flex:0 0 calc(var(--u)*56)}
+.wb2b .b37g .rfb{display:flex;flex-direction:column;gap:calc(var(--u)*6)}
+.wb2b .b37g .cx50r{margin:0}
+.wb2b .b37g .cx50r .it.mini{width:calc(var(--u)*60)}
+.wb2b .b37h .cx50g{display:contents}
+.wb2b .b37h .b37g:has(.cx50a){grid-template-columns:repeat(4,minmax(0,1fr))}
+.wb2b .b37h .cx50a{min-height:calc(var(--u)*64);margin:0}
+.wb2b .b37h .cx50a b{font-size:calc(var(--u)*14.5)}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Hero2'; st.textContent=`
+/* переработка — карусель 3×2, магия — описание заклинания прокручивается внутри */
+html #panel .wb2 #pBody.s-bld-forge-smelt{overflow:hidden;display:flex;flex-direction:column;gap:calc(var(--u)*8)}
+.s-bld-forge-smelt>*{flex:none}
+.wb2b.s-bld-forge-smelt>.rfcards{flex:1;min-height:0;display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,minmax(0,1fr));grid-auto-columns:calc(50% - var(--u)*5);gap:calc(var(--u)*10);overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;padding-bottom:calc(var(--u)*6)}
+.wb2b.s-bld-forge-smelt>.rfcards>.rfcard{scroll-snap-align:start;margin:0;min-height:0;display:flex;align-items:center;gap:calc(var(--u)*10)}
+.wb2b.s-bld-forge-smelt .rfcard .rfo{width:calc(var(--u)*56);height:calc(var(--u)*56);flex:0 0 calc(var(--u)*56)}
+html #panel .wb2 #pBody.s-hero-magic{overflow:hidden}
+.s-hero-magic .magic{height:100%;min-height:0}
+.s-hero-magic .magic>*{min-height:0;overflow-y:auto}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Fix2'; st.textContent=`
+.wb2b .b37s{grid-template-columns:calc(var(--u)*160) minmax(0,1fr)}
+.wb2b .b37s>.scene .cauldron{width:calc(var(--u)*104);height:calc(var(--u)*92);margin:calc(var(--u)*4) 0 0}
+.wb2b .b37g .bcard2{grid-template-columns:calc(var(--u)*56) minmax(0,1fr) auto;grid-template-areas:"med nm hv" "med ds ds" "cs cs bt";row-gap:calc(var(--u)*4);align-content:start}
+.wb2b .b37g .bcard2>.med{width:calc(var(--u)*56);height:calc(var(--u)*56)}
+.wb2b .b37g .bcard2>.costs{align-self:center}
+html .wb2b .b37g .bcard2>.btn{min-width:calc(var(--u)*96)}
+.wb2b .b37g .bcard2>.muted{grid-column:1/-1}
+.wb2b :is(.b37g,.s-bld-forge-smelt>.rfcards) .rfcard{display:grid!important;grid-template-columns:calc(var(--u)*56) minmax(0,1fr);gap:calc(var(--u)*6) calc(var(--u)*10);align-items:center;align-content:center}
+.wb2b :is(.b37g,.s-bld-forge-smelt>.rfcards) .rfcard>.rfb{grid-column:1/-1;display:flex!important;flex-direction:row!important;gap:calc(var(--u)*8);position:static;justify-content:flex-end}
+.wb2b :is(.b37g,.s-bld-forge-smelt>.rfcards) .rfcard>.rfb .btn{flex:1;max-width:calc(var(--u)*120)}
+.wb2b.s-bld-forge-smelt>.rfcards{grid-template-rows:repeat(2,minmax(0,1fr))}
+.wb2b.s-bld-forge-smelt>.muted{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Gems'; st.textContent=`
+/* выбор камня: крупные плитки с самоцветом вместо мелких текстовых кнопок */
+.wb2b.s-bld-forge-gems .f-r>.card{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--u)*8);font:800 calc(var(--u)*17)/1.1 var(--sc)}
+html .wb2b.s-bld-forge-gems .f-r>.card>.btn{flex:1 1 calc(var(--u)*130);min-height:calc(var(--u)*56);display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:calc(var(--u)*8);font-size:calc(var(--u)*15.5);text-align:left;white-space:normal;line-height:1.1}
+html .wb2b.s-bld-forge-gems .f-r>.card>.btn>span:first-child{width:calc(var(--u)*36);height:calc(var(--u)*36);flex:none;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#fff8e0,#d8b878);box-shadow:inset 0 0 0 1.5px #a07444}
+html .wb2b.s-bld-forge-gems .f-r>.card>.btn>span:first-child .ico{width:calc(var(--u)*26);height:calc(var(--u)*26)}
+.wb2b.s-bld-forge-gems .gembox{gap:calc(var(--u)*8)}
+.wb2b.s-bld-forge-gems .gemc .gi{width:calc(var(--u)*40);height:calc(var(--u)*40);font-size:calc(var(--u)*30)}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Wide'; st.textContent=`
+/* 1280×720 и шире: кукла крупнее, умения и вехи — в три колонки */
+.wb2-gear .doll2{--t:min(calc(var(--u)*82),calc((var(--vh,100vh) - var(--u)*150) / 4))}
+@media (min-aspect-ratio:16/9) and (min-height:600px),(min-width:1100px) and (min-height:600px){
+  .wb2b .sk37 .tree2{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .wb2b .m37 .wm53g{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .wb2b .k37g{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .wb2b .mt37 .mgrid{grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*100),1fr))}
+}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.textContent=`
+.wb2b .j37b>.sect{margin:0 0 calc(var(--u)*4);font:800 calc(var(--u)*19)/1.1 var(--sc);color:#7a2a08}
+.wb2b .j37b>.sect::before,.wb2b .j37b>.sect::after{display:none}
+.wb2b .j37g>.sect{grid-column:1/-1;margin:0;font-size:calc(var(--u)*19)}
+`; document.head.appendChild(st); })();

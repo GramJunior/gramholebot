@@ -84,7 +84,7 @@ function wbxScreen(){ const k=PANEL.kind;
   if(k==='offline'){ return {title:PANEL.opts.title||'Пока вас не было',res:[],body:wbxBody(PANEL.opts.html||'','off','x-off')}; }
   if(k==='net'){ PANEL.tab=PANEL.tab||NET.tab||'lb'; const body=pNet(); return {title:'Вече',mid:wbxTabs(NET_TABS,PANEL.tab),res:WBX_RES.net,body:wbxBody(body,'net:'+PANEL.tab,'x-net x-'+PANEL.tab)}; }
   if(k==='npc'){ const n=PANEL.opts.npc; return {title:NPC_INFO[n].n,mid:`<span class="wb-sub">${NPC_INFO[n].t||''}</span>`,res:['gold',CRYS],body:wbxBody(pNpc(n),'npc','x-npc')}; }
-  if(k==='hero'&&PANEL.tab==='quests'){ const o=heroPanel(); return {title:'Задания',mid:`<span class="wb-sub">${o.sub||''}</span>`,res:WBX_RES.quests,body:wbxBody(o.body,'quests','x-quests')}; }
+  // v37: журнал заданий — вкладка героя (p72: рельс + wb37Quests); здесь не перехватывается, чтобы облик был один
   if(['shop','coll','events','chron'].includes(k)&&typeof PANEL_EXT!=='undefined'&&PANEL_EXT[k]){ const o=PANEL_EXT[k](); if(PANEL.kind!==k) return null; const tab=PANEL.tab||'';
     return {title:o.title,mid:(o.tabs&&o.tabs.length>1)?wbxTabs(o.tabs,tab):(o.sub?`<span class="wb-sub">${o.sub}</span>`:''),res:WBX_RES[k]||[],body:wbxBody(o.body,`${k}:${tab}`,`x-${k} x-${tab||'one'}`)}; }
   return null; }
@@ -503,4 +503,168 @@ html.land #dlgPort.right~#dlgName{right:calc(var(--u)*164)}
 #hud #hPort{box-shadow:0 0 0 3px #e0b850,0 0 0 5px #6a4018,0 3px 6px rgba(0,0,0,.4)}
 #hud #hLvl{background:${BR};color:#3a2206;text-shadow:none;box-shadow:0 0 0 1.5px #6a4410}
 #hud #prompt{background:${BR};color:#3a2206;text-shadow:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 2px 0 #6a4410,0 4px 8px rgba(0,0,0,.35)}
+`; document.head.appendChild(st); })();
+
+// ================= v37: полировка «Дерева и латуни» — крупнее шрифт и картинки, меньше прокрутки =================
+// Требование: на 844×390 основной текст ≥14 px, заголовки ≥19 px, значки предметов ≥56 px, касание ≥44 px (всё ×--u).
+// 1) CSS-нижняя граница для общих классов прежней разметки; 2) страховка wbFloor — после каждой отрисовки окна текст мельче
+// 14·u (числа и счётчики — 12·u) получает встроенный размер; скрытый нулевым шрифтом текст не трогается.
+const WB_NUM=/^[\s\d%×x+\-−–.,:\/()★☆·▲▼↑↓→←✓✔⏱]*$/i;
+function wbU(){ const vh=(window.visualViewport&&visualViewport.height)||innerHeight; return Math.min(1.7,Math.max(.82,Math.min(vh/390,innerWidth/844))); }
+function wbFloor(root){ if(!root||!root.isConnected) return; const u=wbU(); const fix=[];
+  for(const e of root.querySelectorAll('*')){ if(e instanceof SVGElement) continue; let t=''; for(const c of e.childNodes) if(c.nodeType===3) t+=c.nodeValue; t=t.trim(); if(!t) continue;
+    const fs=parseFloat(getComputedStyle(e).fontSize); if(!(fs>=2)) continue; const k=e.closest('h2,h3,.wb-plate,.wb-bt')?19:(WB_NUM.test(t)||t.length<=2)?12:14; if(fs<k*u-.05) fix.push([e,k]); }
+  for(const [e,k] of fix) e.style.setProperty('font-size',`calc(var(--u,${u.toFixed(3)}px)*${k})`,'important'); }
+const WB_FLOOR_ROOTS=['panel','icardW','salvW','res','boons','raidUI','chestW'];
+{ let q=0, last=0; const run=()=>{ q=0; last=performance.now(); for(const id of WB_FLOOR_ROOTS){ const r=$(id); if(r&&!r.classList.contains('hidden')) try{ wbFloor(r); }catch(e){} } };
+  const kick=()=>{ if(q) return; const d=performance.now()-last; q=d>250?requestAnimationFrame(run):setTimeout(()=>requestAnimationFrame(run),250-d); };
+  const mo=new MutationObserver(kick), mc=new MutationObserver(kick);
+  const bind=()=>{ for(const id of WB_FLOOR_ROOTS){ const r=$(id); if(r&&!r.__wbf){ r.__wbf=1; mo.observe(r,{childList:true,subtree:true}); mc.observe(r,{attributes:true,attributeFilter:['class']}); } } };
+  bind(); setTimeout(bind,1500); setInterval(()=>{ bind(); const r=$('raidUI'); if(r&&!r.classList.contains('hidden')) kick(); },2000); window.addEventListener('resize',kick); }
+// листалки wb-pg: вернуть страницу после перерисовки (обёртка — самая внешняя, после p72/p73)
+{ const _rp=renderPanel; renderPanel=function(){ const r=_rp.apply(this,arguments); try{ const p=$('panel'); if(p) wbPgRestore(p); }catch(e){ console.error(e); } return r; }; }
+// ---------- v37: общий CSS — касание ≥44, рельс вкладок, значки ----------
+(function(){ const st=document.createElement('style'); st.id='wb37Css'; st.textContent=`
+html #panel .wbs #pTabs.wb-rail .tab.wb-rt{flex:none;height:calc(var(--u)*44);min-height:calc(var(--u)*44);max-height:none;font-size:calc(var(--u)*15.5)}
+html #panel .wbs #pTabs.wb-rail[data-n="10"] .tab.wb-rt,html #panel .wbs #pTabs.wb-rail[data-n="9"] .tab.wb-rt{min-height:calc(var(--u)*44)}
+html #panel .wbs #pTabs.wb-rail{gap:calc(var(--u)*5);width:calc(var(--u)*158 + var(--sl,0px))}
+html #panel .wbs #pTabs.wb-rail .tab.wb-rt{font-size:calc(var(--u)*15);padding:0 calc(var(--u)*5);gap:calc(var(--u)*5)}
+html #panel .wbs #pTabs.wb-rail .tab.wb-rt .ico.ic{width:calc(var(--u)*26);height:calc(var(--u)*26)}
+html #panel .wbs #pBody :is(.btn,.wb-btn,button.chip,.chip,.seg button,.tkb,.wb-cs){min-height:calc(var(--u)*44)}
+html #panel .wbs #pBody .btn.small{min-height:calc(var(--u)*44);font-size:calc(var(--u)*15.5)}
+html #panel .wbs #pHead .wb-tab{min-height:calc(var(--u)*44)}
+html #panel .wbs #pHead .wb-tab.ic1{min-width:calc(var(--u)*48)}
+html .wbk :is(.btn,.chip,.tgl){min-height:calc(var(--u)*44)}
+html #panel .wbs #pBody .it .eqt{font-size:0!important;left:auto;right:calc(var(--u)*3);bottom:calc(var(--u)*3);top:auto;width:calc(var(--u)*20);height:calc(var(--u)*20);padding:0;border-radius:50%;display:grid;place-items:center;background:#3f7a22;box-shadow:0 0 0 2px #fff3d0}
+html #panel .wbs #pBody .it .eqt::after{content:'✓';font:800 calc(var(--u)*13)/1 var(--sc);color:#fff}
+`; document.head.appendChild(st); })();
+// обучение: цель на другой странице листалки — сначала открыть её страницу
+if(typeof tutScrollParent==='function'){ const _ts=tutScrollParent; tutScrollParent=function(el){ try{ const pp=el&&el.closest&&el.closest('.wb-pp'); const w=pp&&pp.closest('.wb-pgw'); if(w){ WB_PG[w.dataset.pg]=+pp.dataset.i; wbPgGo(w,+pp.dataset.i,false); } }catch(e){} return _ts.apply(this,arguments); }; }
+// ---------- v37: разделы-доски → страницы, длинные списки карточек → карусель с привязкой, вкладки → рельс слева ----------
+// Ключ экрана (как в wbxBody) → подпись первой доски без таблички; null — подпись из её таблички
+const WB37_PGK={'shop:chests':'Сундуки','chron:':'Решения','set':'Настройки','events:':'Сейчас','shop:skins':'Облики','bld:tavern:hunts':null,'bld:tavern:sq33':null,'bld:hall:hearth':'Очаг','bld:hall:arch':'Архив'};
+// карусели: [селектор карточек, строк, колонок]
+const WB37_CAR={'coll':['.collItem',1,4],'shop:deals':['.offer',1,4],'shop:packs':['.offer',1,4],'shop:boosts':['.sitem',1,4],'shop:skins':['.sitem',1,4],'shop:chests':['.cgrid>.chestc',1,3],'bld:tavern:exp':['.exprow',1,2],'bld:tavern:board':['.card',3,2],'bld:tavern:daily':['.card',3,2],'bld:tavern:sq33':['.sq33',2,2],'bld:tavern:hunts':['.hu33',1,3],'chron:':['.chronRow',3,2],'events:':['.evCard',3,2],'bld:hall:arch':['.card',3,3]};
+function wb37Car(root,sel,rows,cols){ const items=[...root.querySelectorAll(sel)].filter(x=>!x.parentElement.closest(sel)); const groups=new Map(); for(const it of items){ const p=it.parentElement; if(!groups.has(p)) groups.set(p,[]); groups.get(p).push(it); }
+  let n=0; for(const [p,L] of groups){ if(L.length<2) continue; let c; if(p.children.length===L.length&&p!==root){ c=p; } else { c=document.createElement('div'); p.insertBefore(c,L[0]); for(const it of L) c.appendChild(it); }
+    c.classList.add('wb-hcar'); c.style.setProperty('--rows',rows); c.style.setProperty('--cols',cols); n++; } return n; }
+// цепочка предков карусели/листалки до корня — гибкие колонки на всю высоту
+function wb37Chain(root){ for(const t of root.querySelectorAll('.wb-hcar,.wb-pgw')){ if(t.parentElement.closest('.wb-hcar')) continue; let e=t.parentElement; while(e&&e!==root){ if(!e.matches('.wb-pg,.wb-pgw,.wb-pp')) e.classList.add('x37c'); e=e.parentElement; } } }
+// настройки: 22 пункта — страницами по 6
+function wb37SetSplit(root){ const sg=root.querySelector('.wbx-sg'); if(!sg) return; const cells=[...sg.children]; if(cells.length<=8) return; const top=sg.closest('.wbx-bs>*'); if(!top) return; const out=[]; const pz=top.querySelector('.wbx-pz'); if(pz) top.parentNode.parentNode.insertBefore(pz,top.parentNode); const NM=['Звук и экран','Графика','Экран и кадры','Игра','Прочее','Ещё'];
+  for(let i=0;i<cells.length;i+=6){ const L=cells.slice(i,i+6); const n=NM[i/6]||'Ещё'; const b=document.createElement('section'); b.className='wb-board wbx-b'; b.innerHTML=`<div class="wb-bt wb-plate brass rivets sm l">${esc(i?n:'Звук и экран')}</div><div class="wbx-in"><div class="wbx-sg"></div></div>`; const g=b.querySelector('.wbx-sg'); for(const c of L) g.appendChild(c); out.push(b); }
+  top.replaceWith(...out); }
+function wb37Wbx(html,key){ const t=document.createElement('template'); t.innerHTML=html; const root=t.content.firstElementChild; if(!root) return html; let flex=false;
+  const ck=WB37_CAR[key]||WB37_CAR[key.split(':')[0]]; if(ck&&wb37Car(root,ck[0],ck[1],ck[2])) flex=true;
+  if(key==='set') try{ wb37SetSplit(root); }catch(e){ console.error(e); }
+  if(key in WB37_PGK){ const bs=root.querySelector('.wbx-bs'); const bds=bs?[...bs.children].filter(b=>b.classList.contains('wbx-b')):[];
+    if(bds.length>=2){ const P=bds.map((b,i)=>{ const pl=b.querySelector(':scope>.wb-bt'); const n=pl?pl.textContent.replace(/\s+/g,' ').trim().split(' · ')[0]:(WB37_PGK[key]||'Главное'); const inn=b.querySelector(':scope>.wbx-in'); return {n,h:`<div class="wbx-in wbx-pgin">${(inn||b).innerHTML}</div>`}; });
+      const d=document.createElement('div'); d.innerHTML=wbPager('x:'+key,P,{cls:'x37p'}); bs.replaceWith(d.firstElementChild); flex=true; } }
+  if(flex){ root.classList.add('x37f'); wb37Chain(root); } return root.outerHTML; }
+{ const _wb=wbxBody; wbxBody=function(html,key,cls){ const r=_wb.apply(this,arguments); try{ return wb37Wbx(r,key||''); }catch(e){ console.error(e); return r; } }; }
+// «Пока вас не было» и похожие окна: ресурсы — строками «значок · название · +N»
+WBX_TX['off']=fr=>{ for(const row of fr.querySelectorAll('.row')){ const cs=[...row.querySelectorAll(':scope>.rchip')]; if(!cs.length) continue; row.classList.add('off37');
+  for(const c of cs){ const k=c.dataset.k; const v=c.querySelector('span'); c.outerHTML=`<div class="off37r"><span class="oi">${wbRes(k)}</span><b>${esc((typeof RES_NAME!=='undefined'&&RES_NAME[k])||(CONS[k]&&CONS[k].n)||k)}</b><em>+${v?v.textContent:''}</em></div>`; } } };
+// Лавка: в шапке — золото и самоцветы (ключи — на карточках сундуков)
+WBX_RES.shop=['gold',CRYS];
+// вкладки зданий (таверна, ратуша), Лавки и Коллекции — рельсом слева, как у героя и кузницы
+function wb37Rail(){ const p=$('panel'); const fr=p&&p.querySelector('#pFrame.wbs:not(.wb2)'); if(!fr||!['bld','shop','coll'].includes(PANEL.kind)) return; const tb=fr.querySelector('#pHead #wbTabs'); if(!tb) return; const bs=[...tb.querySelectorAll('.wb-tab')]; if(bs.length<4) return;
+  const nav=document.createElement('nav'); nav.id='pTabs'; nav.className='wb-rail'; nav.dataset.n=bs.length;
+  for(const b of bs){ const x=document.createElement('button'); x.className='tab wb-rt'+(b.classList.contains('on')?' on':''); x.dataset.tab=b.dataset.tab; x.title=b.title||''; x.innerHTML=b.innerHTML.replace(/wb-dot/g,'v-dot'); x.onclick=b.onclick; nav.appendChild(x); }
+  tb.remove(); const body=fr.querySelector('#pBody'); if(!body) return; const main=document.createElement('div'); main.className='wb2-main'; body.parentNode.insertBefore(main,body); main.appendChild(nav); main.appendChild(body); fr.classList.add('wb37r');
+  const on=nav.querySelector('.on'); if(on) requestAnimationFrame(()=>{ if(on.offsetTop+on.offsetHeight>nav.clientHeight) nav.scrollTop=on.offsetTop-8; }); }
+{ const _rp=renderPanel; renderPanel=function(){ const r=_rp.apply(this,arguments); try{ wb37Rail(); }catch(e){ console.error(e); } return r; }; }
+(function(){ const st=document.createElement('style'); st.id='wb37Wbx'; st.textContent=`
+html #panel .wbs.wb37r #pBody.wb-body{padding-left:calc(var(--u)*12)}
+#panel .wbs #pBody:has(>.wbx.x37f){overflow:hidden}
+#panel .wbx.x37f .x37c{display:flex!important;flex-direction:column!important;flex:1 1 auto;min-height:0;columns:auto!important;gap:calc(var(--u)*8)}
+#panel .wbx.x37f .x37c>*{flex:none}
+#panel .wbx.x37f .x37c>:is(.x37c,.wb-hcar,.wb-pgw){flex:1 1 auto;min-height:0}
+#panel .wbx.x37f .x37c>.wb-hcar{grid-column:1/-1}
+#panel .wbx .wb-hcar>:is(.offer,.sitem,.chestc){height:auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+#panel .wbx .wb-hcar>:is(.offer,.sitem) .btn{margin-top:auto;width:100%}
+#panel .wbx .wb-hcar>.chestc{padding-top:calc(var(--u)*22)!important;overflow:visible}
+#panel .wbx .wb-hcar:has(>.chestc){padding-top:calc(var(--u)*16)}
+#panel .wbx .x-roster .wbt,#panel .wbx.x-roster .wbt{height:100%;min-height:0}
+#panel .wbx.x-roster .wbt-r,#panel .wbx.x-roster .wbt-l{overflow-y:auto;min-height:0}
+#panel .wbs #pBody:has(>.wbx.x-roster){overflow:hidden}
+#panel .wbx.x37f{height:100%;display:flex;flex-direction:column;min-height:0}
+#panel .wbx.x37f>*{flex:none}
+#panel .wbx.x37f>:is(.wbx-bs,.wb-pgw,.wbx-b,.h24),#panel .wbx.x37f>.h24>:is(.wbx-bs,.wb-pgw){flex:1;min-height:0}
+#panel .wbx.x37f>.h24{display:flex;flex-direction:column;gap:calc(var(--u)*8)}
+#panel .wbx.x37f .wbx-bs{display:flex;flex-direction:column}
+#panel .wbx.x37f .wbx-bs>.wbx-b:has(.wb-hcar){flex:1;min-height:0;display:flex;flex-direction:column}
+#panel .wbx.x37f :is(.wbx-in,.wbx-pgin):has(>.wb-hcar){flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*8)}
+#panel .wbx.x37f :is(.wbx-in,.wbx-pgin):has(>.wb-hcar)>*{flex:none}
+#panel .wbx.x37f :is(.wbx-in,.wbx-pgin)>.wb-hcar{flex:1;min-height:0}
+#panel .wbx .wb-pp:has(.wb-hcar){display:flex;flex-direction:column;overflow:hidden}
+#panel .wbx .wb-pp>.wbx-pgin{background:linear-gradient(180deg,#f3dfb4,#ead0a0);box-shadow:inset 0 2px 4px rgba(120,70,20,.3),0 0 0 2px #b98a50;border-radius:calc(var(--u)*10);padding:calc(var(--u)*10) calc(var(--u)*12);min-height:100%}
+#panel .wbx .wb-pp:has(.wb-hcar)>.wbx-pgin{flex:1;min-height:0}
+#panel .wbx .x37p .wbx-2c{column-count:1}
+.wb-hcar{--rows:2;--cols:2;--g:calc(var(--u)*10);display:grid;grid-auto-flow:column;grid-template-rows:repeat(var(--rows),minmax(0,1fr));grid-auto-columns:calc((100% - var(--g)*(var(--cols) - 1)) / var(--cols));gap:var(--g);
+  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 2px calc(var(--u)*8);scrollbar-width:thin;scrollbar-color:#a87c40 transparent;touch-action:pan-x pan-y}
+.wb-hcar>*{scroll-snap-align:start;margin:0!important;min-height:0;min-width:0;overflow:hidden}
+#panel .wbx .wb-hcar>.card{display:flex;flex-direction:column;justify-content:center}
+#panel .wbx .wb-hcar>.card.row{flex-direction:row;align-items:center}
+/* коллекция: шапка строкой, сетка — каруселью в две строки */
+#panel .wbx.x-coll .collHead{margin-bottom:calc(var(--u)*6)}
+#panel .wbx.x-coll .collRing{width:calc(var(--u)*56);height:calc(var(--u)*56)}
+#panel .wbx.x-coll .collItem{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*3)}
+#panel .wbx.x-coll .collItem .cosic{width:calc(var(--u)*64);height:calc(var(--u)*64)}
+#panel .wbx.x-coll .wbx-solo{flex:1;min-height:0;display:flex;flex-direction:column}
+#panel .wbx.x-coll .wbx-solo>.wbx-in{flex:1;min-height:0;display:flex;flex-direction:column}
+/* охоты: плакаты в ряд */
+#panel .wbx .wb-hcar>.hu33{display:flex;flex-direction:column}
+/* «Пока вас не было» */
+#panel .wbx.x-off .row.off37{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*8)!important;margin:calc(var(--u)*12) 0!important}
+#panel .wbx .off37r{display:flex;align-items:center;gap:calc(var(--u)*10);padding:calc(var(--u)*6) calc(var(--u)*12) calc(var(--u)*6) calc(var(--u)*6);border-radius:calc(var(--u)*10);background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1.5px #c9a060}
+#panel .wbx .off37r .oi{width:calc(var(--u)*48);height:calc(var(--u)*48);flex:none;border-radius:calc(var(--u)*9);background:linear-gradient(#6a4418,#7a5020);box-shadow:inset 0 3px 5px rgba(0,0,0,.5);display:grid;place-items:center}
+#panel .wbx .off37r .oi>*{width:80%;height:80%}
+#panel .wbx .off37r b{flex:1;font:800 calc(var(--u)*17)/1.1 var(--sc);color:var(--ink)}
+#panel .wbx .off37r em{font:800 calc(var(--u)*22)/1 var(--sc);font-style:normal;color:#3f7a22}
+#panel .wbx.x-off .row.off37:has(>.off37r:only-child){grid-template-columns:1fr}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Fix'; st.textContent=`
+.wb-hcar{grid-template-columns:none!important}
+#panel .wbx.x-coll .collHead{gap:calc(var(--u)*10);margin-bottom:calc(var(--u)*4)}
+#panel .wbx.x-coll .collHead .grow{display:flex;align-items:center;flex-wrap:wrap;gap:calc(var(--u)*4) calc(var(--u)*10)}
+#panel .wbx.x-coll .collHead .grow>b{font-size:calc(var(--u)*19)}
+#panel .wbx.x-coll .collHead .grow>:is(small,p,div:not(.row)){display:none}
+#panel .wbx.x-coll .collItem{padding:calc(var(--u)*6)}
+#panel .wbx.x-exp .wbx-lead{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:calc(var(--u)*10)}
+#panel .wbx.x-exp .exp32>.muted{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+#panel .wbx.x-exp .wb-hcar>.exprow{min-height:calc(var(--u)*80)}
+#panel .wbx .wb-hcar>.chestc .wb-lt{font-size:calc(var(--u)*14)}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Fix3'; st.textContent=`
+#panel .wbx.x-coll .collItem{justify-content:flex-start;padding:calc(var(--u)*10) calc(var(--u)*8)}
+#panel .wbx.x-coll .collItem .cosic{width:calc(var(--u)*84);height:calc(var(--u)*84);font-size:calc(var(--u)*44);flex:none}
+#panel .wbx.x-coll .collItem .btn{margin-top:auto;width:100%}
+#panel .wbx .wb-hcar>.chestc .wb-ped{height:calc(var(--u)*56)!important;width:calc(var(--u)*80)!important}
+#panel .wbx .wb-hcar>.chestc{gap:calc(var(--u)*3)!important;padding-bottom:calc(var(--u)*6)!important}
+#panel .wbx .wb-hcar>.chestc .wb-lt>*{min-height:calc(var(--u)*26);padding-top:0;padding-bottom:0}
+#panel .wbx.x-exp .wbx-lead{-webkit-line-clamp:1}
+#panel .wbx.x-exp .exp32>:last-child:not(.wb-hcar):not(.row){display:none}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Tap'; st.textContent=`
+/* касание: запас до 44·u с учётом округления рамок */
+.wb-pgc{height:calc(var(--u)*46);min-width:calc(var(--u)*46)}
+html #panel .wbs #pBody :is(.btn,.wb-btn,button.chip,.chip,.seg button,.tkb,.wb-cs){min-height:calc(var(--u)*46)}
+html #panel .wbs #pBody :is(button.chip,.chip){min-width:calc(var(--u)*46);justify-content:center}
+html #panel .wbs #pBody input[type=range]{height:calc(var(--u)*44)}
+html #panel .wbs #pBody .wb2-hero .pcos{width:calc(var(--u)*46);height:calc(var(--u)*46)}
+html #panel .wbs #pBody .wb-cr{min-height:calc(var(--u)*46)}
+html .wbk .hbtn.ic-x{width:calc(var(--u)*48);height:calc(var(--u)*46)}
+html .wbk :is(.btn,.chip,.tgl){min-height:calc(var(--u)*46)}
+html #raidUI .sock3{min-width:calc(var(--u)*46);min-height:calc(var(--u)*46)}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Ttl'; st.textContent=`
+/* заголовки досок ≥19·u */
+.wbs .wb-board>.wb-bt,.wbs .wb-bt.sm,#panel .wbx .wbx-b>.wb-bt.sect{font-size:calc(var(--u)*19);height:calc(var(--u)*32)}
+`; document.head.appendChild(st); })();
+(function(){ const st=document.createElement('style'); st.id='wb37Tap2'; st.textContent=`
+html #icardW.wbk .btn,html #salvW.wbk :is(.btn,.tgl,.chip){min-height:calc(var(--u)*46)}
+html :is(#icardW,#salvW).wbk .hbtn.ic-x{width:calc(var(--u)*48);height:calc(var(--u)*46);min-width:44px;min-height:44px}
+html #panel .wbs #pBody .btn{min-width:calc(var(--u)*46)}
+html #panel .wbx input.tinput,html #panel .wbx input[type=text]{min-height:calc(var(--u)*46)}
 `; document.head.appendChild(st); })();

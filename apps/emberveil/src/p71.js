@@ -709,3 +709,45 @@ if(typeof abyssCard==='function'){ const _ac=abyssCard; abyssCard=function(){ co
 Object.assign(window.__game,{ calClaim:()=>calClaim(), spin:(extra)=>wheelSpin(!!extra),
   rwd:{ s:()=>JSON.parse(JSON.stringify({rw:rwS(),cal:metaS().cal,wk:wkS(),ads:metaS().ads})), odds:(t)=>chestOdds(t), spin:(src,n)=>whSpin(src,n), grant:(g)=>grantBundle(g,'тест'), wkClaim:(i)=>wkClaim(wkS().list[i]), wkFill:()=>{ for(const q of wkS().list) q.p=q.v; saveGame(); },
     wkChest:()=>wkChestClaim(), mo:(n)=>{ rwS().mo.n=n; saveGame(); }, moClaim:(n)=>moClaim(n), pending:()=>rwdPending(), day:(n)=>{ metaS().cal.n=n; metaS().cal.last=''; CAL.lastCan=undefined; saveGame(); } } });
+
+// ---------- v37: листалка «страницами» вместо длинной прокрутки (wb-pg) ----------
+// wbPager(key,pages,o): сверху — латунные закладки страниц, ниже — лента страниц с привязкой (scroll-snap) по горизонтали.
+// Все страницы остаются в DOM (туры p59 и боты находят свои элементы; tutScrollParent докручивает и по горизонтали).
+// Номер страницы помнится по ключу (WB_PG) и восстанавливается после rerender. o.per — страниц на экран (колонок), o.cls — класс обёртки.
+const WB_PG={};
+function wbPager(key,pages,o={}){ pages=pages.filter(p=>p&&p.h); if(!pages.length) return ''; const per=o.per||1; const i=Math.min(Math.max(0,pages.length-per),WB_PG[key]|0);
+  const nav=pages.length>per?`<div class="wb-pgn">${pages.map((p,j)=>`<button class="wb-pgc ${j>=i&&j<i+per?'on':''}" data-i="${j}">${p.ic?ico(p.ic):''}<span>${p.n}</span>${p.dot?'<i class="wb-dot"></i>':''}</button>`).join('')}${o.navR||''}</div>`:(o.navR?`<div class="wb-pgn">${o.navR}</div>`:'');
+  return `<div class="wb-pgw ${o.cls||''}" data-pg="${esc(key)}">${nav}<div class="wb-pg" style="--per:${per}">${pages.map((p,j)=>`<section class="wb-pp ${p.cls||''}" data-i="${j}">${p.h}</section>`).join('')}</div></div>`; }
+// разбить прежнюю разметку на страницы по заголовкам разделов (.sect и т.п.): [{n,h}]; текст до первого раздела — в начало первой страницы
+function wbSplit(html,sel='.sect',o={}){ const t=document.createElement('template'); t.innerHTML=html; const fr=t.content; const first=fr.querySelector(sel); if(!first) return [{n:o.n||'',h:html}];
+  const par=first.parentNode; const pages=[]; let cur=null, lead='';
+  for(const n of [...par.childNodes]){ if(n.nodeType===1&&n.matches(sel)){ const nm=(o.label?o.label(n):(n.childNodes[0]&&n.childNodes[0].nodeType===3?n.childNodes[0].textContent:n.textContent)).replace(/\s+/g,' ').trim(); cur={n:nm,h:'',head:n.outerHTML}; pages.push(cur); if(o.keepHead) cur.h+=n.outerHTML; continue; }
+    const h=n.nodeType===1?n.outerHTML:n.nodeType===3?esc(n.textContent):''; if(cur) cur.h+=h; else lead+=h; }
+  if(lead.trim()&&pages[0]){ if(o.lead) pages.unshift({n:o.lead,h:lead}); else pages[0].h=lead+pages[0].h; }
+  if(par!==fr){ /* разделы внутри обёртки — вернуть обёртку вокруг каждой страницы */ const w=par.cloneNode(false); for(const p of pages){ w.innerHTML=p.h; p.h=w.outerHTML; } }
+  return pages; }
+function wbPgGo(w,i,smooth){ const pg=w&&w.querySelector(':scope>.wb-pg'); if(!pg) return; const pp=pg.children[i]; if(!pp) return; pg.scrollTo({left:pp.offsetLeft-pg.firstElementChild.offsetLeft,behavior:smooth?'smooth':'auto'}); }
+function wbPgSync(pg){ const w=pg.parentElement; if(!w||!w.dataset.pg) return; const per=+getComputedStyle(pg).getPropertyValue('--per')||1; const kids=[...pg.children]; if(!kids.length) return; const x0=kids[0].offsetLeft;
+  let i=0, best=1e9; kids.forEach((k,j)=>{ const d=Math.abs(k.offsetLeft-x0-pg.scrollLeft); if(d<best){ best=d; i=j; } }); WB_PG[w.dataset.pg]=i;
+  w.querySelectorAll(':scope>.wb-pgn>.wb-pgc').forEach(b=>{ const j=+b.dataset.i; b.classList.toggle('on',j>=i&&j<i+per); }); }
+function wbPgRestore(root){ for(const w of (root||document).querySelectorAll('.wb-pgw[data-pg]')){ const i=WB_PG[w.dataset.pg]|0; if(i) wbPgGo(w,i,false); } }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('.wb-pgc'); if(!b) return; const w=b.closest('.wb-pgw'); if(!w) return; e.stopPropagation(); AU.sfx('ui'); const i=+b.dataset.i; WB_PG[w.dataset.pg]=i; wbPgGo(w,i,true);
+  w.querySelectorAll(':scope>.wb-pgn>.wb-pgc').forEach(x=>x.classList.toggle('on',x===b)); },true);
+{ let tm=0; document.addEventListener('scroll',e=>{ const pg=e.target; if(!pg||!pg.classList||!pg.classList.contains('wb-pg')) return; clearTimeout(tm); tm=setTimeout(()=>wbPgSync(pg),90); },true); }
+(function(){ const st=document.createElement('style'); st.id='wbPgCss'; st.textContent=`
+.wb-pgw{display:flex;flex-direction:column;gap:calc(var(--u)*8);height:100%;min-height:0;min-width:0}
+.wb-pgn{flex:none;display:flex;gap:calc(var(--u)*7);overflow-x:auto;scrollbar-width:none;padding:2px 2px calc(var(--u)*4);align-items:center}
+.wb-pgn::-webkit-scrollbar{display:none}
+.wb-pgc{flex:none;display:inline-flex;align-items:center;gap:calc(var(--u)*6);height:calc(var(--u)*44);min-height:40px;padding:0 calc(var(--u)*14);border-radius:calc(var(--u)*9);border:1px solid #8a5c2c;
+  font:800 calc(var(--u)*16)/1 var(--sc);color:#3a2206;background:linear-gradient(#f6e3bc,#e2c48a);box-shadow:inset 0 1px 0 #fff,0 3px 0 #a07444;cursor:pointer;white-space:nowrap;position:relative}
+.wb-pgc .ico.ic{width:calc(var(--u)*22);height:calc(var(--u)*22)}
+.wb-pgc.on{background:linear-gradient(#f07a40,#d24e20);color:#fff6e4;border-color:#8a2e0c;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 3px 0 #8a2e0c;text-shadow:0 1px 0 #7a2a08}
+.wb-pgc:active{transform:translateY(2px)}
+.wb-pgc .wb-dot{position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#e0301c;box-shadow:0 0 0 2px #fff4d0}
+.wb-pg{--per:1;--gap:calc(var(--u)*14);flex:1;min-height:0;position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--gap)*(var(--per) - 1)) / var(--per));gap:var(--gap);
+  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+.wb-pg::-webkit-scrollbar{display:none}
+.wb-pp{scroll-snap-align:start;min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*6)}
+#panel .wbs #pBody:has(>.wb-pgw:only-child),#panel .wbs #pBody:has(>.wbx>.wb-pgw:only-child){overflow:hidden}
+#panel .wbs #pBody>.wbx:has(>.wb-pgw:only-child){height:100%}
+`; document.head.appendChild(st); })();
