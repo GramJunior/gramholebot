@@ -266,7 +266,9 @@ function ambStart(fr,k){ const T=IDV[k]; if(!T.amb||idvRM()||(typeof qLow==='fun
 function ambStop(){ AMB.on=false; if(AMB.raf) cancelAnimationFrame(AMB.raf); AMB.raf=0; if(AMB.cv&&AMB.cv.parentNode) AMB.cv.parentNode.removeChild(AMB.cv); AMB.P=[]; }
 function ambLoop(now){ if(!AMB.on) return; AMB.raf=requestAnimationFrame(ambLoop);
   if(document.hidden||!PANEL.kind||!AMB.cv.isConnected){ if(!AMB.cv.isConnected||!PANEL.kind) ambStop(); return; }
-  const dt=Math.min(.1,(now-AMB.last)/1000); if(dt<1/31) return; AMB.last=now; ambStep(dt); }
+  const dt=Math.min(.1,(now-AMB.last)/1000); if(dt<1/31) return; AMB.last=now;
+  if((AMB.cov=(AMB.cov||0)+1)%15===0) AMB.hid=!!document.querySelector('#chestW:not(.hidden),#dlg:not(.hidden),#icardW:not(.hidden),#salvW:not(.hidden)'); // под окном сундука/диалога/карточки — пауза
+  if(AMB.hid) return; ambStep(dt); }
 function ambSpawn(a,W,H,s){ const r=Math.random;
   if(a==='sparks') return {x:W*(.05+r()*.9),y:H+4,vx:(r()-.5)*30*s,vy:-(50+r()*70)*s,l:0,L:1.1+r()*1.1,sz:(1+r()*1.4)*s,c:r()<.3?'#ffe08a':'#ff8a30'};
   if(a==='bubbles') return {x:r()<.5?W*r()*.18:W*(.82+r()*.18),y:H+6,vx:0,vy:-(18+r()*26)*s,l:0,L:2.4+r()*2,sz:(2+r()*3.5)*s,ph:r()*6};
@@ -323,6 +325,7 @@ function hvMove(why){ const a=HV.actor; if(!a||!a.clipMap) return; const cm=a.cl
 function hvLoop(now){ HV.raf=requestAnimationFrame(hvLoop);
   if(!hvWanted()||!HV.host||!HV.host.isConnected||!HV.cv.isConnected){ hvPause(); return; }
   if(document.hidden) return; const dt=Math.min(.1,(now-HV.last)/1000); if(dt<(qLow()?1/21:1/31)) return; HV.last=now;
+  if((HV.cov=(HV.cov||0)+1)%15===0) HV.hid=!!document.querySelector('#chestW:not(.hidden),#dlg:not(.hidden),#icardW:not(.hidden),#salvW:not(.hidden)'); if(HV.hid) return;
   HV.fl-=dt; if(HV.fl<=0&&!HV.drag){ const busy=HV.actor.current&&HV.actor.current.loop===THREE.LoopOnce&&HV.actor.current.isRunning(); if(!busy) hvMove('idle'); else HV.fl=1; }
   if(!HV.drag){ HV.yaw+=HV.vy*dt; HV.vy*=Math.pow(.04,dt); }
   HV.actor.update(dt); hvRender(); }
@@ -357,7 +360,7 @@ function compMove37(a,tx,tz,dt,tgt){ const P=G.P; const dx=tx-a.x, dz=tz-a.z, d=
   if(a.vx===undefined){ a.vx=0; a.vz=0; a._still=true; a._stk=0; a._det=0; a._detT=0; }
   const sp=d>9?Math.min(PS.moveT*1.45,6.3):PS.moveT*1.02;
   let want=0; if(d>(a._still?.75:.3)) want=d<1.3?sp*Math.min(1,(d-.3)/1):sp;
-  let ux=d>1e-4?dx/d:0, uz=d>1e-4?dz/d:0;
+  a._want=want; let ux=d>1e-4?dx/d:0, uz=d>1e-4?dz/d:0;
   if(a._detT>0){ a._detT-=dt; const an=a._det*1.25, c=Math.cos(an), s=Math.sin(an); const nx=ux*c-uz*s, nz=ux*s+uz*c; ux=nx; uz=nz; }
   const k=1-Math.exp(-dt*(want>a.vx*ux+a.vz*uz?7:11)); a.vx+=(ux*want-a.vx)*k; a.vz+=(uz*want-a.vz)*k;
   let mx=a.vx*dt, mz=a.vz*dt; const ml=Math.hypot(mx,mz); if(ml>d&&a._detT<=0&&ml>0){ mx*=d/ml; mz*=d/ml; }
@@ -382,7 +385,8 @@ function animAlly37(a,dt){ const R=a.rig, ac=R&&R.actor;
   if(a._rise){ a._rise=0; if(ac.clipMap&&ac.clipMap.rise){ try{ ac.play('rise',{once:true,fade:.1,duration:1.1,returnTo:'idle',returnFade:.25}); }catch(e){} } }
   const v=R._vs||0; const busy=ac.current&&ac.current.loop===THREE.LoopOnce&&ac.current.isRunning()&&HERO_BUSY.has(ac.currentName);
   let gt=a._gait||'idle'; const hasW=!!(ac.clipMap&&ac.clipMap.walk);
-  if(gt==='idle'){ if(v>.55) gt=v>2.3||!hasW?'run':'walk'; } else if(gt==='walk'){ if(v<.3) gt='idle'; else if(v>2.3) gt='run'; } else { if(v<.3) gt='idle'; else if(v<1.8&&hasW) gt='walk'; }
+  const wn=a._want||0; // желаемая скорость: разгон к бегу идёт сразу «покой → бег», шаг — только при медленном подходе
+  if(gt==='idle'){ if(v>.55) gt=v>2.3||wn>2.3||!hasW?'run':'walk'; } else if(gt==='walk'){ if(v<.3) gt='idle'; else if(v>2.3||wn>2.6) gt='run'; } else { if(v<.3) gt='idle'; else if(v<1.8&&wn<1.8&&hasW) gt='walk'; }
   a._gait=gt;
   if(!busy||(gt!=='idle'&&ac.currentName!=='attack'&&ac.currentName!=='heavy'&&ac.currentName!=='rise')){
     asPlay(ac,gt); if(ac.current){ if(gt==='run') ac.current.timeScale=clamp(v/RUN_NAT,.7,2.4); else if(gt==='walk') ac.current.timeScale=clamp(v/WALK_NAT,.6,1.7); else ac.current.timeScale=1; } }
