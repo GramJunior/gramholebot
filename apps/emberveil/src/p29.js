@@ -96,7 +96,8 @@ function spiritWorldTick(dt){
   const P=G.P, on=!!(P&&!P.dead&&S.set&&S.set.spirit&&S.seen&&S.seen.wake&&W&&(G.mode==='stage'||G.mode==='village'||G.mode==='abyss'||G.mode==='raid'||G.mode==='prologue'));
   if(!on){ if(SPA.world&&SPA.world.parent) SPA.world.parent.remove(SPA.world); return; }
   const g=spiritWorldMake(); if(g.parent!==scene) scene.add(g); const U=g.userData; U.t+=dt;
-    const sw=Math.sin(U.t*.6)*.12, ox=.62+sw, oz=-.28+Math.cos(U.t*.6)*.1, ty=2.0+Math.sin(U.t*2.1)*.08; // справа от головы (камера всегда смотрит на север) — виден при любом повороте героя
+    const sw=Math.sin(U.t*.6)*.12; let ox=.62+sw, oz=-.28+Math.cos(U.t*.6)*.1, ty=2.0+Math.sin(U.t*2.1)*.08; // справа от головы (камера всегда смотрит на север) — виден при любом повороте героя
+  { const w=camS2W(ox,oz); ox=w[0]; oz=w[1]; } // v38: «справа от головы» — по экрану, при любом повороте камеры
   const k=Math.min(1,dt*5); g.position.x+=(P.x+ox-g.position.x)*k; g.position.z+=(P.z+oz-g.position.z)*k; g.position.y+=(ty+(P.y||0)-g.position.y)*k;
   if(Math.abs(g.position.x-P.x)>5||Math.abs(g.position.z-P.z)>5) g.position.set(P.x+ox,ty,P.z+oz);
   U.flare=Math.max(0,U.flare-dt*.9); const fl=U.flare, flick=1+Math.sin(U.t*13)*.05+Math.sin(U.t*7.3)*.06;

@@ -283,7 +283,7 @@ function inScene(o){ let p=o.parent, n=0; while(p&&n<8){ if(p===scene) return tr
 function asTick(dt,rdt){
   AS.frame++;
   if(window.EVAssets&&EVAssets.manifest) EVAssets.tick(rdt);
-  if(window.EVFX){ if(AS.amb&&G.P) AS.amb.center.set(G.P.x,0,G.P.z-4); if(AS.trail) AS.trail.update(dt>0?dt:rdt); EVFX.update(dt>0?dt:rdt*.25); }
+  if(window.EVFX){ if(AS.amb&&G.P) AS.amb.center.set(G.P.x-CAMR.ys*4,0,G.P.z-CAMR.yco*4); if(AS.trail) AS.trail.update(dt>0?dt:rdt); EVFX.update(dt>0?dt:rdt*.25); }
   if(!asOn()) return;
   try{ asFadeOcc(); }catch(e){}
   cam.updateMatrixWorld(); _fm.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _frus.setFromProjectionMatrix(_fm);
@@ -405,7 +405,7 @@ function asFadeOcc(){
   if(!asOn()||!W||W.kind!=='village'||!G.P||G.mode==='title') return; const P=G.P;
   const list=[]; for(const k in W.bmesh) list.push(W.bmesh[k]); for(const k in (W.rsMesh||{})) list.push(W.rsMesh[k]);
   for(const g of list){ if(!g||!g.visible||!g.isGroup||g.userData.cutaway) continue; // v22: детальные здания — «окно» вокруг героя в шейдере (p42), без полупрозрачности целиком
-    const dz=g.position.z-P.z, dx=g.position.x-P.x; const occ=!CINE.on&&dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
+    const [dx,dz]=camW2S(g.position.x-P.x,g.position.z-P.z); /* v38: в осях камеры */ const occ=!CINE.on&&dz>1.2&&dz<17&&Math.abs(dx)<3.2+dz*.32;
     if(!!g.userData.faded===occ) continue; g.userData.faded=occ;
     g.traverse(o=>{ if(!o.isMesh) return; if(o.userData.isOutline){ o.visible=!occ; return; } if(occ){ o.userData.solid=o.material; o.material=ghostOf(o.material); } else if(o.userData.solid){ o.material=o.userData.solid; } }); }
 }

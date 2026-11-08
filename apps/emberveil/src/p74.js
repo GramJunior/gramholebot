@@ -140,20 +140,20 @@ function mmGlyph(c,k,x,y,s,t){ c.save(); c.translate(x,y); c.lineJoin='round';
   else if(k==='enemy'){ disc(s*.42,'#e8402a','#300'); } else if(k==='elite'){ disc(s*.6,'#ff9a2a','#400'); }
   else if(k==='lock'){ c.strokeStyle='#ffb050'; c.lineWidth=Math.max(1.2,s*.2); c.beginPath(); c.arc(0,0,s*.85,0,Math.PI*2); c.stroke(); }
   c.restore(); }
-function mmHero(c,x,y,s){ const f=G.P.face; c.save(); c.translate(x,y); c.rotate(-f+Math.PI); c.beginPath(); c.moveTo(0,-s); c.lineTo(s*.7,s*.75); c.lineTo(0,s*.35); c.lineTo(-s*.7,s*.75); c.closePath(); c.fillStyle='#fff3d0'; c.fill(); c.lineWidth=Math.max(1.2,s*.22); c.strokeStyle='#ff8a2a'; c.stroke(); c.restore(); }
-// рисование: вид (cx,cz) и масштаб px/м; север вверх (−z — вверх, как камера)
-function mmDraw(c,W0,H0,cx,cz,ppm,full){ const S0=mmEnsure(); const t=performance.now()/1000; const b=S0.b;
+function mmHero(c,x,y,s){ const f=G.P.face-(CAMR.yc||0); /* v38: карта повёрнута вместе с камерой */ c.save(); c.translate(x,y); c.rotate(-f+Math.PI); c.beginPath(); c.moveTo(0,-s); c.lineTo(s*.7,s*.75); c.lineTo(0,s*.35); c.lineTo(-s*.7,s*.75); c.closePath(); c.fillStyle='#fff3d0'; c.fill(); c.lineWidth=Math.max(1.2,s*.22); c.strokeStyle='#ff8a2a'; c.stroke(); c.restore(); }
+// рисование: вид (cx,cz) и масштаб px/м; v38: «вверх» на карте — направление взгляда камеры (как джойстик), север показывает «С» на краю
+function mmDraw(c,W0,H0,cx,cz,ppm,full){ const S0=mmEnsure(); const t=performance.now()/1000; const b=S0.b; const yw=CAMR.yc||0, si=CAMR.ys||0, co=CAMR.yco===undefined?1:CAMR.yco;
   c.clearRect(0,0,W0,H0); c.fillStyle=full?'#1c120a':'rgba(24,15,8,.92)'; c.fillRect(0,0,W0,H0);
   const sx=(ppm/S0.k); const ox=W0/2-((cx-b.minX+S0.pad)*S0.k)*sx, oy=H0/2-((cz-b.minZ+S0.pad)*S0.k)*sx;
-  c.imageSmoothingEnabled=true; c.drawImage(S0.cv,ox,oy,S0.cv.width*sx,S0.cv.height*sx);
-  const X=x=>W0/2+(x-cx)*ppm, Y=z=>H0/2+(z-cz)*ppm; const gs=full?Math.max(11*Math.min(2,window.devicePixelRatio||1),ppm*1.6):Math.max(5.5,W0/16);
+  c.imageSmoothingEnabled=true; c.save(); c.translate(W0/2,H0/2); c.rotate(yw); c.drawImage(S0.cv,ox-W0/2,oy-H0/2,S0.cv.width*sx,S0.cv.height*sx); c.restore();
+  const PJ=(x,z)=>{ const dx=x-cx, dz=z-cz; return [W0/2+(dx*co-dz*si)*ppm, H0/2+(dx*si+dz*co)*ppm]; }; const gs=full?Math.max(11*Math.min(2,window.devicePixelRatio||1),ppm*1.6):Math.max(5.5,W0/16);
   const edge=(x,y)=>x>-8&&x<W0+8&&y>-8&&y<H0+8;
-  for(const m of mmMarks(full)){ const x=X(m.x), y=Y(m.z); if(edge(x,y)) mmGlyph(c,m.k,x,y,gs*(m.k==='camp'&&m.opt?.8:1),t);
+  for(const m of mmMarks(full)){ const [x,y]=PJ(m.x,m.z); if(edge(x,y)) mmGlyph(c,m.k,x,y,gs*(m.k==='camp'&&m.opt?.8:1),t);
     else if(!full&&(m.k==='exitOn'||m.k==='cage'||m.k==='boss'||m.k==='cart'||m.k==='champ'||m.k==='stone')){ const a=Math.atan2(y-H0/2,x-W0/2), R=W0/2-gs*.9; c.save(); c.translate(W0/2+Math.cos(a)*R,H0/2+Math.sin(a)*R); c.rotate(a); c.fillStyle=m.k==='exitOn'?'#d8a8ff':'#ffd24a'; c.strokeStyle='#2a1808'; c.lineWidth=1.2; c.beginPath(); c.moveTo(gs*.7,0); c.lineTo(-gs*.4,-gs*.5); c.lineTo(-gs*.4,gs*.5); c.closePath(); c.fill(); c.stroke(); c.restore(); } }
-  for(const e of G.enemies){ if(!e.alive||e.burrowed||e.untarget) continue; const x=X(e.x), y=Y(e.z); if(!edge(x,y)) continue; if(e.boss) mmGlyph(c,'boss',x,y,gs*.95,t); else mmGlyph(c,e.elite||e.champion?'elite':'enemy',x,y,gs*(full?.9:1),t); }
-  for(const a of (G.allies||[])){ if(a.dead) continue; const x=X(a.x), y=Y(a.z); if(!edge(x,y)) continue; c.beginPath(); c.arc(x,y,gs*.4,0,Math.PI*2); c.fillStyle='#7ad070'; c.fill(); }
-  if(lkAlive(LK.t)) mmGlyph(c,'lock',X(LK.t.x),Y(LK.t.z),gs*1.1,t);
-  mmHero(c,X(G.P.x),Y(G.P.z),gs*(full?1.2:1.15)); }
+  for(const e of G.enemies){ if(!e.alive||e.burrowed||e.untarget) continue; const [x,y]=PJ(e.x,e.z); if(!edge(x,y)) continue; if(e.boss) mmGlyph(c,'boss',x,y,gs*.95,t); else mmGlyph(c,e.elite||e.champion?'elite':'enemy',x,y,gs*(full?.9:1),t); }
+  for(const a of (G.allies||[])){ if(a.dead) continue; const [x,y]=PJ(a.x,a.z); if(!edge(x,y)) continue; c.beginPath(); c.arc(x,y,gs*.4,0,Math.PI*2); c.fillStyle='#7ad070'; c.fill(); }
+  if(lkAlive(LK.t)){ const q=PJ(LK.t.x,LK.t.z); mmGlyph(c,'lock',q[0],q[1],gs*1.1,t); }
+  { const q=PJ(G.P.x,G.P.z); mmHero(c,q[0],q[1],gs*(full?1.2:1.15)); } }
 // HUD: мини-карта (касание → большая)
 function mmBuild(){ const h=$('hud'); if(!h) return; let el=$('mm74'); if(!mmOn()){ if(el) el.remove(); document.documentElement.classList.remove('mm74'); return; }
   if(!el){ h.insertAdjacentHTML('beforeend',`<div id="mm74" class="pe" title="Карта (M)"><canvas></canvas><i class="mmN">С</i><i class="mmZ">${ico('map')}</i></div>`); el=$('mm74');
@@ -162,22 +162,25 @@ function mmBuild(){ const h=$('hud'); if(!h) return; let el=$('mm74'); if(!mmOn(
 function mmAnchor(){ const el=$('mm74'); if(!el) return; const q=$('hQuest'); let top=null; if(q&&q.offsetParent&&q.offsetHeight>0){ const r=q.getBoundingClientRect(); if(r.height>0) top=Math.round(r.bottom+6); }
   if(top===null){ const t=$('hTop'); if(t){ const r=t.getBoundingClientRect(); top=Math.round(r.bottom+6); } } if(top!==null&&el._top!==top){ el._top=top; el.style.top=top+'px'; document.documentElement.style.setProperty('--mm74b',(top+el.offsetHeight+6)+'px'); } }
 function mmTick(dt){ if(!mmOn()||MM.open||!MM.cv) return; MM.anchorT-=dt; if(MM.anchorT<=0){ MM.anchorT=1; mmAnchor(); if(mmVisit()) MM.stV=-1; }
-  MM.t-=dt; if(MM.t>0) return; MM.t=1/6; const cv=MM.cv; const css=cv.clientWidth||90; const dpr=Math.min(2,window.devicePixelRatio||1); const px=Math.round(css*dpr); if(MM.size!==px){ MM.size=px; cv.width=cv.height=px; }
-  const c=cv.getContext('2d'); const R=24; mmDraw(c,px,px,G.P.x,G.P.z,px/(2*R),false); }
+  MM.t-=dt; if(MM.t>0&&Math.abs((CAMR.yc||0)-(MM.ly||0))<.03) return; MM.t=1/6; MM.ly=CAMR.yc||0; /* v38: при повороте камеры — сразу */ const cv=MM.cv; const css=cv.clientWidth||90; const dpr=Math.min(2,window.devicePixelRatio||1); const px=Math.round(css*dpr); if(MM.size!==px){ MM.size=px; cv.width=cv.height=px; }
+  const c=cv.getContext('2d'); const R=24; mmDraw(c,px,px,G.P.x,G.P.z,px/(2*R),false); mmNorth(MM.cv.parentElement,'.mmN'); }
+// v38: «С» — на краю карты в сторону севера (карта повёрнута вместе с камерой)
+function mmNorth(el,sel){ const n=el&&el.querySelector(sel), cv=el&&el.querySelector('canvas'); if(!n||!cv) return; const w=cv.offsetWidth, h=cv.offsetHeight, k=Math.round((CAMR.yc||0)*100)+'|'+w+'|'+h; if(n._k===k) return; n._k=k;
+  const s=CAMR.ys||0, c=CAMR.yco===undefined?1:CAMR.yco, m=Math.max(Math.abs(s),Math.abs(c))||1; n.style.left=(cv.offsetLeft+w/2+s/m*w*.42)+'px'; n.style.top=(cv.offsetTop+h/2-c/m*h*.42)+'px'; n.style.transform='translate(-50%,-50%)'; }
 // большая карта этапа (пауза)
 function mapOpen74(){ if(!mmOn()||MM.open) return; if(G.cut||G.dialog||PANEL.kind) return; if(typeof BST!=='undefined'&&BST&&BST.on) return;
-  let el=$('map74'); if(!el){ document.body.insertAdjacentHTML('beforeend',`<div id="map74" class="hidden"><div class="m74f"><div class="m74h"><b class="m74t"></b><small class="m74s"></small><button class="m74x" title="Закрыть">${ico('close')}</button></div><div class="m74b"><canvas></canvas><div class="m74l"></div></div></div></div>`); el=$('map74');
+  let el=$('map74'); if(!el){ document.body.insertAdjacentHTML('beforeend',`<div id="map74" class="hidden"><div class="m74f"><div class="m74h"><b class="m74t"></b><small class="m74s"></small><button class="m74x" title="Закрыть">${ico('close')}</button></div><div class="m74b"><canvas></canvas><i class="m74n">С</i><div class="m74l"></div></div></div></div>`); el=$('map74');
     el.querySelector('.m74x').addEventListener('click',ev=>{ ev.stopPropagation(); mapClose74(); }); el.addEventListener('pointerdown',ev=>{ if(ev.target===el) mapClose74(); }); }
   inputReset74(); MM.open=true; MM.wasPaused=G.paused; G.paused=true; el.classList.remove('hidden'); AU.sfx('page'); track('stage_map','open');
   const I=G.run&&G.run.info; el.querySelector('.m74t').textContent=I&&I.name?I.name:(G.mode==='abyss'?'Бездна · этаж '+(G.abyss&&G.abyss.floor||1):'Карта этапа');
   el.querySelector('.m74s').textContent=W.obj&&W.obj.txt?W.obj.txt:'';
   const L=el.querySelector('.m74l'); const ks=new Set(mmMarks(true).map(m=>m.k)); ks.add('enemy'); if(G.enemies.some(e=>e.alive&&(e.elite||e.champion))) ks.add('elite'); if(lkAlive(LK.t)) ks.add('lock');
   L.innerHTML=MM_LEG.filter(x=>ks.has(x[0])||(x[0]==='boss'&&ks.has('champ'))||(x[0]==='cage'&&(ks.has('cart')||ks.has('stone')||ks.has('totem')))||(x[0]==='secret'&&ks.has('secretDone'))).map(x=>`<span><canvas data-k="${x[0]}" width="36" height="36"></canvas>${x[1]}</span>`).join('')+`<span class="m74me"><canvas data-k="hero" width="36" height="36"></canvas>Вы</span>`;
-  for(const cv of L.querySelectorAll('canvas')){ const c=cv.getContext('2d'); if(cv.dataset.k==='hero'){ const f=G.P.face; G.P.face=Math.PI; mmHero(c,18,18,12); G.P.face=f; } else mmGlyph(c,cv.dataset.k,18,18,11,0); }
+  for(const cv of L.querySelectorAll('canvas')){ const c=cv.getContext('2d'); if(cv.dataset.k==='hero'){ const f=G.P.face; G.P.face=Math.PI+(CAMR.yc||0); mmHero(c,18,18,12); G.P.face=f; } else mmGlyph(c,cv.dataset.k,18,18,11,0); }
   mapDraw74(); setTimeout(mapDraw74,30); }
 function mapDraw74(){ const el=$('map74'); if(!el||!MM.open) return; const cv=el.querySelector('canvas'); const box=cv.parentElement.getBoundingClientRect(); const lg=el.querySelector('.m74l').getBoundingClientRect(); const dpr=Math.min(2,window.devicePixelRatio||1);
   const w=Math.max(120,box.width-(lg.width||0)-10), h=Math.max(120,box.height-4); cv.style.width=w+'px'; cv.style.height=h+'px'; cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
-  const b=mmBounds(); const ppm=Math.min(cv.width/(b.maxX-b.minX+10),cv.height/(b.maxZ-b.minZ+10)); mmDraw(cv.getContext('2d'),cv.width,cv.height,(b.minX+b.maxX)/2,(b.minZ+b.maxZ)/2,ppm,true); }
+  const b=mmBounds(); const bw=b.maxX-b.minX+10, bh=b.maxZ-b.minZ+10, s=Math.abs(CAMR.ys||0), c=Math.abs(CAMR.yco===undefined?1:CAMR.yco); const ppm=Math.min(cv.width/(bw*c+bh*s),cv.height/(bw*s+bh*c)); mmDraw(cv.getContext('2d'),cv.width,cv.height,(b.minX+b.maxX)/2,(b.minZ+b.maxZ)/2,ppm,true); mmNorth(cv.parentElement,'.m74n'); }
 function mapClose74(){ const el=$('map74'); if(!MM.open) return; MM.open=false; if(el) el.classList.add('hidden'); if(!PANEL.kind) G.paused=MM.wasPaused&&G.mode!=='village'?MM.wasPaused:false; AU.sfx('ui'); MM.t=0; }
 window.addEventListener('resize',()=>{ if(MM.open) setTimeout(mapDraw74,60); MM.anchorT=0; });
 // «Назад» Telegram закрывает карту
@@ -234,6 +237,7 @@ function pw74Tick(){ const now=performance.now(); const want=(G.mode==='stage'&&
 #mm74{position:absolute;left:calc(max(var(--sl),6px) + 6px);top:calc(max(var(--st),4px) + 140px);width:calc(96px*var(--k,1));height:calc(96px*var(--k,1));min-width:78px;min-height:78px;border-radius:12px;overflow:hidden;z-index:6;
   box-shadow:0 0 0 2px #c99a58,0 0 0 4px #5a3812,0 3px 8px rgba(0,0,0,.55);background:#1c120a;cursor:pointer}
 #mm74 canvas{width:100%;height:100%;display:block}
+#map74 .m74b{position:relative}#map74 .m74n{position:absolute;left:50%;top:6%;transform:translate(-50%,-50%);font:800 15px var(--sc,serif);color:#ffe2a8;text-shadow:0 1px 2px #000,0 0 6px #000;pointer-events:none}
 #mm74 .mmN{position:absolute;top:2px;left:50%;transform:translateX(-50%);font:800 10px var(--sc,serif);color:#ffe2a8;text-shadow:0 1px 2px #000;pointer-events:none}
 #mm74 .mmZ{position:absolute;right:3px;bottom:3px;width:18px;height:18px;border-radius:5px;background:rgba(40,24,10,.75);box-shadow:0 0 0 1px #c99a58;display:grid;place-items:center;pointer-events:none}#mm74 .mmZ .ico{width:13px;height:13px;color:#ffd890}
 html.mm74.land #lootFeed,html.mm74 #lootFeed{top:var(--mm74b,240px)!important}

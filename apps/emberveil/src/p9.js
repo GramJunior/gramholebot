@@ -273,7 +273,7 @@ function loop(now){
   }catch(e){ console.error(e); }
   PA.update(Math.max(dt,frozen?0:rdt*.2)); PN.update(Math.max(dt,frozen?0:rdt*.2)); DECALS.update(dt,G.time);
   SHADOW.end();
-  const P=G.P; camUpdate(rdt,P?P.x:0,P?P.z-(G.mode==='stage'?1.6:0):0); cullProps(CAMR.x,CAMR.z); try{ cineOccTick(); }catch(e){}
+  const P=G.P; { const la=G.mode==='stage'?1.6:0; /* v38: взгляд вперёд — по направлению камеры */ camUpdate(rdt,P?P.x-CAMR.ys*la:0,P?P.z-CAMR.yco*la:0); } cullProps(CAMR.x,CAMR.z); try{ cineOccTick(); }catch(e){}
   if(W&&P){ if(W.kind==='village'){ emberLight.position.set(0,3.2,0); emberLight.intensity=(G.mode==='title'?1.3:.6)+Math.sin(now/180)*.1+Math.sin(now/77)*.08; emberLight.distance=G.mode==='title'?13:16; emberLight.decay=1.6; }
     else { const zid=W.zone.id; emberLight.position.set(P.x,4.2,P.z+.6); emberLight.intensity=((zid>=4?.8:zid===3?.5:0)+(P.ember>=100?.3:0)+Math.sin(now/120)*.05)*.92; emberLight.distance=16; emberLight.decay=1.2; /* v31: свет Искры выше и мягче — пропы рядом с героем не «выгорают» */ } }
   for(const m of BEAM_MATS) m.uniforms.uT.value=now/1000; if(W&&W.liquid){ if(typeof waterTick==='function'&&W.liquid.material.uniforms.uSh) waterTick(Math.min(.1,dt||0)); else W.liquid.material.uniforms.uT.value=now/1000; }

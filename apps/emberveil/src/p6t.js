@@ -469,12 +469,22 @@ function clBuild(t,A){
   const im=new THREE.InstancedMesh(clGeo(t),clMat(),n); im.frustumCulled=false; im.count=0; im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(n*3),3); im.userData.evClutter=1; worldRoot.add(im);
   return {im,M,C:Cc,start,ncx,ncz,n};
 }
+// v38: прямоугольник окна (оси камеры) → мировой многоугольник; для каждой строки ячеек (полоса по z) — крайние столбцы его пересечения
+const CLROW={a:new Int32Array(512),b:new Int32Array(512),n:0,j0:0,px:new Float64Array(4),pz:new Float64Array(4)};
+function clRows(cx,cz,XR,Z0,Z1,b,ncz){ const s=CAMR.ys, c=CAMR.yco, U=[-XR,XR,XR,-XR], V=[Z0,Z0,Z1,Z1]; let zmin=1e9,zmax=-1e9;
+  for(let k=0;k<4;k++){ CLROW.px[k]=cx+U[k]*c+V[k]*s; CLROW.pz[k]=cz-U[k]*s+V[k]*c; zmin=Math.min(zmin,CLROW.pz[k]); zmax=Math.max(zmax,CLROW.pz[k]); }
+  const j0=Math.max(0,Math.floor((zmin-b.minZ)/CL_CELL)), j1=Math.min(ncz-1,Math.floor((zmax-b.minZ)/CL_CELL)); CLROW.j0=j0; CLROW.n=Math.max(0,Math.min(512,j1-j0+1));
+  for(let r=0;r<CLROW.n;r++){ const zA=b.minZ+(j0+r)*CL_CELL, zB=zA+CL_CELL; let x0=1e9,x1=-1e9;
+    for(let k=0;k<4;k++){ const ax=CLROW.px[k], az=CLROW.pz[k], bx=CLROW.px[(k+1)&3], bz=CLROW.pz[(k+1)&3]; const lo=Math.max(zA,Math.min(az,bz)), hi=Math.min(zB,Math.max(az,bz)); if(lo>hi) continue;
+      if(Math.abs(bz-az)<1e-6){ x0=Math.min(x0,ax,bx); x1=Math.max(x1,ax,bx); continue; } const xa=ax+(bx-ax)*(lo-az)/(bz-az), xb=ax+(bx-ax)*(hi-az)/(bz-az); x0=Math.min(x0,xa,xb); x1=Math.max(x1,xa,xb); }
+    CLROW.a[r]=x0>x1?1:Math.floor((x0-b.minX)/CL_CELL); CLROW.b[r]=x0>x1?0:Math.floor((x1-b.minX)/CL_CELL); }
+  return CLROW; }
 function clCull(cx,cz,XR,Z0,Z1,all){
   if(!W||!W.clutter) return; const b=W.bounds; let tot=0;
   for(const t in W.clutter){ const L=W.clutter[t], im=L.im, IM=im.instanceMatrix.array, IC=im.instanceColor.array; let n=0;
     if(all){ IM.set(L.M); IC.set(L.C); n=L.n; }
-    else { const i0=Math.max(0,Math.floor((cx-XR-b.minX)/CL_CELL)), i1=Math.min(L.ncx-1,Math.floor((cx+XR-b.minX)/CL_CELL)), j0=Math.max(0,Math.floor((cz+Z0-b.minZ)/CL_CELL)), j1=Math.min(L.ncz-1,Math.floor((cz+Z1-b.minZ)/CL_CELL));
-      if(i0<=i1) for(let j=j0;j<=j1;j++){ const s0=L.start[j*L.ncx+i0], s1=L.start[j*L.ncx+i1+1]; if(s1<=s0) continue; IM.set(L.M.subarray(s0*16,s1*16),n*16); IC.set(L.C.subarray(s0*3,s1*3),n*3); n+=s1-s0; } }
+    else { const R=clRows(cx,cz,XR,Z0,Z1,b,L.ncz); // v38: окно повёрнуто вместе с камерой — по строкам ячеек свой диапазон столбцов
+      for(let r=0;r<R.n;r++){ const j=R.j0+r, i0=Math.max(0,R.a[r]), i1=Math.min(L.ncx-1,R.b[r]); if(i0>i1) continue; const s0=L.start[j*L.ncx+i0], s1=L.start[j*L.ncx+i1+1]; if(s1<=s0) continue; IM.set(L.M.subarray(s0*16,s1*16),n*16); IC.set(L.C.subarray(s0*3,s1*3),n*3); n+=s1-s0; } }
     im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; im.instanceColor.needsUpdate=true; tot+=n; }
   W.clVis=tot;
 }
@@ -482,7 +492,7 @@ function clCull(cx,cz,XR,Z0,Z1,all){
 // ---------- подключение к миру: после расстановки пропсов (buildPropMeshes) — штампы, мелочь; отсечение — вместе с пропсами ----------
 const _bpmT=buildPropMeshes; buildPropMeshes=function(){ if(terOn()) try{ terFinish(); }catch(e){ console.error('terFinish',e); } _bpmT(); };
 const _cpT=cullProps; cullProps=function(cx,cz,force){ TER_U.uTime.value=performance.now()/1000%1000; TER_U.uRain.value+=((W&&W.rain?1:0)-TER_U.uRain.value)*.05; const was=W&&W.propCullAt; _cpT(cx,cz,force);
-  if(W&&W.clutter&&W.propCullAt!==was){ const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12; const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; clCull(cx,cz,xr*far,z0*far,z1*far,!!W.cullAll); } try{ ambTick(); }catch(e){} };
+  if(W&&W.clutter&&W.propCullAt!==was){ const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12; const far=(W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1)*Math.max(1,CAMR.zu||1); clCull(cx,cz,xr*far,z0*far,z1*far,!!W.cullAll); } try{ ambTick(); }catch(e){} };
 const _uwT=unloadWorld; unloadWorld=function(){ if(W&&W.ter&&W.ground){ try{ W.ground.material.dispose(); W.ter.ctl.t1.dispose(); W.ter.ctl.t2.dispose(); }catch(e){} }
   if(W&&W.atmos) for(const m of W.atmos){ m.geometry.dispose(); m.material.dispose(); } if(AS.bfly){ try{ scene.remove(AS.bfly.mesh); EVFX.remove(AS.bfly); }catch(e){} AS.bfly=null; } if(AS.amb) AS.amb._spot=null; _uwT(); };
 

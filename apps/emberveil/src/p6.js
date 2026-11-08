@@ -74,15 +74,23 @@ function buildPropMeshes(){
   W.propCullAt=null;
 }
 const _pm=new THREE.Matrix4(), _pq=new THREE.Quaternion(), _pv=new THREE.Vector3(), _ps=new THREE.Vector3(), _py=new THREE.Vector3(0,1,0);
+// v38: окно отсечения — в осях камеры (u — вправо по экрану, v — к камере), повёрнутых вместе с ней (src/p78.js)
+function camWinIn(dx,dz,XR,Z0,Z1){ const u=dx*CAMR.yco-dz*CAMR.ys; if(u<-XR||u>XR) return false; const v=dx*CAMR.ys+dz*CAMR.yco; return v>=Z0&&v<=Z1; }
+// v38: при повёрнутой камере уровни спроектированы «под север» (высокие деревья — на северных краях): высокие пропсы на отрезке
+// «камера → герой» не выставляются (как у крупных планов, p26), чтобы не закрывать героя
+function camOccCtx(){ const P=G.P; if(!P||!W||Math.abs(CAMR.yc)<.25||CAMR.override||W.cullAll||(typeof CINE!=='undefined'&&CINE.on)) return null;
+  const p=CAMR.pitch, d=CAMR.dist*CAMR.zoom*(CAMR.zu||1), hd=Math.cos(p)*d; return {t:{x:P.x,z:P.z},c:{x:CAMR.x+CAMR.ys*hd,y:Math.sin(p)*d+.6,z:CAMR.z+CAMR.yco*hd}}; }
+function camOccProp(p,O){ const s=p.s||1, h=propH(p.type)*s; if(h<1.7) return false; const t=O.t, c=O.c, hy=1.2; const dx=c.x-t.x, dz=c.z-t.z, L2=dx*dx+dz*dz||1;
+  const k=clamp(((p.x-t.x)*dx+(p.z-t.z)*dz)/L2,0,1); if(k<=.01) return false; const px=t.x+dx*k, pz=t.z+dz*k; const ly=hy+(c.y-hy)*k-.7; return Math.hypot(p.x-px,p.z-pz)<.9*s+.6&&h>ly; }
 function cullProps(cx,cz,force){
   if(!W.propIM) return;
   if(!force&&W.propCullAt&&Math.abs(W.propCullAt[0]-cx)<1.5&&Math.abs(W.propCullAt[1]-cz)<1.5) return;
   W.propCullAt=[cx,cz];
   const CT=cineTarget(), CC=CT&&cineCamPos();
   const asp=cam.aspect; const xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
-  const far=W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1; const XR=xr*far, Z0=z0*far, Z1=z1*far;
+  const far=(W.cullAll?40:CAMR.override&&CAMR.override.dist?1.9:1)*Math.max(1,CAMR.zu||1); const XR=xr*far, Z0=z0*far, Z1=z1*far; const OC=!CT&&camOccCtx(); W.camOcc=!!OC;
   for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0;
-    for(const p of list){ const dx=p.x-cx,dz=p.z-cz; if(dx<-XR||dx>XR||dz<Z0||dz>Z1) continue; if(CT&&cineSkipProp(p,CT,CC)) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
+    for(const p of list){ if(!camWinIn(p.x-cx,p.z-cz,XR,Z0,Z1)) continue; if(CT&&cineSkipProp(p,CT,CC)) continue; if(OC&&camOccProp(p,OC)) continue; _pq.setFromAxisAngle(_py,p.ry); _ps.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _pv.set(p.x,p.y||0,p.z); _pm.compose(_pv,_pq,_ps); if(grp) asPropSet(grp,n++,_pm); else im.setMatrixAt(n++,_pm); }
     if(grp){ asPropCount(grp,n); grp.visible=n>0; continue; } im.count=n; im.visible=n>0; im.instanceMatrix.needsUpdate=true; }
 }
 function groundY(x,z){ return groundH(x,z); }

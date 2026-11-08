@@ -113,6 +113,12 @@ function hudTick(dt){
 }
 // ---------- input ----------
 const JOY={id:null,ox:0,oy:0,on:false};
+// v38: джойстик и клавиши дают экранное направление; в G.input — мировое (с учётом поворота камеры). Сырое значение хранится,
+// чтобы при повороте камеры с зажатым стиком направление бега пересчитывалось (camInRe в src/p78.js). Бот и стенд пишут G.input сразу в мировых.
+const CAMIN={sx:0,sy:0,on:false,wx:0,wz:0};
+function camInSet(sx,sy){ CAMIN.sx=sx; CAMIN.sy=sy; CAMIN.on=!!(sx||sy); const w=camS2W(sx,sy); G.input.mx=CAMIN.wx=w[0]; G.input.mz=CAMIN.wz=w[1]; }
+// поворот камеры с зажатым стиком: пересчёт, только если G.input с тех пор никто не переписал (бот, стенд, сцены)
+function camInRe(){ if(!CAMIN.on||G.bot) return; if(G.input.mx!==CAMIN.wx||G.input.mz!==CAMIN.wz){ CAMIN.on=false; return; } camInSet(CAMIN.sx,CAMIN.sy); }
 function bindHud(){
   const joy=$('joy'), knob=$('joyK');
   const tap=(id,fn)=>{ const b=$(id); if(!b) return; b.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); AU.init(); fn(ev); }); };
@@ -141,20 +147,20 @@ function setupInput(){
     }
   };
   const onMove=ev=>{ if(ev.pointerId!==JOY.id) return; let dx=ev.clientX-JOY.ox, dy=ev.clientY-JOY.oy; const l=Math.hypot(dx,dy), m=58; if(l>m){ dx=dx/l*m; dy=dy/l*m; }
-    G.input.mx=dx/m; G.input.mz=dy/m; if(!S.seen.joyHint&&l>20){ S.seen.joyHint=1; const jh=$('joyHint'); if(jh) jh.remove(); } const k=$('joyK'); if(k) k.style.transform=`translate(${dx}px,${dy}px)`; };
-  const onUp=ev=>{ if(ev.pointerId!==JOY.id) return; JOY.id=null; G.input.mx=0; G.input.mz=0; const k=$('joyK'); if(k) k.style.transform=''; const j=$('joy'); if(j) j.classList.remove('on'); };
+    camInSet(dx/m,dy/m); if(!S.seen.joyHint&&l>20){ S.seen.joyHint=1; const jh=$('joyHint'); if(jh) jh.remove(); } const k=$('joyK'); if(k) k.style.transform=`translate(${dx}px,${dy}px)`; };
+  const onUp=ev=>{ if(ev.pointerId!==JOY.id) return; JOY.id=null; camInSet(0,0); const k=$('joyK'); if(k) k.style.transform=''; const j=$('joy'); if(j) j.classList.remove('on'); };
   window.addEventListener('pointerdown',onDown,{passive:true}); window.addEventListener('pointermove',onMove,{passive:true}); window.addEventListener('pointerup',onUp); window.addEventListener('pointercancel',onUp);
   const keys={};
-  const kv=()=>{ if(JOY.id!==null) return; let x=0,z=0; if(keys.KeyA||keys.ArrowLeft)x--; if(keys.KeyD||keys.ArrowRight)x++; if(keys.KeyW||keys.ArrowUp)z--; if(keys.KeyS||keys.ArrowDown)z++; const l=Math.hypot(x,z)||1; G.input.mx=x/l; G.input.mz=z/l; };
+  const kv=()=>{ if(JOY.id!==null) return; let x=0,z=0; if(keys.KeyA||keys.ArrowLeft)x--; if(keys.KeyD||keys.ArrowRight)x++; if(keys.KeyW||keys.ArrowUp)z--; if(keys.KeyS||keys.ArrowDown)z++; const l=Math.hypot(x,z)||1; if(!x&&!z&&!CAMIN.on) return; camInSet(x/l,z/l); };
   window.addEventListener('keydown',ev=>{ if(ev.repeat&&!['KeyW','KeyA','KeyS','KeyD'].includes(ev.code)) { return; } AU.init(); keys[ev.code]=true; kv();
     if($('dlg')&&!$('dlg').classList.contains('hidden')&&(ev.code==='Space'||ev.code==='Enter')){ dlgNext(); return; }
     if(!$('panel').classList.contains('hidden')){ if(ev.code==='Escape'||ev.code==='KeyI') closePanel(); return; }
     if(G.mode==='raidprep'){ if(ev.code==='Escape') raidCancel(); return; }
-    if(G.mode==='village'){ if(ev.code==='KeyE'||ev.code==='Space'||ev.code==='KeyJ') villageInteract(); if(ev.code==='KeyI') openPanel('hero'); if(ev.code==='KeyM') openMap(); if(ev.code==='Escape') openPanel('settings'); return; }
+    if(G.mode==='village'){ if(ev.code==='Space'||ev.code==='KeyJ') villageInteract(); /* v38: E — поворот камеры */ if(ev.code==='KeyI') openPanel('hero'); if(ev.code==='KeyM') openMap(); if(ev.code==='Escape') openPanel('settings'); return; }
     if(G.mode==='stage'||G.mode==='abyss'){
       if(ev.code==='KeyJ'||ev.code==='Space'){ G.input.atk=true; playerAttack(); }
       if(ev.code==='Digit1'||ev.code==='KeyU') useSkill('s1'); if(ev.code==='Digit2'||ev.code==='KeyI') useSkill('s2'); if(ev.code==='Digit3'||ev.code==='KeyO') useSkill('s3'); if(ev.code==='Digit4'||ev.code==='KeyR') useSkill('ult');
-      if(ev.code==='ShiftLeft'||ev.code==='KeyK'||ev.code==='ShiftRight') dodge(); if(ev.code==='KeyQ') drinkPotion(); if(ev.code==='KeyF') throwBomb(); if(ev.code==='Escape') openPanel('pause');
+      if(ev.code==='ShiftLeft'||ev.code==='KeyK'||ev.code==='ShiftRight') dodge(); if(ev.code==='KeyC'||ev.code==='KeyH') drinkPotion(); /* v38: Q/E — поворот камеры */ if(ev.code==='KeyF') throwBomb(); if(ev.code==='Escape') openPanel('pause');
     } });
   window.addEventListener('keyup',ev=>{ keys[ev.code]=false; kv(); if(ev.code==='KeyJ'||ev.code==='Space') G.input.atk=false; });
   window.addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; kv(); G.input.atk=false; });
@@ -370,6 +376,8 @@ function pSettings(pause){
   <div class="muted" style="margin:-2px 0 6px">Сейчас: ${({perf:'«Производительность»',low:'низкая',med:'средняя',high:'высокая'})[QL]}${S.set.q==='auto'?' (подобрана под устройство и меняется, если кадров мало)':''}, постэффекты — ${AS.post==='low'?'выкл':AS.post==='med'?'свечение и цвет':'свечение, цвет и сглаживание'}${AS.ok?'':S.set.models==='simple'?'':' · модели: простые (детальные не загрузились)'}. «Модели» применяются после перезапуска.</div>
   <div class="set"><label>Камера</label>${seg('cam',[[0,'Ближе'],[1,'Обычно'],[2,'Дальше']])}</div>
   <div class="set"><label>Джойстик</label>${seg('joy',[['left','Слева'],['right','Справа']])}</div>
+  <div class="set"><label>Поворот камеры</label>${seg('camRot',[['free','Свободно'],['snap','По 45°'],['off','Выкл']])}</div>
+  <div class="muted" style="margin:-2px 0 6px">Двумя пальцами или проведя по пустому месту справа (в деревне — вторым пальцем); кнопки ⟲ ⟳ у компаса, касание компаса — снова на север. ПК: Q/E, средняя кнопка мыши (в деревне и правая), колесо — ближе/дальше.</div>
   <div class="set"><label>Вибрация</label>${seg('vib',[[true,'Вкл'],[false,'Выкл']])}</div>
   <div class="set"><label>Сложность</label>${seg('diff',[['story','История'],['norm','Норма'],['night','Кошмар']])}</div>
   <div class="muted" style="margin:-2px 0 6px">${typeof V20D!=='undefined'?V20D[diffK()].d:''} Здоровье и урон врагов меняются со следующего этапа.</div>

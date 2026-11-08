@@ -463,7 +463,12 @@ function liquidMat(c1,c2,lava){
 }
 
 // ---------- camera rig ----------
-const CAMR={x:0,z:0,tx:0,tz:0,dist:30,pitch:0.94,shake:0,shx:0,shz:0,override:null,fovW:10.8,fovH:15,zoom:1,look:{x:0,y:0,z:0}};
+const CAMR={x:0,z:0,tx:0,tz:0,dist:30,pitch:0.94,shake:0,shx:0,shz:0,override:null,fovW:10.8,fovH:15,zoom:1,look:{x:0,y:0,z:0},yc:0,ys:0,yco:1,zu:1};
+// v38: поворот камеры вокруг героя (src/p78.js). yc — применённый угол (рад): 0 — классический вид на север (камера к югу от цели);
+// ys/yco — его sin/cos (обновляет camYawSet). Экран → мир: «вправо» = (cos,−sin), «вниз» (к камере) = (sin,cos).
+function camYawSet(a){ CAMR.yc=a; CAMR.ys=Math.sin(a); CAMR.yco=Math.cos(a); }
+function camS2W(sx,sy){ const s=CAMR.ys, c=CAMR.yco; return [sx*c+sy*s, -sx*s+sy*c]; } // экранный вектор (вправо, вниз) → мировой (x,z)
+function camW2S(dx,dz){ const s=CAMR.ys, c=CAMR.yco; return [dx*c-dz*s, dx*s+dz*c]; } // мировой (x,z) → (вправо, к камере)
 // камера пересчитывается сразу, а буфер холста — только в rsFlush() прямо перед отрисовкой (в том же кадре)
 // v15: размер холста — его настоящий CSS-размер (в Telegram/WebView innerHeight бывает не равен видимой области)
 function vpSize(){ let w=canvas.clientWidth, h=canvas.clientHeight; if(!(w>0&&h>0)){ w=window.innerWidth||1; h=window.innerHeight||1; } return [w,h]; }
@@ -485,7 +490,7 @@ function rsFlush(){
     if(AS.FX&&AS.FX.setSharp){ const d=window.devicePixelRatio||1, up=d/(CPR*sc); AS.FX.setSharp(up>1.15?clamp((up-1)*.35,.12,.5):0); } }
 }
 function camUpdate(dt,tx,tz){
-  let d=CAMR.dist*CAMR.zoom, px, pz, ly=0.6;
+  let d=CAMR.dist*CAMR.zoom*(CAMR.zu||1), px, pz, ly=0.6; // zu — колесо мыши (v38)
   if(CAMR.override){ const o=CAMR.override; tx=o.x; tz=o.z; d=o.dist||CAMR.dist*(o.zoom||0.6); }
   const k=1-Math.exp(-dt*(CAMR.override?2.5:6));
   CAMR.x+=(tx-CAMR.x)*k; CAMR.z+=(tz-CAMR.z)*k;
@@ -493,7 +498,7 @@ function camUpdate(dt,tx,tz){
   const sh=CAMR.shake*CAMR.shake*0.9;
   const sx=(Math.random()*2-1)*sh, sz=(Math.random()*2-1)*sh;
   const p=CAMR.override&&CAMR.override.pitch||CAMR.pitch;
-  cam.position.set(CAMR.x+sx, Math.sin(p)*d+ly, CAMR.z+Math.cos(p)*d+sz);
+  const hd=Math.cos(p)*d; cam.position.set(CAMR.x+sx+CAMR.ys*hd, Math.sin(p)*d+ly, CAMR.z+sz+CAMR.yco*hd);
   cam.lookAt(CAMR.x+sx*.5, ly, CAMR.z+sz*.5);
   sun.position.set(CAMR.x-12,24,CAMR.z+10); sun.target.position.set(CAMR.x,0,CAMR.z);
 }

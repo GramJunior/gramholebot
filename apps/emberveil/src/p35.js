@@ -620,7 +620,7 @@ startStage2=function(z,s){ a2HideOverlays(); if(AS.a2snow){ try{ scene.remove(AS
 // v28: старт этапа зоны 7 — на первом кадре этапа (later() до сборки мира стирался clearEntities: сцена z7_intro и виньетка холода не появлялись)
 function a2StageInit(){ later(.5,()=>{ if(!W||W.kind!=='stage') return; a2Overlay('coldVig'); if(W.info.key==='7-1'&&!S.seen.z7_intro) playDialog('z7_intro'); try{ if(compS().active&&COMP_LINES2[compS().active]&&chance(.6)) later(14,()=>{ const a=G.allies.find(x=>x.kind==='comp'); if(a&&!a.dead) dmgNum(a.x,2.6,a.z,'«'+pick(COMP_LINES2[a.id])+'»','tag'); }); }catch(e){} }); }
 const _villageTickA2=updateVillage;
-updateVillage=function(dt){ _villageTickA2(dt); if(AS.a2snow&&G.P) AS.a2snow.center.set(G.P.x,0,G.P.z-4); };
+updateVillage=function(dt){ _villageTickA2(dt); if(AS.a2snow&&G.P) AS.a2snow.center.set(G.P.x-CAMR.ys*4,0,G.P.z-CAMR.yco*4); };
 function a2VillageIrga(){ if(!W||W.kind!=='village'||!compOwned('irga')||!stageDone('7-2')) return; if(W.npcs.some(n=>n.kind==='irga')) return; const x=17.5, z=11.5;
   try{ if(compS().active==='irga') return; const rig=buildCompanion('irga',compGearObj('irga')); rig.root.position.set(x,0,z); worldRoot.add(rig.root); W.npcs.push({kind:'irga',x,z,rig,face:-2.2,t:0,r:.5}); W.obst.push({x,z,r:.55}); NPC_INFO.irga=NPC_INFO.c_irga;
     const tent=new THREE.Group(); tent.position.set(x+2.4,0,z+1.8); tent.rotation.y=-.6; worldRoot.add(tent); const m=pmesh(propGeo('legionTent'),tent); m.material=MTP; tent.scale.setScalar(.8); W.obst.push({x:x+2.4,z:z+1.8,r:1.2}); }catch(e){ console.warn('irga village',e); } }

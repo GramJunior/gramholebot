@@ -198,7 +198,7 @@ function bombBind(){ const old=$('bBomb'); if(!old||old._v20) return; const b=ol
   b.addEventListener('pointermove',ev=>{ if(!st||ev.pointerId!==st.id) return; const dx=ev.clientX-st.x, dy=ev.clientY-st.y, L=Math.hypot(dx,dy);
     if(st.mode==='radial'){ radialHover(ev.clientX,ev.clientY); return; }
     if(st.mode==='press'&&L>14){ st.mode='aim'; clearTimeout(st.tm); }
-    if(st.mode==='aim'){ const P=G.P; const sc=11/(95*k()); let wx=dx*sc, wz=dy*sc*1.15; const wl=Math.hypot(wx,wz); if(wl>11) { wx*=11/wl; wz*=11/wl; } st.tx=P.x+wx; st.tz=P.z+wz; st.cancel=L<12; b.classList.toggle('cancel',st.cancel); } });
+    if(st.mode==='aim'){ const P=G.P; const sc=11/(95*k()); let wx=dx*sc, wz=dy*sc*1.15; { const w=camS2W(wx,wz); wx=w[0]; wz=w[1]; } /* v38: поворот камеры */ const wl=Math.hypot(wx,wz); if(wl>11) { wx*=11/wl; wz*=11/wl; } st.tx=P.x+wx; st.tz=P.z+wz; st.cancel=L<12; b.classList.toggle('cancel',st.cancel); } });
   const up=ev=>{ if(!st||ev.pointerId!==st.id) return; clearTimeout(st.tm); const s=st; st=null; BOMB.aim=null; aimHide(); b.classList.remove('cancel');
     if(s.mode==='press') throwBomb(); else if(s.mode==='aim'){ if(!s.cancel&&s.tx!==undefined) throwBomb(s.tx,s.tz); } else if(s.mode==='radial') radialPick(); };
   b.addEventListener('pointerup',up); b.addEventListener('pointercancel',ev=>{ if(st){ clearTimeout(st.tm); st=null; BOMB.aim=null; aimHide(); radialHide(); } }); }

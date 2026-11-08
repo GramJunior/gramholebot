@@ -227,14 +227,14 @@ function v28Beetles(){ if(!_v28B&&typeof MTscarab==='undefined') return; let n=0
 // пропсы на этапе: после отсечения прямоугольником (с запасом под любой наклон камеры) — ещё и по пирамиде видимости камеры
 // (сфера пропа с запасом 2,5 м на сдвиг до следующего пересчёта); тип пропа, которого нет в кадре, не стоит вызова отрисовки
 { const _cp=cullProps; cullProps=function(cx,cz,force){ if(!W||!W.propIM) return _cp(cx,cz,force);
-    const k=(Math.round(cam.position.y*2)/2)+'|'+cam.fov+'|'+cam.aspect.toFixed(2)+'|'+(CAMR.override?1:0); if(W._v28ck!==k){ W._v28ck=k; force=true; }
+    const k=(Math.round(cam.position.y*2)/2)+'|'+cam.fov+'|'+cam.aspect.toFixed(2)+'|'+(CAMR.override?1:0)+'|'+Math.round(CAMR.yc*20); if(W._v28ck!==k){ W._v28ck=k; force=true; }
     const was=W.propCullAt; _cp(cx,cz,force); if(W.propCullAt===was) return;
     if(!(G.mode==='stage'||G.mode==='abyss')||W.cullAll||CAMR.override||cineTarget()) return; try{ v28PropFrustum(); }catch(e){ console.warn('v28 cull',e); } }; }
 const _v28q=new THREE.Quaternion(), _v28v=new THREE.Vector3(), _v28y=new THREE.Vector3(0,1,0), _v28sc=new THREE.Vector3();
 function v28PropFrustum(){ if(!W||!W.propCullAt||!W.propIM) return; /* v31: propCullAt может обнулиться (конец крупного плана) или ещё не быть */ cam.updateMatrixWorld(); _v28P.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); _v28F.setFromProjectionMatrix(_v28P);
-  const [cx,cz]=W.propCullAt; const asp=cam.aspect, xr=asp<1?15:26, z0=asp<1?-29:-26, z1=asp<1?14:12;
+  const [cx,cz]=W.propCullAt; const asp=cam.aspect, zk=Math.max(1,CAMR.zu||1), xr=(asp<1?15:26)*zk, z0=(asp<1?-29:-26)*zk, z1=(asp<1?14:12)*zk; const OC=camOccCtx(); // v38: окно в осях камеры, высокие пропсы перед героем
   for(const t in W.propIM){ const {im,grp,list}=W.propIM[t]; let n=0; const f=pfoot(t,1);
-    for(const p of list){ const dx=p.x-cx, dz=p.z-cz; if(dx<-xr||dx>xr||dz<z0||dz>z1) continue; const s=p.s*(p.sy||1);
+    for(const p of list){ if(!camWinIn(p.x-cx,p.z-cz,xr,z0,z1)) continue; if(OC&&camOccProp(p,OC)) continue; const s=p.s*(p.sy||1);
       let h=p._v28h; if(h===undefined){ try{ h=propH(p); }catch(e){ h=2.5; } if(!(h>0)) h=2.5; p._v28h=h; }
       _v28S.center.set(p.x,(p.y||0)+h*.5,p.z); _v28S.radius=Math.max(f.v*p.s*(p.sx||1)*1.2,h*.6)+2.5; if(!_v28F.intersectsSphere(_v28S)) continue;
       _v28q.setFromAxisAngle(_v28y,p.ry); _v28sc.set(p.s*(p.sx||1),p.s*(p.sy||1),p.s); _v28v.set(p.x,p.y||0,p.z); _v28m.compose(_v28v,_v28q,_v28sc); if(grp) asPropSet(grp,n++,_v28m); else im.setMatrixAt(n++,_v28m); }
