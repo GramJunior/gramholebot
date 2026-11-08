@@ -282,3 +282,16 @@ function statCard(id){ const D=ST38[id]; if(!D) return; const steps=statSrc(); i
 #ev38W .wb-btn small{font-size:14px}
 `; document.head.appendChild(st); })();
 window.__game.statSrc=()=>statSrc().map(([k,s])=>[k,Math.round(s.atk),s.maxHp,Math.round(s.crit*10)/10]);
+// v38.1: компактные надписи поверх игры на телефоне — всплывашки и карточка задания не закрывают экран
+(function(){ const st=document.createElement('style'); st.id='hud381'; st.textContent=`
+html.land #toasts{width:min(330px,36vw)!important;gap:4px!important}
+html.land #toasts .toast{font-size:clamp(11px,calc(var(--u,1px)*12.5),14px)!important;line-height:1.25!important;padding:4px 10px 4px 7px!important;border-radius:7px!important;max-width:100%!important;gap:6px!important;box-shadow:0 0 0 1.5px #c9973f,0 3px 7px rgba(0,0,0,.4)!important}
+html.land #toasts .toast .ti{width:20px!important;height:20px!important;flex:0 0 20px!important}
+html.land #toasts .toast:nth-child(n+3){display:none!important}
+html.land.run381 #toasts{top:calc(max(var(--st,0px),4px) + 6px)!important;bottom:auto!important;left:63%!important;width:min(300px,30vw)!important;opacity:.95}
+html.land.run381 #hud #hQuest{width:min(190px,24vw)!important;padding:4px 8px 5px!important;font-size:clamp(11px,calc(var(--u,1px)*12),13px)!important;line-height:1.25!important}
+html.land.run381 #hud #hQuest h4{font-size:10px!important;margin-bottom:1px!important}
+html.land.run381 #hud #hQuest .ftq{font-size:clamp(11px,calc(var(--u,1px)*12),13px)!important;padding:3px 8px!important}
+`; document.head.appendChild(st);
+  let last=null; setInterval(()=>{ const on=!!(typeof G!=='undefined'&&(G.mode==='stage'||G.mode==='abyss')); if(on!==last){ last=on; document.documentElement.classList.toggle('run381',on); if(typeof mmAnchor==='function') try{ mmAnchor(); }catch(e){} } },300);
+})();
