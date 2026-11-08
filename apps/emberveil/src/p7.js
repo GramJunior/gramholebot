@@ -222,7 +222,7 @@ function killEnemy(e,o={}){
   fx('death',e.x,0,e.z,{col:e.D.col!==undefined?new THREE.Color(e.D.col).multiplyScalar(.5).getHex():0x2a2018});
   AU.sfx('die',.7);
   if(!e.summon||e.boss){
-    addXp(e.boss?e.bossD.xp*F(e.lvl)*.6:e.D.xp*Math.pow(F(e.lvl),.88)*(e.elite?3:1));
+    addXp(xpKill32(e)); // v32: доля уровня за врага не растёт с уровнем, перекачанному меньше (src/p65.js)
     if(G.run) G.run.kills++;
     ev('kill',{kind:e.kind,elite:!!e.elite,boss:!!e.boss});
     if(!e.boss) dropLoot(e);

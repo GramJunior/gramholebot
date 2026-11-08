@@ -44,7 +44,7 @@ function bldBody(id,tab){
 }
 // ----- forge -----
 const upCost=it=>({gold:Math.round(40*F(it.ilvl)*Math.pow(1+it.up,1.25)),ore:Math.round(5*(1+it.up)*Math.sqrt(F(it.ilvl)))});
-const reforgeCost=it=>Object.assign({gold:Math.round(90*F(it.ilvl)),ess:2+it.rar*2},famBind(it)); // v16: + связующий материал семейства (слитки/нити/жилы/золотая пыль)
+const reforgeCost=it=>({gold:Math.round(120*Math.pow(F(it.ilvl),.6)*(1+it.rar*.25)),ess:4+it.rar*3}); // v32: одна понятная цена — золото и эссенция (без связующих материалов), не зависит от выбранного свойства
 const craftCost=()=>{ const L=S.hero.lvl; return {gold:Math.round(110*F(L)),ore:Math.round(18*Math.sqrt(F(L))),wood:12}; };
 const socketCost=it=>({gold:Math.round(200*F(it.ilvl)),ess:12*(it.sock.length+1),gshard:4*(it.sock.length+1)}); // v16: + осколки камней
 function allItems(){ return Object.values(S.gear).filter(Boolean).concat(S.inv); }

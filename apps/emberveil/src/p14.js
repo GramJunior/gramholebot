@@ -136,33 +136,44 @@ function allyLabels(){ for(const a of G.allies){ if(a.kind!=='comp') continue; i
       continue; } if(G.mode!=='village'){ const f=clamp(a.hp/a.maxHp,0,1); wlAdd(a.x,2.55,a.z,`${a.C.n}<div style="width:40px;height:4px;margin:2px auto 0;background:#1d0f08;border-radius:2px;overflow:hidden"><i style="display:block;height:100%;width:${Math.round(f*100)}%;background:#7ae8a0"></i></div>`,'ally'); } } }
 function compRunEnd(win){ const id=compS().active; if(!id||!G.run) return; const a=G.allies.find(x=>x.kind==='comp'); if(!a) return; const I=G.run.info; const xp=(win?1:.4)*(G.run.kills*4+(I?I.lvl*14:40));
   const ups=compGiveXp(id,xp); G.run.compXp={id,xp:Math.round(xp),ups}; }
-// ---------- expeditions ----------
-const EXP_DUR=[{m:15,n:'15 мин'},{m:60,n:'1 час'},{m:240,n:'4 часа'},{m:480,n:'8 часов'}];
+// ---------- expeditions (v32: проще — поход всегда возвращается с добычей, награда видна заранее; приносит рунную пыль, а из зон Акта II — их материалы) ----------
+const EXP_DUR=[{m:20,n:'20 мин'},{m:120,n:'2 часа'},{m:480,n:'8 часов'}];
 const EXP_ZONE_ROLES={1:['ranger','rogue'],2:['ranger','healer'],3:['healer','mage'],4:['tank','mage'],5:['bruiser','tank'],6:['mage','bruiser']};
-const EXP_ZONE_TXT={1:'Гоблинские обозы: нужны глаза и ловкие руки',2:'Тёмный лес: стрелки и травники',3:'Ядовитые топи: целители и маги',4:'Склепы: щиты и чары против нежити',5:'Пустоши: крепкие спины и тяжёлые клинки',6:'Логово: только сильнейшие'};
+const EXP_ZONE_TXT={1:'Гоблинские обозы: нужны глаза и ловкие руки',2:'Тёмный лес: стрелки и травники',3:'Ядовитые топи: целители и маги',4:'Склепы: щиты и чары против нежити',5:'Пустоши: крепкие спины и тяжёлые клинки',6:'Логово: только сильнейшие',
+  7:'Ледяной Предел: стражи и маги огня',8:'Затонувший Златоверх: маги и целители',9:'Небесные Руины: стрелки и ловкачи',10:'Изнанка Хмари: целители и стражи'};
+const EXP_ZMAT={7:'ice',8:'pearl',9:'sun',10:'mem'};
 const expS=()=>{ S.exp=S.exp||{list:[]}; return S.exp; };
 const expSlots=()=>1+Math.floor((S.bld.tavern||0)/2);
-const expZoneOpen=z=>stageDone(z+'-3');
-function expChance(cid,z,mi){ const C=COMPANIONS[cid], o=compS().owned[cid]; if(!o) return 0; const zl=ZONES[z-1].lv+3; const match=EXP_ZONE_ROLES[z].includes(C.role)?1:0;
-  return clamp(.5+(o.lv-zl)*.045+(o.g.w+o.g.c)*.025+C.rar*.035+match*.16-mi*.06,.08,.97); }
-function expReward(z,m){ const zl=ZONES[z-1].lv+2, h=m/60, k=Math.pow(h,.82); const f=Math.pow(F(zl),.9);
-  return {gold:Math.round(170*f*k),wood:Math.round(70*k*(1+z*.2)),ore:Math.round(45*k*(1+z*.25)),ess:Math.round((3+z*2.2)*k)}; }
-function expSend(cid,z,mi){ if(compBusy(cid)||expS().list.length>=expSlots()) return false; const ch=expChance(cid,z,mi); const ok=Math.random()<ch; const m=EXP_DUR[mi].m;
-  expS().list.push({cid,z,m,mi,start:Date.now(),ch,ok}); if(compS().active===cid) compS().active=null; AU.sfx('quest',.6); toast(`<b>${COMPANIONS[cid].n}</b> уходит в поход: ${ZONES[z-1].n}, ${EXP_DUR[mi].n}.`); saveGame(); return true; }
+const expZoneOpen=z=>!!ZONES[z-1]&&stageDone(z+'-3');
+function expZones(){ const a=[]; for(let z=1;z<=10;z++) if(expZoneOpen(z)) a.push(z); return a; }
+function expMatch(cid,z){ const C=COMPANIONS[cid]; return !!(C&&EXP_ZONE_ROLES[z]&&EXP_ZONE_ROLES[z].includes(C.role)); }
+// множитель добычи: подходящая роль +25%, уровень спутника против уровня земель (0,7…1,25)
+function expMul(cid,z){ const o=compS().owned[cid]; if(!o) return 1; const zl=ZONES[z-1].lv+3; return clamp(1+(o.lv-zl)*.03+(o.g.w+o.g.c)*.015,.7,1.25)*(expMatch(cid,z)?1.25:1); }
+function expChance(){ return 1; } // v32: походы не срываются (оставлено для совместимости)
+function expBestZone(cid){ const zs=expZones(); if(!zs.length) return 0; const top=zs[zs.length-1]; const m=zs.filter(z=>z>=top-1&&expMatch(cid,z)); return m.length?m[m.length-1]:top; }
+function expReward(z,m,cid){ const zl=ZONES[z-1].lv+2, h=m/60, k=Math.pow(h,.82); const f=Math.pow(F(zl),.9); const mul=cid?expMul(cid,z):1;
+  const r={gold:Math.round(170*f*k*mul),wood:Math.round(70*k*(1+z*.2)*mul),ore:Math.round(45*k*(1+z*.25)*mul),ess:Math.round((3+z*2.2)*k*mul),dust:Math.max(1,Math.round(h*1.5*mul))};
+  const zm=EXP_ZMAT[z]; if(zm) r[zm]=Math.round(7*k*mul); return r; }
+function expSend(cid,z,mi){ if(compBusy(cid)||expS().list.length>=expSlots()||!expZoneOpen(z)) return false; const m=EXP_DUR[mi].m;
+  expS().list.push({cid,z,m,mi,start:Date.now(),ch:1,ok:true}); if(compS().active===cid) compS().active=null; AU.sfx('quest',.6); toast(`<b>${COMPANIONS[cid].n}</b> уходит в поход: ${ZONES[z-1].n}, ${EXP_DUR[mi].n}.`); saveGame(); return true; }
+function expSendAll(mi){ let n=0; for(const id of COMP_ORDER){ if(expS().list.length>=expSlots()) break; if(!compOwned(id)||compBusy(id)||compS().active===id) continue; const z=expBestZone(id); if(z&&expSend(id,z,mi)) n++; } return n; }
 const expLeft=x=>Math.max(0,x.start+x.m*60000-Date.now());
-function expCollect(x){ if(expLeft(x)>0) return; const C=COMPANIONS[x.cid], o=compS().owned[x.cid]; const rw=expReward(x.z,x.m); const got={}; const extras=[];
-  const mul=x.ok?1:.35; for(const k in rw){ const v=Math.round(rw[k]*mul); if(v>0){ S.res[k]+=v; got[k]=v; } }
+function expGather(x,got,extras){ const rw=expReward(x.z,x.m,x.cid); for(const k in rw){ const v=rw[k]; if(v>0){ S.res[k]=(S.res[k]||0)+v; got[k]=(got[k]||0)+v; } }
   const h=x.m/60;
-  if(x.ok){ if(Math.random()<Math.min(.4,.06*h+.02)){ const k=randomEggKind(x.z); S.pets.eggs.push({kind:k,start:0}); extras.push(`яйцо: ${PET_DEFS[k].t}`); }
-    if(Math.random()<Math.min(.8,.18*h+.05)){ const g=pick(Object.keys(GEMS))+(x.z>=4&&chance(.4)?'1':'0'); S.gems[g]=(S.gems[g]||0)+1; extras.push(GEMS[g.slice(0,-1)].n.toLowerCase()); }
-    if(Math.random()<Math.min(.9,.25*h+.1)){ const it=genItem(ZONES[x.z-1].lv+4,{mf:60+x.m/4}); addItem(it,true); extras.push(`<span class="r${it.rar}">${esc(it.name)}</span>`); }
-  } else { o.inj=Date.now()+20*60000; }
-  const ups=compGiveXp(x.cid,(x.ok?1:.5)*30*Math.pow(x.m,.72));
-  expS().list.splice(expS().list.indexOf(x),1); S.st.exps=(S.st.exps||0)+1; saveGame(); AU.sfx(x.ok?'chest':'deny');
-  openPanel('offline',{html:`<div class="card synrow"><img class="port bg-r${C.rar}" src="${compPortrait(x.cid)}" alt=""><div class="grow"><h4>${C.n}: ${x.ok?'поход удался!':'поход сорвался'}</h4><div class="muted">${ZONES[x.z-1].n} · ${EXP_DUR[x.mi].n}${ups?` · <b>+${ups} ур.</b>`:''}</div><p style="margin-top:4px;font-style:italic">«${x.ok?pick(C.lines):'Не всё золото блестит. Некоторое ещё и кусается.'}»</p></div></div>
-    <div class="row" style="flex-wrap:wrap;gap:6px;margin:8px 0">${Object.keys(got).map(k=>resChip(k,got[k])).join('')}</div>${extras.length?`<div class="card">Находки: ${extras.join(', ')}</div>`:''}${x.ok?'':`<div class="muted">${C.n} ранен(а) и отдохнёт 20 минут.</div>`}
+  if(Math.random()<Math.min(.4,.06*h+.02)){ const k=randomEggKind(Math.min(6,x.z)); S.pets.eggs.push({kind:k,start:0}); extras.push(`яйцо: ${PET_DEFS[k].t}`); }
+  if(Math.random()<Math.min(.8,.18*h+.05)){ const g=pick(Object.keys(GEMS))+(x.z>=7&&chance(.25)?'2':x.z>=4&&chance(.4)?'1':'0'); S.gems[g]=(S.gems[g]||0)+1; extras.push(GEMS[g.slice(0,-1)].n.toLowerCase()); }
+  if(Math.random()<Math.min(.9,.25*h+.1)){ const it=genItem(ZONES[x.z-1].lv+4,{mf:60+x.m/4}); addItem(it,true); extras.push(`<span class="r${it.rar}">${esc(it.name)}</span>`); }
+  const ups=compGiveXp(x.cid,30*Math.pow(x.m,.72)); expS().list.splice(expS().list.indexOf(x),1); S.st.exps=(S.st.exps||0)+1; return ups; }
+function expCollect(x){ if(expLeft(x)>0) return; const C=COMPANIONS[x.cid]; const got={}, extras=[]; const ups=expGather(x,got,extras); saveGame(); AU.sfx('chest');
+  openPanel('offline',{html:`<div class="card synrow"><img class="port bg-r${C.rar}" src="${compPortrait(x.cid)}" alt=""><div class="grow"><h4>${C.n}: поход удался!</h4><div class="muted">${ZONES[x.z-1].n} · ${EXP_DUR[x.mi]?EXP_DUR[x.mi].n:fmtDur(x.m*60000)}${ups?` · <b>+${ups} ур.</b>`:''}</div><p style="margin-top:4px;font-style:italic">«${pick(C.lines)}»</p></div></div>
+    <div class="row" style="flex-wrap:wrap;gap:6px;margin:8px 0">${Object.keys(got).map(k=>resChip(k,got[k])).join('')}</div>${extras.length?`<div class="card">Находки: ${extras.join(', ')}</div>`:''}
     <button class="btn leather" style="width:100%" ${act(()=>{ PANEL.kind='bld'; PANEL.opts={id:'tavern'}; PANEL.tab='exp'; renderPanel(); })}>Хорошо</button>`});
 }
+function expCollectAll(){ const ready=expS().list.filter(x=>expLeft(x)<=0); if(!ready.length) return 0; if(ready.length===1){ expCollect(ready[0]); return 1; }
+  const got={}, extras=[]; let ups=0; for(const x of ready) ups+=expGather(x,got,extras); saveGame(); AU.sfx('chest');
+  openPanel('offline',{html:`<div class="card"><h4>Вернулись из походов: ${ready.map(x=>COMPANIONS[x.cid].n).join(', ')}</h4>${ups?`<div class="muted">Опыт спутников: <b>+${ups} ур.</b></div>`:''}</div>
+    <div class="row" style="flex-wrap:wrap;gap:6px;margin:8px 0">${Object.keys(got).map(k=>resChip(k,got[k])).join('')}</div>${extras.length?`<div class="card">Находки: ${extras.join(', ')}</div>`:''}
+    <button class="btn leather" style="width:100%" ${act(()=>{ PANEL.kind='bld'; PANEL.opts={id:'tavern'}; PANEL.tab='exp'; renderPanel(); })}>Хорошо</button>`}); return ready.length; }
 const fmtLeft=ms=>{ const s=Math.ceil(ms/1000); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), ss=s%60; return h?`${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`:`${m}:${String(ss).padStart(2,'0')}`; };
 // ---------- UI ----------
 function compCard(id,ctx){
@@ -187,24 +198,27 @@ function rosterBody(){ const own=COMP_ORDER.filter(compOwned), rest=COMP_ORDER.f
   return h; }
 function pSquad(){ return (S.bld.tavern>0?'':`<div class="card">${ico('mug')} Постройте <b>таверну</b> (ратуша 2 ур.), чтобы нанимать спутников и отправлять их в походы.</div>`)+rosterBody(); }
 function expBody(){
-  const X=expS(); let h=`<div class="muted">Свободные спутники уходят в зачищенные земли в реальном времени и возвращаются с добычей. Шанс успеха зависит от уровня, снаряжения, редкости и того, подходит ли роль местности. Слотов: ${X.list.length}/${expSlots()} (таверна).</div>`;
+  const X=expS(); const zs=expZones(); let h=`<div class="muted">Свободные спутники уходят в зачищенные земли и <b>всегда</b> возвращаются с добычей: золото, ресурсы, <b>рунная пыль</b>, а из земель Главы II — их материалы для Архива Памяти. Подходящая роль — +25% добычи. Мест: ${X.list.length}/${expSlots()} (таверна).</div>`;
+  const ready=X.list.filter(x=>expLeft(x)<=0);
+  if(ready.length) h+=`<button class="btn leather" style="width:100%;margin:6px 0" ${act(()=>expCollectAll())}>${ico('check')} Встретить всех (${ready.length})</button>`;
   if(X.list.length){ h+=`<div class="sect">В походе</div><div class="grid2">`; for(const x of X.list){ const C=COMPANIONS[x.cid]; const left=expLeft(x); const pr=1-left/(x.m*60000);
-      h+=`<div class="card synrow"><img class="port bg-r${C.rar}" src="${compPortrait(x.cid)}" alt=""><div class="grow"><h4>${C.n} <span class="pill">${ZONES[x.z-1].n}</span></h4><div class="muted">${EXP_DUR[x.mi].n} · шанс ${Math.round(x.ch*100)}%</div><div class="prog" style="margin:4px 0"><i style="width:${Math.round(pr*100)}%"></i></div>
+      h+=`<div class="card synrow"><img class="port bg-r${C.rar}" src="${compPortrait(x.cid)}" alt=""><div class="grow"><h4>${C.n} <span class="pill">${ZONES[x.z-1].n}</span></h4><div class="muted">${EXP_DUR[x.mi]?EXP_DUR[x.mi].n:fmtDur(x.m*60000)}</div><div class="prog" style="margin:4px 0"><i style="width:${Math.round(pr*100)}%"></i></div>
         ${left>0?`<span class="muted" data-left="${x.start+x.m*60000}">${fmtLeft(left)}</span> <button class="btn woodb small" ${canPay({ess:Math.ceil(left/60000/6)+1})?'':'disabled'} ${act(()=>{ const c={ess:Math.ceil(expLeft(x)/60000/6)+1}; if(pay(c)){ x.start=Date.now()-x.m*60000; rerender(); } })}>Сразу ${costHtml({ess:Math.ceil(left/60000/6)+1})}</button>`:`<button class="btn leather small" ${act(()=>expCollect(x))}>${ico('check')} Встретить</button>`}</div></div>`; } h+='</div>'; }
   const free=COMP_ORDER.filter(id=>compOwned(id)&&!compBusy(id));
   if(!Object.keys(compS().owned).length){ return h+`<div class="card">Пока некого отправить. Наймите спутников во вкладке «Наёмники».</div>`; }
   h+=`<div class="sect">Новый поход</div>`;
-  PANEL.opts.ec=free.includes(PANEL.opts.ec)?PANEL.opts.ec:free[0]; PANEL.opts.ez=PANEL.opts.ez&&expZoneOpen(PANEL.opts.ez)?PANEL.opts.ez:[6,5,4,3,2,1].find(expZoneOpen)||0; PANEL.opts.ed=PANEL.opts.ed===undefined?1:PANEL.opts.ed;
+  if(!zs.length) return h+`<div class="card muted">Походы открываются, когда в зоне пройдено 3 этапа.</div>`;
   if(!free.length) return h+`<div class="card muted">Все спутники заняты.</div>`;
-  if(!PANEL.opts.ez) return h+`<div class="card muted">Походы открываются, когда в зоне пройдено 3 этапа.</div>`;
-  const cid=PANEL.opts.ec, z=PANEL.opts.ez, mi=PANEL.opts.ed; const ch=expChance(cid,z,mi); const rw=expReward(z,EXP_DUR[mi].m);
-  h+=`<div class="card"><b>Кто идёт</b><div class="row" style="flex-wrap:wrap;margin-top:4px">${free.map(id=>`<button class="btn small ${id===cid?'leather':'woodb'}" ${act(()=>{ PANEL.opts.ec=id; rerender(); })}>${COMPANIONS[id].n} · ${compS().owned[id].lv}</button>`).join('')}</div>
-    <b style="display:block;margin-top:6px">Куда</b><div class="row" style="flex-wrap:wrap;margin-top:4px">${[1,2,3,4,5,6].map(zz=>`<button class="btn small ${zz===z?'leather':'woodb'}" ${expZoneOpen(zz)?'':'disabled'} ${act(()=>{ PANEL.opts.ez=zz; rerender(); })}>${ZONES[zz-1].n}</button>`).join('')}</div>
-    <div class="muted" style="margin-top:3px">${EXP_ZONE_TXT[z]} (${EXP_ZONE_ROLES[z].map(r=>ROLES[r].n).join(', ')})</div>
-    <b style="display:block;margin-top:6px">Сколько</b><div class="seg" style="display:inline-flex;margin-top:4px">${EXP_DUR.map((d,i)=>`<button class="${i===mi?'on':''}" ${act(()=>{ PANEL.opts.ed=i; rerender(); })}>${d.n}</button>`).join('')}</div>
-    <div class="row" style="margin-top:8px;flex-wrap:wrap"><div class="grow"><div>Шанс успеха: <b style="color:${ch>=.7?'#3f7a2a':ch>=.45?'#9a6a10':'#b3261a'}">${Math.round(ch*100)}%</b></div><div class="prog ${ch>=.7?'ok':ch<.45?'bad':''}" style="margin:3px 0"><i style="width:${Math.round(ch*100)}%"></i></div><div class="muted">Добыча: ${costHtml(rw).replace(/cost no/g,'cost')} + шанс на предметы, камни и яйца</div></div>
-    <button class="btn leather" ${X.list.length<expSlots()?'':'disabled'} ${act(()=>{ if(expSend(cid,z,mi)) rerender(); })}>${ico('map')} Отправить</button></div></div>`;
-  return h;
+  const mi=PANEL.opts.ed===undefined||!EXP_DUR[PANEL.opts.ed]?1:PANEL.opts.ed; PANEL.opts.ed=mi; const slots=expSlots()-X.list.length;
+  h+=`<div class="card exp32"><div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><b>Сколько</b><div class="seg" style="display:inline-flex">${EXP_DUR.map((d,i)=>`<button class="${i===mi?'on':''}" ${act(()=>{ PANEL.opts.ed=i; rerender(); })}>${d.n}</button>`).join('')}</div><span class="grow"></span>
+    <button class="btn leather" ${slots>0?'':'disabled'} ${act(()=>{ if(expSendAll(mi)) rerender(); })}>${ico('map')} Отправить всех свободных</button></div>
+    <div class="muted" style="margin:4px 0 2px">Каждый идёт туда, где он нужнее (дальняя зачищенная земля, подходящая роль). Или выберите сами:</div>`;
+  for(const id of free){ const C=COMPANIONS[id]; const pz=PANEL.opts['ez_'+id]; const z=pz&&expZoneOpen(pz)?pz:expBestZone(id); const rw=expReward(z,EXP_DUR[mi].m,id);
+    h+=`<div class="exprow"><img class="port bg-r${C.rar}" src="${compPortrait(id)}" alt=""><div class="grow"><b>${C.n}</b> <small class="muted">${ROLES[C.role].n} · ур. ${compS().owned[id].lv}</small>
+      <div class="chips one" style="margin-top:3px">${zs.map(zz=>`<button class="chip ${zz===z?'on':''}" ${act(()=>{ PANEL.opts['ez_'+id]=zz; rerender(); })}><span>${zz}</span>${expMatch(id,zz)?'<span class="ok">★</span>':''}</button>`).join('')}</div>
+      <div class="muted" style="font-size:12px">${ZONES[z-1].n}${expMatch(id,z)?' · <b style="color:#3f7a2a">роль подходит, +25%</b>':''} · принесёт: ${costHtml(rw).replace(/cost no/g,'cost')}</div></div>
+      <button class="btn leather small" ${slots>0?'':'disabled'} ${act(()=>{ if(expSend(id,z,mi)) rerender(); })}>${ico('map')} Отправить</button></div>`; }
+  return h+`<div class="muted" style="font-size:12px;margin-top:4px">${ico('star')} ★ — роль спутника подходит земле. Ещё в походе находят яйца питомцев, камни и снаряжение.</div></div>`;
 }
 function expReadyCount(){ return expS().list.filter(x=>expLeft(x)<=0).length; }
 function compVillageSeq(seq){ if(stageDone('1-2')&&!compOwned('bran')&&!S.seen.bran_join){ seq.push(cb=>{ S.seen.bran_join=1; compS().owned.bran={lv:Math.max(1,S.hero.lvl-1),xp:0,g:{w:0,c:0},inj:0}; if(!compS().active) compS().active='bran';

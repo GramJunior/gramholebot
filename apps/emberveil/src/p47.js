@@ -240,7 +240,7 @@ pProfile=function(){ let h=_pProfile24.apply(this,arguments); try{ const b=(PS&&
     if(b.forge) rows.push(['anvil','Кузница',`+${b.forge}% урона оружием`]); if(b.wallsH) rows.push(['tower','Частокол',`+${b.wallsH}% здоровья, +${b.wallsA}% брони`]);
     if(S.bld.alch) rows.push(['flask','Лавка алхимика',`+${S.bld.alch*VB24.alch.k}% силы зелий`]); if(b.pen) rows.push(['paw','Питомник',`+${b.pen}% силы питомцев`]); if(b.temple) rows.push(['temple','Храм Угля',`+${b.temple}% урона умений и заклинаний`]);
     if(S.bld.tavern) rows.push(['mug','Таверна',`+${S.bld.tavern*VB24.tavern.k}% силы спутников`]); if(b.houses) rows.push(['house','Дома',`+${b.houses}% опыта и золота`]); rows.push(['flame','Пламя Очага '+hearthLv(),`+${fmtP(b.hearth||0)}% урона и здоровья`]);
-    if(b.gem) rows.push(['gemT','Гнездо Очага',GEMS[S.hearth.gem.slice(0,-1)].t.replace('{v}',b.gem.v)]); if(b.ranged) rows.push(['bow','Стрелок',`−${Math.round((1-V24R.hpK)*100)}% здоровья, броня ×${String(V24R.armK).replace('.',',')}`]);
+    if(b.gem) rows.push(['gemT','Гнездо Очага',GEMS[S.hearth.gem.slice(0,-1)].t.replace('{v}',b.gem.v)]); if(b.ranged){ const bw=PS.cls==='bow'&&typeof BOW32!=='undefined'; rows.push(['bow','Стрелок',`−${Math.round((1-(bw?BOW32.hp:V24R.hpK))*100)}% здоровья, броня ×${String(bw?BOW32.arm:V24R.armK).replace('.',',')}`]); }
     const sec=`<div class="sect">Сила деревни</div><div class="vstat24">${rows.map(([i,n,v])=>`<div><span>${ico(i)}</span><b>${n}</b><small>${v}</small></div>`).join('')}</div>`;
     const i=h.indexOf('<div class="sect">Умения и магия'); h=i>=0?h.slice(0,i)+sec+h.slice(i):h+sec; }catch(e){ console.error(e); } return h; };
 

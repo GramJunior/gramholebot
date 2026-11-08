@@ -419,7 +419,7 @@ function pMats(){ let L='';
 function matAuto(){ // «аккуратный игрок» для бота: переплавить, когда не хватает
   if(S.bld.forge>=1){ let g=0; while((S.res.ingot||0)<40&&(S.res.ore||0)>=220&&g++<60&&refineDo('smelt',1)){} }
   if(S.bld.forge>=2){ let g=0; while((S.res.steel||0)<30&&(S.res.ingot||0)>=24&&g++<60&&refineDo('temper',1)){} }
-  if(S.bld.forge>=4){ let g=0; while((S.res.mithril||0)<10&&(S.res.steel||0)>=18&&(S.res.dust||0)>=40&&g++<30&&refineDo('mith',1)){} }
+  if(S.bld.forge>=4){ let g=0; while((S.res.mithril||0)<10&&(S.res.steel||0)>=18&&(S.res.dust||0)>=80&&g++<30&&refineDo('mith',1)){} }
   for(const k in SPELLS){ const m=SPELL_MAT[k]; if(m&&m[0]==='e'&&(S.spell.tomes[k]||0)>0){ let g=0; while((S.res[m]||0)<2*spellRank(k)&&(S.res.ess||0)>=30&&(S.res.herb||0)>=2&&g++<12&&pay(DISTILL_C)) S.res[m]++; } } }
 Object.assign(window.__game,{
   salvOpen:()=>salvBatchOpen(), salvClose:()=>salvClose(), salvAsk:(i)=>{ const it=S.inv[i||0]; if(it) salvageAsk([it],{from:CARD?'card':'x'}); }, salvParts:(i)=>salvageParts(S.inv[i||0]),

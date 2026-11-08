@@ -19,7 +19,7 @@ function enterVillage(after){
   show('hud'); hudBuild(); AU.music('village'); cullProps(0,0,true);
   const got=collectProduction(); const keys=Object.keys(got).filter(k=>got[k]>0);
   const seq=[];
-  if(keys.length&&Object.values(got).reduce((a,b)=>a+b,0)>5) seq.push(cb=>{ openPanel('offline',{html:`<div class="card"><p class="dcap">Жители Брода не сидели сложа руки. Пока вас не было, деревня собрала:</p><div class="row" style="flex-wrap:wrap;gap:6px;margin:8px 0">${keys.map(k=>resChip(k,got[k])).join('')}</div><button class="btn leather" style="width:100%" ${act(()=>{ closePanel(); cb(); })}>Забрать</button></div>`}); AU.sfx('gold'); });
+  if(keys.length&&Object.values(got).reduce((a,b)=>a+b,0)>5) seq.push(cb0=>{ let done=0; const cb=()=>{ if(done) return; done=1; cb0(); }; /* v32: ✕/назад/мимо окна тоже продолжают цепочку деревни */ openPanel('offline',{onClose:cb,html:`<div class="card"><p class="dcap">Жители Брода не сидели сложа руки. Пока вас не было, деревня собрала:</p><div class="row" style="flex-wrap:wrap;gap:6px;margin:8px 0">${keys.map(k=>resChip(k,got[k])).join('')}</div><button class="btn leather" style="width:100%" ${act(()=>{ closePanel(); cb(); })}>Забрать</button></div>`}); AU.sfx('gold'); });
   const pend=S.q.flags.pend||[]; S.q.flags.pend=[];
   for(const k of pend) seq.push(cb=>playDialog(k,cb));
   if(stageDone('1-3')&&!S.seen.egg_gift) seq.push(cb=>playDialog('egg_gift',()=>{ S.pets.eggs.push({kind:'wolf',start:0}); toast('Получено яйцо: <b>Волчонок</b>',iconForGeo('eggwolf',eggGeo('wolf')),1); saveGame(); cb(); }));
@@ -160,7 +160,7 @@ function runEnd(win,reason,keep){
   if(win){ stars=1+(r.t<=I.par?1:0)+(r.minHp>=.35?1:0); starTxt=`${r.t<=I.par?'★ быстро':'☆ медленно'} · ${r.minHp>=.35?'★ стойко':'☆ было опасно'}`;
     const prev=S.prog.stages[I.key]; const first=!prev;
     S.prog.stages[I.key]={stars:Math.max(stars,prev?prev.stars:0),best:Math.min(r.t,prev?prev.best:1e9)};
-    if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; addXp(xpNeed(S.hero.lvl)*(I.s===5?.45:.3)); if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
+    if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; addXp(xpNeed(Math.min(S.hero.lvl,I.lvl))*(I.s===5?.45:.3)*xpLvlK32(I.lvl)); /* v32: перекачанному меньше */ if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
     ev('stage',{key:I.key,nopot:r.pots===0,first,stars}); AU.sfx('win'); track('stage_finish',I.key);
   } else if(!keep){ const lost=Math.round(r.gold*.3); S.res.gold=Math.max(0,S.res.gold-lost); r.lost=lost; }
   if(!win) track(keep?'stage_leave':'stage_fail',I.key);

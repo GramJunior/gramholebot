@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=9;
+const SAVE_V=10;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -129,6 +129,8 @@ function migrateSave(d){
     d.loot=d.loot||{blp:0,n:0,up:0,conv:0}; d.v=8; }
   if(d.v<9){ // v8 → v9 (игра v26): звёзды этапа по условиям (sf), звёздные сундуки зон, Кошмар I–X, мастерство оружия, Уголь мастерства (src/p51.js → v9Migrate)
     try{ if(typeof v9Migrate==='function') v9Migrate(d); }catch(e){ console.error(e); } d.v=9; }
+  if(d.v<10){ // v9 → v10 (игра v32): благословения Храма → «Дары Очага» (три дара; убранные — возврат осколков и эссенции), Архив Памяти S.arch (src/p65.js → v10Migrate)
+    try{ if(typeof v10Migrate==='function') v10Migrate(d); }catch(e){ console.error(e); } d.v=10; }
   return d;
 }
 let _saveT=0;

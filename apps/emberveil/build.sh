@@ -9,8 +9,9 @@ D=$(cd "$(dirname "$0")" && pwd)
 # p60–p63 — Глава II, веха 4: Изнанка Хмари и финал (v30): данные, системы, боссы и концовки, мир
 # p70 — v31: оптимизация и стабильность (вызовы отрисовки, прогрев шейдеров, Telegram, сохранения)
 # p64 — правки по аудиту боя и графики (v31): жесты героя, «Клинок Зари», баннер и всплывашки
+# p65 — баланс и системы (v32): опыт, ворота Главы II, заточка, Дары Очага, Архив Памяти, отряд на владыках
 P58=""; [ -f "$D/src/p58.js" ] && P58="p58.js"
-PARTS="p0.html p1.js p1i.js p2.js p2a.js p3.js p3b.js p3c.js p4.js p5.js p6.js p6b.js p6c.js p6t.js p7.js p7b.js p8.js p8b.js p8n.js p10.js p11.js p12.js p13.js p14.js p15.js p9.js p16.js p17.js p18.js p19.js p20.js p21.js p22.js p23.js p24.js p25.js p26.js p27.js p28.js p29.js p30.js p31.js p32.js p33.js p34.js p35.js p36.js p37.js p38.js p39.js p40.js p41.js p42.js p43.js p44.js p45.js p46.js p47.js p48.js p49.js p50.js p51.js p52.js p53.js p54.js p55.js p56.js p57.js $P58 p59.js p60.js p61.js p62.js p63.js p64.js p70.js pz.html"
+PARTS="p0.html p1.js p1i.js p2.js p2a.js p3.js p3b.js p3c.js p4.js p5.js p6.js p6b.js p6c.js p6t.js p7.js p7b.js p8.js p8b.js p8n.js p10.js p11.js p12.js p13.js p14.js p15.js p9.js p16.js p17.js p18.js p19.js p20.js p21.js p22.js p23.js p24.js p25.js p26.js p27.js p28.js p29.js p30.js p31.js p32.js p33.js p34.js p35.js p36.js p37.js p38.js p39.js p40.js p41.js p42.js p43.js p44.js p45.js p46.js p47.js p48.js p49.js p50.js p51.js p52.js p53.js p54.js p55.js p56.js p57.js $P58 p59.js p60.js p61.js p62.js p63.js p64.js p65.js p70.js pz.html"
 python3 - "$D" $PARTS <<'PY'
 import sys,json
 d=sys.argv[1]; parts=sys.argv[2:]
