@@ -32,23 +32,25 @@ function wb2Screen(){ const k=PANEL.kind;
 
 // ---------- Профиль: крупный герой, атрибуты с порогами, характеристики ----------
 function wb2AttrRow(k){ const a=ATTR[k], A=S.hero.attr; const base=A[k]||0, tot=attrTotal(k); const P=(typeof PERKS!=='undefined'&&PERKS[k])||[]; const T=typeof PERK_T!=='undefined'?PERK_T:[10,25,50];
-  const top=T[T.length-1]; const nx=T.find(t=>tot<t); const ni=T.indexOf(nx); const nP=nx?P[ni]:null;
-  const pips=T.map((t,i)=>{ const on=tot>=t; const p=P[i]; return `<span class="pp ${on?'on':''}" style="left:${(t/top*100).toFixed(1)}%" title="${esc(p?p.n+': '+p.d:'')}">${ico(on&&p?p.ic:'lock')}<b>${t}</b></span>`; }).join('');
-  return `<div class="attr wb2a" style="--c:${a.c}" ${act(()=>{ const L=P.map((p,i)=>`${tot>=T[i]?'✓':ico('lock')} <b>${T[i]} · ${p.n}</b> — ${p.d}`).join('<br>'); toast(`<b>${a.n}</b> · ${a.d}${L?'<br>'+L:''}`,null,6); })}>
-    <span class="ai">${ico(a.ic)}</span><div class="am"><div class="an"><b>${a.n} <em>${tot}</em>${tot!==base?`<small>+${tot-base}</small>`:''}</b><small>${nP?`${nx}: ${esc(nP.n)} · ещё ${nx-tot}`:tot>=top?'все пороги открыты':esc(a.d)}</small></div>
-    <div class="pk ${k==='str'?'pk48w':''}">${wbBar(Math.min(tot,top),top,'',[])}${pips}</div></div>
+  // v38: под именем — две главные характеристики: «за очко × очков = сейчас» (числа из ATTR[k].st); под значком — пороги 10/25/50;
+  // рядом с именем — оружие, которому он важнее всего; касание строки — карточка атрибута (p79: attrCard)
+  const nx=T.find(t=>tot<t); const ef=typeof attrFx==='function'?attrFx(k):{lines:`<div class="ae">${esc(a.d)}</div>`,cls:[]};
+  const pips=T.map((t,i)=>`<i class="${tot>=t?'on':''}"></i>`).join('');
+  return `<div class="attr wb2a v38" style="--c:${a.c}" ${act(()=>{ if(typeof attrCard==='function') attrCard(k); })}>
+    <span class="ai"><span class="aii">${ico(a.ic)}</span><span class="pk3 ${k==='str'?'pk48w':''}" title="Пороги ${T.join(' / ')}">${pips}</span></span><div class="am"><div class="an"><b>${a.n} <em>${tot}</em>${tot!==base?`<small>+${tot-base}</small>`:''}</b>${ef.cls.length?`<span class="acl" title="Важнее всего: ${ef.cls.map(c=>CLS_NAME[c]).join(', ')}">${ef.cls.map(c=>ico(c)).join('')}</span>`:''}</div>
+    ${ef.lines}</div>
     <button class="wb-btn em pl" aria-label="+1 ${esc(a.n)}" ${S.hero.ap>0?'':'disabled'} ${act(ev=>{ ev.stopPropagation(); if(S.hero.ap<=0) return; A[k]++; S.hero.ap--; AU.sfx('pick'); refreshPlayer(false); saveGame(); rerender(); })}>+</button></div>`; }
 function wb2Prof(){ const s=computeStats(); const cls=curCls(); const xpn=xpNeed(S.hero.lvl); const fr=S.hero.lvl>=MAX_LVL?1:S.hero.xp/xpn; const ap=S.hero.ap|0; const rc=respecCost();
   const cos=['skin','glow','frame','pet'].map(t=>{ const id=cosEquipped(t); return `<button class="pcos" title="${{skin:'Облик',glow:'Свечение',frame:'Рамка',pet:'Питомец'}[t]}" ${act(()=>openPanel('coll',{tab:t}))}>${id&&COSM[id]?cosIcon(id):`<span class="cosic">${ico('spark')}</span>`}</button>`; }).join('');
   const L=`<div class="wb-board wb2-hero"><div class="wb-bt wb-plate brass rivets sm">${ico(cls)} ${CLS_NAME[cls]}</div><div class="ph-img"><img src="${heroFull()}" alt=""></div><div class="prof-cos">${cos}</div>
     <div class="ph-lv"><div class="lvring" style="--p:${Math.round(fr*100)}"><b>${S.hero.lvl}</b><small>ур.</small></div><div class="ph-pw"><small>Сила героя</small><b>${wbNum(heroPower())}</b><span>${ico('bag')} вещи ${wbNum(gearPower())}</span></div></div></div>`;
-  const M=`<div class="wb-board wb2-attrs"><div class="wb-bt wb-plate brass rivets sm">Атрибуты${ap?` <span class="apt">${ap}</span>`:''}</div>
+  const M=`<div class="wb-board wb2-attrs"><div class="wb-bt wb-plate brass rivets sm">Атрибуты${ap?` <span class="apt">${ap}</span>`:''}</div><button class="ev38q" aria-label="Что такое атрибуты" ${act(()=>{ if(typeof attrInfoCard==='function') attrInfoCard(); })}>?</button>
     <div class="attrs">${Object.keys(ATTR).map(wb2AttrRow).join('')}</div>
     <div class="attrB wb2-acts"><button class="wb-btn wd sm" title="Сбросить атрибуты${Object.keys(rc).length?'':' (бесплатно)'}" ${act(()=>{ const c=respecCost(); if(Object.keys(c).length&&!pay(c)){ AU.sfx('deny'); toast('Не хватает золота'); return; } attrRespec(); rerender(); })}>${ico('swap')} Сброс${Object.keys(rc).length?` <small>${wbNum(rc.gold||0)}</small>`:''}</button>
       ${Object.keys(rc).length?`<button class="wb-btn br sm" title="Сброс за самоцветы" ${act(()=>{ if(!crysSpend(SHOP_CRYS.respec,'respec')) return; S.hero.resp=Math.max(0,(S.hero.resp||1)-1); attrRespec(); rerender(); })}>${ico('crys')} ${SHOP_CRYS.respec}</button>`:''}
       <button class="wb-btn em" ${ap>0?'':'disabled'} ${act(()=>{ attrAuto(); AU.sfx('lvl',.5); rerender(); })}>${ico('spark')} Распределить</button></div></div>`;
-  const dl=[['heart','Здоровье',wbNum(s.maxHp)],['sword','Атака',wbNum(s.atk)],['shield','Броня',wbNum(s.armorT)],['target','Крит',s.crit.toFixed(0)+'% · +'+s.critD.toFixed(0)+'%'],['bolt','Скор. атаки','+'+s.aspd.toFixed(0)+'%'],['sun','Сопротивл.',s.res.toFixed(0)+'%'],['drop','Вампиризм',s.ls.toFixed(1).replace('.',',')+'%'],['clock','Перезарядка','−'+s.cdr.toFixed(0)+'%'],['spark','Умения','+'+Math.round(s.skill)+'%'],['flame','Заклинания','+'+Math.round(s.spell||0)+'%'],['feather','Бег','+'+Math.round(s.move)+'%'],['star','Удача','+'+Math.round(s.mf)+'%']];
-  const R=`<div class="wb-board wb2-stats"><div class="wb-bt wb-plate brass rivets sm">Характеристики</div><div class="dstats">${dl.map(([i,n,v])=>`<div><span>${ico(i)}</span><small>${n}</small><b>${v}</b></div>`).join('')}</div></div>`;
+  const dl=[['heart','Здоровье',wbNum(s.maxHp),'hp'],['sword','Атака',wbNum(s.atk),'atk'],['shield','Броня',wbNum(s.armorT),'armor'],['target','Крит',s.crit.toFixed(0)+'% · +'+s.critD.toFixed(0)+'%','crit'],['bolt','Скор. атаки','+'+s.aspd.toFixed(0)+'%','aspd'],['sun','Сопротивл.',s.res.toFixed(0)+'%','res'],['drop','Вампиризм',s.ls.toFixed(1).replace('.',',')+'%','ls'],['clock','Перезарядка','−'+s.cdr.toFixed(0)+'%','cdr'],['spark','Умения','+'+Math.round(s.skill)+'%','skill'],['flame','Заклинания','+'+Math.round(s.spell||0)+'%','spell'],['feather','Бег','+'+Math.round(s.move)+'%','move'],['star','Удача','+'+Math.round(s.mf)+'%','mf']];
+  const R=`<div class="wb-board wb2-stats"><div class="wb-bt wb-plate brass rivets sm">Характеристики</div><div class="dstats">${dl.map(([i,n,v,id])=>`<div class="ds38" ${act(()=>{ if(typeof statCard==='function') statCard(id); })}><span>${ico(i)}</span><small>${n}</small><b>${v}</b></div>`).join('')}</div></div>`;
   return `<div class="wb2-prof">${L}${M}${R}</div>`; }
 
 // ---------- Снаряжение: кукла и сумка (прежняя разметка pGear2 — классы .doll2/.invgrid/.invbar/.invact для туров) ----------
