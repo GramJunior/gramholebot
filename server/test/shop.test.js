@@ -85,6 +85,30 @@ test('Лавка: starter pack once, weekly pack once per ISO week, bundles carr
   } finally { tg.restore(); }
 });
 
+test('Колесо судьбы: вращения за Stars (×1 и ×10 со скидкой) — расходники, выдаются один раз', async () => {
+  const env = makeEnv();
+  const call = api(env, { now: Date.parse('2026-11-04T10:00:00Z') });
+  const tg = mockTelegram({ createInvoiceLink: () => 'https://t.me/$inv' });
+  try {
+    const s = await loginTg(call, 701, 'Колесо');
+    const cfg = await call('GET', '/config');
+    const p1 = cfg.body.products.find((x) => x.id === 'spin_1');
+    const p10 = cfg.body.products.find((x) => x.id === 'spin_10');
+    assert.deepEqual(p1.grant, { spin: 1 }); assert.deepEqual(p10.grant, { spin: 10 });
+    assert.ok(p10.stars < p1.stars * 10, '×10 дешевле десяти ×1');
+    assert.equal(p1.once, false); assert.equal(p10.weekly, false);
+    await buy(call, env, tg, s, 701, 'spin_10', 'ch_sp1');
+    await buy(call, env, tg, s, 701, 'spin_1', 'ch_sp2');
+    await buy(call, env, tg, s, 701, 'spin_1', 'ch_sp3');
+    const c = await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_spin1' } });
+    assert.equal(c.status, 200);
+    const g = Object.fromEntries(c.body.grants.map((x) => [x.productId, x]));
+    assert.deepEqual(g.spin_10, { productId: 'spin_10', n: 1, grant: { spin: 10 } });
+    assert.deepEqual(g.spin_1, { productId: 'spin_1', n: 2, grant: { spin: 1 } });
+    assert.deepEqual((await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_spin2' } })).body.grants, []);
+  } finally { tg.restore(); }
+});
+
 test('Лавка: free chest timer is enforced by the server clock', async () => {
   const env = makeEnv();
   const clock = { now: Date.parse('2026-11-04T10:00:00Z') };

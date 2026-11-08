@@ -57,7 +57,7 @@ export const DEFAULTS = {
   // Telegram Stars products. Cosmetics/pass/subscription are entitlements; products with `grant` are consumables:
   // the game claims them once via POST /pay/claim (idempotent). `once` — buy once, `weekly` — once per ISO week.
   // Grant keys (applied by the game, src/p21.js grantBundle): sparks (= «Самоцветы»), open_<tier> (chest opened now),
-  // chest_<tier> (stored chest), key_iron/key_gold/key_leg, frag, prot/tome/potion…, slot2 (second builder).
+  // chest_<tier> (stored chest), key_iron/key_gold/key_leg, frag, prot/tome/potion…, slot2 (second builder), spin (Wheel of Fortune spins, src/p71.js).
   // No combat power is sold directly: gems buy time/chests; PvP raids & Abyss board use «Честный бой» (see game README).
   products: [
     { id: 'crys_80', title: 'Горсть самоцветов', description: '80 самоцветов', stars: 49, type: 'currency', grant: { sparks: 80 } },
@@ -69,6 +69,9 @@ export const DEFAULTS = {
     { id: 'build_slot', title: 'Второй строитель', description: 'Навсегда: две стройки одновременно (+50 самоцветов)', stars: 199, type: 'bundle', once: true, grant: { slot2: 1, sparks: 50 } },
     { id: 'chest_gold3', title: 'Три золотых сундука', description: 'Открываются сразу, ключи не нужны', stars: 129, type: 'bundle', grant: { open_gold: 3 } },
     { id: 'chest_leg1', title: 'Легендарный сундук', description: 'Открывается сразу: легендарная вещь гарантирована', stars: 119, type: 'bundle', grant: { open_leg: 1 } },
+    // Колесо судьбы (игра v34, хаб «Награды»): купленные вращения копятся в сохранении и не сгорают; grant.spin — число вращений
+    { id: 'spin_1', title: 'Вращение Колеса', description: '1 вращение Колеса судьбы', stars: 25, type: 'spin', grant: { spin: 1 } },
+    { id: 'spin_10', title: '10 вращений Колеса', description: '10 вращений Колеса судьбы (−20%)', stars: 200, type: 'spin', grant: { spin: 10 }, tag: '−20%' },
     { id: 'bp_s1', title: 'Боевой пропуск — Сезон 1', description: 'Премиум-дорожка: облики, рамки, эмоции питомцев', stars: 250, type: 'battlepass', once: true },
     { id: 'skin_cloak_ember', title: 'Плащ «Тлеющий»', description: 'Косметический облик героя', stars: 100, type: 'cosmetic', once: true },
     { id: 'pack_village_lanterns', title: 'Фонари Брода', description: 'Украшения для деревни', stars: 75, type: 'cosmetic', once: true },

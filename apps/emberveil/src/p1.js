@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=10;
+const SAVE_V=11;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -131,6 +131,8 @@ function migrateSave(d){
     try{ if(typeof v9Migrate==='function') v9Migrate(d); }catch(e){ console.error(e); } d.v=9; }
   if(d.v<10){ // v9 → v10 (игра v32): благословения Храма → «Дары Очага» (три дара; убранные — возврат осколков и эссенции), Архив Памяти S.arch (src/p65.js → v10Migrate)
     try{ if(typeof v10Migrate==='function') v10Migrate(d); }catch(e){ console.error(e); } d.v=10; }
+  if(d.v<11){ // v10 → v11 (игра v34): «Награды» — серия 7 дней, месяц (28 входов), печати недельных контрактов, Колесо судьбы (src/p71.js → v11Migrate)
+    try{ if(typeof v11Migrate==='function') v11Migrate(d); }catch(e){ console.error(e); } d.v=11; }
   return d;
 }
 let _saveT=0;
