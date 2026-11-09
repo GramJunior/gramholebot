@@ -278,6 +278,11 @@ curl "$API/admin/metrics?days=30&prefix=ftue" -H "$ADM" # только воро�
 
 Как читать воронку обучения: `users` у `ftue:prologue_start` → `ftue:prologue_end` → `ftue:wake` → `ftue:build` → `ftue:stage11` → … → `ftue:raid` → `ftue:done`. Самая большая просадка — место для правки. `ftue:prologue_skip_t30` показывает, на какой секунде пролог пропускают. Монетизация: `purchase_intent:<товар>` → `purchase_success:<товар>`; `purchase_blocked:offline|no_tg` — сколько хотели купить вне Telegram. Реклама: `ad_offer:<место>` → `ad_watch:<место>`, `ad_unavailable` — если SDK не подключён. Возвраты: `day_return:d1`, `d7`… (по часам устройства, для быстрой проверки).
 
+**Ошибки клиента (v39).** Игра ловит `window.onerror` и необработанные `Promise` и шлёт их тем же `POST /events` как `{e:'error', k:<подпись>, d:{m:сообщение, s:верх стека, v:версия, md:режим}}` — не чаще раза на подпись и не больше 5 за сессию. Счётчик `error:<подпись>` попадает в `events`, а в таблицу `err_reports` (миграция `0004_errors.sql`) — сводка по дням: первое сообщение (≤200 символов), стек (≤300), версия, режим, сколько раз и у скольких игроков; хранится 30 дней (cron).
+```bash
+curl "$API/admin/errors?days=7" -H "$ADM"   # частые ошибки за неделю (то же — в /admin/metrics → errors, топ-20)
+```
+
 Прямой SQL (например, D1 за конкретный день):
 ```bash
 npx wrangler d1 execute emberveil --remote --command "WITH f AS (SELECT uid, MIN(day) d0 FROM active_days GROUP BY uid) SELECT d0, COUNT(*) n, SUM(EXISTS(SELECT 1 FROM active_days a WHERE a.uid=f.uid AND a.day=date(f.d0,'+1 day'))) d1 FROM f GROUP BY d0 ORDER BY d0 DESC LIMIT 14"
@@ -393,9 +398,9 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 | 🔒 `POST /chest/free` | бесплатный сундук (таймер по часам сервера) |
 | 🔒 `GET /referrals`, `POST /friends/add`, `GET /inbox`, `POST /inbox/claim` | друзья и подарки |
 | 🔒 `POST /notify/schedule {kind,inSec}` | напоминание через бота |
-| 🔒 `POST /events {events:[{e,k}]}` | аналитика игры: до 50 событий за раз, хранятся только суточные счётчики |
+| 🔒 `POST /events {events:[{e,k,d?}]}` | аналитика игры: до 50 событий за раз, хранятся только суточные счётчики; `d` — только у `error` (сводка `err_reports`) |
 | `POST /tg/webhook` | обновления от Telegram (проверяется секретный заголовок) |
-| `GET\|PUT\|DELETE /admin/config[/:key]`, `POST /admin/grant\|inbox\|ban\|refund`, `GET /admin/audit\|stats\|metrics` | админка (`ADMIN_SECRET`) |
+| `GET\|PUT\|DELETE /admin/config[/:key]`, `POST /admin/grant\|inbox\|ban\|refund`, `GET /admin/audit\|stats\|metrics\|errors` | админка (`ADMIN_SECRET`) |
 
 ## 9. Защита от читов: что проверяется
 
@@ -432,11 +437,33 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 - [ ] Если токен утёк: @BotFather → `/revoke`, затем `wrangler secret put BOT_TOKEN` и заново шаг 9.
 - [ ] Включите двухфакторный вход в Cloudflare и Telegram.
 - [ ] Раз в неделю смотрите `GET /admin/audit`.
-- [ ] По желанию в панели Cloudflare можно настроить Rate Limiting для `/auth/*` (защита от перебора).
+- [ ] Ограничение частоты запросов включено (v39, см. раздел 11б): привязки `[[ratelimits]]` в `wrangler.toml` выложены вместе с воркером. Для `/admin/*` дополнительно стоит закрыть путь Cloudflare Access.
+- [ ] `INITDATA_MAX_AGE_SEC = "3600"` (по умолчанию с v39): подписанный Telegram `initData` старше часа не принимается.
 - [ ] Резервная копия базы: `npx wrangler d1 export emberveil --remote --output backup.sql`.
+
+## 11б. Ограничение частоты запросов (v39)
+
+Каждый запрос к «дорогим» методам проходит через `src/lib/ratelimit.js`; сверх лимита — `429 {error:'rate_limited', retryAfter}` и заголовок `Retry-After`. Игра (`ev-net.js`) воспринимает 429 как обычную ошибку и повторит позже (сохранение и события стоят в очереди).
+
+| Группа | Методы | Ключ | Лимит |
+|---|---|---|---|
+| `RL_AUTH` | `POST /auth/telegram`, `POST /auth/guest` | IP (`CF-Connecting-IP`) | 20 в минуту |
+| `RL_SAVE` | `PUT /save` | игрок (из токена) | 30 в минуту |
+| `RL_EVENTS` | `POST /events` | игрок | 30 в минуту |
+| `RL_PAY` | `POST /pay/invoice` | игрок | 10 в минуту |
+| `RL_ADMIN` | `/admin/*` | IP | 30 в минуту |
+
+- **В бою** счётчики ведёт Cloudflare: [Workers Rate Limiting API](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/), привязки `[[ratelimits]]` в `wrangler.toml` (нужен wrangler ≥ 4.36; в проекте — 4.x). Окно — 10 или 60 с, счёт ведётся в каждой точке присутствия отдельно (это защита от наводнения запросами, а не точный учёт). `namespace_id` — любое целое, уникальное в аккаунте Cloudflare.
+- **Без привязок** (локально, в тестах, старый wrangler) работает запасной счётчик «ведро с жетонами» в памяти изолята с теми же числами — слабее (каждый изолят считает сам), но одного клиента, долбящего сервер, останавливает.
+- Привязка недоступна или упала — запрос пропускается (игрока не блокируем из-за сбоя ограничителя).
+- `RATE_LIMIT = "0"` в `[vars]` выключает ограничение (нагрузочные тесты). Лимиты меняются в `RL_RULES` (`src/lib/ratelimit.js`) и в `wrangler.toml` вместе.
+- Тесты: `test/limits.test.js` (группы, 429 и `Retry-After`, ключ по игроку и по IP, приоритет привязки, отказ привязки, ошибки клиента, срок `initData`).
+
+**Выкладка v39:** `npx wrangler d1 migrations apply emberveil --remote` (таблица `err_reports`), затем `npx wrangler deploy` (привязки ограничителя и `INITDATA_MAX_AGE_SEC=3600`).
 
 ## 12. Ограничения (честно)
 
+- Ограничение частоты запросов (v39) считает по точкам присутствия Cloudflare, а запасной счётчик — по изолятам: это защита от наводнения, не строгий лимит.
 - Облачное сохранение — защита «от дурака», а не настоящий античит. Опытный игрок может подделать сохранение в разумных пределах. Рейтинги защищены лучше, но время забега всё равно меряет клиент.
 - Набег проходит на телефоне атакующего. Сервер проверяет правдоподобие результата, но бой не пересчитывает. Экрана набегов в игре пока нет, сервер для него готов.
 - Подписка «Хранитель Брода» — это разовая покупка на 30 дней без автопродления. Продление складывается со сроком.

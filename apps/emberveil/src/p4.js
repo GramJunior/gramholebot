@@ -164,8 +164,8 @@ const BOSSES={
   bogMother:{n:'Матушка Трясина',t:'Ведьма болот',hp:6000,dmg:28,spd:2.6,model:'bogMother',scale:1,r:2.0,phases:[1,.6,.3],xp:500,el:'poison'},
   morven:{n:'Морвен',t:'Костяной рыцарь',hp:8500,dmg:32,spd:3.4,model:'morven',scale:1,r:1.1,phases:[1,.6,.3],xp:750,el:'ice'},
   colossus:{n:'Пепельный Колосс',t:'Сердце вулкана',hp:12500,dmg:36,spd:1.8,model:'colossus',scale:1,r:1.9,phases:[1,.66,.33],xp:1100,el:'fire'},
-  dragon:{n:'Игнар',t:'Последний дракон',hp:16000,dmg:40,spd:3,model:'dragon',scale:1,r:2.3,phases:[1,.6],xp:1500,el:'fire'},
-  ashKing:{n:'Остен',t:'Пепельный Король',hp:18000,dmg:42,spd:3.8,model:'ashKing',scale:1,r:1.1,phases:[1,.66,.33],xp:2400,el:'fire'}
+  dragon:{n:'Игнар',t:'Последний дракон',hp:16000,dmg:40,spd:3,model:'dragon',scale:1,r:2.3,phases:[1,.6],xp:1500,el:'fire',mus:'boss_ignar'},
+  ashKing:{n:'Остен',t:'Пепельный Король',hp:18000,dmg:42,spd:3.8,model:'ashKing',scale:1,r:1.1,phases:[1,.66,.33],xp:2400,el:'fire',mus:'boss_ashking'}
 };
 
 // ---------- zones & stages ----------

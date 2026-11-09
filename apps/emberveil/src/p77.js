@@ -334,7 +334,9 @@ function hvRender(){ const a=HV.actor; if(!a||!HV.rr||!HV.w) return; HV.hold.rot
   try{ EVAssets.setViewport(HV.w*HV.pr,HV.h*HV.pr); PAINT_U.uPaint.value.x=0; HV.rr.render(HV.sc,HV.cam); }
   finally{ PAINT_U.uPaint.value.x=pw; const sc=clamp(PR/CPR,.25,1); EVAssets.setViewport((RSZ.w||innerWidth)*CPR*sc,(RSZ.h||innerHeight)*CPR*sc); } }
 function hvPause(){ if(HV.raf) cancelAnimationFrame(HV.raf); HV.raf=0; if(HV.host) HV.host.classList.remove('hv-on'); HV.host=null; }
-function hvDispose(){ hvPause(); if(HV.actor){ try{ HV.actor.dispose(); }catch(e){} HV.actor=null; } HV.key=''; if(HV.rr){ try{ HV.rr.renderLists.dispose(); }catch(e){} } if(HV.cv&&HV.cv.parentNode) HV.cv.parentNode.removeChild(HV.cv); }
+// v39: модель героя не освобождается при закрытии панели (держится одна на сессию): иначе её шейдеры в этом рендерере
+// пересобирались бы при каждом открытии; прогрев — hvPrewarm (p80) при загрузке этапа. hvDispose(true) — освободить совсем.
+function hvDispose(full){ hvPause(); if(HV.actor&&full){ try{ HV.actor.dispose(); }catch(e){} HV.actor=null; } HV.key=''; if(HV.rr){ try{ HV.rr.renderLists.dispose(); }catch(e){} } if(HV.cv&&HV.cv.parentNode) HV.cv.parentNode.removeChild(HV.cv); }
 
 // ---------- обёртки ----------
 { const _rp=renderPanel; renderPanel=function(){ const r=_rp.apply(this,arguments); try{ idvDecorate(); }catch(e){ console.error(e); } try{ hvAttach(); }catch(e){ console.error(e); } return r; }; }

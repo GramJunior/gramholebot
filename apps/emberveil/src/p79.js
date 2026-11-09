@@ -17,9 +17,8 @@ function vnIdx(x,z){ const i=Math.floor((x-VNAV.x0)/VNAV.C), j=Math.floor((z-VNA
 function vnOk(x,z){ const k=vnIdx(x,z); return k>=0&&VNAV.g&&VNAV.g[k]===1; }
 function vnCx(k){ return VNAV.x0+(k%VNAV.nx+.5)*VNAV.C; } function vnCz(k){ return VNAV.z0+(Math.floor(k/VNAV.nx)+.5)*VNAV.C; }
 function vnBlockDisc(x,z,r){ const C=VNAV.C; for(let dz=-r;dz<=r;dz+=C*.5) for(let dx=-r;dx<=r;dx+=C*.5){ if(dx*dx+dz*dz>r*r) continue; const k=vnIdx(x+dx,z+dz); if(k>=0) VNAV.g[k]=0; } }
-function vnBuild(){ const C=VNAV.C, g=new Uint8Array(VNAV.nx*VNAV.nz);
-  for(let j=0;j<VNAV.nz;j++) for(let i=0;i<VNAV.nx;i++){ const x=VNAV.x0+(i+.5)*C, z=VNAV.z0+(j+.5)*C; g[j*VNAV.nx+i]=(sdfW(x,z)<-.5&&!obHit(x,z,.45))?1:0; }
-  VNAV.g=g; }
+function vnRows(g,j0,j1){ const C=VNAV.C; for(let j=j0;j<j1;j++) for(let i=0;i<VNAV.nx;i++){ const x=VNAV.x0+(i+.5)*C, z=VNAV.z0+(j+.5)*C; g[j*VNAV.nx+i]=(sdfW(x,z)<-.5&&!obHit(x,z,.45))?1:0; } }
+function vnBuild(){ const g=new Uint8Array(VNAV.nx*VNAV.nz); vnRows(g,0,VNAV.nz); VNAV.g=g; }
 // ближайшая проходимая клетка (спираль до R м)
 function vnSnap(x,z,R){ R=R||3; if(vnOk(x,z)) return [x,z]; const C=VNAV.C; let best=null, bd=1e9;
   for(let dz=-R;dz<=R;dz+=C) for(let dx=-R;dx<=R;dx+=C){ const d=dx*dx+dz*dz; if(d>=bd||d>R*R) continue; const k=vnIdx(x+dx,z+dz); if(k>=0&&VNAV.g[k]===1){ bd=d; best=[vnCx(k),vnCz(k)]; } } return best; }
@@ -94,7 +93,14 @@ function vlKeeper(){ if(W.vkeeper){ worldRoot.remove(W.vkeeper.rig.root); W.vill
   const v={x:sp.x,z:sp.z,rig,tx:0,tz:0,wait:1e9,t:rand(5),face,role:'keeper',st:'act',actT:1e9,_act:'idle',spd:0}; W.vkeeper=v; W.villagers.push(v); vnBlockDisc(sp.x,sp.z,.6); }
 // ---------- пересборка: сетка, пропы, места, жители ----------
 function vlKey(){ return W?(W.obst.length+'|'+Object.keys(W.bmesh||{}).map(k=>k+(W.bmesh[k].userData.tkey||'')).join(',')+'|'+((S.bq&&S.bq.list)||[]).map(j=>j.id).join(',')):''; }
-function vlRebuild(){ const t0=performance.now(); W.obst=W.obst.filter(o=>!o.vprop); vlPropCols(); vnBuild(); for(const p of VNAV.props) vnBlockDisc(p.x,p.z,p.k==='counter'?1.1:.5);
+function vlRebuild(){ const t0=performance.now(); vlPre(); vnBuild(); vlPost(t0); }
+function vlPre(){ W.obst=W.obst.filter(o=>!o.vprop); vlPropCols(); }
+// v39: пересборка сетки после стройки — по частям (≤3 мс за кадр), жители пока ходят по старой сетке; вход в деревню — сразу (под затемнением)
+function vlRebuildAsync(){ vlPre(); VNAV.job={W,g:new Uint8Array(VNAV.nx*VNAV.nz),j:0,t:0,n:0}; }
+function vlJob(){ const J=VNAV.job; if(J.W!==W){ VNAV.job=null; return; } const t0=performance.now(); J.n++;
+  while(J.j<VNAV.nz&&performance.now()-t0<3){ const j1=Math.min(VNAV.nz,J.j+6); vnRows(J.g,J.j,j1); J.j=j1; } J.t+=performance.now()-t0;
+  if(J.j>=VNAV.nz){ VNAV.job=null; VNAV.g=J.g; const t1=performance.now(); vlPost(t1); VNAV.ms=+(J.t+(performance.now()-t1)).toFixed(1); VNAV.frames=J.n; VNAV.msMax=Math.max(VNAV.msMax||0,+(performance.now()-t1).toFixed(1)); } }
+function vlPost(t0){ for(const p of VNAV.props) vnBlockDisc(p.x,p.z,p.k==='counter'?1.1:.5);
   vlPlaceNpcs(); vlKeeper(); VNAV.spots=vlSpots(); VNAV.W=W; VNAV.key=vlKey();
   for(const v of W.villagers){ if(v.role==='keeper') continue; v.wait=1e9; v.tgt=null; v.role=null; v.spot=null; v.path=null; v.st='idle'; v.actT=rand(.5,2.5); v._in=false; vlShow(v,true);
     if(!vnOk(v.x,v.z)){ const free=VNAV.spots.filter(s=>s.k==='chat'||s.k==='idle'); const s=pick(free.length?free:VNAV.spots); const p=s?vnSnap(s.x+rand(-1,1),s.z+rand(-1,1),2):null; if(p){ v.x=p[0]; v.z=p[1]; } } v.spd=rand(1.45,1.75); }
@@ -107,7 +113,7 @@ function vlGo(v,s){ if(v.spot) v.spot.busy=Math.max(0,v.spot.busy-1); v.spot=s; 
 function vlPick(v){ const S2=VNAV.spots.filter(s=>!s.fixed&&s.busy<s.cap&&s!==v.spot&&Math.hypot(s.x-v.x,s.z-v.z)>2.5); if(!S2.length) return null;
   const w=s=>(s.k==='chat'?1.6:s.k==='door'?(s.home!==undefined&&s.home===v.home?3:1):s.k==='well'?1.2:1)*(1+Math.min(1,Math.hypot(s.x-v.x,s.z-v.z)/30)*.3); let tot=0; for(const s of S2) tot+=w(s); let r=Math.random()*tot; for(const s of S2){ r-=w(s); if(r<=0) return s; } return S2[S2.length-1]; }
 const VL_ACT={chat:'talk',door:'idle',idle:'idle',work:'work',look:'idle',chop:'chop',mine:'mine',well:'work',guard:'idle',build:'hammer'};
-function vlTick(dt){ if(!W||W.kind!=='village'||!W.villagers) return; if(VNAV.W!==W||VNAV.key!==vlKey()){ VNAV.W=W; VNAV.key=vlKey(); vlRebuild(); } const P=G.P;
+function vlTick(dt){ if(!W||W.kind!=='village'||!W.villagers) return; if(VNAV.job) vlJob(); else if(VNAV.W!==W||VNAV.key!==vlKey()){ const same=VNAV.W===W&&!!VNAV.g&&VNAV.spots.length>0; VNAV.W=W; VNAV.key=vlKey(); if(same) vlRebuildAsync(); else vlRebuild(); } const P=G.P;
   for(const v of W.villagers){ if(v.role==='keeper'){ v.moving=0; v.wait=1e9; v.tgt=null; const d=P?Math.hypot(P.x-v.x,P.z-v.z):99; v._act=d<4?'talk':'idle'; continue; }
     v.wait=1e9; v.tgt=null; if(v.home===undefined) v.home=Math.floor(Math.random()*Math.max(1,(S.bld.houses||0)*2));
     if(v.st==='in'){ v.moving=0; v.actT-=dt; vlShow(v,false); if(v.actT<=0){ v._in=false; vlShow(v,true); v.st='idle'; v.actT=rand(.3,1); } continue; }
@@ -155,7 +161,7 @@ function vlFineCols(){ for(const id of ['forge','alch','tavern']){ const m=W.bme
     if(bx&&bx.length){ W.obst=W.obst.filter(o=>!(o.bld&&o.grp===id)); for(const b of bx) W.obst.push(b); } } }
 const _bvbV38=buildVillageBuildings; buildVillageBuildings=function(){ const r=_bvbV38.apply(this,arguments); try{ if(W&&W.kind==='village') vlFineCols(); }catch(e){ console.warn('vlFine',e); } VNAV.key=''; return r; };
 const _rvV38=refreshVillagers; refreshVillagers=function(){ if(W&&W.vkeeper){ W.vkeeper=null; } const r=_rvV38.apply(this,arguments); VNAV.key=''; return r; };
-window.__game.vlife=()=>({tel:Object.assign({},VNAV.tel),spots:VNAV.spots.length,ms:VNAV.ms,props:VNAV.props.map(p=>({k:p.k,x:+p.x.toFixed(2),z:+p.z.toFixed(2)})),npcs:(W&&W.npcs||[]).map(n=>({k:n.kind,x:+n.x.toFixed(2),z:+n.z.toFixed(2),act:n._act})),vill:(W&&W.villagers||[]).map(v=>({st:v.st,role:v.role,k:v.spot&&v.spot.k,act:v._act}))});
+window.__game.vlife=()=>({tel:Object.assign({},VNAV.tel),spots:VNAV.spots.length,ms:VNAV.ms,frames:VNAV.frames||0,job:!!VNAV.job,props:VNAV.props.map(p=>({k:p.k,x:+p.x.toFixed(2),z:+p.z.toFixed(2)})),npcs:(W&&W.npcs||[]).map(n=>({k:n.kind,x:+n.x.toFixed(2),z:+n.z.toFixed(2),act:n._act})),vill:(W&&W.villagers||[]).map(v=>({st:v.st,role:v.role,k:v.spot&&v.spot.k,act:v._act}))});
 
 // ================= v38: «что даёт атрибут» и «откуда характеристика» (Профиль героя, p72) =================
 // Жалоба владельца: «нехватка описания, что даёт сила, ловкость…». В строке атрибута — эффект одного очка и итог сейчас (числа из

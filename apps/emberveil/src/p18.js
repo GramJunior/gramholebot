@@ -9,11 +9,11 @@ const fmtDur=(ms)=>{ ms=Math.max(0,ms); const m=Math.floor(ms/60000), h=Math.flo
 // ---------- analytics: track(event, key) — local queue, batched to the server (POST /events) when online ----------
 const TRK={q:null,busy:false,sent:0};
 function trkQ(){ if(!TRK.q){ try{ TRK.q=JSON.parse(Store.get('emberveil_trk')||'[]'); if(!Array.isArray(TRK.q)) TRK.q=[]; }catch(e){ TRK.q=[]; } } return TRK.q; }
-function track(e,k){ try{ const q=trkQ(); q.push({e:String(e).slice(0,24),k:k===undefined||k===null?undefined:String(k).slice(0,24),t:Date.now()}); if(q.length>300) q.splice(0,q.length-300); Store.set('emberveil_trk',JSON.stringify(q)); }catch(err){} }
+function track(e,k,d){ try{ const q=trkQ(); const it={e:String(e).slice(0,24),k:k===undefined||k===null?undefined:String(k).slice(0,24),t:Date.now()}; if(d&&typeof d==='object') it.d=d; /* v39: подробности только у «error» (p80) */ q.push(it); if(q.length>300) q.splice(0,q.length-300); Store.set('emberveil_trk',JSON.stringify(q)); }catch(err){} }
 // one-time funnel steps (ftue, first purchase…) are remembered in the save
 function trackOnce(e,k){ const m=metaS(); const id=e+':'+(k||''); if(m.tk[id]) return false; m.tk[id]=Date.now(); track(e,k); saveGame(); return true; }
 function trkFlush(){ const q=trkQ(); if(!q.length||TRK.busy||!netOn()||!EVNet.events) return; const batch=q.slice(0,50); TRK.busy=true;
-  EVNet.events.send(batch.map(x=>({e:x.e,k:x.k}))).then(r=>{ TRK.busy=false; if(r&&(r.ok||(!r.offline&&r.error!=='network'))){ q.splice(0,batch.length); TRK.sent+=batch.length; Store.set('emberveil_trk',JSON.stringify(q)); } },()=>{ TRK.busy=false; }); }
+  EVNet.events.send(batch.map(x=>x.d?{e:x.e,k:x.k,d:x.d}:{e:x.e,k:x.k})).then(r=>{ TRK.busy=false; if(r&&(r.ok||(!r.offline&&r.error!=='network'))){ q.splice(0,batch.length); TRK.sent+=batch.length; Store.set('emberveil_trk',JSON.stringify(q)); } },()=>{ TRK.busy=false; }); }
 setInterval(()=>{ try{ trkFlush(); }catch(e){} },20000);
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) try{ trkFlush(); metaNotifySchedule(); }catch(e){} });
 // day-N return (local calendar days since the save was created)
@@ -21,10 +21,13 @@ function metaDayTick(){ const m=metaS(); const t=dayKeyL(); if(m.days.last===t) 
 
 // ---------- rewarded ads (Adsgram-style adapter). Not configured → «реклама недоступна», nothing breaks ----------
 // Владелец: window.EV_ADS_BLOCK = '<blockId>' в p0.html и SDK Adsgram (<script src="https://sad.adsgram.ai/js/sad.min.js">).
+// v39: тестовый режим рекламы (?ads=test — награда без ролика) — только в разработке: localhost / 127.0.0.1 / file: / *.local
+// или сборка с window.EV_DEV_BUILD=true (в продакшене не задаётся). В Telegram и на игровом домене адрес ?ads=test ничего не даёт.
+const EV_DEV=(()=>{ try{ if(window.EV_DEV_BUILD===true) return true; const h=location.hostname||''; return location.protocol==='file:'||h==='localhost'||h==='127.0.0.1'||h==='[::1]'||/\.local$/.test(h); }catch(e){ return false; } })();
 const ADS={
   lim:{chest:3,exp:3,revive:5,spin:1},
   blockId:()=>window.EV_ADS_BLOCK||'',
-  test:()=>/[?&]ads=test/.test(location.search),
+  test:()=>EV_DEV&&/[?&]ads=test/.test(location.search),
   ready(){ return this.test()||!!(window.Adsgram&&this.blockId()); },
   left(place){ const a=metaS().ads; const d=dayKeyL(); if(a.day!==d){ a.day=d; a.n={}; } return Math.max(0,(this.lim[place]||1)-(a.n[place]||0)); },
   showRewarded(place){

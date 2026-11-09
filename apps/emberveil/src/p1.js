@@ -152,15 +152,18 @@ function vib(kind){
 
 // ================= AUDIO =================
 const AU=(()=>{
-  let ctx=null, master, sfxG, musG, rev, revG, noiseBuf, started=false;
+  let ctx=null, master, sfxG, musG, musDuck, lim, rev, revG, noiseBuf, started=false, duckOn=false;
   const A={};
   function init(){
     if(ctx) { if(ctx.state==='suspended'||ctx.state==='interrupted') ctx.resume().catch(()=>{}); return; } // v31: iOS — «interrupted» (звонок, Siri) тоже будим
     try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ ctx=null; return; }
-    master=ctx.createGain(); master.gain.value=0.9; master.connect(ctx.destination);
+    // v39: микс — общий лимитер на выходе (без клиппинга), компрессор только у звуков, у музыки своя шина с «приглушением» на время диалогов (−6 дБ)
+    lim=ctx.createDynamicsCompressor(); lim.threshold.value=-3; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=.002; lim.release.value=.12; lim.connect(ctx.destination);
+    master=ctx.createGain(); master.gain.value=0.9; master.connect(lim);
     const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4; comp.connect(master);
     sfxG=ctx.createGain(); sfxG.connect(comp);
-    musG=ctx.createGain(); musG.connect(comp);
+    musDuck=ctx.createGain(); musDuck.gain.value=1; musDuck.connect(master);
+    musG=ctx.createGain(); musG.connect(musDuck);
     // cheap reverb: generated impulse
     rev=ctx.createConvolver(); const len=ctx.sampleRate*2.2|0; const ib=ctx.createBuffer(2,len,ctx.sampleRate);
     for(let c=0;c<2;c++){const d=ib.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6);}
@@ -263,73 +266,111 @@ const AU=(()=>{
     boss2:{root:50,scale:[0,1,3,5,7,8,10],tempo:128,pad:[0,7,13],arp:'celesta',drum:6,lead:'choir',mood:.3,prog:[0,5,1,4]},
     // v23: Затонувший Златоверх — «утопленный» вальс 3/4 (глухой фильтр, стеклянная гармоника); бал — тот же вальс громче и с фальшивыми нотами
     z8:{root:48,scale:[0,2,3,5,7,8,10],tempo:66,pad:[0,7,15],arp:'waltz',drum:0,lead:'glass',mood:.25,prog:[0,5,3,4]},
-    waltz:{root:53,scale:[0,2,4,5,7,9,11],tempo:96,pad:[0,7,16],arp:'waltz',drum:0,lead:'glass',mood:.7,prog:[0,5,1,4],sour:1}
+    waltz:{root:53,scale:[0,2,4,5,7,9,11],tempo:96,pad:[0,7,16],arp:'waltz',drum:0,lead:'glass',mood:.7,prog:[0,5,1,4],sour:1},
+    // v39: Глава II, вехи 3–4 и финал (раньше этих тем не было — играла деревенская лютня)
+    // Небесные Руины — «хиджаз» (м2 + ув.2), бурдон тоники и квинты, уд с форшлагами, рамный барабан «дум-тек»
+    z9:{root:50,scale:[0,1,4,5,7,8,10],tempo:92,pad:[0,7,12],arp:'oud',drum:7,lead:'reed',mood:.55,prog:[0,0,6,0],drone:1},
+    // Изнанка Хмари — пустота: редкие медленные «вздохи», длинные паузы, без ударных
+    z10:{root:44,scale:[0,1,3,6,7,8,10],tempo:56,pad:[0,6,13],arp:'swell',drum:0,lead:'void',mood:.18,prog:[0,1,5,0],rest:2,sparse:.3},
+    // Остен-память — вальс Златоверха, медленнее, в миноре, «расстроенный» (плавающая подстройка голосов)
+    osten:{root:45,scale:[0,2,3,5,7,8,10],tempo:54,pad:[0,7,15],arp:'waltz',drum:0,lead:'glass',mood:.3,prog:[0,5,3,4],sour:1,det:22},
+    // Безликая — нарастает по фазам боя (по порогам здоровья); «Последнее Нет» — почти тишина и удары сердца
+    final2:{root:41,scale:[0,1,3,5,7,8,10],tempo:84,pad:[0,7,13],arp:'slow',drum:2,lead:'choir',mood:.25,prog:[0,1,5,4],
+      phases:[{},{tempo:104,arp:'pulse',drum:3,mood:.3},{tempo:124,arp:'pulse',drum:4,lead:'reed',mood:.35,prog:[0,1,6,4]},{tempo:144,arp:'pulse',drum:6,lead:'horn',mood:.45,prog:[0,6,1,4]},{tempo:60,arp:'swell',drum:8,lead:'void',mood:.2,sparse:.25}]},
+    // свои темы владык: Игнар (венгерский минор, «медь»), Пепельный Король (гармонический минор, марш и колокол),
+    // Аттал (хиджаз, быстрые рамные барабаны и уд), Тень Искроносца (холодное «стекло» с фальшью, пустые доли)
+    boss_ignar:{root:40,scale:[0,2,3,6,7,8,11],tempo:136,pad:[0,7,12],arp:'pulse',drum:4,lead:'horn',mood:.3,prog:[0,5,1,4]},
+    boss_ashking:{root:43,scale:[0,2,3,5,7,8,11],tempo:112,pad:[0,7,15],arp:'bell',drum:5,lead:'choir',mood:.3,prog:[0,5,3,4]},
+    boss_attal:{root:45,scale:[0,1,4,5,7,8,10],tempo:140,pad:[0,7,12],arp:'oud',drum:7,lead:'reed',mood:.45,prog:[0,1,0,6],drone:1,fast:1},
+    boss_shadow:{root:38,scale:[0,1,3,6,7,8,11],tempo:120,pad:[0,6,13],arp:'pulse',drum:3,lead:'glass',mood:.15,prog:[0,1,0,6],sour:1,sparse:.6},
+    // запасная тема для неизвестного ключа: нейтральная и тёмная (никогда не деревня)
+    neutral:{root:45,scale:[0,2,3,5,7,8,10],tempo:72,pad:[0,7,15],arp:'slow',drum:0,lead:'choir',mood:.35,prog:[0,5,3,4]}
   };
-  let cur=null, curKey='', step=0, nextT=0, timer=null, melIdx=2, barChord=0;
+  let cur=null, cc=null, curKey='', step=0, nextT=0, timer=null, melIdx=2, barChord=0; const warned={};
+  // фаза текущей темы (final2): по порогам здоровья живого владыки; «Последнее Нет» — последняя фаза
+  function curPhase(){ try{ if(typeof W!=='undefined'&&W&&W.bossMech&&W.bossMech.lastNo) return 99; const b=G.enemies.find(e=>e.boss&&e.alive); if(!b||!b.bossD) return 0; const r=b.hp/b.maxHp; return (b.bossD.phases||[]).filter(x=>x<1&&r<x).length; }catch(e){ return 0; } }
+  function themeNow(){ if(!cur.phases) return cur; const ph=curPhase(), L=cur.phases; const i=ph>=99?L.length-1:Math.min(ph,L.length-2); if(cur._pi!==i){ cur._pi=i; cur._pc=Object.assign({},cur,L[i]); } return cur._pc; }
   const mtof=m=>440*Math.pow(2,(m-69)/12);
   function music(key,force){
     A._pendingMusic=key;
     if(!ctx) return; if(key===curKey&&!force) return;
-    curKey=key; cur=THEMES[key]||THEMES.village;
+    curKey=key; cur=THEMES[key]; if(!cur){ cur=THEMES.neutral; if(!warned[key]){ warned[key]=1; console.info('music: no theme',key); } } cur._pi=-1;
     // fade
     const t=ctx.currentTime; musG.gain.cancelScheduledValues(t); musG.gain.setValueAtTime(musG.gain.value,t); musG.gain.linearRampToValueAtTime(0.0001,t+0.4); musG.gain.linearRampToValueAtTime(S.set.mus*0.5,t+1.2);
     step=0; nextT=ctx.currentTime+0.5; melIdx=2;
     if(!timer) timer=setInterval(()=>{ if(!document.hidden) tick(); },90); // v31: в фоне музыка не планируется
   }
-  function deg(d,oct){ const sc=cur.scale; const n=sc.length; const o=Math.floor(d/n); return cur.root+sc[((d%n)+n)%n]+12*(o+(oct||0)); }
+  function deg(d,oct){ const T=cc||cur; const sc=T.scale; const n=sc.length; const o=Math.floor(d/n); return T.root+sc[((d%n)+n)%n]+12*(o+(oct||0)); }
   function pluck(m,t,v,dur){ osc('triangle',mtof(m),t,dur||.5,v,musG,{lp:2400}); osc('square',mtof(m)*1.003,t,(dur||.5)*.5,v*.25,musG,{lp:1400}); }
   function tick(){
     if(!ctx||!cur||ctx.state!=='running') return;
-    const spb=60/cur.tempo/2; // eighth notes
+    let dk=false; try{ dk=!!(G&&G.dialog); }catch(e){} if(dk!==duckOn){ duckOn=dk; musDuck.gain.setTargetAtTime(dk?.5:1,ctx.currentTime,.25); }
+    cc=themeNow();
+    const spb=60/cc.tempo/2; // eighth notes
     while(nextT<ctx.currentTime+0.3){
-      const t=nextT, s=step%32, bar=Math.floor(step/32)%cur.prog.length;
-      const chord=cur.prog[bar];
-      if(cur.rest&&Math.floor(step/32)%8>=6){ if(s===0) noise(t,spb*30,.05,'bandpass',500,musG,{to:1400,q:.6,a:1.2,rv:1}); if(s===16) noise(t,spb*14,.04,'bandpass',900,musG,{to:400,q:.7,a:.8}); nextT+=spb; step++; continue; }
+      const t=nextT, s=step%32, bar=Math.floor(step/32)%cc.prog.length;
+      const chord=cc.prog[bar];
+      // v39: «пустота» (rest:2) — каждый третий такт без нот, только тихий ветер в начале
+      if(cc.rest===2&&Math.floor(step/32)%3===2){ if(s===0) noise(t,spb*28,.03,'bandpass',380,musG,{to:900,q:.5,a:1.6,rv:1}); nextT+=spb; step++; continue; }
+      if(cc.rest===1&&Math.floor(step/32)%8>=6){ if(s===0) noise(t,spb*30,.05,'bandpass',500,musG,{to:1400,q:.6,a:1.2,rv:1}); if(s===16) noise(t,spb*14,.04,'bandpass',900,musG,{to:400,q:.7,a:.8}); nextT+=spb; step++; continue; }
       if(s===0){ // pad
         const dur=spb*32;
-        cur.pad.forEach((iv,i)=>{ const m=deg(chord,0)-12+iv; const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
-          o.type='sawtooth';o2.type='sawtooth';o.frequency.value=mtof(m);o2.frequency.value=mtof(m);o2.detune.value=9;f.type='lowpass';f.frequency.value=380+cur.mood*500;
+        cc.pad.forEach((iv,i)=>{ const m=deg(chord,0)-12+iv; const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
+          o.type='sawtooth';o2.type='sawtooth';o.frequency.value=mtof(m);o2.frequency.value=mtof(m);o2.detune.value=9;f.type='lowpass';f.frequency.value=380+cc.mood*500;
           g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(.035,t+1.2);g.gain.setValueAtTime(.035,t+dur-1);g.gain.linearRampToValueAtTime(0.0001,t+dur+.4);
           o.connect(f);o2.connect(f);f.connect(g);g.connect(musG);g.connect(rev);o.start(t);o2.start(t);o.stop(t+dur+.5);o2.stop(t+dur+.5); });
         osc('sine',mtof(deg(chord,-2)),t,spb*30,.11,musG,{a:.6});
+        // бурдон: тоника и квинта лада (не аккорда) — тянется весь такт
+        if(cc.drone){ osc('sawtooth',mtof(cc.root-24),t,dur,.03,musG,{lp:420,a:.8}); osc('sawtooth',mtof(cc.root-17),t,dur,.018,musG,{lp:380,a:1,det:6}); }
       }
       // arps
-      const ar=cur.arp;
+      const ar=cc.arp;
       if(ar==='lute'&&(s%2===0)){ const pat=[0,2,4,2,7,4,2,4]; pluck(deg(chord+pat[(s/2)%8]),t,.07,.6); }
       else if(ar==='slow'&&s%4===0){ pluck(deg(chord+[0,2,4,7][(s/4)%4]),t,.06,1.4); }
       else if(ar==='bell'&&s%6===0){ const m=deg(chord+[0,4,2,7,5][(s/6)%5],1); osc('sine',mtof(m),t,1.8,.05,musG,{rv:1}); osc('sine',mtof(m)*2.76,t,.6,.015,musG,{rv:1}); }
       else if(ar==='celesta'&&s%3===0){ const m=deg(chord+[0,2,4,6,4,2,7,5][(s/3|0)%8],1); osc('sine',mtof(m),t,1.4,.045,musG,{rv:1}); osc('triangle',mtof(m)*2,t,.5,.018,musG,{rv:1}); if(s%12===0) osc('sine',mtof(deg(chord,-2)),t,spb*12,.07,musG,{a:.8}); }
-      else if(ar==='waltz'){ const b=s%6; if(b===0) osc('sine',mtof(deg(chord,-1)),t,spb*2.2,.09,musG,{lp:600+cur.mood*600,rv:1}); else if(b===2||b===4) [2,4].forEach(iv=>osc('triangle',mtof(deg(chord+iv,0)),t,spb*1.2,.028,musG,{lp:900+cur.mood*1400,rv:1})); }
-      else if(ar==='pulse'&&s%2===0){ osc('sawtooth',mtof(deg(chord,-1)+(s%8===6?12:0)),t,spb*.9,.045,musG,{lp:700+cur.mood*500}); }
+      else if(ar==='waltz'){ const b=s%6; const dt=cc.det?{det:Math.sin(step*.13)*cc.det}:{}; if(b===0) osc('sine',mtof(deg(chord,-1)),t,spb*2.2,.09,musG,Object.assign({lp:600+cc.mood*600,rv:1},dt)); else if(b===2||b===4) [2,4].forEach(iv=>osc('triangle',mtof(deg(chord+iv,0)),t,spb*1.2,.028,musG,Object.assign({lp:900+cc.mood*1400,rv:1},cc.det?{det:Math.sin(step*.13+iv)*cc.det*1.3}:{}))); }
+      // уд: щипок с форшлагом на ступень выше (хиджаз), быстрее у Аттала
+      else if(ar==='oud'&&s%(cc.fast?1:2)===0){ const pat=[0,1,2,1,0,-1,0,3,2,1,0,1,4,2,1,0]; const k=(cc.fast?s:s/2)%16; const m=deg(chord+pat[k]); if(k%4===3) pluck(m+1,t-.03,.03,.08); pluck(m,t,cc.fast?.05:.065,cc.fast?.25:.45); }
+      // «вздохи» пустоты: медленный кластер из двух нот, редко
+      else if(ar==='swell'&&s%16===0&&Math.random()<.6){ const m=deg(chord+pick([0,2,4]),0); [0,1].forEach(iv=>osc('sine',mtof(m+iv),t,spb*14,.03,musG,{a:spb*6,rv:1,det:iv?-12:8})); }
+      else if(ar==='pulse'&&s%2===0){ osc('sawtooth',mtof(deg(chord,-1)+(s%8===6?12:0)),t,spb*.9,.045,musG,{lp:700+cc.mood*500}); }
       // drums
-      const dr=cur.drum;
+      const dr=cc.drum;
       if(dr>=1){
-        if(s%8===0) { osc('sine',110,t,.25,.22,musG,{to:45}); }
+        if(s%8===0&&dr<7) { osc('sine',110,t,.25,.22,musG,{to:45}); }
         if(dr===1&&s%8===4) noise(t,.06,.06,'highpass',4000,musG);
         if(dr===1&&(s%16===6||s%16===14)) noise(t,.09,.08,'bandpass',1200,musG,{q:1.5});
         if(dr===2&&s%16===12) noise(t,.4,.07,'lowpass',500,musG,{rv:1});
         if(dr>=3&&dr<5){ if(s%4===2) noise(t,.05,.06,'highpass',5000,musG); if(s%16===8||s%16===11) osc('sine',90,t,.3,.25,musG,{to:40}); if(s%8===4) noise(t,.15,.12,'bandpass',900,musG,{q:1}); }
         if(dr>=4&&dr<5){ if(s%2===1) noise(t,.03,.04,'highpass',6000,musG); if(s%4===0) osc('sine',70,t,.2,.2,musG,{to:35}); }
-        if(dr>=5){ const stop=(s>=24); if(!stop&&(s%4===0||s%8===6)) noise(t,.07,dr>=6?.11:.06,'bandpass',1800,musG,{q:1.2}); if(!stop&&s%8===7) noise(t,.05,.05,'bandpass',2200,musG,{q:1.2}); if(s%16===0) osc('sine',62,t,.35,dr>=6?.26:.16,musG,{to:38}); if(dr>=6&&s%4===2) noise(t,.03,.04,'highpass',6000,musG); }
+        if(dr===7){ // рамный барабан: «дум» (низ) на 0, 6, 10; «тек» (обод) на чётных долях; у Аттала чаще
+          if(s%16===0||s%16===6||s%16===10) osc('sine',85,t,.28,.24,musG,{to:48});
+          if(s%4===2||(cc.fast&&s%2===1)) noise(t,.04,.07,'bandpass',2600,musG,{q:2});
+          if(s%16===14) noise(t,.08,.05,'bandpass',1400,musG,{q:1.4,rv:1}); }
+        if(dr===8){ if(s%16===0) osc('sine',58,t,.22,.34,musG,{to:36}); if(s%16===3) osc('sine',54,t,.24,.26,musG,{to:34}); } // сердце
+        if(dr>=5&&dr<7){ const stop=(s>=24); if(!stop&&(s%4===0||s%8===6)) noise(t,.07,dr>=6?.11:.06,'bandpass',1800,musG,{q:1.2}); if(!stop&&s%8===7) noise(t,.05,.05,'bandpass',2200,musG,{q:1.2}); if(s%16===0) osc('sine',62,t,.35,dr>=6?.26:.16,musG,{to:38}); if(dr>=6&&s%4===2) noise(t,.03,.04,'highpass',6000,musG); }
       }
       // lead melody (sparse, random walk)
-      const dens=cur.lead==='choir'?8:4;
-      if(s%dens===0 && Math.random()<(cur.drum>=4?0.7:0.55)){
+      const dens=cc.lead==='choir'||cc.lead==='void'?8:4;
+      if(s%dens===0 && Math.random()<(cc.sparse||(cc.drum>=4&&cc.drum<8?0.7:0.55))){
         melIdx=clamp(melIdx+pick([-2,-1,-1,0,1,1,2,3,-3]),0,9);
         const m=deg(chord+melIdx,1); const len=spb*dens*(Math.random()<.3?2:1);
-        if(cur.lead==='flute'){ const o=ctx.createOscillator(),g=ctx.createGain(),l=ctx.createOscillator(),lg=ctx.createGain(); o.type='sine'; o.frequency.value=mtof(m);
+        if(cc.lead==='flute'){ const o=ctx.createOscillator(),g=ctx.createGain(),l=ctx.createOscillator(),lg=ctx.createGain(); o.type='sine'; o.frequency.value=mtof(m);
           l.frequency.value=5.2; lg.gain.value=4; l.connect(lg); lg.connect(o.frequency);
           g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(.06,t+.06);g.gain.setValueAtTime(.05,t+len*.7);g.gain.linearRampToValueAtTime(0.0001,t+len);
           o.connect(g);g.connect(musG);g.connect(rev);o.start(t);l.start(t);o.stop(t+len+.05);l.stop(t+len+.05); noise(t,.08,.02,'bandpass',mtof(m)*2,musG,{q:4}); }
-        else if(cur.lead==='reed'){ osc('sawtooth',mtof(m-12),t,len,.035,musG,{lp:1100,a:.05,rv:1}); }
-        else if(cur.lead==='choir'){ [0,7].forEach(iv=>osc('triangle',mtof(m-12+iv),t,len*1.2,.03,musG,{lp:1500,a:.25,rv:1,det:Math.random()*10})); }
-        else if(cur.lead==='glass'){ const sour=cur.sour&&Math.random()<.12?mtof(m)*1.035:mtof(m); osc('sine',sour,t,len*1.6,.045,musG,{a:.18,rv:1}); osc('sine',sour*2.01,t,len,.012,musG,{a:.25,rv:1}); }
+        else if(cc.lead==='reed'){ osc('sawtooth',mtof(m-12),t,len,.035,musG,{lp:1100,a:.05,rv:1}); }
+        else if(cc.lead==='choir'){ [0,7].forEach(iv=>osc('triangle',mtof(m-12+iv),t,len*1.2,.03,musG,{lp:1500,a:.25,rv:1,det:Math.random()*10})); }
+        else if(cc.lead==='horn'){ osc('sawtooth',mtof(m-12),t,len,.04,musG,{lp:900+cc.mood*900,a:.06,rv:1}); osc('sawtooth',mtof(m-24),t,len,.025,musG,{lp:600,a:.08,det:7}); }
+        else if(cc.lead==='void'){ osc('sine',mtof(m),t,len*2.4,.03,musG,{a:len*.8,rv:1}); osc('sine',mtof(m)*1.5,t+len*.5,len*1.6,.01,musG,{a:len*.6,rv:1}); }
+        else if(cc.lead==='glass'){ const sour=cc.sour&&Math.random()<.12?mtof(m)*1.035:mtof(m); osc('sine',sour,t,len*1.6,.045,musG,{a:.18,rv:1}); osc('sine',sour*2.01,t,len,.012,musG,{a:.25,rv:1}); }
         else { osc('sine',mtof(m),t,1.2,.05,musG,{rv:1}); osc('sine',mtof(m)*3.01,t,.4,.012,musG); }
       }
       nextT+=spb; step++;
     }
   }
-  A.init=init; A.sfx=sfx; A.music=music; A.setVol=setVol; A.ctx=()=>ctx;
+  A.init=init; A.sfx=sfx; A.music=music; A.setVol=setVol; A.ctx=()=>ctx; A.cur=()=>curKey; A.has=k=>!!THEMES[k]; A.ducked=()=>duckOn; A.phase=()=>cur&&cur.phases?cur._pi:-1;
   // v20: свои звуки модулей (src/p37.js и дальше) — тот же синтез, общая громкость и реверберация
   A.synth=(name,fn)=>{ if(!ctx||ctx.state!=='running') return; const now=ctx.currentTime; if(name){ if(lastPlay[name]&&now-lastPlay[name]<0.03) return; lastPlay[name]=now; } try{ fn({t:now+0.005,osc,noise,ctx}); }catch(e){} };
   A.bus=()=>ctx?{out:sfxG,rev}:null; // v37 (p75): своя цепочка узлов (голоса боссов) — в ту же громкость «Звуки» и реверберацию

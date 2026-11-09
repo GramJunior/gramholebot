@@ -26,7 +26,7 @@ function meView(user, clan) {
 
 export async function authTelegram(c) {
   const body = await readJson(c.req, 16 * 1024);
-  const maxAge = envInt(c.env, 'INITDATA_MAX_AGE_SEC', 86400);
+  const maxAge = envInt(c.env, 'INITDATA_MAX_AGE_SEC', 3600);
   const v = await validateInitData(body.initData, c.env.BOT_TOKEN, { maxAgeSec: maxAge, now: c.now });
   if (!v.ok) {
     if (v.reason === 'not_configured') fail(503, 'not_configured', 'Сервер не настроен (BOT_TOKEN)');

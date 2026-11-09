@@ -34,7 +34,7 @@ const A2_ELITE9={goldBeetle:['scorch'],driedPriest:['scorch','mirage'],duneStalk
 Object.assign(BOSSES,{
   duneWorm:{n:'Барханщик',t:'Червь глубоких песков',hp:60000,dmg:47,spd:4.0,model:'duneWorm',scale:1,r:2.2,phases:[1,.5],xp:3200,mus:'boss2',mid:1},
   zenith:{n:'Зенит',t:'Страж Солнечного Престола',hp:38000,dmg:49,spd:2.0,model:'zenith',scale:1,r:2.0,phases:[1,.6,.3],xp:3800,el:'fire',mus:'boss2',mid:1},
-  attal:{n:'Аттал',t:'Первый Огнедел',hp:48000,dmg:51,spd:3.4,model:'attal',scale:1,r:1.2,phases:[1,.66,.33],xp:4600,el:'fire',mus:'boss2'}
+  attal:{n:'Аттал',t:'Первый Огнедел',hp:48000,dmg:51,spd:3.4,model:'attal',scale:1,r:1.2,phases:[1,.66,.33],xp:4600,el:'fire',mus:'boss_attal'}
 });
 BOSS_SUMMON.duneWorm='goldBeetle'; BOSS_SUMMON.zenith='windwing'; BOSS_SUMMON.attal='driedPriest';
 BOSS_TIPS.push(['Барханщик','на каменной плите он не может вынырнуть: встаньте на плиту, когда к вам бежит бугор, — червь ударится о камень и раскроет пасть.'],

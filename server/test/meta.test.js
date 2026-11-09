@@ -49,7 +49,7 @@ test('events: batching, validation, aggregated counters + unique users, quota, D
   assert.equal(eventName({ e: 'stage_finish', k: '1-3' }), 'stage_finish:1-3');
   assert.equal(eventName({ e: 'Bad Name!' }), null);
   assert.equal(eventName({ e: 'x', k: { a: 1 } }), 'x:_object_object_', 'objects are flattened, never stored as payload');
-  const env = makeEnv();
+  const env = makeEnv({ RATE_LIMIT: '0' });
   const day0 = Date.parse('2026-11-04T09:00:00Z');
   const clock = { now: day0 };
   const call = api(env, clock);

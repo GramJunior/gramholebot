@@ -18,7 +18,7 @@ const KEYS=(arg('stages','1-1,2-1,3-2,4-1,5-1,6-1,7-1,7-3,8-1,8-3,8-5,9-1,9-3,9-
     const T=await ev(n=>{ __game.killAll(); if(__game.W&&__game.W.arenaNode) __game.W.bossStarted=true; /* v27: без вступления владыки (замок арены и сцена не мешают проверке) */ return __game.colTargets(n); },PER); const bad=[];
     for(const t of T){ await ev(i=>{ __game.killAll(); __game.colRun(i); },t.i); for(let k=0;k<7;k++){ await wait(120); await ev(i=>__game.colStep(i),t.i); }
       const r=await ev(i=>__game.colEnd(i),t.i); total++; types.add(r.type); if(!r.blocked){ fail++; bad.push(r); }
-      if(key!=='village'&&await ev(i=>__game.colArrow(i),t.i)){ await wait(450); const a=await ev(i=>__game.colArrowRes(i),t.i); arrows++; if(!a||!a.stopped){ arrowFail++; bad.push({arrow:t.type,a}); } } }
+      if(key!=='village'&&await ev(i=>{ const r=__game.colArrow(i); window.__colAT=__game.G.time; return r; },t.i)){ /* v39: ждём 0,45 с игрового времени (не настенных): на медленной машине кадры реже */ for(let k=0;k<100;k++){ await wait(40); if(await ev(()=>!__game.G.projs.includes(window.__colA)||__game.G.time-window.__colAT>=.45)) break; } const a=await ev(i=>__game.colArrowRes(i),t.i); arrows++; if(!a||!a.stopped){ arrowFail++; bad.push({arrow:t.type,a}); } } }
     console.log(key.padEnd(8),'типов',T.length,bad.length?('ПРОХОДИМО '+JSON.stringify(bad)):'ok','|',T.map(t=>t.type).join(' '));
   }
   console.log('ИТОГО: проверок',total,'типов',types.size,'проходимо',fail,'| стрел',arrows,'пролетело',arrowFail); console.log('ошибок консоли:',H.errs.length,H.errs.slice(0,4).join(' | '));
