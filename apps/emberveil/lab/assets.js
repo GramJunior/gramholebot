@@ -129,9 +129,10 @@
   // v14 «живые персонажи»: скин-модели получают ту же кисть, что и мир (мазки на ткани и волосах, зерно кожи/кожаных деталей,
   // пятна и царапины металла, мягкие складки), мягкие нормали, AO у ног, тёплый контровой свет, глаза с бликами, моргание и
   // простые выражения, качание плащей. Всё внутри того же материала: ни одного нового вызова отрисовки.
-  const CHAR_VS_PARS = `attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform vec4 uCapeP; uniform mat3 uCapeF; uniform mat3 uCapeI; uniform float uSoft; uniform mat4 uDQ; uniform mat4 uDQi; uniform mat3 uDQn; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;
+  const CHAR_VS_PARS = `attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform vec4 uCapeP; uniform mat4 uCapeM; uniform mat3 uCapeF; uniform mat4 uCapeI; uniform float uSoft; uniform mat4 uDQ; uniform mat4 uDQi; uniform mat3 uDQn; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;
 // v38.2 плащ: изгиб «маятником» вокруг линии плеч в позе привязки (метры модели). uSway: x — угол назад от спины, y — вбок, z — сила трепета, w — фаза;
-// uCapeP: x,y — высота и глубина шарнира (у плеч), z — длина, w — знак «спины» по z. Углы считает процессор (Actor._capeTick): тяжесть, сопротивление
+// uCapeP: x,y — высота и глубина шарнира (у плеч), z — длина (0 — плащ не настроен), w — знак «спины» по z. uCapeM — куда сейчас смотрит верх спины
+// (рамка по суставам: шея, низ спины, плечи) относительно позы привязки; ткань скинится на корневую кость, uCapeI = (uDQ · bindMatrix)⁻¹. Углы считает процессор (Actor._capeTick): тяжесть, сопротивление
 // воздуха, пружина с запаздыванием, упоры от таза и ног — поэтому плащ висит вниз при любом наклоне корпуса и не уходит в тело.
 vec2 evCapeAng( float sw, vec3 p ) { float bnd = 1.0 - ( 1.0 - sw ) * ( 1.0 - sw );
   float fl = ( sin( uTime * 5.3 + p.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + p.x * 6.0 + uSway.w * 1.7 ) * 0.4 ) * uSway.z * sw;
@@ -144,9 +145,9 @@ vec3 evCapeRot( vec3 v, vec2 a ) { float bk = uCapeP.w, ca = cos( a.x ), sa = si
   {
     vec4 evB = uDQ * ( bindMatrix * vec4( transformed, 1.0 ) ); // поза привязки в метрах модели (снимаем квантование KayKit)
     float sw = aFx.x;
-    if ( sw > 0.0 ) { // плащ: поворот вокруг шарнира у плеч (растёт к подолу), смещение возвращаем в пространство до скиннинга через uCapeI
-      vec3 evQ = evB.xyz - vec3( 0.0, uCapeP.x, uCapeP.y ); vec3 evD = evCapeRot( evQ, evCapeAng( sw, evB.xyz ) ) - evQ;
-      transformed += uCapeI * evD; evB.xyz += evD;
+    if ( sw > 0.0 && uCapeP.z > 0.0 ) { // плащ: поворот вокруг шарнира у плеч (растёт к подолу), затем — в рамку верха спины
+      vec3 evPv = vec3( 0.0, uCapeP.x, uCapeP.y ), evQ = evB.xyz - evPv;
+      transformed = ( uCapeI * ( uCapeM * vec4( evPv + evCapeRot( evQ, evCapeAng( sw, evB.xyz ) ), 1.0 ) ) ).xyz;
     }
     vBind = evB.xyz; vBN = normalize( uDQn * ( mat3( bindMatrix ) * normal ) ); vFx = aFx;
   }`;
@@ -215,14 +216,14 @@ vec3 evHsv2Rgb( vec3 c ) { vec3 p = abs( fract( c.xxx + vec3( 1.0, 2.0 / 3.0, 1.
     m.skinning = !!o.skinning;
     const ch = !!(o.skinning && S.charFX && o.char !== false), ub = !!o.ubc;
     const U = { uFlash: { value: 0 }, uTint: { value: new T.Vector4(0, 0, 0, 0) }, uGlow: { value: new T.Vector4(0, 0, 0, 0) }, uMode: { value: o.mode || 0 }, uTime: EVAssets.time };
-    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uCapeP: { value: new T.Vector4(0, 1.4, 1, -1) }, uCapeF: { value: new T.Matrix3() }, uCapeI: { value: new T.Matrix3() }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush, uDQ: { value: new T.Matrix4() }, uDQi: { value: new T.Matrix4() }, uDQn: { value: new T.Matrix3() } });
+    if (ch) Object.assign(U, { uBlink: { value: new T.Vector2(0, 0) }, uSway: { value: new T.Vector4(0, 0, 0, Math.random() * 6) }, uCapeP: { value: new T.Vector4(0, 1.4, 0, -1) }, uCapeM: { value: new T.Matrix4() }, uCapeF: { value: new T.Matrix3() }, uCapeI: { value: new T.Matrix4() }, uSkin: { value: new T.Color(0.96, 0.76, 0.62) }, uCH: { value: new T.Vector2(0, 2) }, uSoft: S.charSoft, tBrush: S.brush, uDQ: { value: new T.Matrix4() }, uDQi: { value: new T.Matrix4() }, uDQn: { value: new T.Matrix3() } });
     if (o.tint) { const c = C3(o.tint[0]); U.uTint.value.set(c.r, c.g, c.b, o.tint[1]); }
     if (o.glow) { const c = C3(o.glow); U.uGlow.value.set(c.r, c.g, c.b, o.glowA === undefined ? 0.6 : o.glowA); }
     m.userData.U = U; m.userData.char = ch;
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, m.userData.U); sh.uniforms.uRim = S.rim; sh.uniforms.uSatG = S.sat; sh.uniforms.uVoidC = S.voidU || (S.voidU = { value: new T.Vector4(0, 0, 0, -1) });
       sh.vertexShader = 'varying vec3 vObjPos;\n' + (ub ? UBC_VS_PARS : '') + (ch ? 'uniform float uTime;\n' + CHAR_VS_PARS : '') + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (ub ? UBC_VS : '') + (ch ? CHAR_VS : '') + '\n vObjPos = (modelMatrix * vec4(transformed,1.0)).xyz;');
-      if (ch) sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = normalize( mix( vec3( normal ), onormal, uSoft ) );\n  if ( aFx.x > 0.0 ) { vec3 evP0 = ( uDQ * ( bindMatrix * vec4( position, 1.0 ) ) ).xyz; objectNormal = normalize( uCapeI * evCapeRot( uCapeF * objectNormal, evCapeAng( aFx.x, evP0 ) ) ); }');
+      if (ch) sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = normalize( mix( vec3( normal ), onormal, uSoft ) );\n  if ( aFx.x > 0.0 && uCapeP.z > 0.0 ) { vec3 evP0 = ( uDQ * ( bindMatrix * vec4( position, 1.0 ) ) ).xyz; objectNormal = normalize( mat3( uCapeI ) * ( mat3( uCapeM ) * evCapeRot( uCapeF * objectNormal, evCapeAng( aFx.x, evP0 ) ) ) ); }');
       sh.fragmentShader = 'uniform float uSatG; uniform vec4 uVoidC; uniform float uFlash; uniform vec4 uTint; uniform vec4 uGlow; uniform vec3 uRim; uniform float uMode; uniform float uTime; varying vec3 vObjPos;\n' + (ch ? CHAR_FS_PARS : '') +
         (ub ? UBC_FS_PARS : '') + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>' + (ub ? UBC_FS : '') + (ch ? CHAR_FS : '')).replace(OUT_RE, (m0) => `
   float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
@@ -440,21 +441,28 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   }
   function texAt(px, u, v) { const x = Math.min(px.w - 1, Math.max(0, Math.floor(u * px.w))), y = Math.min(px.h - 1, Math.max(0, Math.floor(v * px.h))), k = (y * px.w + x) * 4; return [px.d[k] / 255, px.d[k + 1] / 255, px.d[k + 2] / 255]; }
   const isSkinC = (c) => { const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2], rb = c[0] - c[2]; return c[2] <= c[1] && c[1] <= c[0] + 0.02 && l > 0.55 && rb > 0.08 && rb < 0.45; };
-  // v38.2 плащ: вся ткань — на одной кости верха спины (раньше подол висел на тазе/поясе: корпус поворачивался — плащ скручивало, наклон — плащ
-  // торчал жёсткой доской); изгиб, тяжесть и упоры — в шейдере и Actor._capeTick. Здесь: перевес вершин и «паспорт» плаща (шарнир, длина, профиль).
-  function capeRig(g, B, fx, bone, boneEv) {
-    const n = B.length / 3; let y0 = 1e9, y1 = -1e9, zs = 0, zn = 0, zt = 0, nt = 0;
-    for (let i = 0; i < n; i++) { const y = B[i * 3 + 1]; y0 = Math.min(y0, y); y1 = Math.max(y1, y); zs += B[i * 3 + 2]; zn++; }
-    for (let i = 0; i < n; i++) if (B[i * 3 + 1] > y1 - 0.04) { zt += B[i * 3 + 2]; nt++; }
-    const L = Math.max(0.05, y1 - y0), pz = nt ? zt / nt : 0, back = (zs / Math.max(1, zn) - boneEv.z) >= 0 ? 1 : -1;
-    const prof = new Array(9).fill(null), cnt = new Array(9).fill(0);
-    for (let i = 0; i < n; i++) { const t = (y1 - B[i * 3 + 1]) / L, k = Math.min(8, Math.round(t * 8)); if (Math.abs(B[i * 3]) > 0.07) continue; prof[k] = (prof[k] || 0) + back * (B[i * 3 + 2] - pz); cnt[k]++; }
-    for (let k = 0; k < 9; k++) prof[k] = cnt[k] ? prof[k] / cnt[k] : (k ? prof[k - 1] : 0);
-    const SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4); for (let i = 0; i < n; i++) { SI[i * 4] = bone; SW[i * 4] = 1; }
-    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4));
-    return { bone, py: y1, pz, L, back, prof, fx };
-  }
+  // v38.2 плащ: раньше ткань висела на костях спины и таза (подол — на тазе: корпус поворачивался — плащ скручивало; у UBC кость spine_03 в клипах
+  // повёрнута иначе, чем выглядит торс, — плащ торчал доской под странным углом). Теперь вся ткань скинится на корневую кость, а куда смотрит верх
+  // спины, считается по ПОЛОЖЕНИЯМ суставов (шея, низ спины, плечи) — это совпадает с тем, что видно. Изгиб, тяжесть и упоры — Actor._capeTick.
+  const CAPE_J = { n: /^neck/i, lo: /^(spine_?0?1|spine)$/i, l: /^(upperarm[._]?l|upper_?arm[._]?l|arm[._]?l)$/i, r: /^(upperarm[._]?r|upper_?arm[._]?r|arm[._]?r)$/i };
   const jointEv = (sk, i, D) => new T.Vector3().setFromMatrixPosition(new T.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(D);
+  function capeFrame(n, lo, l, r, out) { // рамка верха спины: начало — шея, оси — «вправо», «вверх», «вперёд»
+    const up = new T.Vector3().subVectors(n, lo).normalize(), rt = new T.Vector3().subVectors(r, l); rt.addScaledVector(up, -rt.dot(up)).normalize();
+    const fw = new T.Vector3().crossVectors(rt, up); return (out || new T.Matrix4()).makeBasis(rt, up, fw).setPosition(n); }
+  function capeRig(g, B, sk, D) {
+    const J = {}; for (const k in CAPE_J) { const i = sk.bones.findIndex((b) => CAPE_J[k].test(b.name)); if (i < 0) return null; J[k] = i; }
+    const n = B.length / 3; let y0 = 1e9, y1 = -1e9, zs = 0, zt = 0, nt = 0;
+    for (let i = 0; i < n; i++) { const y = B[i * 3 + 1]; y0 = Math.min(y0, y); y1 = Math.max(y1, y); zs += B[i * 3 + 2]; }
+    for (let i = 0; i < n; i++) if (B[i * 3 + 1] > y1 - 0.04) { zt += B[i * 3 + 2]; nt++; }
+    const jn = jointEv(sk, J.n, D), L = Math.max(0.05, y1 - y0), pz = nt ? zt / nt : 0, back = (zs / Math.max(1, n) - jn.z) >= 0 ? 1 : -1;
+    const prof = new Array(9).fill(0), cnt = new Array(9).fill(0);
+    for (let i = 0; i < n; i++) { if (Math.abs(B[i * 3]) > 0.07) continue; const k = Math.min(8, Math.round((y1 - B[i * 3 + 1]) / L * 8)); prof[k] += back * (B[i * 3 + 2] - pz); cnt[k]++; }
+    for (let k = 0; k < 9; k++) prof[k] = cnt[k] ? prof[k] / cnt[k] : (k ? prof[k - 1] : 0);
+    const Fb = capeFrame(jn, jointEv(sk, J.lo, D), jointEv(sk, J.l, D), jointEv(sk, J.r, D)).invert();
+    const SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4); for (let i = 0; i < n; i++) SW[i * 4] = 1; // всё — на кость 0 (корень)
+    g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4));
+    return { J, Fb: Fb.toArray(), py: y1, pz, L, back, prof };
+  }
   function charPrep(root, key) {
     root.updateMatrixWorld(true);
     root.traverse((o) => {
@@ -472,10 +480,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix).applyMatrix4(D); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
       if (/cape|cloak/i.test(o.name)) { let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, B[i * 3 + 1]); y1 = Math.max(y1, B[i * 3 + 1]); }
         for (let i = 0; i < n; i++) fx[i * 4] = Math.max(0.001, Math.min(1, (y1 - B[i * 3 + 1]) / Math.max(1e-3, y1 - y0))); o.userData.evCape = 1;
-        // кость верха плаща: та, что держит больше всего веса у воротника
-        const votes = new Map(); for (let i = 0; i < n; i++) { if (fx[i * 4] > 0.2) continue; for (let k = 0; k < 4; k++) { const w = (k === 0 ? SW.getX(i) : k === 1 ? SW.getY(i) : k === 2 ? SW.getZ(i) : SW.getW(i)) * ws, j = k === 0 ? SI.getX(i) : k === 1 ? SI.getY(i) : k === 2 ? SI.getZ(i) : SI.getW(i); if (w > 0) votes.set(j, (votes.get(j) || 0) + w); } }
-        let cb = 0, cv = -1; for (const [j, w] of votes) if (w > cv) { cv = w; cb = j; }
-        const ci = capeRig(g, B, null, cb, jointEv(sk, cb, D)); delete ci.fx; o.userData.evCapeInfo = ci; }
+        const ci = capeRig(g, B, sk, D); if (ci) o.userData.evCapeInfo = ci; }
       g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
       if (o.userData.evCape) { o.geometry = doubleSided(g, new T.Matrix4().multiplyMatrices(D, o.bindMatrix)); return; } // плащ KayKit — одна плоскость: вторая сторона со своей нормалью (раньше изнанка светилась плоским розовым)
       const head = o.skeleton.bones.findIndex((b) => /^head$/i.test(b.name)), px = UV && texPixels(o.material.map);
@@ -621,7 +626,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       for (let i = 0; i < n; i++) { a = Math.min(a, B[i * 3 + 1]); b = Math.max(b, B[i * 3 + 1]); }
       for (let i = 0; i < n; i++) { fx[i * 4] = Math.max(0.001, Math.min(1, (b - B[i * 3 + 1]) / Math.max(1e-3, b - a))); fx[i * 4 + 3] = 1; }
       o.geometry.userData.evFx = fx; o.geometry.userData.evCape = 1;
-      const sk = o.skeleton, bi = Math.max(0, sk.bones.findIndex((b) => b.name === 'spine_03')); F.cape = capeRig(o.geometry, B, null, bi, jointEv(sk, bi, D)); delete F.cape.fx; }
+      F.cape = capeRig(o.geometry, B, o.skeleton, D); }
   }
   const C_ID = { m: [1, 1, 1], h: 0, s: 1, v: 1 };
   function colOp(c) { if (!c) return C_ID; if (c._op) return c._op; const m = c.mul !== undefined ? C3(c.mul) : null;
@@ -773,12 +778,12 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       let mesh = null, C = null;
       if (this.ubc) { const F = S.ubc[this.def.file]; C = F && F.cape; mesh = this._cm; if (!C || !mesh || !(this._parts || []).some((p) => /^cape/.test(p))) return; }
       else { for (const m of this.meshes) if (m.userData.evCapeInfo && m.visible && m.isSkinnedMesh) { mesh = m; C = m.userData.evCapeInfo; break; } if (!mesh) return; }
-      const sk = mesh.skeleton, bone = sk && sk.bones[C.bone]; if (!bone) return;
-      const U0 = this.matList.find((mm) => mm.userData.U && mm.userData.U.uCapeP); if (!U0) return; const U = U0.userData.U;
+      const sk = mesh.skeleton; if (!sk || !sk.bones[0]) return;
       let K = this._cape; const v3 = () => new T.Vector3();
       if (!K || K.mesh !== mesh) {
-        K = this._cape = { mesh, C, th: 0, ps: 0, vth: 0, vps: 0, P: null, v: v3(), Mw: new T.Matrix4(), Mi: new T.Matrix4(), pv: new T.Vector3(0, C.py, C.pz), t: v3(), q: v3(), pts: [] };
-        // упоры: кости таза, низа спины и ног (UE: pelvis/spine_01/thigh/calf, KayKit: hips/spine/upperleg/lowerleg) и радиусы «тела» вокруг них
+        K = this._cape = { mesh, C, th: 0, ps: 0, vth: 0, vps: 0, P: null, v: v3(), R0: new T.Matrix4(), R0i: new T.Matrix4(), M: new T.Matrix4(), Mi: new T.Matrix4(), Fn: new T.Matrix4(), Fb: new T.Matrix4().fromArray(C.Fb),
+          pv: new T.Vector3(0, C.py, C.pz), t: v3(), q: v3(), d: v3(), j: [v3(), v3(), v3(), v3()], pts: [] };
+        // упоры: таз, низ спины, бёдра, колени (UE: pelvis/spine_01/thigh/calf, KayKit: hips/spine/upperleg/lowerleg) и радиус «тела» вокруг них
         const by = (re) => sk.bones.filter((b) => re.test(b.name));
         for (const b of by(/^(pelvis|hips)$/i)) K.pts.push([b, null, 0.13]);
         for (const b of by(/^(spine_?0?[12]|spine)$/i)) K.pts.push([b, null, 0.12]);
@@ -786,35 +791,39 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         for (const b of up) K.pts.push([b, null, 0.1]); for (const b of lo) K.pts.push([b, null, 0.085]);
         for (let k = 0; k < Math.min(up.length, lo.length); k++) K.pts.push([up[k], lo[k], 0.1]);
         const dq = this.ubc ? S.files[this.def.file].gltf.scene.userData.evDQ : mesh.geometry.userData.evDQ; K.DQ = new T.Matrix4(); if (dq) K.DQ.fromArray(dq); K.DQi = K.DQ.clone().invert();
-        const Fm = new T.Matrix4().multiplyMatrices(K.DQ, mesh.bindMatrix); K.F = new T.Matrix3().setFromMatrix4(Fm); K.I = K.F.clone().invert();
+        const Fm = new T.Matrix4().multiplyMatrices(K.DQ, mesh.bindMatrix); K.F = new T.Matrix3().setFromMatrix4(Fm); K.I = Fm.clone().invert();
         K.th0 = Math.atan2(C.prof[8], C.L); }
-      // кости — с прошлого кадра (матрицы мира обновляет отрисовка); evB -> мир = кость · обратная привязки · uDQ⁻¹
-      K.Mw.multiplyMatrices(bone.matrixWorld, sk.boneInverses[C.bone]).multiply(K.DQi); K.Mi.copy(K.Mw).invert();
-      const P = K.t.copy(K.pv).applyMatrix4(K.Mw); let fresh = !K.P;
+      // матрицы костей — с прошлой отрисовки. R0: поза привязки (метры модели) -> мир для корневой кости; рамка верха спины — по суставам
+      K.R0.multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]).multiply(K.DQi); K.R0i.copy(K.R0).invert();
+      const J = C.J, jp = (i, o) => o.setFromMatrixPosition(sk.bones[i].matrixWorld).applyMatrix4(K.R0i);
+      capeFrame(jp(J.n, K.j[0]), jp(J.lo, K.j[1]), jp(J.l, K.j[2]), jp(J.r, K.j[3]), K.Fn); K.M.multiplyMatrices(K.Fn, K.Fb); K.Mi.copy(K.M).invert();
+      // мир -> оси плаща в позе привязки: Mi · R0⁻¹
+      const toC = (wp, o) => o.copy(wp).applyMatrix4(K.R0i).applyMatrix4(K.Mi);
+      const P = K.t.copy(K.pv).applyMatrix4(K.M).applyMatrix4(K.R0); let fresh = !K.P;
       if (!fresh && dt > 0) { const vx = (P.x - K.P.x) / dt, vy = (P.y - K.P.y) / dt, vz = (P.z - K.P.z) / dt; if (vx * vx + vy * vy + vz * vz > 400) fresh = true; else { const k = Math.min(1, dt * 12); K.v.x += (vx - K.v.x) * k; K.v.y += (vy - K.v.y) * k; K.v.z += (vz - K.v.z) * k; } }
       if (!K.P) K.P = v3(); K.P.copy(P); if (fresh) K.v.set(0, 0, 0);
-      // цель: тяжесть + встречный воздух (не больше ~50°)
+      // цель: тяжесть + встречный воздух (не больше ~50°), в осях плаща
       const sp = K.v.length(), dr = Math.min(1.2, sp * 0.16) / Math.max(1e-4, sp);
-      const d = K.q.set(-K.v.x * dr, -1, -K.v.z * dr).transformDirection(K.Mi);
-      const thT = Math.atan2(C.back * d.z, -d.y) - K.th0; K.dd = [d.x, d.y, d.z]; const psT = Math.max(-0.45, Math.min(0.45, Math.asin(Math.max(-1, Math.min(1, d.x)))));
+      const d = K.d.set(-K.v.x * dr, -1, -K.v.z * dr).transformDirection(K.R0i).transformDirection(K.Mi);
+      const thT = Math.atan2(C.back * d.z, -d.y) - K.th0, psT = Math.max(-0.45, Math.min(0.45, Math.asin(Math.max(-1, Math.min(1, d.x)))));
       const fl = 0.22 + 0.78 * Math.min(1, sp / 5);
       // упоры: минимальный угол, при котором ткань снаружи таза и ног (по профилю плаща в позе привязки)
       let thMin = 0; const pr = C.prof, prof = (t) => { const x = Math.max(0, Math.min(8, t * 8)), k = Math.min(7, Math.floor(x)); return pr[k] + (pr[k + 1] - pr[k]) * (x - k); };
       for (const [b, b2, r] of K.pts) {
-        const q = K.q.setFromMatrixPosition(b.matrixWorld); if (b2) q.lerp(K.t.setFromMatrixPosition(b2.matrixWorld), 0.5);
-        q.applyMatrix4(K.Mi); const s = C.py - q.y; if (s < 0.08 || s > C.L * 1.05) continue;
+        const w = K.q.setFromMatrixPosition(b.matrixWorld); if (b2) w.lerp(K.t.setFromMatrixPosition(b2.matrixWorld), 0.5);
+        const q = toC(w, w), s = C.py - q.y; if (s < 0.08 || s > C.L * 1.05) continue;
         const t = s / C.L, bq = C.back * (q.z - C.pz) + r, b0 = prof(t); if (bq <= b0) continue;
         const h = Math.hypot(s, b0), bnd = 1 - (1 - t) * (1 - t), ab = Math.asin(Math.min(1, bq / h)) - Math.atan2(b0, s);
         thMin = Math.max(thMin, ab / Math.max(0.35, bnd));
       }
-      thMin = Math.min(1.25, thMin + 0.14 * fl * 0.6); K.dbg = [thT, psT, thMin, K.th0];
+      thMin = Math.min(1.25, thMin + 0.08 * fl); K.dbg = [thT, psT, thMin];
       if (fresh) { K.th = Math.max(thMin, Math.min(1.25, thT)); K.ps = psT; K.vth = K.vps = 0; }
       else { const n = Math.max(1, Math.ceil(dt / 0.017)), h = dt / n; // пружина: ~1.2 Гц, затухание ~0.45
         for (let k = 0; k < n; k++) { K.vth += (58 * (thT - K.th) - 6.5 * K.vth) * h; K.vps += (58 * (psT - K.ps) - 6.5 * K.vps) * h; K.th += K.vth * h; K.ps += K.vps * h;
           if (K.th < thMin) { K.th = thMin; if (K.vth < 0) K.vth = 0; } if (K.th > 1.25) { K.th = 1.25; if (K.vth > 0) K.vth = 0; }
           if (Math.abs(K.ps) > 0.45) { K.ps = Math.sign(K.ps) * 0.45; K.vps = 0; } } }
       for (const mm of this.matList) { const u = mm.userData.U; if (!u || !u.uCapeP) continue;
-        u.uSway.value.x = K.th; u.uSway.value.y = K.ps; u.uSway.value.z = fl; u.uCapeP.value.set(C.py, C.pz, C.L, C.back); u.uCapeF.value.copy(K.F); u.uCapeI.value.copy(K.I); }
+        u.uSway.value.x = K.th; u.uSway.value.y = K.ps; u.uSway.value.z = fl; u.uCapeP.value.set(C.py, C.pz, C.L, C.back); u.uCapeM.value.copy(K.M); u.uCapeF.value.copy(K.F); u.uCapeI.value.copy(K.I); }
     }
     // v17 UBC: оружие — на «гнёздах» (Object3D) у костей кистей со смещением под хват; голова чуть крупнее (стилизация, читаемость с камеры)
     _ubcRig() {
