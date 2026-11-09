@@ -53,11 +53,11 @@
 html #chestW .chstage{flex:none!important;align-self:center;width:var(--chs,min(44vh,220px));height:var(--chs,min(44vh,220px))!important;min-height:0;margin:0 auto;display:grid;place-items:center;transition:width .35s ease,height .35s ease}
 html #chestW .chstage>:is(canvas,img){width:var(--chs,min(44vh,220px))!important;height:var(--chs,min(44vh,220px))!important;max-width:none!important;max-height:none!important;aspect-ratio:auto!important;object-fit:contain;margin:0;grid-area:1/1;transition:width .35s ease,height .35s ease}
 #chestW>:is(.chtitle,.chloot){flex:none}
-#chestW .chtitle{max-width:100%;box-sizing:border-box;text-align:center}
+#chestW .chtitle{max-width:100%;box-sizing:border-box;text-align:center;margin-top:0}
 /* карточки находок: карта не сжимается, счётчик — на нижней кромке карты (а не в потоке с отрицательным отступом), подпись — под ней */
 #chestW .chloot>.lc{flex:none;max-width:none}
 #chestW .chloot>.lc>.flip{flex:none}
-html #chestW .chloot>.lc>small{flex:none;margin-top:calc(var(--u)*10);max-width:100%;box-sizing:border-box;overflow-wrap:break-word;font-size:calc(var(--u)*13*var(--lck,1))!important}
+html #chestW .chloot>.lc>small{flex:none;margin-top:calc(var(--u)*10);max-width:calc(100% + var(--lcg,0px) - 2px);padding-left:4px!important;padding-right:4px!important;box-sizing:border-box;overflow-wrap:normal;word-break:normal;-webkit-line-clamp:3!important;font-size:calc(var(--u)*13*var(--lck,1))!important}
 html #chestW .chloot>.lc.sup .ff>b.cnt{position:absolute;left:50%;bottom:0;transform:translate(-50%,50%);margin:0!important;z-index:3;white-space:nowrap;font:800 calc(var(--u)*15)/1 var(--sc);color:#3a2206;background:#e0b850;border-radius:6px;padding:2px 7px;text-shadow:none;box-shadow:0 1px 0 #6a4410}
 #chestW .lc.sup b:empty{display:none}
 /* сумка: «Сортировать» — кнопка-значок (общее правило .btn.small возвращало ей шрифт, и подпись вылезала) */
@@ -141,7 +141,9 @@ function chestFit(){ const w=$('chestW'); if(!w||w.classList.contains('hidden'))
   const max=Math.min(230*u,ah*.58,aw), want=Math.min(max,ah*.45); // сундук не меньше ~45% высоты: сначала сужаются карты
   const lootW=Math.min(aw,parseFloat(bcs.maxWidth)||aw); const gap=parseFloat(bcs.columnGap)||8; let base=0, cw=0;
   if(n){ for(const c of cards) c.style.width=''; base=cards[0].offsetWidth||Math.round(96*u); cw=Math.max(Math.round(base*.62),Math.min(base,Math.floor((lootW-(n-1)*gap)/n))); }
-  const fitS=()=>{ if(n){ for(const c of cards) c.style.width=cw+'px'; box.style.setProperty('--lck',Math.max(.82,Math.min(1,cw/base)).toFixed(3)); }
+  const fitS=()=>{ if(n){ for(const c of cards) c.style.width=cw+'px'; box.style.setProperty('--lcg',Math.round(gap)+'px'); box.style.setProperty('--lck',Math.max(.72,Math.min(1,cw/base)).toFixed(3)); 
+      for(const c of cards){ const l=c.querySelector(':scope>small'); if(!l) continue; l.style.removeProperty('font-size'); let f=parseFloat(getComputedStyle(l).fontSize)||12; const f0=f; // длинное слово («Эссенция») — мельче шрифт, а не перенос посреди слова
+        for(let k=0;k<6&&l.scrollWidth>l.clientWidth+1&&f>f0*.7;k++){ f*=.92; l.style.setProperty('font-size',f.toFixed(1)+'px','important'); } } }
     const used=ti.offsetHeight+parseFloat(tcs.marginTop)+parseFloat(tcs.marginBottom)+(n?box.offsetHeight+parseFloat(bcs.marginTop)+parseFloat(bcs.marginBottom):0); return ah-used-4; };
   let room=fitS(); for(let k=0;k<5&&n&&room<want&&cw>base*.7;k++){ const lh=box.offsetHeight; const nw=Math.max(Math.round(base*.7),Math.floor(cw*Math.max(.8,(lh-(want-room))/lh))); if(nw>=cw) break; cw=nw; room=fitS(); }
   const s=Math.round(Math.max(Math.min(64*u,max),Math.min(max,room)));
