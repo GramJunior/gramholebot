@@ -120,7 +120,7 @@ html #panel.wbp[data-idv] #pHead>.idv-emb{position:relative;z-index:2}
 /* витрина в шапке */
 html #panel.wbp[data-idv] #pHead>.idv-win{position:absolute;z-index:0;top:calc(var(--st,0px) + var(--u)*4);bottom:calc(var(--u)*4);border-radius:calc(var(--u)*8);overflow:hidden;pointer-events:none;
   box-shadow:inset 0 0 0 2px var(--iv-acc),inset 0 0 0 3px rgba(0,0,0,.35),inset 0 3px 8px rgba(0,0,0,.45);background:var(--iv-h2)}
-.idv-win>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.idv-win>svg{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:.62;filter:saturate(.8)} /* v39.2: витрина — декор, приглушена, чтобы не выглядела кнопками */
 .idv-win .idv-bi{position:absolute;left:calc(var(--u)*4);bottom:calc(var(--u)*-2);height:115%;width:auto;max-width:40%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 .idv-win .idv-np{position:absolute;right:calc(var(--u)*5);top:50%;width:calc(var(--u)*34);height:calc(var(--u)*34);margin-top:calc(var(--u)*-17);border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 35%,#f6e2b4,#c99a5a);box-shadow:0 0 0 2px var(--iv-acc),0 0 0 3px rgba(0,0,0,.5)}
 .idv-win .idv-np img{width:100%;height:100%;object-fit:cover}
@@ -195,7 +195,7 @@ function idvRule(k){ if(IDV_RULE[k]) return; IDV_RULE[k]=1; const T=IDV[k]; cons
   const tex=idvTex(k); st.textContent=`html #panel.wbp[data-idv="${k}"]{--iv-ornu:${idvUri(idvMonoSvg(T.orn,T.pi))};--iv-wmu:${idvUri(idvMonoSvg(T.wm,T.o[1],.09))};${tex?`--iv-texu:url(${tex});`:''}}`; document.head.appendChild(st); }
 
 // ---------- сцены витрины (SVG 300×44; иконки — символы спрайта #i-*) ----------
-const idvU=(n,x,y,s,cls,extra)=>`<use href="#i-${icoId(n)||'spark'}" x="${x}" y="${y}" width="${s}" height="${s}"${cls?` class="${cls}"`:''}${extra||''}/>`;
+const idvU=(n,x,y,s,cls,extra)=>`<use href="#i-${icoId(n)||'spark'}" x="${x}" y="${y}" width="${s}" height="${s}"${cls?` class="${cls}"`:''}${extra||''} opacity=".8"/>`;
 const IDV_SCN={};
 function idvScene(k){ if(IDV_SCN[k]) return IDV_SCN[k]; const T=IDV[k]; const id='iv'+k; let b='';
   const sparks=(n,x0,x1,y,col,dur)=>{ let s=''; for(let i=0;i<n;i++){ const x=x0+(x1-x0)*((i*37)%100)/100; s+=`<circle class="a-rise" cx="${x.toFixed(1)}" cy="${y}" r="${(1+(i%3)*.4).toFixed(1)}" fill="${col}" style="animation-delay:${(-i*.37).toFixed(2)}s;animation-duration:${dur+(i%4)*.3}s"/>`; } return s; };
@@ -209,7 +209,7 @@ function idvScene(k){ if(IDV_SCN[k]) return IDV_SCN[k]; const T=IDV[k]; const id
   else if(k==='shop') b=`<rect width="300" height="44" fill="url(#${id}bg)"/>${Array.from({length:16},(_,i)=>`<path d="M${i*20} 0h20v8a10 6 0 0 1-20 0z" fill="${i%2?'#2e8682':'#6a3a9e'}"/>`).join('')}${idvU('gold',96,20,22)}${idvU('gold',112,22,20)}${idvU('gem',176,18,22)}${idvU('chest',136,12,30)}${[70,200,230,250].map((x,i)=>`<path class="a-tw" style="animation-delay:${-i*.45}s" d="M${x} ${20+i%2*8}l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#ffe6a0"/>`).join('')}`;
   else if(k==='hero') b=`<rect width="300" height="44" fill="url(#${id}bg)"/><rect x="3" y="3" width="294" height="38" rx="5" fill="none" stroke="#c8a070" stroke-width="1.2" stroke-dasharray="4 3"/>${idvU('swords',132,4,36)}${idvU('shield',90,10,26)}${idvU('helm',186,10,26)}${idvU('bow',50,12,22,'',' opacity=".8"')}${idvU('staff',228,12,22,'',' opacity=".8"')}`;
   else if(k==='pass') b=`<rect width="300" height="44" fill="url(#${id}bg)"/><path d="M0 3Q150 22 300 3" stroke="#f6e6b0" stroke-width="1.5" fill="none"/>${Array.from({length:12},(_,i)=>{ const x=12+i*25, y=3+Math.sin(i/11*Math.PI)*17; return `<path d="M${x-6} ${y.toFixed(1)}h12l-6 10z" fill="${['#ffd040','#2f80cc','#3f9a2a','#fff6d8'][i%4]}"/>`; }).join('')}${idvU('gifts',130,14,28)}${idvU('star',100,20,18,'a-tw')}${idvU('star',184,20,18,'a-tw',' style="animation-delay:-.9s"')}${idvU('chest',206,18,24)}`;
-  else if(k==='coll') b=`<rect width="300" height="44" fill="url(#${id}bg)"/>${[60,150,240].map(x=>`<path d="M${x-30} 44V16a30 16 0 0 1 60 0v28z" fill="rgba(0,0,0,.25)"/><path d="M${x-26} 0L${x-14} 44H${x+14}L${x+26} 0z" fill="url(#${id}spot)"/><rect x="${x-12}" y="32" width="24" height="12" fill="#c8a050"/>`).join('')}${idvU('crown',48,14,22)}${idvU('coll',138,10,24)}${idvU('gem',230,14,20)}`;
+  else if(k==='coll') b=`<rect width="300" height="44" fill="url(#${id}bg)"/>${[60,150,240].map(x=>`<path d="M${x-26} 0L${x-14} 44H${x+14}L${x+26} 0z" fill="url(#${id}spot)" opacity=".6"/>`).join('')}${idvU('crown',48,14,22)}${idvU('coll',138,10,24)}${idvU('gem',230,14,20)}`;
   else if(k==='net') b=`<rect width="300" height="44" fill="url(#${id}bg)"/>${[30,80,130,170,220,270].map((x,i)=>`<g class="a-sway" style="animation-delay:${-i*.5}s"><rect x="${x-1}" y="0" width="2" height="44" fill="#2a2a30"/><path d="M${x+1} 3h22v18l-11 6-11-6z" fill="${['#8a1c22','#2a4aa8','#e2b84a','#3f7a22','#6a3a9e','#c8302a'][i]}"/>${idvU(['flag','crown','shield','vece','swords','star'][i],x+5,6,14)}</g>`).join('')}`;
   else if(k==='set') b=`<rect width="300" height="44" fill="url(#${id}bg)"/>${idvU('gear',112,2,40,'a-spin')}${idvU('gear',150,14,28,'a-spin',' style="animation-direction:reverse;animation-duration:8s"')}${idvU('gear',178,4,22,'a-spin')}`;
   else if(k==='lore') b=`<rect width="300" height="44" fill="url(#${id}bg)"/><path d="M30 8h240M30 16h220M30 24h236M30 32h200" stroke="rgba(90,50,20,.18)" stroke-width="1.5"/>${idvU('scroll',104,8,28)}${idvU('book',140,8,28)}${idvU('feather',176,8,26)}<circle cx="236" cy="26" r="9" fill="#a8241c"/><circle cx="236" cy="26" r="5" fill="#d04030"/>`;
@@ -226,7 +226,7 @@ function idvWho(k){ let bi='', np='';
     else if(k==='hero'){ const u=typeof portraitFor==='function'?portraitFor('hero'):''; if(u) np=`<img src="${u}" alt="">`; }
     else if(k==='pass'){ bi=wbChest('gold','idv-bi'); }
     else if(k==='shop'){ bi=wbChest('iron','idv-bi'); } }catch(e){}
-  return (bi||'')+`<span class="idv-np">${np||ico(IDV[k].orn)}</span>`; }
+  return (bi||'')+(np?`<span class="idv-np">${np}</span>`:''); } // v39.2: без портрета — без круглого медальона (его принимали за кнопку)
 
 // ---------- оформление после отрисовки ----------
 const IDVS={last:'',key:''};
