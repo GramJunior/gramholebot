@@ -1932,9 +1932,11 @@ document.addEventListener('DOMContentLoaded',function(){ if(window.THREE) return
   // простые выражения, качание плащей. Всё внутри того же материала: ни одного нового вызова отрисовки.
   const CHAR_VS_PARS = `attribute vec4 aFx; attribute vec3 onormal; uniform vec4 uSway; uniform vec4 uCapeP; uniform mat4 uCapeM; uniform mat3 uCapeF; uniform mat4 uCapeI; uniform float uSoft; uniform mat4 uDQ; uniform mat4 uDQi; uniform mat3 uDQn; varying vec3 vBind; varying vec3 vBN; varying vec4 vFx;
 // v38.2 плащ: изгиб «маятником» вокруг линии плеч в позе привязки (метры модели). uSway: x — угол назад от спины, y — вбок, z — сила трепета, w — фаза;
-// uCapeP: x,y — высота и глубина шарнира (у плеч), z — длина (0 — плащ не настроен), w — знак «спины» по z. uCapeM — куда сейчас смотрит верх спины
-// (рамка по суставам: шея, низ спины, плечи) относительно позы привязки; ткань скинится на корневую кость, uCapeI = (uDQ · bindMatrix)⁻¹. Углы считает процессор (Actor._capeTick): тяжесть, сопротивление
-// воздуха, пружина с запаздыванием, упоры от таза и ног — поэтому плащ висит вниз при любом наклоне корпуса и не уходит в тело.
+// uCapeP: x,y — высота и глубина шарнира (у плеч), z — длина (0 — тика нет: плащ не гнётся), w — знак «спины» по z. Ткань целиком скинится на кость верха
+// спины (capeRig) — верх плаща всегда там, где торс; изгиб — в позе привязки, затем uCapeM — поворот «рамки корпуса» (по суставам) относительно этой
+// кости с закреплённым шарниром; uCapeI = (uDQ · bindMatrix)⁻¹ возвращает результат в пространство до скиннинга. Углы считает
+// процессор (Actor._capeTick) в осях той же кости: тяжесть, сопротивление воздуха, пружина с запаздыванием, упоры от таза и ног — плащ висит вниз при любом
+// наклоне корпуса, не отрывается от плеч и не уходит в тело.
 vec2 evCapeAng( float sw, vec3 p ) { float bnd = 1.0 - ( 1.0 - sw ) * ( 1.0 - sw );
   float fl = ( sin( uTime * 5.3 + p.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + p.x * 6.0 + uSway.w * 1.7 ) * 0.4 ) * uSway.z * sw;
   return vec2( uSway.x * bnd + fl * 0.14, uSway.y * bnd + fl * 0.05 ); }
@@ -1946,7 +1948,7 @@ vec3 evCapeRot( vec3 v, vec2 a ) { float bk = uCapeP.w, ca = cos( a.x ), sa = si
   {
     vec4 evB = uDQ * ( bindMatrix * vec4( transformed, 1.0 ) ); // поза привязки в метрах модели (снимаем квантование KayKit)
     float sw = aFx.x;
-    if ( sw > 0.0 && uCapeP.z > 0.0 ) { // плащ: поворот вокруг шарнира у плеч (растёт к подолу), затем — в рамку верха спины
+    if ( sw > 0.0 && uCapeP.z > 0.0 ) { // плащ: поворот вокруг шарнира у плеч (растёт к подолу); дальше обычный скиннинг на кость верха спины
       vec3 evPv = vec3( 0.0, uCapeP.x, uCapeP.y ), evQ = evB.xyz - evPv;
       transformed = ( uCapeI * ( uCapeM * vec4( evPv + evCapeRot( evQ, evCapeAng( sw, evB.xyz ) ), 1.0 ) ) ).xyz;
     }
@@ -2242,27 +2244,42 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   }
   function texAt(px, u, v) { const x = Math.min(px.w - 1, Math.max(0, Math.floor(u * px.w))), y = Math.min(px.h - 1, Math.max(0, Math.floor(v * px.h))), k = (y * px.w + x) * 4; return [px.d[k] / 255, px.d[k + 1] / 255, px.d[k + 2] / 255]; }
   const isSkinC = (c) => { const l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2], rb = c[0] - c[2]; return c[2] <= c[1] && c[1] <= c[0] + 0.02 && l > 0.55 && rb > 0.08 && rb < 0.45; };
-  // v38.2 плащ: раньше ткань висела на костях спины и таза (подол — на тазе: корпус поворачивался — плащ скручивало; у UBC кость spine_03 в клипах
-  // повёрнута иначе, чем выглядит торс, — плащ торчал доской под странным углом). Теперь вся ткань скинится на корневую кость, а куда смотрит верх
-  // спины, считается по ПОЛОЖЕНИЯМ суставов (шея, низ спины, плечи) — это совпадает с тем, что видно. Изгиб, тяжесть и упоры — Actor._capeTick.
-  const CAPE_J = { n: /^neck/i, lo: /^(spine_?0?1|spine)$/i, l: /^(upperarm[._]?l|upper_?arm[._]?l|arm[._]?l)$/i, r: /^(upperarm[._]?r|upper_?arm[._]?r|arm[._]?r)$/i };
+  // v38.2 плащ: раньше ткань висела на костях спины и таза (подол — на тазе: корпус поворачивался — плащ скручивало, наклон — плащ торчал
+  // жёсткой доской, подол уходил в бёдра и руки). Теперь вся ткань — на ОДНОЙ кости верха спины (та же, что несёт торс у воротника: UBC spine_03,
+  // KayKit chest/upperchest), поэтому верх плаща прилегает к плечам в любой позе; изгиб «маятником» вокруг линии плеч, тяжесть, запаздывание,
+  // трепет и упоры от таза/ног — в шейдере и Actor._capeTick (без тика плащ просто едет вместе с верхом спины — тоже без отрыва).
+  // рамка корпуса по суставам: «вверх» — от таза к шее, «вправо» — линия плеч с небольшой добавкой линии бёдер (подол лежит на тазе), «вперёд» — их произведение
+  const _cv = [new T.Vector3(), new T.Vector3(), new T.Vector3()];
+  function capeFrame(j, out) {
+    const up = _cv[0].subVectors(j.n, j.lo).normalize(), rt = _cv[1].subVectors(j.cr, j.cl).normalize(), rh = _cv[2].subVectors(j.tr, j.tl).normalize();
+    rt.addScaledVector(rh, 0.3).addScaledVector(up, -rt.dot(up)); if (rt.lengthSq() < 1e-6) rt.set(1, 0, 0); rt.normalize();
+    const fw = _cv[2].crossVectors(rt, up); return out.makeBasis(rt, up, fw).setPosition(j.n); }
   const jointEv = (sk, i, D) => new T.Vector3().setFromMatrixPosition(new T.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(D);
-  function capeFrame(n, lo, l, r, out) { // рамка верха спины: начало — шея, оси — «вправо», «вверх», «вперёд»
-    const up = new T.Vector3().subVectors(n, lo).normalize(), rt = new T.Vector3().subVectors(r, l); rt.addScaledVector(up, -rt.dot(up)).normalize();
-    const fw = new T.Vector3().crossVectors(rt, up); return (out || new T.Matrix4()).makeBasis(rt, up, fw).setPosition(n); }
-  function capeRig(g, B, sk, D) {
-    const J = {}; for (const k in CAPE_J) { const i = sk.bones.findIndex((b) => CAPE_J[k].test(b.name)); if (i < 0) return null; J[k] = i; }
-    const n = B.length / 3; let y0 = 1e9, y1 = -1e9, zs = 0, zt = 0, nt = 0;
+  function capeRig(g, B, sk, D, fx) {
+    const n = B.length / 3, SI0 = g.attributes.skinIndex, SW0 = g.attributes.skinWeight, ws = normScale(SW0), isSp = (j) => sk.bones[j] && /spine|chest/i.test(sk.bones[j].name);
+    // кость-якорь: позвонок/грудь с наибольшим весом у воротника (верхние 25%); если таких нет — верхний позвонок по имени
+    const votes = new Map();
+    for (let i = 0; i < n; i++) { if (fx[i * 4] > 0.25) continue; for (let k = 0; k < 4; k++) { const j = k === 0 ? SI0.getX(i) : k === 1 ? SI0.getY(i) : k === 2 ? SI0.getZ(i) : SI0.getW(i), w = (k === 0 ? SW0.getX(i) : k === 1 ? SW0.getY(i) : k === 2 ? SW0.getZ(i) : SW0.getW(i)) * ws; if (w > 0 && isSp(j)) votes.set(j, (votes.get(j) || 0) + w); } }
+    let bone = -1, bv = 0; for (const [j, w] of votes) if (w > bv) { bv = w; bone = j; }
+    if (bone < 0) for (const re of [/^spine_?03$/i, /^upper_?chest$/i, /^chest$/i, /^spine_?02$/i, /^spine$/i]) { bone = sk.bones.findIndex((b) => re.test(b.name)); if (bone >= 0) break; }
+    if (bone < 0) return null;
+    let y0 = 1e9, y1 = -1e9, zs = 0, zt = 0, nt = 0;
     for (let i = 0; i < n; i++) { const y = B[i * 3 + 1]; y0 = Math.min(y0, y); y1 = Math.max(y1, y); zs += B[i * 3 + 2]; }
     for (let i = 0; i < n; i++) if (B[i * 3 + 1] > y1 - 0.04) { zt += B[i * 3 + 2]; nt++; }
-    const jn = jointEv(sk, J.n, D), L = Math.max(0.05, y1 - y0), pz = nt ? zt / nt : 0, back = (zs / Math.max(1, n) - jn.z) >= 0 ? 1 : -1;
+    const je = jointEv(sk, bone, D), L = Math.max(0.05, y1 - y0), pz = nt ? zt / nt : 0, back = (zs / Math.max(1, n) - je.z) >= 0 ? 1 : -1;
+    // профиль спинки плаща в позе привязки (насколько ткань отстоит назад от шарнира на каждой 1/8 длины) — для упоров
     const prof = new Array(9).fill(0), cnt = new Array(9).fill(0);
     for (let i = 0; i < n; i++) { if (Math.abs(B[i * 3]) > 0.07) continue; const k = Math.min(8, Math.round((y1 - B[i * 3 + 1]) / L * 8)); prof[k] += back * (B[i * 3 + 2] - pz); cnt[k]++; }
     for (let k = 0; k < 9; k++) prof[k] = cnt[k] ? prof[k] / cnt[k] : (k ? prof[k - 1] : 0);
-    const Fb = capeFrame(jn, jointEv(sk, J.lo, D), jointEv(sk, J.l, D), jointEv(sk, J.r, D)).invert();
-    const SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4); for (let i = 0; i < n; i++) SW[i * 4] = 1; // всё — на кость 0 (корень)
+    // суставы для «рамки корпуса»: шея, таз, плечи (ключицы), бёдра. Ориентацию плаща берём по их ПОЛОЖЕНИЯМ, а не по повороту кости-якоря:
+    // в клипах UBC spine_03 закручена (крен/скрутка до 60°, торс выглядит прямо за счёт spine_01/02) — ткань на одной этой кости торчала крылом
+    const fj = (L2) => { for (const re of L2) { const i = sk.bones.findIndex((b) => re.test(b.name)); if (i >= 0) return i; } return -1; };
+    const J = { n: fj([/^neck/i, /^head$/i]), lo: fj([/^pelvis$/i, /^hips$/i]), cl: fj([/^clavicle_?l$/i, /^shoulder[._]?l$/i, /^upper_?arm[._]?l$/i]), cr: fj([/^clavicle_?r$/i, /^shoulder[._]?r$/i, /^upper_?arm[._]?r$/i]),
+      tl: fj([/^thigh_?l$/i, /^upper_?leg[._]?l$/i]), tr: fj([/^thigh_?r$/i, /^upper_?leg[._]?r$/i]) };
+    let Fb = null; if (Object.values(J).every((i) => i >= 0)) { const jv = {}; for (const k in J) jv[k] = jointEv(sk, J[k], D); Fb = capeFrame(jv, new T.Matrix4()).invert().toArray(); }
+    const SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4); for (let i = 0; i < n; i++) { SI[i * 4] = bone; SW[i * 4] = 1; }
     g.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); g.setAttribute('skinWeight', new T.BufferAttribute(SW, 4));
-    return { J, Fb: Fb.toArray(), py: y1, pz, L, back, prof };
+    return { bone, J, Fb, py: y1, pz, L, back, prof };
   }
   function charPrep(root, key) {
     root.updateMatrixWorld(true);
@@ -2281,7 +2298,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       for (let i = 0; i < n; i++) { v.set(P.getX(i) * ps, P.getY(i) * ps, P.getZ(i) * ps).applyMatrix4(o.bindMatrix).applyMatrix4(D); B[i * 3] = v.x; B[i * 3 + 1] = v.y; B[i * 3 + 2] = v.z; }
       if (/cape|cloak/i.test(o.name)) { let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, B[i * 3 + 1]); y1 = Math.max(y1, B[i * 3 + 1]); }
         for (let i = 0; i < n; i++) fx[i * 4] = Math.max(0.001, Math.min(1, (y1 - B[i * 3 + 1]) / Math.max(1e-3, y1 - y0))); o.userData.evCape = 1;
-        const ci = capeRig(g, B, sk, D); if (ci) o.userData.evCapeInfo = ci; }
+        const ci = capeRig(g, B, sk, D, fx); if (ci) o.userData.evCapeInfo = ci; }
       g.setAttribute('aFx', new T.BufferAttribute(fx, 4));
       if (o.userData.evCape) { o.geometry = doubleSided(g, new T.Matrix4().multiplyMatrices(D, o.bindMatrix)); return; } // плащ KayKit — одна плоскость: вторая сторона со своей нормалью (раньше изнанка светилась плоским розовым)
       const head = o.skeleton.bones.findIndex((b) => /^head$/i.test(b.name)), px = UV && texPixels(o.material.map);
@@ -2427,7 +2444,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       for (let i = 0; i < n; i++) { a = Math.min(a, B[i * 3 + 1]); b = Math.max(b, B[i * 3 + 1]); }
       for (let i = 0; i < n; i++) { fx[i * 4] = Math.max(0.001, Math.min(1, (b - B[i * 3 + 1]) / Math.max(1e-3, b - a))); fx[i * 4 + 3] = 1; }
       o.geometry.userData.evFx = fx; o.geometry.userData.evCape = 1;
-      F.cape = capeRig(o.geometry, B, o.skeleton, D); }
+      F.cape = capeRig(o.geometry, B, o.skeleton, D, fx); }
   }
   const C_ID = { m: [1, 1, 1], h: 0, s: 1, v: 1 };
   function colOp(c) { if (!c) return C_ID; if (c._op) return c._op; const m = c.mul !== undefined ? C3(c.mul) : null;
@@ -2579,11 +2596,11 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       let mesh = null, C = null;
       if (this.ubc) { const F = S.ubc[this.def.file]; C = F && F.cape; mesh = this._cm; if (!C || !mesh || !(this._parts || []).some((p) => /^cape/.test(p))) return; }
       else { for (const m of this.meshes) if (m.userData.evCapeInfo && m.visible && m.isSkinnedMesh) { mesh = m; C = m.userData.evCapeInfo; break; } if (!mesh) return; }
-      const sk = mesh.skeleton; if (!sk || !sk.bones[0]) return;
+      const sk = mesh.skeleton, bone = sk && sk.bones[C.bone]; if (!bone) return;
       let K = this._cape; const v3 = () => new T.Vector3();
       if (!K || K.mesh !== mesh) {
-        K = this._cape = { mesh, C, th: 0, ps: 0, vth: 0, vps: 0, P: null, v: v3(), R0: new T.Matrix4(), R0i: new T.Matrix4(), M: new T.Matrix4(), Mi: new T.Matrix4(), Fn: new T.Matrix4(), Fb: new T.Matrix4().fromArray(C.Fb),
-          pv: new T.Vector3(0, C.py, C.pz), t: v3(), q: v3(), d: v3(), j: [v3(), v3(), v3(), v3()], pts: [] };
+        K = this._cape = { mesh, C, th: 0, ps: 0, vth: 0, vps: 0, P: null, v: v3(), Mw: new T.Matrix4(), Mi: new T.Matrix4(), A: new T.Matrix4(), Ai: new T.Matrix4(), M: new T.Matrix4(), Fb: C.Fb ? new T.Matrix4().fromArray(C.Fb) : null,
+          j: { n: v3(), lo: v3(), cl: v3(), cr: v3(), tl: v3(), tr: v3() }, pv: new T.Vector3(0, C.py, C.pz), t: v3(), q: v3(), d: v3(), pts: [] };
         // упоры: таз, низ спины, бёдра, колени (UE: pelvis/spine_01/thigh/calf, KayKit: hips/spine/upperleg/lowerleg) и радиус «тела» вокруг них
         const by = (re) => sk.bones.filter((b) => re.test(b.name));
         for (const b of by(/^(pelvis|hips)$/i)) K.pts.push([b, null, 0.13]);
@@ -2594,18 +2611,20 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const dq = this.ubc ? S.files[this.def.file].gltf.scene.userData.evDQ : mesh.geometry.userData.evDQ; K.DQ = new T.Matrix4(); if (dq) K.DQ.fromArray(dq); K.DQi = K.DQ.clone().invert();
         const Fm = new T.Matrix4().multiplyMatrices(K.DQ, mesh.bindMatrix); K.F = new T.Matrix3().setFromMatrix4(Fm); K.I = Fm.clone().invert();
         K.th0 = Math.atan2(C.prof[8], C.L); }
-      // матрицы костей — с прошлой отрисовки. R0: поза привязки (метры модели) -> мир для корневой кости; рамка верха спины — по суставам
-      K.R0.multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]).multiply(K.DQi); K.R0i.copy(K.R0).invert();
-      const J = C.J, jp = (i, o) => o.setFromMatrixPosition(sk.bones[i].matrixWorld).applyMatrix4(K.R0i);
-      capeFrame(jp(J.n, K.j[0]), jp(J.lo, K.j[1]), jp(J.l, K.j[2]), jp(J.r, K.j[3]), K.Fn); K.M.multiplyMatrices(K.Fn, K.Fb); K.Mi.copy(K.M).invert();
-      // мир -> оси плаща в позе привязки: Mi · R0⁻¹
-      const toC = (wp, o) => o.copy(wp).applyMatrix4(K.R0i).applyMatrix4(K.Mi);
-      const P = K.t.copy(K.pv).applyMatrix4(K.M).applyMatrix4(K.R0); let fresh = !K.P;
+      // A: поза привязки (метры модели) -> мир так, как её двигает скиннинг на кость-якорь (кость · обратная привязки · uDQ⁻¹). Суставы — в осях A;
+      // M = рамка корпуса сейчас · рамка в привязке⁻¹, перенос подобран так, что шарнир у плеч неподвижен (M·pv = pv): верх плаща всегда на торсе.
+      // Mw = A · M — плащ в мире до изгиба. Матрицы — с прошлой отрисовки: шарнир всё равно садится точно (скиннинг текущего кадра), поворот отстаёт на кадр.
+      K.A.multiplyMatrices(bone.matrixWorld, sk.boneInverses[C.bone]).multiply(K.DQi); K.Ai.copy(K.A).invert();
+      if (K.Fb) { for (const k in K.j) K.j[k].setFromMatrixPosition(sk.bones[C.J[k]].matrixWorld).applyMatrix4(K.Ai);
+        capeFrame(K.j, K.M).multiply(K.Fb); const pm = K.q.copy(K.pv).applyMatrix4(K.M); const e = K.M.elements; e[12] += K.pv.x - pm.x; e[13] += K.pv.y - pm.y; e[14] += K.pv.z - pm.z; }
+      K.Mw.multiplyMatrices(K.A, K.M); K.Mi.copy(K.Mw).invert();
+      const toC = (wp, o) => o.copy(wp).applyMatrix4(K.Mi);
+      const P = K.t.copy(K.pv).applyMatrix4(K.Mw); let fresh = !K.P;
       if (!fresh && dt > 0) { const vx = (P.x - K.P.x) / dt, vy = (P.y - K.P.y) / dt, vz = (P.z - K.P.z) / dt; if (vx * vx + vy * vy + vz * vz > 400) fresh = true; else { const k = Math.min(1, dt * 12); K.v.x += (vx - K.v.x) * k; K.v.y += (vy - K.v.y) * k; K.v.z += (vz - K.v.z) * k; } }
       if (!K.P) K.P = v3(); K.P.copy(P); if (fresh) K.v.set(0, 0, 0);
       // цель: тяжесть + встречный воздух (не больше ~50°), в осях плаща
       const sp = K.v.length(), dr = Math.min(1.2, sp * 0.16) / Math.max(1e-4, sp);
-      const d = K.d.set(-K.v.x * dr, -1, -K.v.z * dr).transformDirection(K.R0i).transformDirection(K.Mi);
+      const d = K.d.set(-K.v.x * dr, -1, -K.v.z * dr).transformDirection(K.Mi);
       const thT = Math.atan2(C.back * d.z, -d.y) - K.th0, psT = Math.max(-0.45, Math.min(0.45, Math.asin(Math.max(-1, Math.min(1, d.x)))));
       const fl = 0.22 + 0.78 * Math.min(1, sp / 5);
       // упоры: минимальный угол, при котором ткань снаружи таза и ног (по профилю плаща в позе привязки)
