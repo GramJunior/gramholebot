@@ -47,12 +47,19 @@
 #panel .wbx .wb-hcar>:is(.hu33,.sq33)>:last-child{margin-top:auto}
 /* приписки зданий («Ворота: зона 4 …») — переносятся, не уходят за край */
 #panel .wbs .vb24{white-space:normal}
-/* сундук: сцена с сундуком ужимается, а не карточки добычи; низ — под «Коснитесь, чтобы забрать» */
+/* сундук (v39.3): размер сцены — --chs, его считает chestFit() по месту, которое осталось над табличкой и картами;
+   у холста и картинки — ровно этот размер (без width:auto/aspect-ratio/100%: Safari растягивал холст по буферу и сдвигал его под табличку) */
 #chestW{justify-content:center;padding:calc(var(--st,0px) + 6px) calc(var(--sr,0px) + 8px) calc(var(--sb,0px) + var(--u)*54) calc(var(--sl,0px) + 8px)}
-#chestW .chstage{flex:0 1 auto;height:min(52vh,260px);min-height:calc(var(--u)*64)}
-#chestW .chstage>canvas{height:100%!important;width:auto!important;aspect-ratio:1;max-width:100%}
-#chestW .chstage>img{max-height:100%;max-width:100%;object-fit:contain}
+html #chestW .chstage{flex:none!important;align-self:center;width:var(--chs,min(44vh,220px));height:var(--chs,min(44vh,220px))!important;min-height:0;margin:0 auto;display:grid;place-items:center;transition:width .35s ease,height .35s ease}
+html #chestW .chstage>:is(canvas,img){width:var(--chs,min(44vh,220px))!important;height:var(--chs,min(44vh,220px))!important;max-width:none!important;max-height:none!important;aspect-ratio:auto!important;object-fit:contain;margin:0;grid-area:1/1;transition:width .35s ease,height .35s ease}
 #chestW>:is(.chtitle,.chloot){flex:none}
+#chestW .chtitle{max-width:100%;box-sizing:border-box;text-align:center}
+/* карточки находок: карта не сжимается, счётчик — на нижней кромке карты (а не в потоке с отрицательным отступом), подпись — под ней */
+#chestW .chloot>.lc{flex:none;max-width:none}
+#chestW .chloot>.lc>.flip{flex:none}
+html #chestW .chloot>.lc>small{flex:none;margin-top:calc(var(--u)*10);max-width:100%;box-sizing:border-box;overflow-wrap:break-word;font-size:calc(var(--u)*13*var(--lck,1))!important}
+html #chestW .chloot>.lc.sup .ff>b.cnt{position:absolute;left:50%;bottom:0;transform:translate(-50%,50%);margin:0!important;z-index:3;white-space:nowrap;font:800 calc(var(--u)*15)/1 var(--sc);color:#3a2206;background:#e0b850;border-radius:6px;padding:2px 7px;text-shadow:none;box-shadow:0 1px 0 #6a4410}
+#chestW .lc.sup b:empty{display:none}
 /* сумка: «Сортировать» — кнопка-значок (общее правило .btn.small возвращало ей шрифт, и подпись вылезала) */
 html #panel .wbs #pBody .wb2-gear .invact .btn:first-child{font-size:0;gap:0}
 /* Профиль: «18 ур.» — подпись под числом (была поверх); «вещи N» переносится; атрибуты прокручиваются, а не уходят под кнопки */
@@ -124,3 +131,26 @@ function hudEventPlace(){ const e=$('hEvent'), r=$('hRes'); if(!e||!r) return; e
 { const _hr=hudRefresh; hudRefresh=function(){ const r=_hr.apply(this,arguments); try{ hudEventPlace(); }catch(e){} return r; }; }
 if(typeof hudEventChip==='function'){ const _he=hudEventChip; hudEventChip=function(){ const r=_he.apply(this,arguments); try{ hudEventPlace(); }catch(e){} return r; }; }
 window.addEventListener('resize',()=>setTimeout(()=>{ try{ hudEventPlace(); }catch(e){} },150));
+// ---------- v39.3: окно сундука — сундук всегда по центру над табличкой, при любой высоте и числе карт ----------
+// Размер сундука (--chs) = место, что осталось после таблички и карт (не больше 230·u и 58% высоты); карты при многих
+// находках сужаются, чтобы встать в один ряд; сундук уменьшается плавно, когда карты вылетают. Буфер WebGL — под размер.
+function chestFit(){ const w=$('chestW'); if(!w||w.classList.contains('hidden')) return; const st=w.querySelector('.chstage'), ti=w.querySelector('.chtitle'), box=w.querySelector('.chloot'); if(!st||!ti||!box) return;
+  const cs=getComputedStyle(w); const aw=w.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight), ah=w.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+  let pr=w.querySelector('.chu'); if(!pr){ pr=document.createElement('i'); pr.className='chu'; pr.style.cssText='position:absolute;visibility:hidden;pointer-events:none;width:calc(var(--u,1px)*100);height:0'; w.appendChild(pr); } const u=(pr.offsetWidth||100)/100;
+  const cards=[...box.children].filter(e=>e.classList.contains('lc')); const n=cards.length; const tcs=getComputedStyle(ti), bcs=getComputedStyle(box);
+  const max=Math.min(230*u,ah*.58,aw), want=Math.min(max,ah*.45); // сундук не меньше ~45% высоты: сначала сужаются карты
+  const lootW=Math.min(aw,parseFloat(bcs.maxWidth)||aw); const gap=parseFloat(bcs.columnGap)||8; let base=0, cw=0;
+  if(n){ for(const c of cards) c.style.width=''; base=cards[0].offsetWidth||Math.round(96*u); cw=Math.max(Math.round(base*.62),Math.min(base,Math.floor((lootW-(n-1)*gap)/n))); }
+  const fitS=()=>{ if(n){ for(const c of cards) c.style.width=cw+'px'; box.style.setProperty('--lck',Math.max(.82,Math.min(1,cw/base)).toFixed(3)); }
+    const used=ti.offsetHeight+parseFloat(tcs.marginTop)+parseFloat(tcs.marginBottom)+(n?box.offsetHeight+parseFloat(bcs.marginTop)+parseFloat(bcs.marginBottom):0); return ah-used-4; };
+  let room=fitS(); for(let k=0;k<5&&n&&room<want&&cw>base*.7;k++){ const lh=box.offsetHeight; const nw=Math.max(Math.round(base*.7),Math.floor(cw*Math.max(.8,(lh-(want-room))/lh))); if(nw>=cw) break; cw=nw; room=fitS(); }
+  const s=Math.round(Math.max(Math.min(64*u,max),Math.min(max,room)));
+  if(w._chs!==s){ w._chs=s; w.style.setProperty('--chs',s+'px'); }
+  try{ const cv=st.querySelector('canvas'); if(cv&&CHRR&&cv===CHRR.domElement){ const v=CHRR.getSize(new THREE.Vector2()); if(v.x<s*.92||v.x>s*1.5) CHRR.setSize(s,s,false); } }catch(e){} }
+function chestFitWatch(){ const w=$('chestW'); if(!w) return; let q=0; const go=()=>{ if(q) return; q=requestAnimationFrame(()=>{ q=0; try{ chestFit(); }catch(e){} }); };
+  if(!w._chRO&&window.ResizeObserver){ w._chRO=new ResizeObserver(go); w._chRO.observe(w); } if(w._chRO){ w._chRO.disconnect(); w._chRO.observe(w); const b=w.querySelector('.chloot'); if(b) w._chRO.observe(b); }
+  if(!w._chRz){ w._chRz=1; window.addEventListener('resize',go); } go(); }
+{ const _cs=chestShow; chestShow=function(list){ const r=_cs.apply(this,arguments); try{ const w=$('chestW'); if(w){ w._chs=0; w.style.removeProperty('--chs'); chestFit(); chestFitWatch(); } }catch(e){} return r; }; }
+{ const _cf=chestFly; chestFly=function(out){ const r=_cf.apply(this,arguments); try{ const box=document.querySelector('#chestW .chloot');
+    if(box) for(const c of box.querySelectorAll('.lc.sup')){ const b=c.querySelector(':scope>b'); if(!b) continue; if(!b.textContent.trim()){ b.remove(); continue; } const ff=c.querySelector('.ff'); if(ff){ b.classList.add('cnt'); ff.appendChild(b); } }
+    chestFit(); setTimeout(()=>{ try{ chestFit(); }catch(e){} },120); }catch(e){} return r; }; }
