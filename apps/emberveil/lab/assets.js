@@ -134,7 +134,7 @@
 // uCapeP: x,y — высота и глубина шарнира (у плеч), z — длина (0 — тика нет: плащ не гнётся), w — знак «спины» по z. Ткань целиком скинится на кость верха
 // спины (capeRig) — верх плаща всегда там, где торс; изгиб — в позе привязки, затем uCapeM — поворот «рамки корпуса» (по суставам) относительно этой
 // кости с закреплённым шарниром; uCapeI = (uDQ · bindMatrix)⁻¹ возвращает результат в пространство до скиннинга. Углы считает
-// процессор (Actor._capeTick) в осях той же кости: тяжесть, сопротивление воздуха, пружина с запаздыванием, упоры от таза и ног — плащ висит вниз при любом
+// процессор (Actor._capeTick) в осях рамки корпуса: тяжесть, сопротивление воздуха, пружина с запаздыванием, упоры от таза и ног — плащ висит вниз при любом
 // наклоне корпуса, не отрывается от плеч и не уходит в тело.
 vec2 evCapeAng( float sw, vec3 p ) { float bnd = 1.0 - ( 1.0 - sw ) * ( 1.0 - sw );
   float fl = ( sin( uTime * 5.3 + p.y * 4.0 + uSway.w ) * 0.6 + sin( uTime * 8.1 + p.x * 6.0 + uSway.w * 1.7 ) * 0.4 ) * uSway.z * sw;
@@ -147,7 +147,7 @@ vec3 evCapeRot( vec3 v, vec2 a ) { float bk = uCapeP.w, ca = cos( a.x ), sa = si
   {
     vec4 evB = uDQ * ( bindMatrix * vec4( transformed, 1.0 ) ); // поза привязки в метрах модели (снимаем квантование KayKit)
     float sw = aFx.x;
-    if ( sw > 0.0 && uCapeP.z > 0.0 ) { // плащ: поворот вокруг шарнира у плеч (растёт к подолу); дальше обычный скиннинг на кость верха спины
+    if ( sw > 0.0 && uCapeP.z > 0.0 ) { // плащ: поворот вокруг шарнира у плеч (растёт к подолу), рамка корпуса, затем обычный скиннинг на кость верха спины
       vec3 evPv = vec3( 0.0, uCapeP.x, uCapeP.y ), evQ = evB.xyz - evPv;
       transformed = ( uCapeI * ( uCapeM * vec4( evPv + evCapeRot( evQ, evCapeAng( sw, evB.xyz ) ), 1.0 ) ) ).xyz;
     }
@@ -787,9 +787,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       for (const mm of this.matList) { const U = mm.userData.U; if (!U.uBlink) continue; if (F.eyes) U.uBlink.value.set(F.lid[0], F.lid[1]); }
       this._capeTick(dt);
     }
-    // v38.2 плащ: маятник на две оси в осях кости верха спины. Цель — куда тянут тяжесть и встречный воздух (по настоящему движению шарнира в мире:
+    // v38.2 плащ: маятник на две оси в осях «рамки корпуса» (см. capeFrame). Цель — куда тянут тяжесть и встречный воздух (по настоящему движению шарнира в мире:
     // бег, рывки, удары, повороты, вращение героя пальцем в Профиле); пружина с затуханием даёт запаздывание и покачивание; снизу угол ограничен
-    // упорами (таз, бёдра, колени — плащ всегда снаружи), сверху — 1.25 рад. Раньше: смещение «на глаз» в неверных осях (подол уходил вбок/в тело
+    // упорами (таз, бёдра, колени — плащ всегда снаружи), сверху — 1.1 рад. Раньше: смещение «на глаз» в неверных осях (подол уходил вбок/в тело
     // при повороте актёра) и подол на кости таза (плащ крутило вместе с бёдрами и выгибало доской).
     _capeTick(dt) {
       let mesh = null, C = null;
@@ -835,11 +835,11 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
         const h = Math.hypot(s, b0), bnd = 1 - (1 - t) * (1 - t), ab = Math.asin(Math.min(1, bq / h)) - Math.atan2(b0, s);
         thMin = Math.max(thMin, ab / Math.max(0.35, bnd));
       }
-      thMin = Math.min(1.25, thMin + 0.08 * fl); K.dbg = [thT, psT, thMin];
-      if (fresh) { K.th = Math.max(thMin, Math.min(1.25, thT)); K.ps = psT; K.vth = K.vps = 0; }
-      else { const n = Math.max(1, Math.ceil(dt / 0.017)), h = dt / n; // пружина: ~1.2 Гц, затухание ~0.45
-        for (let k = 0; k < n; k++) { K.vth += (58 * (thT - K.th) - 6.5 * K.vth) * h; K.vps += (58 * (psT - K.ps) - 6.5 * K.vps) * h; K.th += K.vth * h; K.ps += K.vps * h;
-          if (K.th < thMin) { K.th = thMin; if (K.vth < 0) K.vth = 0; } if (K.th > 1.25) { K.th = 1.25; if (K.vth > 0) K.vth = 0; }
+      thMin = Math.min(1.1, thMin + 0.08 * fl); K.dbg = [thT, psT, thMin];
+      if (fresh) { K.th = Math.max(thMin, Math.min(1.1, thT)); K.ps = psT; K.vth = K.vps = 0; }
+      else { const n = Math.max(1, Math.ceil(dt / 0.017)), h = dt / n; // пружина: ~1.5 Гц, затухание ~0.5 (быстро возвращается после рывков, без «доски»)
+        for (let k = 0; k < n; k++) { K.vth += (90 * (thT - K.th) - 9.5 * K.vth) * h; K.vps += (90 * (psT - K.ps) - 9.5 * K.vps) * h; K.th += K.vth * h; K.ps += K.vps * h;
+          if (K.th < thMin) { K.th = thMin; if (K.vth < 0) K.vth = 0; } if (K.th > 1.1) { K.th = 1.1; if (K.vth > 0) K.vth = 0; }
           if (Math.abs(K.ps) > 0.45) { K.ps = Math.sign(K.ps) * 0.45; K.vps = 0; } } }
       for (const mm of this.matList) { const u = mm.userData.U; if (!u || !u.uCapeP) continue;
         u.uSway.value.x = K.th; u.uSway.value.y = K.ps; u.uSway.value.z = fl; u.uCapeP.value.set(C.py, C.pz, C.L, C.back); u.uCapeM.value.copy(K.M); u.uCapeF.value.copy(K.F); u.uCapeI.value.copy(K.I); }
