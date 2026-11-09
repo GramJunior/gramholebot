@@ -11,6 +11,7 @@ import * as pay from './routes/payments.js';
 import * as social from './routes/social.js';
 import * as bot from './routes/bot.js';
 import * as metrics from './routes/metrics.js';
+import { rateLimit } from './lib/ratelimit.js';
 
 const health = (c) => json({ ok: true, name: 'emberveil', serverTime: c.now, telegram: !!c.env.BOT_TOKEN, guest: c.env.ALLOW_GUEST === '1' });
 
@@ -80,6 +81,7 @@ export const ROUTES = [
   ['GET', '/admin/audit', live.adminAudit],
   ['GET', '/admin/stats', live.adminStats],
   ['GET', '/admin/metrics', metrics.adminMetrics],
+  ['GET', '/admin/errors', metrics.adminErrors],
 ];
 
 function match(method, path) {
@@ -113,6 +115,7 @@ export async function handle(req, env, now = Date.now()) {
     if (prefix && path.startsWith(prefix)) path = path.slice(prefix.length) || '/';
     const { h, params, pathMatched } = match(req.method, path);
     if (!h) fail(pathMatched ? 405 : 404, pathMatched ? 'method' : 'not_found', 'Нет такого метода');
+    await rateLimit(req, env, path, now); // v39: 429 на /auth, PUT /save, /events, /pay/invoice, /admin/* (src/lib/ratelimit.js)
     res = await h({ req, env, url, now, params });
   } catch (e) {
     res = errorResponse(e);
@@ -120,6 +123,7 @@ export async function handle(req, env, now = Date.now()) {
   const out = new Response(res.body, res);
   for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
   out.headers.set('x-content-type-options', 'nosniff');
+  if (out.status === 429 && !out.headers.has('retry-after')) out.headers.set('retry-after', '60');
   if (!out.headers.has('cache-control')) out.headers.set('cache-control', 'no-store');
   return out;
 }

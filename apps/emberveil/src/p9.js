@@ -117,7 +117,7 @@ function bossStageTick(dt){
   if(!W.bossStarted&&Math.hypot(P.x-A.x,P.z-A.z)<A.r-2.5){
     W.bossStarted=true; W.lock={x:A.x,z:A.z,r:A.r-.4};
     const id=W.bossId; const z=W.info.z;
-    const go=()=>{ const e=spawnBoss(id,A.x,A.z-A.r*.45,W.lvl); e.face=0; e.intro=true; CAMR.override={x:e.x,z:e.z+2,zoom:.55}; AU.music('boss'); AU.sfx('roar'); AU.sfx('sting'); shake(.5);
+    const go=()=>{ const e=spawnBoss(id,A.x,A.z-A.r*.45,W.lvl); e.face=0; e.intro=true; CAMR.override={x:e.x,z:e.z+2,zoom:.55}; AU.music((BOSSES[id]&&BOSSES[id].mus)||'boss'); AU.sfx('roar'); AU.sfx('sting'); shake(.5);
       later(.4,()=>banner(e.bossD.n,e.bossD.t)); later(2.4,()=>{ CAMR.override=null; e.intro=false; }); };
     const pre='boss'+z+'_pre'; if(DLG[pre]&&!S.seen[pre]) playDialog(pre,go); else go();
   }
@@ -132,7 +132,7 @@ function onBossDeath(e){
   }
   const id=e.kind, z=W.info.z, first=!stageDone(W.info.key);
   if(id==='dragon'){ // twist
-    later(2.0,()=>{ playDialog('boss6_twist',()=>{ const A=W.arenaNode; const k=spawnBoss('ashKing',A.x,A.z-2,W.lvl+1); k.intro=true; CAMR.override={x:k.x,z:k.z+2,zoom:.55}; AU.sfx('roar'); AU.sfx('sting'); fx('boom',k.x,1,k.z,{r:4,col:0x4a1a2a,smoke:0x1a1010}); later(.4,()=>banner(k.bossD.n,k.bossD.t)); later(2.4,()=>{ CAMR.override=null; k.intro=false; }); }); });
+    later(2.0,()=>{ playDialog('boss6_twist',()=>{ const A=W.arenaNode; const k=spawnBoss('ashKing',A.x,A.z-2,W.lvl+1); k.intro=true; CAMR.override={x:k.x,z:k.z+2,zoom:.55}; AU.music('boss_ashking'); AU.sfx('roar'); AU.sfx('sting'); fx('boom',k.x,1,k.z,{r:4,col:0x4a1a2a,smoke:0x1a1010}); later(.4,()=>banner(k.bossD.n,k.bossD.t)); later(2.4,()=>{ CAMR.override=null; k.intro=false; }); }); });
     return;
   }
   later(.8,()=>{
@@ -166,7 +166,7 @@ function runEnd(win,reason,keep){
   if(!win) track(keep?'stage_leave':'stage_fail',I.key);
   compRunEnd(win); questCheck(); saveGame(true);
   const xp=S.hero.lvl>r.startLvl?'+'+(S.hero.lvl-r.startLvl)+' ур.':'';
-  const lines=[`${ico('clock')} Время: <b>${Math.floor(r.t/60)}:${String(Math.floor(r.t%60)).padStart(2,'0')}</b>`,`${ico('skull')} Врагов: <b>${r.kills}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>${r.lost?` <span class="r4">(-${r.lost})</span>`:''}`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
+  const lines=[`${ico('clock')} Время: <b>${Math.floor(r.t/60)}:${String(Math.floor(r.t%60)).padStart(2,'0')}</b>`,`${ico('skull')} Врагов: <b>${Math.max(0,r.kills|0)}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>${r.lost?` <span class="r4">(-${r.lost})</span>`:''}`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
   for(const k in r.mats) lines.push(`${ico(RES_IC[k])} ${RES_NAME[k]}: <b>${r.mats[k]}</b>`); if(xp) lines.push(`${ico('star')} Уровень: <b>${xp}</b>`);
   if(r.syn) lines.push(`${ico('spark')} Синергий: <b>${r.syn}</b>`); if(r.puzzle) lines.push(`${ico('key')} Загадка: <b>решена</b>`); if(r.compXp) lines.push(`${ico('helm')} ${COMPANIONS[r.compXp.id].n}: <b>+${r.compXp.xp} оп.${r.compXp.ups?' · +'+r.compXp.ups+' ур.':''}</b>`);
   const next=I.s<5?[I.z,I.s+1]:I.z<6?[I.z+1,1]:null;
@@ -214,7 +214,7 @@ function abyssFloorDone(){
 }
 function abyssEnd(reason){
   const A=G.abyss, r=G.run; G.mode='result'; const counted=!!A.net; netAbyssEnd(A,r);
-  const lines=[`${ico('abyss')} Этаж: <b>${A.floor}</b>`,`${ico('star')} Рекорд: <b>${S.endless.best}</b>`,`${ico('shard')} Осколки: <b>${A.shards}</b>`,`${ico('skull')} Врагов: <b>${r.kills}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
+  const lines=[`${ico('abyss')} Этаж: <b>${A.floor}</b>`,`${ico('star')} Рекорд: <b>${S.endless.best}</b>`,`${ico('shard')} Осколки: <b>${A.shards}</b>`,`${ico('skull')} Врагов: <b>${Math.max(0,r.kills|0)}</b>`,`${ico('gold')} Золото: <b>${fmt(r.gold)}</b>`,`${ico('bag')} Предметов: <b>${r.items.length}</b>`];
   saveGame(true); AU.sfx('lose'); track('abyss_end','f'+Math.min(50,A.floor));
   const lbNote=A.start>1?`<div class="muted lbnote">${ico('crown')} Забег начат с ${A.start} этажа — в рейтинг идут только забеги с 1 этажа.</div>`:!counted?`<div class="muted lbnote">${ico('crown')} Забег начался без связи с сервером — в рейтинг он не попадёт: сервер сам отмечает начало забега. Рекорд на устройстве сохранён.</div>`:'';
   const extra=lbNote+`<div class="row" style="justify-content:center;margin-top:6px"><button class="btn woodb small" ${act(()=>shareGame('abyss',A.floor))}>${ico('mug')} Поделиться</button></div>`;
@@ -368,7 +368,7 @@ function boot(){
   const bar=$('loadBar').firstElementChild; const msg=$('loadMsg');
   const steps=[
     ['Растираем пергамент…',()=>genCssTextures()],
-    ['Ищем старую летопись…',()=>{ loadGame(); QL=resolveQuality(); Q=QP[QL]; PR=CPR=prCap(); RSZ.dirty=true; emberLight.visible=Q.point!==false; try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){} perfInit(); computeStats(); initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
+    ['Ищем старую летопись…',()=>{ bootLoadSafe(); /* v39 (p80): загрузка → починка → computeStats; упало — запасной слот, затем новая летопись */ QL=resolveQuality(); Q=QP[QL]; PR=CPR=prCap(); RSZ.dirty=true; emberLight.visible=Q.point!==false; try{ document.documentElement.classList.toggle('qlow',qLow()); }catch(e){} perfInit(); try{ computeStats(); }catch(e){ console.error(e); bootFresh(); computeStats(); } initTG(); try{ netBoot(); }catch(e){ console.info(e); } try{ metaBoot(); }catch(e){ console.info(e); } }],
     ['Куём героя…',()=>{ makePlayer(); }],
     ['Собираем Тлеющий Брод…',()=>asBoot((f,d,t)=>{ bar.style.width=(30+f*55)+'%'; if(t) msg.textContent='Собираем Тлеющий Брод… '+(d/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' МБ'; }),85],
     ['Разжигаем очаг…',()=>{ heroRebuildRig(); R.info.autoReset=false; asFXInit(); setupLayout(); camResize(); setupInput(); window.addEventListener('resize',()=>{ camResize(); if(G.mapOpen) drawMap(); }); window.addEventListener('orientationchange',()=>setTimeout(camResize,300)); }],
@@ -376,7 +376,7 @@ function boot(){
     ['',()=>{ showTitle(); requestAnimationFrame(loop); }]
   ];
   let i=0; const next=()=>{ if(i>=steps.length){ window.__booted=true; const L=$('load'); L.style.opacity=0; setTimeout(()=>L.remove(),700); return; } const [m,f,pct]=steps[i]; if(m) msg.textContent=m; if(!pct) bar.style.width=Math.max(parseFloat(bar.style.width)||0,(i+1)/steps.length*100)+'%';
-    setTimeout(()=>{ let r; try{ r=f(); }catch(e){ console.error(e); window.__loadErr('Ошибка запуска: '+esc(e.message)); return; } i++; if(r&&r.then) r.then(()=>{ bar.style.width=pct+'%'; next(); },()=>next()); else next(); },40); };
+    setTimeout(()=>{ let r; try{ r=f(); }catch(e){ console.error(e); /* v39: шаг упал на загруженном сохранении — один раз повторяем на новой летописи (испорченная копия — в SKEY_BAD) */ if(i>=1&&typeof bootSaveFail==='function'&&bootSaveFail(e)){ next(); return; } window.__loadErr('Ошибка запуска: '+esc(e.message)); return; } i++; if(r&&r.then) r.then(()=>{ bar.style.width=pct+'%'; next(); },()=>next()); else next(); },40); };
   next();
   const unlock=()=>{ AU.init(); }; window.addEventListener('pointerdown',unlock,{once:false,passive:true}); window.addEventListener('keydown',unlock,{once:true});
   document.addEventListener('visibilitychange',()=>{ if(document.hidden){ saveGame(true); const c=AU.ctx(); if(c&&c.state==='running') c.suspend().catch(()=>{}); } else { const c=AU.ctx(); if(c) c.resume().catch(()=>{}); } });

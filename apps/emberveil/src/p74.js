@@ -168,7 +168,7 @@ function mmTick(dt){ if(!mmOn()||MM.open||!MM.cv) return; MM.anchorT-=dt; if(MM.
 function mmNorth(el,sel){ const n=el&&el.querySelector(sel), cv=el&&el.querySelector('canvas'); if(!n||!cv) return; const w=cv.offsetWidth, h=cv.offsetHeight, k=Math.round((CAMR.yc||0)*100)+'|'+w+'|'+h; if(n._k===k) return; n._k=k;
   const s=CAMR.ys||0, c=CAMR.yco===undefined?1:CAMR.yco, m=Math.max(Math.abs(s),Math.abs(c))||1; n.style.left=(cv.offsetLeft+w/2+s/m*w*.42)+'px'; n.style.top=(cv.offsetTop+h/2-c/m*h*.42)+'px'; n.style.transform='translate(-50%,-50%)'; }
 // большая карта этапа (пауза)
-function mapOpen74(){ if(!mmOn()||MM.open) return; if(G.cut||G.dialog||PANEL.kind) return; if(typeof BST!=='undefined'&&BST&&BST.on) return;
+function mapOpen74(){ if(!mmOn()||MM.open) return; if(G.cut||G.dialog||PANEL.kind) return; if(G.P&&(G.P.dead||G.P.hp<=0)) return; /* v39: не открывать карту, пока герой повержен */ if(typeof BST!=='undefined'&&BST&&BST.on) return;
   let el=$('map74'); if(!el){ document.body.insertAdjacentHTML('beforeend',`<div id="map74" class="hidden"><div class="m74f"><div class="m74h"><b class="m74t"></b><small class="m74s"></small><button class="m74x" title="Закрыть">${ico('close')}</button></div><div class="m74b"><canvas></canvas><i class="m74n">С</i><div class="m74l"></div></div></div></div>`); el=$('map74');
     el.querySelector('.m74x').addEventListener('click',ev=>{ ev.stopPropagation(); mapClose74(); }); el.addEventListener('pointerdown',ev=>{ if(ev.target===el) mapClose74(); }); }
   inputReset74(); MM.open=true; MM.wasPaused=G.paused; G.paused=true; el.classList.remove('hidden'); AU.sfx('page'); track('stage_map','open');

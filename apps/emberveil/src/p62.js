@@ -198,7 +198,7 @@ function a10AskPat(e,p,dt){ const P=G.P, M=W.bossMech, A=W.arenaNode; const cast
     else { a2Bark(e,'silent',true); banner('«Немая просьба»','Её не услышали'); if(typeof a2Ring==='function') a2Ring(A.x,A.z,A.r+1,12,BD(e,1.5),e,0); track('a2:ask','silent'); } }
   return p.t>cast+.4; }
 // финальное «Нет»: 60 с — она не защищается, вокруг бьют её воспоминания; 15% здоровья тают
-function a10LastNoPat(e,p,dt){ const P=G.P, M=W.bossMech; const L=M.lastNo||(M.lastNo={t:0,hp0:e.hp,wt:0}); if(!L.init){ L.init=1; banner('«Последнее Нет»','Она не защищается. 60 секунд'); AU.music('boss2'); e.invuln=false; e.bossShield=false; e.a10calm=0; e.a10lastNo=1; }
+function a10LastNoPat(e,p,dt){ const P=G.P, M=W.bossMech; const L=M.lastNo||(M.lastNo={t:0,hp0:e.hp,wt:0}); if(!L.init){ L.init=1; banner('«Последнее Нет»','Она не защищается. 60 секунд'); AU.music('final2'); e.invuln=false; e.bossShield=false; e.a10calm=0; e.a10lastNo=1; }
   L.t+=dt; e.pose='crouch'; e.moving=0; e.bstun=0; e.hp=Math.max(0,e.hp-L.hp0/60*dt); L.wt-=dt; if(L.wt<=0){ L.wt=2.6; for(let i=0;i<4;i++){ const x=P.x+rand(-5,5), z=P.z+rand(-5,5); teleHit('circle',x,z,1.6,1.1,BD(e,.6),{src:e,lvl:e.lvl,col:pick([0xffc84a,0x9ad8ff,0xd88aff]),kb:2}); } }
   if(e.hp<=1||L.t>=60){ e.hp=1; a10FinalOver(e,'no'); return true; } return false; }
 

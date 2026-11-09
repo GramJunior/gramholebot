@@ -63,6 +63,7 @@
         j.status = res.status;
         if (res.status >= 500 && res.status !== 503) j.offline = true; // treat server crash like offline
         if (res.status === 503) j.offline = true; // not configured on server
+        if (res.status === 429) j.offline = true; // v39: rate limited — retry later like a network hiccup (queue keeps saves/events)
         return j;
       });
     }).catch(function () {

@@ -1,7 +1,10 @@
 // Analytics: the game batches small events, the server keeps only aggregated daily counters
 // (no payloads, no personal data beyond the user id in `active_days` / `ev_seen`).
 //   POST /events { events: [{ e: 'ftue:first_kill' }, { e: 'stage_finish', k: '1-3' }, ...] }  (max 50 per batch)
-//   GET  /admin/metrics?days=14   cohorts (new players per day, D1/D7 retention) + top event counters
+//   GET  /admin/metrics?days=14   cohorts (new players per day, D1/D7 retention) + top event counters + client errors
+// v39: crash reports ride the same pipeline: { e: 'error', k: '<sig>', d: { m: message, s: stack top, v: version, md: mode } }.
+// They are counted like any event ('error:<sig>') and summarised per day in err_reports (first message/stack kept, capped).
+//   GET  /admin/errors?days=7     top error signatures
 import { fail, json, readJson, int } from '../lib/http.js';
 import { requireUser } from './auth.js';
 import { requireAdmin } from './live.js';
@@ -10,6 +13,15 @@ import { dayKey, DAY_MS } from '../lib/time.js';
 export const EVENT_RE = /^[a-z0-9_]{1,24}(?::[a-z0-9_.-]{1,24})?$/;
 export const MAX_BATCH = 50;
 const MAX_PER_DAY = 2000; // per player per day (spam guard); extra events are dropped silently
+const ERR_PER_BATCH = 5; // error reports with details per batch (the rest are counted only)
+const clip = (v, n) => (typeof v === 'string' ? v : v === undefined || v === null ? '' : String(v)).replace(/[\u0000-\u0008\u000b-\u001f]/g, ' ').slice(0, n);
+
+/** Error details from an `error` event, or null. */
+export function errDetail(ev, name) {
+  if (!ev || String(ev.e || '').toLowerCase() !== 'error' || !name || !name.startsWith('error:')) return null;
+  const d = ev.d && typeof ev.d === 'object' && !Array.isArray(ev.d) ? ev.d : {};
+  return { sig: name.slice(6), msg: clip(d.m, 200), stack: clip(d.s, 300), ver: clip(d.v, 24), mode: clip(d.md, 16) };
+}
 
 /** Mark a player as active today (used by auth and /events). */
 export async function markActive(env, uid, now) {
@@ -33,7 +45,11 @@ export async function postEvents(c) {
   const day = dayKey(c.now, c.env);
   const counts = new Map();
   let bad = 0;
-  for (const ev of list) { const n = eventName(ev); if (!n) { bad++; continue; } counts.set(n, (counts.get(n) || 0) + 1); }
+  const errs = new Map();
+  for (const ev of list) {
+    const n = eventName(ev); if (!n) { bad++; continue; } counts.set(n, (counts.get(n) || 0) + 1);
+    const ed = errDetail(ev, n); if (ed) { const o = errs.get(ed.sig); if (o) o.n++; else if (errs.size < ERR_PER_BATCH) errs.set(ed.sig, { ...ed, n: 1 }); }
+  }
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   await c.env.DB.prepare('INSERT INTO active_days (uid, day, ev) VALUES (?,?,?) ON CONFLICT(uid, day) DO UPDATE SET ev = ev + excluded.ev').bind(user.id, day, total).run();
   const used = await c.env.DB.prepare('SELECT ev FROM active_days WHERE uid=? AND day=?').bind(user.id, day).first();
@@ -44,6 +60,13 @@ export async function postEvents(c) {
   await c.env.DB.batch(names.map((name, i) => c.env.DB.prepare(
     'INSERT INTO ev_counts (day, name, n, users) VALUES (?,?,?,?) ON CONFLICT(day, name) DO UPDATE SET n = n + excluded.n, users = users + excluded.users'
   ).bind(day, name, counts.get(name), seenRes[i] && seenRes[i].meta && seenRes[i].meta.changes ? 1 : 0)));
+  if (errs.size) {
+    const fresh = (sig) => { const i = names.indexOf('error:' + sig); return i >= 0 && seenRes[i] && seenRes[i].meta && seenRes[i].meta.changes ? 1 : 0; };
+    await c.env.DB.batch([...errs.values()].map((x) => c.env.DB.prepare(
+      `INSERT INTO err_reports (day, sig, msg, stack, ver, mode, n, users, last) VALUES (?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(day, sig) DO UPDATE SET n = n + excluded.n, users = users + excluded.users, last = excluded.last, ver = excluded.ver, mode = excluded.mode`
+    ).bind(day, x.sig, x.msg, x.stack, x.ver, x.mode, x.n, fresh(x.sig), c.now)));
+  }
   return json({ ok: true, accepted: list.length - bad, rejected: bad });
 }
 
@@ -78,5 +101,20 @@ export async function adminMetrics(c) {
     ok: true, from, to: dayKey(c.now, c.env),
     dau, cohorts: await cohorts(c.env, c.now, days),
     events: prefix ? events.filter((e) => e.name.startsWith(prefix)) : events,
+    errors: await topErrors(c.env, from, 20),
   });
+}
+
+async function topErrors(env, from, limit) {
+  return (await env.DB.prepare(
+    'SELECT sig, MAX(msg) msg, MAX(stack) stack, MAX(ver) ver, MAX(mode) mode, SUM(n) n, SUM(users) users, MAX(last) last FROM err_reports WHERE day>=? GROUP BY sig ORDER BY SUM(n) DESC LIMIT ?'
+  ).bind(from, limit).all()).results;
+}
+
+/** GET /admin/errors?days=7 — client crash reports, most frequent first. */
+export async function adminErrors(c) {
+  requireAdmin(c);
+  const days = Math.max(1, Math.min(60, int(c.url.searchParams.get('days'), 7)));
+  const from = dayKey(c.now - (days - 1) * DAY_MS, c.env);
+  return json({ ok: true, from, errors: await topErrors(c.env, from, 100) });
 }

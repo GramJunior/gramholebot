@@ -130,6 +130,7 @@ export async function runCron(env, now) {
     env.DB.prepare("DELETE FROM invoices WHERE status='created' AND created_at<?").bind(now - 7 * 86400000),
     env.DB.prepare('DELETE FROM audit WHERE ts<?').bind(now - 90 * 86400000),
     env.DB.prepare('DELETE FROM ev_seen WHERE day<?').bind(new Date(now - 3 * 86400000).toISOString().slice(0, 10)),
+    env.DB.prepare('DELETE FROM err_reports WHERE day<?').bind(new Date(now - 30 * 86400000).toISOString().slice(0, 10)),
   ]);
   return stats;
 }

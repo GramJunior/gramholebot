@@ -47,7 +47,7 @@ const A2_ELITE10={facelessTwin:['split','forgotten'],memMoth:['forgotten'],puppe
 // ---------- боссы зоны 10 (§5.0, §8.2; здоровье — по стенду v30, см. README) ----------
 Object.assign(BOSSES,{
   ostenMem:{n:'Остен',t:'Король без короны',hp:62000,dmg:52,spd:3.0,model:'ostenMem',scale:1,r:1.1,phases:[1,.6,.3],xp:4400,mus:'osten',mid:1},
-  shade:{n:'Тень Искроносца',t:'Всё, что ты отдал',hp:58000,dmg:52,spd:4.2,model:'shade',scale:1,r:.6,phases:[1,.5,.2],xp:5000,mus:'boss2',mid:1,heroScaled:1},
+  shade:{n:'Тень Искроносца',t:'Всё, что ты отдал',hp:58000,dmg:52,spd:4.2,model:'shade',scale:1,r:.6,phases:[1,.5,.2],xp:5000,mus:'boss_shadow',mid:1,heroScaled:1},
   faceless:{n:'Безликая',t:'Та, что просит',hp:76000,dmg:56,spd:3.2,model:'faceless',scale:1,r:2.0,phases:[1,.7,.4,.15],xp:9000,mus:'final2'}
 });
 BOSS_SUMMON.ostenMem='puppeteer'; BOSS_SUMMON.shade='facelessTwin'; BOSS_SUMMON.faceless='facelessTwin';

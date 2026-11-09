@@ -499,15 +499,18 @@ function whRoll(){ const r=rwS().wh; r.n=(r.n|0)+1; r.pity=(r.pity|0)+1; let i; 
 function whSpin(src,n){ if(WH.busy) return false; n=n||1; const m=metaS(), r=rwS();
   if(src==='free'){ if(!whFree()) return false; m.cal.spin=dayKeyL(); }
   else if(src==='paid'){ if((r.wh.paid|0)<n) return false; r.wh.paid-=n; }
-  const res=[]; for(let k=0;k<n;k++) res.push(whRoll()); track('spin',src+(n>1?'_x'+n:'')); wkProg('w_spin',n); saveGame(true); WH.busy=true;
+  const res=[]; for(let k=0;k<n;k++) res.push(whRoll()); track('spin',src+(n>1?'_x'+n:'')); wkProg('w_spin',n);
+  // v39: награда выдаётся и сохраняется в момент броска (анимация 4,2 с — только показ): закрытие игры посреди вращения ничего не отнимает
+  const sum={}, opened=[]; for(const i of res){ const rw=WHEEL[i].rw; for(const k in rw){ if(k.startsWith('open_')) opened.push(k.slice(5)); else sum[k]=(sum[k]||0)+rw[k]; } }
+  if(Object.keys(sum).length) rwGive(sum); const outs=opened.map(t=>chestOpen(t,{free:1,src:'wheel'})); saveGame(true); WH.busy=true;
   const tgt=n>1?res.reduce((a,b)=>WHEEL[b].w<WHEEL[a].w?b:a,res[0]):res[0];
   const box=PANEL.kind==='pass'&&!$('panel').classList.contains('hidden')?document.querySelector('#pBody .wbWheel'):null; const g=box&&box.querySelector('.rot'); const ptr=box&&box.querySelector('.ptr');
   const seg=360/WHEEL.length; const from=WH.rot; const base=from-((from%360)+360)%360; const target=base+360*5+(360-tgt*seg-seg/2)+(Math.random()*seg*.6-seg*.3); const dur=matchMedia('(prefers-reduced-motion: reduce)').matches?300:(n>1?2600:4200); const t0=performance.now(); let last=Math.floor(from/seg);
   AU.sfx('page');
-  const fin=()=>{ WH.rot=((target%360)+360)%360; WH.busy=false; const sum={}, opened=[]; for(const i of res){ const rw=WHEEL[i].rw; for(const k in rw){ if(k.startsWith('open_')) opened.push(k.slice(5)); else sum[k]=(sum[k]||0)+rw[k]; } }
-    if(Object.keys(sum).length) rwGive(sum,'Колесо судьбы'); AU.sfx(res.some(i=>WHEEL[i].jack)?'legend':'loot',.7); vib('success'); saveGame(true); hudSpinDot(); hudPassDot();
+  const fin=()=>{ WH.rot=((target%360)+360)%360; WH.busy=false;
+    if(Object.keys(sum).length){ try{ toast(`Колесо судьбы: ${Object.keys(sum).map(k=>(RES_NAME[k]?fmt(sum[k])+' '+RES_NAME[k].toLowerCase():((CONS[k]&&CONS[k].n)||(k==='key_iron'?'Железный ключ':k))+' ×'+sum[k])).join(', ')}`,null,null,'quest'); }catch(e){} } AU.sfx(res.some(i=>WHEEL[i].jack)?'legend':'loot',.7); vib('success'); hudRefresh(); hudSpinDot(); hudPassDot();
     const b2=document.querySelector('#pBody .wbWheel'); if(b2){ b2.insertAdjacentHTML('beforeend',`<div class="wb-win"><small>ВАШ ВЫИГРЫШ${n>1?' ×'+n:''}</small>${n>1?`<div class="lst">${wbGrant(Object.assign({},sum,...opened.map(t=>({['open_'+t]:1})))).map(x=>`<span>${x.t}</span>`).join(' · ')}</div>`:`${whImg(WHEEL[res[0]])}<div>${WHEEL[res[0]].jack?'Джекпот! ':''}${esc(WHEEL[res[0]].n)} ${whAmt(WHEEL[res[0]])}</div>`}</div>`); flyRes(b2.querySelector('.wb-win'),sum); }
-    if(opened.length){ const outs=opened.map(t=>chestOpen(t,{free:1,src:'wheel'})); setTimeout(()=>chestShow(outs),900); }
+    if(outs.length) setTimeout(()=>chestShow(outs),900);
     setTimeout(()=>{ if(PANEL.kind==='pass') rerender(); },2400); };
   if(!g){ fin(); return true; }
   const step=now=>{ const k=Math.min(1,(now-t0)/dur); const e=1-Math.pow(1-k,4); const rr=from+(target-from)*e; g.setAttribute('transform',`rotate(${rr.toFixed(2)})`); WH.rot=rr;
