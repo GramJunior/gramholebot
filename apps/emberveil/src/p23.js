@@ -123,7 +123,7 @@ templeBody=function(tab){
   return _templeBody(tab); };
 
 // ---------- «Лавка» ----------
-const SHOP_TABS=[['deals','Предложения дня','deal'],['chests','Сундуки','chest'],['packs','Наборы','gifts'],['boosts','Бусты','boost'],['crys','Самоцветы','crys'],['skins','Облики','cloak']];
+const SHOP_TABS=[['deals','Акции дня','deal'],['chests','Сундуки','chest'],['packs','Наборы','gifts'],['boosts','Бусты','boost'],['crys','Самоцветы','crys'],['skins','Облики','cloak']];
 function openShop(tab){ openPanel('shop',{tab:tab||'deals'}); }
 function shopHead(){ return `<div class="shophead">${resChip('gold',S.res.gold)}${resChip(CRYS,S.res[CRYS]||0)}${['iron','gold','leg'].map(k=>`<span class="rchip" style="color:${KEY_COL[k]}" title="${KEY_NAME[k]}">${ico('keyT')}<span style="color:#f3dcb0">${keyCount(k)}</span></span>`).join('')}<span class="rchip" style="color:${KEY_COL.gold}" title="Обломки золотого ключа">${ico('keyT')}<span style="color:#f3dcb0">${S.ck.f}/${GOLD_FRAG}</span></span></div>`; }
 const chestImgCache={};
@@ -137,7 +137,7 @@ PANEL_EXT.shop=()=>{ const tab=PANEL.tab||'deals'; PANEL.tab=tab; let body=shopH
     for(const d of D){ const own=s.bought[d.id]; const c=dealCost(d); body+=`<div class="sitem ${own?'own':''} ${d.sale?'hot':''}">${d.sale?'<i class="tag">−50%</i>':''}<span class="sic" style="color:${RES_COL[d.ic]||'#ffd27a'}">${ico(d.ic==='shard'?'shard':d.ic)}</span><b>${esc(d.n)}</b>${own?'<span class="pill">Куплено</span>':`<button class="btn leather small" ${canPay(c)?'':'disabled'} ${act(()=>{ if(dealBuy(d)){ AU.sfx('gold'); rerender(); } })}>${costHtml(c)}</button>`}</div>`; }
     body+='</div>'; }
   if(tab==='chests'){ const fr=freeChestReady();
-    body+=`<div class="freec ${fr?'ready':''}"><img src="${chestImg('wood')}" alt=""><div class="grow"><b>Бесплатный сундук</b><small>Деревянный сундук каждые ${freeChestH()} ч</small>${fr?'':`<div>через <b data-end="${Date.now()+freeChestLeft()}">${fmtTimer(freeChestLeft())}</b></div>`}</div>${fr?`<button class="btn leather" ${act(()=>freeChestClaim())}>${ico('chest')} Открыть</button>`:adBtn('fchest','Сундук',()=>{ chestShow([chestOpen('wood',{free:1,src:'ad'})]); })}</div><div class="cgrid">`;
+    body+=`<div class="freec ${fr?'ready':''}"><img src="${chestImg('wood')}" alt=""><div class="grow"><b>Бесплатный сундук</b><small>Деревянный сундук каждые ${freeChestH()}&nbsp;ч</small>${fr?'':`<div>через <b data-end="${Date.now()+freeChestLeft()}">${fmtTimer(freeChestLeft())}</b></div>`}</div>${fr?`<button class="btn leather" ${act(()=>freeChestClaim())}>${ico('chest')} Открыть</button>`:adBtn('fchest','Сундук',()=>{ chestShow([chestOpen('wood',{free:1,src:'ad'})]); })}</div><div class="cgrid">`;
     for(const t of CHEST_ORDER){ const C=CHESTS[t]; const n=S.chests[t]||0; const kc=C.key?keyCount(C.key):Infinity; const price=SHOP_CRYS.chest[t]; const lim=SHOP_LIM[t]!==undefined?shopLimLeft(t):99;
       body+=`<div class="chestc" style="--c:${C.col}"><img src="${chestImg(t)}" alt=""><b>${C.n}</b><small>${C.items} ${plural(C.items,'вещь','вещи','вещей')} · ${C.sup} припасов${C.pity?` · гарантия: ${RAR[C.pity.rar].n.toLowerCase()} за ${C.pity.n}`:''}</small>
         <div class="cown">${ico('chest')} ×${n}${C.key?` · ${ico('key')} ${KEY_NAME[C.key].split(' ')[0].toLowerCase()} ×${keyCount(C.key)}`:' · без ключа'}</div>

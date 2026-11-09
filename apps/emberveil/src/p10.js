@@ -18,6 +18,8 @@ function layout(){
   root.style.setProperty('--jst',IN.t+'px'); root.style.setProperty('--jsb',IN.b+'px'); root.style.setProperty('--jsl',IN.l+'px'); root.style.setProperty('--jsr',IN.r+'px');
   root.style.setProperty('--vgap',IN.gap+'px'); root.style.setProperty('--vh',h+'px'); void h0;
   LAYOUT.safe=safeMeasure();
+  // v39.1: масштаб интерфейса (--u) считаем от ПОЛЕЗНОЙ области — без отступов Telegram (кнопки «Назад/⌄⋯» сверху), выреза и полоски «домой»
+  { const sf=LAYOUT.safe; root.style.setProperty('--uvh',Math.max(240,h-sf.t-Math.max(0,sf.b-IN.gap))+'px'); root.style.setProperty('--uvw',Math.max(480,w-sf.l-sf.r)+'px'); }
   const land=w>=h*1.02, touch=isTouchDev();
   // phone in portrait: short side < 600 → ask to rotate. Tablets / desktop windows stay usable in portrait.
   const needRot=!land&&touch&&Math.min(w,h)<600;

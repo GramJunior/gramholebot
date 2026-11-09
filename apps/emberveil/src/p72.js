@@ -69,7 +69,7 @@ html #panel .wbs #pTabs.wb-rail{flex:none;grid-column:auto;grid-row:auto;width:c
 #pTabs.wb-rail::-webkit-scrollbar{display:none}
 html #panel .wbs #pTabs.wb-rail .tab.wb-rt{flex:1 1 0;max-height:calc(var(--u)*50);min-height:max(34px,calc(var(--u)*33));display:flex;align-items:center;gap:calc(var(--u)*5);padding:0 calc(var(--u)*6);border-radius:calc(var(--u)*7);border:1px solid #5a3a10;
   font:800 calc(var(--u)*14.5)/1 var(--sc);letter-spacing:0;color:#3a2206;background:linear-gradient(#d2ad6c,#b08446);box-shadow:inset 0 1px 0 rgba(255,240,200,.55),0 2px 0 #5a3a10;text-align:left;white-space:nowrap;position:relative;cursor:pointer;width:100%}
-html #panel .wbs #pTabs.wb-rail .tab.wb-rt span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+html #panel .wbs #pTabs.wb-rail .tab.wb-rt span{min-width:0;overflow:hidden;white-space:normal;line-height:1.08;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;hyphens:manual} /* v39.1: длинная подпись — в две строки, а не «Предложен…» */
 html #panel .wbs #pTabs.wb-rail .tab.wb-rt .ico.ic{flex:none;width:calc(var(--u)*22);height:calc(var(--u)*22);color:#5a3208;font-size:inherit}
 html #panel .wbs #pTabs.wb-rail .tab.wb-rt.on{background:linear-gradient(var(--b1),var(--b2) 50%,#c99a34);box-shadow:inset 0 1px 0 #fff,0 3px 0 #7a5212,0 0 0 2px #fff3c0;transform:translateX(calc(var(--u)*4))}
 html #panel .wbs #pTabs.wb-rail .tab.wb-rt:active{transform:translateY(2px)}
@@ -219,7 +219,7 @@ html .wb2-gear .invact .btn.leather{flex:0 1 calc(var(--u)*170);font-size:calc(v
 html .wb2-gear .invact .btn:first-child{font-size:0;gap:0;width:calc(var(--u)*48);padding:0}html .wb2-gear .invact .btn:first-child .ico{font-size:calc(var(--u)*22);width:calc(var(--u)*24);height:calc(var(--u)*24)}
 
 /* ===== карточка вещи и разбор (.wbk) ===== */
-.wbk{--u:clamp(.82px,min(calc(var(--vh,100vh) / 390),calc(100vw / 844)),1.7px);--ink:#2c1808;--ink2:#5e3c1c;--tx:#2c1808;--tx2:#5e3c1c;--tx3:#8a6a40;--g1:#7a4a10;--g2:#a06a18;--g3:#8a5a1a;--ok:#3f7a22;--bad:#b8321c;--ox:#a83a10;--b1:#fff0b8;--b2:#e0b850;--b3:#9a6a1a}
+.wbk{--u:clamp(.82px,min(calc(var(--uvh,var(--vh,100vh)) / 390),calc(var(--uvw,100vw) / 844)),1.7px);--ink:#2c1808;--ink2:#5e3c1c;--tx:#2c1808;--tx2:#5e3c1c;--tx3:#8a6a40;--g1:#7a4a10;--g2:#a06a18;--g3:#8a5a1a;--ok:#3f7a22;--bad:#b8321c;--ox:#a83a10;--b1:#fff0b8;--b2:#e0b850;--b3:#9a6a1a}
 #icardW.wbk,#salvW.wbk{background:rgba(40,20,4,.55)}
 .wbk .woodframe.gf{padding:0;border-radius:calc(var(--u)*12);background:#8a5c2c;box-shadow:0 0 0 3px #b98a50,0 0 0 5px #6a4018,0 10px 30px rgba(20,8,0,.6)}
 .wbk .woodframe.gf>.stud{display:none}
@@ -517,7 +517,7 @@ function wb37Mats(h){ const fr=wb37Fr(h); const L=fr.querySelector('.mt-l'); if(
   try{ if(t==='know') o.body=wb37Know(o.body); else if(t==='quests') o.body=wb37Quests(o.body); else if(t==='skills') o.body=wb37Skills(o.body); else if(t==='mast') o.body=wb37Mast(o.body); else if(t==='mats') o.body=wb37Mats(o.body);
     else if(t==='squad'&&typeof wbxRoster==='function'&&typeof COMP_ORDER!=='undefined') o.body=`<div class="wbx x-tavern x-roster x-sq37">${wbxRoster()}</div>`; }catch(e){ console.error(e); } return o; }; }
 (function(){ const st=document.createElement('style'); st.id='wb37Hero'; st.textContent=`
-html #panel .wb2 #pBody:is(.s-hero-know,.s-hero-quests,.s-hero-skills,.s-hero-mast,.s-hero-mats,.s-hero-squad){overflow:hidden;padding-bottom:calc(var(--u)*6 + var(--sb,0px))}
+html #panel .wb2 #pBody:is(.s-hero-know,.s-hero-quests,.s-hero-skills,.s-hero-mast,.s-hero-mats,.s-hero-squad){overflow:hidden auto;/* v39.1: что не поместилось — прокруткой, не обрезкой */padding-bottom:calc(var(--u)*6 + var(--sb,0px))}
 .wb2b .wb-pp>:first-child{margin-top:0}
 /* Знания */
 .wb2b .k37 .wb-pp{padding-top:calc(var(--u)*2)}
@@ -528,7 +528,7 @@ html #panel .wb2 #pBody:is(.s-hero-know,.s-hero-quests,.s-hero-skills,.s-hero-ma
 .wb2b .k37 .tkj{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(var(--u)*8);align-items:start}
 .wb2b .k37 .tkd summary{font-size:calc(var(--u)*15);min-height:calc(var(--u)*40);display:flex;align-items:center;gap:6px}
 .wb2b .k37 .tkd p{font-size:calc(var(--u)*14.5)}
-.wb2b .k37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*10);align-items:start}
+.wb2b .k37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*10);align-items:stretch}
 .wb2b .k37g>:is(.muted,.sect,p){grid-column:1/-1;margin:0}
 .wb2b .k37g>.card{margin:0}
 .wb2b .k37g .synrow{display:flex;gap:calc(var(--u)*10);align-items:flex-start}
@@ -546,7 +546,7 @@ html #panel .wb2 #pBody:is(.s-hero-know,.s-hero-quests,.s-hero-skills,.s-hero-ma
 .wb2b .j37b .card{background:transparent!important;box-shadow:none!important;padding:0;margin:0 0 calc(var(--u)*6)}
 .wb2b .j37b .card h4{font-size:calc(var(--u)*19)}
 .wb2b .j37b .muted{font-size:calc(var(--u)*15)}
-.wb2b .j37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*8);align-items:start}
+.wb2b .j37g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*8);align-items:stretch}
 .wb2b .j37g>.row{display:flex;align-items:center;gap:calc(var(--u)*10);padding:calc(var(--u)*8) calc(var(--u)*10);border-radius:calc(var(--u)*9);background:rgba(255,250,235,.55);box-shadow:inset 0 0 0 1.5px #c9a060;margin:0;font-size:calc(var(--u)*15)}
 .wb2b .j37g>.row>span:first-child{font-size:calc(var(--u)*28);color:#a06a18;flex:none}
 .wb2b .j37g>.row>span:first-child .ico{width:calc(var(--u)*32);height:calc(var(--u)*32)}
@@ -618,7 +618,7 @@ function wb37Bld(id,tab,h){ const fr=wb37Fr(h); const key=id+':'+tab; const sc=f
 { const _ws=wb2Screen; wb2Screen=function(){ const o=_ws.apply(this,arguments); if(!o||PANEL.kind!=='bld') return o; const id=PANEL.opts.id, t=PANEL.tab;
   try{ if((id==='alch'&&t==='shop')||(id==='temple'&&t==='magic')||(id==='forge'&&t==='codex')) o.body=wb37Bld(id,t,o.body); }catch(e){ console.error(e); } return o; }; }
 (function(){ const st=document.createElement('style'); st.id='wb37Bld'; st.textContent=`
-html #panel .wb2 #pBody:is(.s-bld-alch-shop,.s-bld-temple-magic,.s-bld-forge-codex){overflow:hidden;padding-bottom:calc(var(--u)*6 + var(--sb,0px))}
+html #panel .wb2 #pBody:is(.s-bld-alch-shop,.s-bld-temple-magic,.s-bld-forge-codex){overflow:hidden auto;/* v39.1: что не поместилось — прокруткой, не обрезкой */padding-bottom:calc(var(--u)*6 + var(--sb,0px))}
 .wb2b .b37{height:100%;min-height:0}
 .wb2b .b37s{display:grid;grid-template-columns:calc(var(--u)*200) minmax(0,1fr);gap:calc(var(--u)*14)}
 .wb2b .b37h{display:flex;flex-direction:column;gap:calc(var(--u)*8)}
@@ -652,6 +652,8 @@ html #panel .wb2 #pBody:is(.s-bld-alch-shop,.s-bld-temple-magic,.s-bld-forge-cod
 .wb2b .b37g .bcard2>small{-webkit-line-clamp:2;font-size:calc(var(--u)*14)}
 .wb2b .b37g .bcard2>.have{font-size:calc(var(--u)*18);min-width:calc(var(--u)*30);text-align:right}
 html .wb2b .b37g .bcard2>.btn{min-width:calc(var(--u)*104);padding:0 calc(var(--u)*8)}
+.wb2b .b37g .bcard2>b{grid-column:2/4;grid-row:1;padding-right:calc(var(--u)*40);overflow-wrap:break-word} /* v39.1: название на всю ширину — счётчик «3/7» в углу, не сжимает его */
+.wb2b .b37g .bcard2>.have{position:absolute;top:calc(var(--u)*8);right:calc(var(--u)*10)}
 .wb2b .b37g .rfcard{margin:0;display:flex;align-items:center;gap:calc(var(--u)*10)}
 .wb2b .b37g .rfcard .rfo{width:calc(var(--u)*56);height:calc(var(--u)*56);flex:0 0 calc(var(--u)*56)}
 .wb2b .b37g .rfb{display:flex;flex-direction:column;gap:calc(var(--u)*6)}
@@ -700,7 +702,7 @@ html .wb2b.s-bld-forge-gems .f-r>.card>.btn>span:first-child .ico{width:calc(var
 /* 1280×720 и шире: кукла крупнее, умения и вехи — в три колонки */
 .wb2-gear .doll2{--t:min(calc(var(--u)*82),calc((var(--vh,100vh) - var(--u)*150) / 4))}
 @media (min-aspect-ratio:16/9) and (min-height:600px),(min-width:1100px) and (min-height:600px){
-  .wb2b .sk37 .tree2{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .wb2b .sk37 .tree2{grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*250),1fr))} /* v39.1: три колонки — только если карточке хватает ширины */
   .wb2b .m37 .wm53g{grid-template-columns:repeat(3,minmax(0,1fr))}
   .wb2b .k37g{grid-template-columns:repeat(3,minmax(0,1fr))}
   .wb2b .mt37 .mgrid{grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*100),1fr))}

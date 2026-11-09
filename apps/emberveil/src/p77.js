@@ -245,10 +245,10 @@ function idvPlace(hd){ const w=hd.querySelector('.idv-win'); if(!w) return; cons
   let L=0, Rr=hr.right; const socks=hd.querySelector('.wb-socks');
   for(const c of hd.children){ if(c===w||c===socks||c.classList.contains('wb-socks')) continue; const r=c.getBoundingClientRect(); if(r.width) L=Math.max(L,r.right); }
   if(socks){ const s=[...socks.children].map(x=>x.getBoundingClientRect()).filter(r=>r.width); if(s.length) Rr=Math.min(...s.map(r=>r.left)); }
-  const u=parseFloat(getComputedStyle(hd.closest('.wbs')||hd).getPropertyValue('--u'))||1; const gap=Rr-L-16*u;
+  const u=parseFloat(getComputedStyle(hd.closest('.wbs')||hd).getPropertyValue('--u'))||1; const gap=Rr-L-48*u; /* v39.1: по 24·u воздуха до заголовка и до счётчиков — витрина не теснит табличку */
   if(emb) emb.style.display=hr.width<620?'none':'';
-  if(gap<110*u){ w.style.display='none'; return; }
-  const W0=Math.min(gap,340*u); w.style.display=''; w.style.width=W0+'px'; w.style.left=(L-hr.left+(gap-W0)/2+8*u)+'px'; }
+  if(gap<150*u){ w.style.display='none'; return; }
+  const W0=Math.min(gap,340*u); w.style.display=''; w.style.width=W0+'px'; w.style.left=(L-hr.left+(gap-W0)/2+24*u)+'px'; }
 function idvCurtain(fr,k,first){ const T=IDV[k]; const o=T.open; const c=document.createElement('div'); c.className='idv-cur idv-o-'+o;
   if(o==='doors'||o==='curtain') c.innerHTML='<i></i><i></i>';
   else if(o==='banner') c.innerHTML=[0,1,2,3,4].map(i=>`<i style="left:${i*20}%;animation-delay:${i*.04}s"></i>`).join('');

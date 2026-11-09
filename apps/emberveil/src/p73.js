@@ -254,7 +254,7 @@ ${X} .hero-bn p{color:var(--ink)!important;font-size:calc(var(--u)*14.5)!importa
 ${X} .hero-bn .gets span{background:rgba(140,90,40,.16)!important;color:var(--ink)!important;font-size:calc(var(--u)*14)}
 ${X} .hero-bn .tmr{color:var(--ink2)!important;font-size:calc(var(--u)*13)!important}
 ${X} .hero-bn .art{width:calc(var(--u)*100);height:calc(var(--u)*84);filter:drop-shadow(0 4px 4px rgba(80,40,0,.4))}
-${X} .hero-bn .ribbon{background:linear-gradient(#e0542a,#a82a0c)!important;color:#fff!important}
+${X} .hero-bn .ribbon{background:linear-gradient(#e0542a,#a82a0c)!important;color:#fff!important;left:calc(var(--u)*-34);right:auto;top:calc(var(--u)*17);transform:rotate(-35deg);font-size:calc(var(--u)*13);padding:calc(var(--u)*3) calc(var(--u)*40)} /* v39.1: лента — над картинкой слева, таймер справа открыт */
 ${X} .qhead{font:700 calc(var(--u)*14.5)/1.2 var(--sc);color:#3a2206;margin:calc(var(--u)*2) calc(var(--u)*4) calc(var(--u)*8)}
 ${X} .offers{gap:calc(var(--u)*10);grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*150),1fr))}
 ${X} .offer{padding:calc(var(--u)*10) calc(var(--u)*8) calc(var(--u)*9);overflow:hidden}
@@ -393,7 +393,7 @@ ${X} .arch32c .pips i{height:calc(var(--u)*8);background:#8a5c2c;box-shadow:inse
 `; document.head.appendChild(st); })();
 
 // ---------- окна вне #panel: итоги, дары Бездны, набег, диалог, сундук, тосты, HUD (только CSS; разметка и позиции прежние) ----------
-(function(){ const st=document.createElement('style'); st.id='wbxCss2'; const U='clamp(.82px,min(calc(var(--vh,100vh) / 390),calc(100vw / 844)),1.7px)';
+(function(){ const st=document.createElement('style'); st.id='wbxCss2'; const U='clamp(.82px,min(calc(var(--uvh,var(--vh,100vh)) / 390),calc(var(--uvw,100vw) / 844)),1.7px)';
   const OAK='linear-gradient(180deg,#f3dfb4,#ead0a0)', RING='inset 0 2px 4px rgba(120,70,20,.35),0 0 0 3px #b98a50,0 0 0 5px #8a5c2c,0 8px 18px rgba(0,0,0,.5)';
   const BR='linear-gradient(180deg,#fff0b8,#e0b850 45%,#c99a34 55%,#9a6a1a)';
   const BEM='linear-gradient(#f07a40,#d24e20)', BWD='linear-gradient(#f6e3bc,#e6c992)';
@@ -510,7 +510,7 @@ html.land #dlgPort.right~#dlgName{right:calc(var(--u)*164)}
 // 1) CSS-нижняя граница для общих классов прежней разметки; 2) страховка wbFloor — после каждой отрисовки окна текст мельче
 // 14·u (числа и счётчики — 12·u) получает встроенный размер; скрытый нулевым шрифтом текст не трогается.
 const WB_NUM=/^[\s\d%×x+\-−–.,:\/()★☆·▲▼↑↓→←✓✔⏱]*$/i;
-function wbU(){ const vh=(window.visualViewport&&visualViewport.height)||innerHeight; return Math.min(1.7,Math.max(.82,Math.min(vh/390,innerWidth/844))); }
+function wbU(){ const cs=getComputedStyle(document.documentElement); const vh=parseFloat(cs.getPropertyValue('--uvh'))||(window.visualViewport&&visualViewport.height)||innerHeight, vw=parseFloat(cs.getPropertyValue('--uvw'))||innerWidth; return Math.min(1.7,Math.max(.82,Math.min(vh/390,vw/844))); }
 function wbFloor(root){ if(!root||!root.isConnected) return; const u=wbU(); const fix=[];
   for(const e of root.querySelectorAll('*')){ if(e instanceof SVGElement) continue; let t=''; for(const c of e.childNodes) if(c.nodeType===3) t+=c.nodeValue; t=t.trim(); if(!t) continue;
     const fs=parseFloat(getComputedStyle(e).fontSize); if(!(fs>=2)) continue; const k=e.closest('h2,h3,.wb-plate,.wb-bt')?19:(WB_NUM.test(t)||t.length<=2)?12:14; if(fs<k*u-.05) fix.push([e,k]); }
@@ -568,7 +568,7 @@ WBX_TX['off']=fr=>{ for(const row of fr.querySelectorAll('.row')){ const cs=[...
 // Лавка: в шапке — золото и самоцветы (ключи — на карточках сундуков)
 WBX_RES.shop=['gold',CRYS];
 // вкладки зданий (таверна, ратуша), Лавки и Коллекции — рельсом слева, как у героя и кузницы
-function wb37Rail(){ const p=$('panel'); const fr=p&&p.querySelector('#pFrame.wbs:not(.wb2)'); if(!fr||!['bld','shop','coll'].includes(PANEL.kind)) return; const tb=fr.querySelector('#pHead #wbTabs'); if(!tb) return; const bs=[...tb.querySelectorAll('.wb-tab')]; if(bs.length<4) return;
+function wb37Rail(){ const p=$('panel'); const fr=p&&p.querySelector('#pFrame.wbs:not(.wb2)'); if(!fr||!['bld','shop','coll'].includes(PANEL.kind)) return; const tb=fr.querySelector('#pHead #wbTabs'); if(!tb) return; const bs=[...tb.querySelectorAll('.wb-tab')]; const h2=fr.querySelector('#pHead h2'); const tight=tb.scrollWidth>tb.clientWidth+2||!!(h2&&h2.scrollWidth>h2.clientWidth+1); if(bs.length<4&&!(tight&&bs.length>=2)) return; /* v39.1: вкладки не помещаются в шапке (узкий экран, вырез) — тоже рельсом слева */
   const nav=document.createElement('nav'); nav.id='pTabs'; nav.className='wb-rail'; nav.dataset.n=bs.length;
   for(const b of bs){ const x=document.createElement('button'); x.className='tab wb-rt'+(b.classList.contains('on')?' on':''); x.dataset.tab=b.dataset.tab; x.title=b.title||''; x.innerHTML=b.innerHTML.replace(/wb-dot/g,'v-dot'); x.onclick=b.onclick; nav.appendChild(x); }
   tb.remove(); const body=fr.querySelector('#pBody'); if(!body) return; const main=document.createElement('div'); main.className='wb2-main'; body.parentNode.insertBefore(main,body); main.appendChild(nav); main.appendChild(body); fr.classList.add('wb37r');
@@ -576,10 +576,11 @@ function wb37Rail(){ const p=$('panel'); const fr=p&&p.querySelector('#pFrame.wb
 { const _rp=renderPanel; renderPanel=function(){ const r=_rp.apply(this,arguments); try{ wb37Rail(); }catch(e){ console.error(e); } return r; }; }
 (function(){ const st=document.createElement('style'); st.id='wb37Wbx'; st.textContent=`
 html #panel .wbs.wb37r #pBody.wb-body{padding-left:calc(var(--u)*12)}
-#panel .wbs #pBody:has(>.wbx.x37f){overflow:hidden}
-#panel .wbx.x37f .x37c{display:flex!important;flex-direction:column!important;flex:1 1 auto;min-height:0;columns:auto!important;gap:calc(var(--u)*8)}
+#panel .wbs #pBody:has(>.wbx.x37f){overflow-x:hidden;overflow-y:auto}
+#panel .wbx.x37f .x37c{display:flex!important;flex-direction:column!important;flex:1 1 auto;min-height:auto;columns:auto!important;gap:calc(var(--u)*8)}
 #panel .wbx.x37f .x37c>*{flex:none}
-#panel .wbx.x37f .x37c>:is(.x37c,.wb-hcar,.wb-pgw){flex:1 1 auto;min-height:0}
+#panel .wbx.x37f .x37c>:is(.x37c,.wb-hcar,.wb-pgw){flex:1 1 auto;min-height:auto}
+#panel .wbx.x37f .x37c>.wb-pgw{min-height:0}
 #panel .wbx.x37f .x37c>.wb-hcar{grid-column:1/-1}
 #panel .wbx .wb-hcar>:is(.offer,.sitem,.chestc){height:auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
 #panel .wbx .wb-hcar>:is(.offer,.sitem) .btn{margin-top:auto;width:100%}
@@ -588,21 +589,22 @@ html #panel .wbs.wb37r #pBody.wb-body{padding-left:calc(var(--u)*12)}
 #panel .wbx .x-roster .wbt,#panel .wbx.x-roster .wbt{height:100%;min-height:0}
 #panel .wbx.x-roster .wbt-r,#panel .wbx.x-roster .wbt-l{overflow-y:auto;min-height:0}
 #panel .wbs #pBody:has(>.wbx.x-roster){overflow:hidden}
-#panel .wbx.x37f{height:100%;display:flex;flex-direction:column;min-height:0}
+#panel .wbx.x37f{min-height:100%;display:flex;flex-direction:column}
 #panel .wbx.x37f>*{flex:none}
-#panel .wbx.x37f>:is(.wbx-bs,.wb-pgw,.wbx-b,.h24),#panel .wbx.x37f>.h24>:is(.wbx-bs,.wb-pgw){flex:1;min-height:0}
+#panel .wbx.x37f>:is(.wbx-bs,.wb-pgw,.wbx-b,.h24),#panel .wbx.x37f>.h24>:is(.wbx-bs,.wb-pgw){flex:1 1 auto;min-height:auto}
+#panel .wbx.x37f>.wb-pgw,#panel .wbx.x37f>.h24>.wb-pgw{min-height:0}
 #panel .wbx.x37f>.h24{display:flex;flex-direction:column;gap:calc(var(--u)*8)}
 #panel .wbx.x37f .wbx-bs{display:flex;flex-direction:column}
-#panel .wbx.x37f .wbx-bs>.wbx-b:has(.wb-hcar){flex:1;min-height:0;display:flex;flex-direction:column}
-#panel .wbx.x37f :is(.wbx-in,.wbx-pgin):has(>.wb-hcar){flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*8)}
+#panel .wbx.x37f .wbx-bs>.wbx-b:has(.wb-hcar){flex:1 1 auto;min-height:auto;display:flex;flex-direction:column}
+#panel .wbx.x37f :is(.wbx-in,.wbx-pgin):has(>.wb-hcar){flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:calc(var(--u)*8)}
 #panel .wbx.x37f :is(.wbx-in,.wbx-pgin):has(>.wb-hcar)>*{flex:none}
-#panel .wbx.x37f :is(.wbx-in,.wbx-pgin)>.wb-hcar{flex:1;min-height:0}
-#panel .wbx .wb-pp:has(.wb-hcar){display:flex;flex-direction:column;overflow:hidden}
+#panel .wbx.x37f :is(.wbx-in,.wbx-pgin)>.wb-hcar{flex:1 1 auto;min-height:min-content}
+#panel .wbx .wb-pp:has(.wb-hcar){display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto}
 #panel .wbx .wb-pp>.wbx-pgin{background:linear-gradient(180deg,#f3dfb4,#ead0a0);box-shadow:inset 0 2px 4px rgba(120,70,20,.3),0 0 0 2px #b98a50;border-radius:calc(var(--u)*10);padding:calc(var(--u)*10) calc(var(--u)*12);min-height:100%}
-#panel .wbx .wb-pp:has(.wb-hcar)>.wbx-pgin{flex:1;min-height:0}
+#panel .wbx .wb-pp:has(.wb-hcar)>.wbx-pgin{flex:1 0 auto;min-height:auto}
 #panel .wbx .x37p .wbx-2c{column-count:1}
 .wb-hcar{--rows:2;--cols:2;--g:calc(var(--u)*10);display:grid;grid-auto-flow:column;grid-template-rows:repeat(var(--rows),minmax(0,1fr));grid-auto-columns:calc((100% - var(--g)*(var(--cols) - 1)) / var(--cols));gap:var(--g);
-  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 2px calc(var(--u)*8);scrollbar-width:thin;scrollbar-color:#a87c40 transparent;touch-action:pan-x pan-y}
+  overflow-x:auto;overflow-y:hidden;min-height:min-content;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 2px calc(var(--u)*8);scrollbar-width:thin;scrollbar-color:#a87c40 transparent;touch-action:pan-x pan-y}
 .wb-hcar>*{scroll-snap-align:start;margin:0!important;min-height:0;min-width:0;overflow:hidden}
 #panel .wbx .wb-hcar>.card{display:flex;flex-direction:column;justify-content:center}
 #panel .wbx .wb-hcar>.card.row{flex-direction:row;align-items:center}

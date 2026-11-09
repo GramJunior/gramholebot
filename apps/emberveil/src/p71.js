@@ -11,7 +11,7 @@
 html #panel.wbp{padding:0!important;background:#3a2410;align-items:stretch;justify-content:stretch}
 html #panel.wbp #pFrame.wbs{width:100%!important;max-width:none;height:100%;margin:0;flex:1}
 html #panel .wbs #pBody.wb-body{flex:1;min-height:0;overflow:auto;font-size:calc(var(--u)*15);line-height:1.25;padding:calc(var(--u)*17) calc(var(--u)*12 + var(--sr,0px)) calc(var(--u)*8 + var(--sb,0px)) calc(var(--u)*12 + var(--sl,0px));touch-action:pan-x pan-y;grid-column:auto;grid-row:auto}
-.wbs{--u:clamp(.82px,min(calc(var(--vh,100vh) / 390),calc(100vw / 844)),1.7px);
+.wbs{--u:clamp(.82px,min(calc(var(--uvh,var(--vh,100vh)) / 390),calc(var(--uvw,100vw) / 844)),1.7px);
   --ink:#2c1808;--ink2:#5e3c1c;--b1:#fff0b8;--b2:#e0b850;--b3:#9a6a1a;--ok:#3f7a22;--em:#d9572a;
   --r0c:#9c8d72;--r1c:#2f80cc;--r2c:#8a4ed8;--r3c:#d9820c;--r4c:#d8301c;
   position:relative;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;color:var(--ink);font-family:var(--body);font-size:calc(var(--u)*15);line-height:1.25;
@@ -167,10 +167,10 @@ html #panel .wbs #pBody.wb-body{flex:1;min-height:0;overflow:auto;font-size:calc
 .wb-win .wb-img,.wb-win .wb-ic{width:calc(var(--u)*48);height:calc(var(--u)*48)}
 .wb-win .lst{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;font-size:calc(var(--u)*14)}
 /* сундук: подробно */
-.wb-chv{display:grid;grid-template-columns:calc(var(--u)*262) 1fr;gap:calc(var(--u)*16);height:100%;min-height:calc(var(--u)*300)}
+.wb-chv{display:grid;grid-template-columns:calc(var(--u)*262) 1fr;gap:calc(var(--u)*16);min-height:max(100%,calc(var(--u)*300))} /* v39.1: текст «как получить» целиком — окно прокручивается */
 .wb-chv .l{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*6)}
 .wb-chv .l .wb-ped{width:calc(var(--u)*150);height:calc(var(--u)*92);flex:none}
-.wb-chv .l .how{font-size:calc(var(--u)*13.5);line-height:1.2;color:var(--ink2);overflow:hidden;min-height:0;flex:1 1 auto;width:100%}
+.wb-chv .l .how{font-size:calc(var(--u)*13.5);line-height:1.2;color:var(--ink2);flex:none;width:100%}
 .wb-chv .l .how b{color:var(--ink)}
 .wb-chv .l .wb-tiles .wb-tile{width:calc(var(--u)*40);height:calc(var(--u)*40)}
 .wb-chv .intro{font-size:calc(var(--u)*13)}.wb-chv .l .wb-ped .wb-img{width:100%;height:100%}
@@ -212,14 +212,17 @@ html #panel .wbs #pBody.wb-body{flex:1;min-height:0;overflow:auto;font-size:calc
 .wb-pt{position:relative;border-radius:calc(var(--u)*10);background:linear-gradient(#6a4418,#7a5020);box-shadow:inset 0 3px 5px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#ffeccc;font:800 calc(var(--u)*14)/1.1 var(--sc);text-align:center;padding:4px}
 .wb-pt .wb-img,.wb-pt .wb-ic{width:calc(var(--u)*40);height:calc(var(--u)*40)}
 .wb-pt{min-height:0;overflow:hidden}.wb-pt>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.wb-pt .cosic{transform:scale(1.15);margin:2px}
+.wb-pt:has(>.cosic)>span{white-space:normal;text-overflow:clip;line-height:1.02;letter-spacing:-.02em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2} /* v39.1: название облика — в две строки, не «Пепельный стр…» */
+.wb-pt:has(>.cosic){gap:1px;padding:3px 2px}
+.wb-pt .cosic{width:calc(var(--u)*34);height:calc(var(--u)*34);min-height:0;flex:none;transform:none;margin:0;font-size:calc(var(--u)*24)} /* v39.1: облик в ячейке пути — как значок ресурса, подпись видна */
+.wb-pt>*{flex:none}
 .wb-pt.prem{background:linear-gradient(#7a5414,#94661a)}
 .wb-pt.ready{box-shadow:inset 0 3px 5px rgba(0,0,0,.4),0 0 0 3px #ffd25a,0 0 12px rgba(255,190,60,.8);cursor:pointer}
 .wb-pt.got{opacity:.45}.wb-pt .ck{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:var(--ok);color:#fff;font:700 12px/20px sans-serif}
 .wb-pt.lock::after{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(40,20,4,.35)}
 .wb-pt .lk{position:absolute;top:3px;right:3px;z-index:2;color:#ffe9b8}
 /* здание: улучшение */
-.wb-bld{display:grid;grid-template-columns:calc(var(--u)*330) 1fr;gap:calc(var(--u)*14);height:100%;min-height:calc(var(--u)*300)}
+.wb-bld{display:grid;grid-template-columns:clamp(calc(var(--u)*210),38%,calc(var(--u)*330)) minmax(0,1fr);gap:calc(var(--u)*14);height:100%;min-height:calc(var(--u)*300)}
 .wb-bld .stg{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:calc(var(--u)*6) calc(var(--u)*8) calc(var(--u)*12);background:radial-gradient(80% 70% at 50% 45%,#fff4d8,#ecd0a0);overflow:hidden}
 .wb-bld .stg .bimg{position:absolute;left:50%;top:calc(var(--u)*4);transform:translateX(-50%);width:auto;height:calc(100% - var(--u)*58);aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 10px 8px rgba(80,40,0,.35));opacity:0;transition:opacity .3s}
 .wb-bld .stg .bimg.in{opacity:1}
@@ -234,15 +237,15 @@ html #panel .wbs #pBody.wb-body{flex:1;min-height:0;overflow:auto;font-size:calc
 .wb-tm{flex:none;display:flex;align-items:center;gap:6px;font:800 calc(var(--u)*16)/1 var(--sc);color:var(--ink);background:rgba(255,255,255,.55);border-radius:14px;padding:calc(var(--u)*4) calc(var(--u)*10);box-shadow:inset 0 0 0 1.5px #c9a060}
 .wb-tbl{display:grid;grid-template-columns:1fr auto calc(var(--u)*26) auto;align-items:center;row-gap:calc(var(--u)*3);column-gap:calc(var(--u)*6);font-size:calc(var(--u)*15)}
 .wb-tbl .h{font:800 calc(var(--u)*14)/1 var(--sc);color:var(--ink2);border-bottom:1.5px solid #c9a060;padding-bottom:3px}
-.wb-tbl .c{font:700 calc(var(--u)*16)/1 var(--sc);color:var(--ink2);text-align:center;min-width:calc(var(--u)*80)}
-.wb-tbl .n{font:800 calc(var(--u)*17)/1 var(--sc);color:var(--ink2);text-align:center;border-radius:6px;padding:calc(var(--u)*4) calc(var(--u)*8);min-width:calc(var(--u)*100);white-space:nowrap}
+.wb-tbl .c{font:700 calc(var(--u)*16)/1 var(--sc);color:var(--ink2);text-align:center;min-width:calc(var(--u)*64)}
+.wb-tbl .n{font:800 calc(var(--u)*17)/1 var(--sc);color:var(--ink2);text-align:center;border-radius:6px;padding:calc(var(--u)*4) calc(var(--u)*6);min-width:calc(var(--u)*84);white-space:nowrap}
 .wb-tbl .n.up{color:var(--ok);background:rgba(120,190,70,.22)}
 .wb-tbl .ar{color:#a0602a;text-align:center;font-weight:800}
-.wb-tbl .l{display:flex;align-items:center;gap:6px;min-height:calc(var(--u)*27);min-width:0;white-space:nowrap;overflow:hidden}
+.wb-tbl .l{display:flex;align-items:center;gap:6px;min-height:calc(var(--u)*27);min-width:0;line-height:1.05}
 .wb-tbl .l .ico.ic{width:calc(var(--u)*24);height:calc(var(--u)*24);flex:none}
 .wb-new{font:800 calc(var(--u)*12)/1.3 var(--sc);color:#fff;background:var(--ok);border-radius:8px;padding:0 6px;margin-left:4px;vertical-align:1px}
-.wb-costs{display:flex;gap:calc(var(--u)*8)}
-.wb-cs{flex:1;min-width:0;height:calc(var(--u)*50);border-radius:calc(var(--u)*9);background:linear-gradient(#6a4418,#7a5020);box-shadow:inset 0 3px 5px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.4);display:flex;align-items:center;gap:calc(var(--u)*6);padding:0 calc(var(--u)*8);color:#ffeccc;position:relative}
+.wb-costs{display:flex;flex-wrap:wrap;gap:calc(var(--u)*8)} /* v39.1: узкая колонка — цены в две строки, «есть N» не вылезает */
+.wb-cs{flex:1 1 calc(var(--u)*104);min-width:0;height:calc(var(--u)*50);border-radius:calc(var(--u)*9);background:linear-gradient(#6a4418,#7a5020);box-shadow:inset 0 3px 5px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.4);display:flex;align-items:center;gap:calc(var(--u)*6);padding:0 calc(var(--u)*8);color:#ffeccc;position:relative}
 .wb-cs .wb-img,.wb-cs .wb-ic{width:calc(var(--u)*38);height:calc(var(--u)*38);flex:none}
 .wb-cs b{font:800 calc(var(--u)*19)/1 var(--sc);display:block}
 .wb-cs small{font-size:calc(var(--u)*14);color:#e8cfa0;white-space:nowrap}
@@ -267,7 +270,7 @@ html #panel .wbs #pBody.wb-body{flex:1;min-height:0;overflow:auto;font-size:calc
 .wb-hall .h24h .muted,.wb-hall .h24h small{color:var(--ink2)!important;font-size:calc(var(--u)*13)}
 .wb-hall .h24h .h24t{font:800 calc(var(--u)*17)/1.1 var(--sc);color:var(--ink)}
 .wb-hall .qhead{font:800 calc(var(--u)*15)/1.2 var(--sc);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.wb-hall .blist{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:calc(var(--u)*8);align-content:start;overflow:auto;min-height:0;padding:3px}
+.wb-hall .blist{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(var(--u)*84),1fr));gap:calc(var(--u)*8);align-content:start;overflow:auto;min-height:0;padding:3px}
 .wb-hall .bcard{position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*2);padding:calc(var(--u)*5) calc(var(--u)*4) calc(var(--u)*6);border-radius:calc(var(--u)*9);background:linear-gradient(#fff6e0,#f0dcae);box-shadow:inset 0 0 0 2px #c9a060,0 3px 0 #a07444;cursor:pointer;min-width:0;color:var(--ink);text-align:center}
 .wb-hall .bcard.lock{filter:grayscale(.6);opacity:.75}
 .wb-hall .bcard.busy{box-shadow:inset 0 0 0 2px #e0a020,0 3px 0 #a07444}
@@ -276,7 +279,7 @@ html #panel .wbs #pBody.wb-body{flex:1;min-height:0;overflow:auto;font-size:calc
 .wb-hall .bcard span.bi{font-size:calc(var(--u)*30);color:#8a5c2c}
 .wb-hall .bcard .lv{position:absolute;right:0;bottom:0;font:800 calc(var(--u)*12)/1.3 var(--sc);padding:0 5px;border-radius:6px;background:var(--b2);box-shadow:0 1px 0 #6a4410}
 .wb-hall .bcard .nm{font:800 calc(var(--u)*13.5)/1.05 var(--sc);min-height:calc(var(--u)*28);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.wb-hall .bcard .cst{display:flex;align-items:center;justify-content:center;gap:3px;font:700 calc(var(--u)*12.5)/1.2 var(--sc);min-height:calc(var(--u)*18);white-space:nowrap;max-width:100%;overflow:hidden}
+.wb-hall .bcard .cst{display:flex;align-items:center;justify-content:center;gap:3px;font:700 calc(var(--u)*12.5)/1.1 var(--sc);min-height:calc(var(--u)*18);flex-wrap:wrap;text-align:center;max-width:100%} /* v39.1: «ратуша 5», «2 ч 0 мин» — переносом, без обрезки */
 .wb-hall .bcard .cst .wb-img,.wb-hall .bcard .cst .wb-ic{width:calc(var(--u)*17);height:calc(var(--u)*17);flex:none}
 .wb-hall .bcard .cst.no{color:#b8301c}.wb-hall .bcard .cst.ok{color:var(--ok)}
 .wb-hall .bcard .qb{width:100%;height:calc(var(--u)*32);min-height:32px;font-size:calc(var(--u)*14);padding:0 4px;margin-top:auto}
@@ -288,7 +291,7 @@ html.port .wb-hall .blist{grid-template-columns:repeat(3,minmax(0,1fr))}
 html.port .wb-wheel .side,html.port .wb-wk .list,html.port .wb-chv .r .wb-lt{grid-template-columns:1fr}
 html.port .wb-bld .stg{min-height:260px}
 /* ===== карта и карточка этапа ===== */
-:root{--mu:clamp(.82px,min(calc(var(--vh,100vh) / 390),calc(100vw / 844)),1.7px)}
+:root{--mu:clamp(.82px,min(calc(var(--uvh,var(--vh,100vh)) / 390),calc(var(--uvw,100vw) / 844)),1.7px)}
 #map.atlas.wbm #mapHead{display:flex;align-items:center;gap:calc(var(--mu)*10);height:calc(calc(var(--mu)*48) + var(--st,0px));padding:var(--st,0px) calc(calc(var(--mu)*10) + var(--sr,0px)) 0 calc(calc(var(--mu)*10) + var(--sl,0px));background:linear-gradient(#a8743c,#8a5a2a);box-shadow:0 calc(var(--mu)*3) 0 #6a4018,0 calc(var(--mu)*5) calc(var(--mu)*8) rgba(0,0,0,.35)}
 #map.atlas.wbm #mapHead h2{font:800 calc(var(--mu)*19)/1 var(--sc);color:#3a2206;text-shadow:0 1px 0 rgba(255,255,255,.55);height:calc(var(--mu)*34);display:inline-flex;align-items:center;padding:0 calc(var(--mu)*24);border-radius:calc(var(--mu)*4);margin:0 0 0 0;flex:0 1 auto;
   background:linear-gradient(180deg,#fff0b8,#e0b850 45%,#c99a34 55%,#9a6a1a);border:1px solid #6a4410;box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(90,50,0,.35),0 2px calc(var(--mu)*3) rgba(60,30,0,.35);position:relative}
