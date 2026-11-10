@@ -288,6 +288,27 @@ curl "$API/admin/errors?days=7" -H "$ADM"   # частые ошибки за н�
 npx wrangler d1 execute emberveil --remote --command "WITH f AS (SELECT uid, MIN(day) d0 FROM active_days GROUP BY uid) SELECT d0, COUNT(*) n, SUM(EXISTS(SELECT 1 FROM active_days a WHERE a.uid=f.uid AND a.day=date(f.d0,'+1 day'))) d1 FROM f GROUP BY d0 ORDER BY d0 DESC LIMIT 14"
 ```
 
+## 5в. Реклама Adsgram: проверка награды (v39.4)
+
+Игра показывает ролики Adsgram (шаги для владельца — `apps/emberveil/README.md`, раздел «Реклама Adsgram (v39.4)»). Сервер делает две вещи:
+
+1. **Отдаёт id блоков** в `GET /config`: `adsBlockRewarded`, `adsBlockInterstitial`, `adsVerify`. Задаются ключом живого конфига `ads` (id блока — не секрет):
+   ```bash
+   curl -X PUT $API/admin/config/ads -H "$ADM" -d '{"blockRewarded":"12345","blockInterstitial":"","verify":false,"caps":{"revive":2,"chest":1,"fchest":1}}'
+   ```
+   (Проще — строкой в `apps/emberveil/ads.config.js`; если задано там, игра берёт её.)
+2. **Принимает «Reward URL»** — Adsgram после досмотренного ролика сам вызывает адрес, указанный в настройках блока:
+   ```
+   https://<адрес API>/ads/reward?userid=[userId]
+   ```
+   `<адрес API>` — адрес Worker из шага 8 (`emberveil-api.<имя>.workers.dev` или ваш домен). `[userId]` оставьте как есть — Adsgram подставит Telegram id игрока. Каждый вызов = одна «рекламная запись» игрока в таблице `ad_credits` на 15 мин (`ADS_CREDIT_TTL_SEC`). Не больше 5 непотраченных (`ADS_OPEN_MAX`) и 40 за сутки (`ADS_DAILY_MAX`) на игрока; неизвестный id молча игнорируется.
+   - **Секрет в адресе (рекомендуется):** Adsgram не подписывает вызов, поэтому задайте `npx wrangler secret put ADS_REWARD_KEY` (случайная строка) и допишите в Reward URL `&key=<эта строка>`. Без верного `key` сервер ответит 403. Строку храните только в кабинете Adsgram и в секретах Worker, не в git.
+   - Игра тратит запись на ценные награды: `POST /ads/claim {place}` 🔒 → `{ok:true}` / `409 no_credit` (ролик не подтверждён) / `409 limit` (дневной лимит `ads.caps[place]`, по игровым суткам). Списание атомарное: две параллельные траты не получат одну запись.
+   - **Включение:** `"verify": true` в ключе `ads` — только когда Reward URL настроен и вызовы доходят (проверка: `npx wrangler d1 execute emberveil --remote --command "SELECT uid, at, used_at, place FROM ad_credits ORDER BY id DESC LIMIT 5"`). Пока `verify:false` (по умолчанию) или игрок без связи, игра выдаёт награду по своим дневным лимитам.
+   - Частота: `GET /ads/reward` — 20 в минуту на один Telegram id (`RL_ADS_REWARD`), `POST /ads/claim` — 20 в минуту на игрока (`RL_ADS_CLAIM`). Записи старше 3 дней удаляет cron.
+
+**Выкладка v39.4:** `npx wrangler d1 migrations apply emberveil --remote` (таблица `ad_credits`, `migrations/0005_ads.sql`), затем `npx wrangler deploy` (маршруты `/ads/*`, привязки `RL_ADS_REWARD`/`RL_ADS_CLAIM`). Тесты — `test/ads.test.js`.
+
 ## 6. Как проверить платежи
 
 **Вариант А (проще всего): настоящие Stars, дешёвый товар, затем возврат.**
@@ -390,12 +411,14 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 | `GET /lb/clans`, `GET /clans?q=`, `GET /clan/:id` | кланы и их недельные очки |
 | 🔒 `GET /clan/me`, `POST /clan/create\|join\|leave\|kick\|role\|edit` | управление кланом |
 | 🔒 `PUT /village`, `GET /raid/opponents`, `POST /raid/start\|finish`, `GET /raid/log` | набеги |
-| `GET /config` | сезон, пропуск, события, магазин, товары |
+| `GET /config` | сезон, пропуск, события, магазин, товары, id блоков рекламы (`adsBlockRewarded`, `adsBlockInterstitial`, `adsVerify`) |
 | 🔒 `GET /bp`, `POST /bp/claim {tier,track}` | боевой пропуск |
 | 🔒 `GET /daily`, `POST /daily/claim`, `POST /quests/claim {questId}` | награда дня и контракты |
 | 🔒 `POST /pay/invoice {productId}`, `GET /entitlements` | покупки за Stars |
 | 🔒 `POST /pay/claim {claimId}` | забрать расходуемые покупки (самоцветы, наборы, сундуки), идемпотентно |
 | 🔒 `POST /chest/free` | бесплатный сундук (таймер по часам сервера) |
+| `GET /ads/reward?userid=<tg id>[&key=…]` | Reward URL для Adsgram (вызывает Adsgram): одна «рекламная запись» игрока на 15 мин (§5в) |
+| 🔒 `POST /ads/claim {place}` | потратить запись на награду за ролик (`409 no_credit` / `409 limit`) |
 | 🔒 `GET /referrals`, `POST /friends/add`, `GET /inbox`, `POST /inbox/claim` | друзья и подарки |
 | 🔒 `POST /notify/schedule {kind,inSec}` | напоминание через бота |
 | 🔒 `POST /events {events:[{e,k,d?}]}` | аналитика игры: до 50 событий за раз, хранятся только суточные счётчики; `d` — только у `error` (сводка `err_reports`) |
@@ -452,6 +475,8 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 | `RL_EVENTS` | `POST /events` | игрок | 30 в минуту |
 | `RL_PAY` | `POST /pay/invoice` | игрок | 10 в минуту |
 | `RL_ADMIN` | `/admin/*` | IP | 30 в минуту |
+| `RL_ADS_REWARD` | `GET /ads/reward` (v39.4) | Telegram id из `?userid=` (вызовы идут с серверов Adsgram) | 20 в минуту |
+| `RL_ADS_CLAIM` | `POST /ads/claim` (v39.4) | игрок | 20 в минуту |
 
 - **В бою** счётчики ведёт Cloudflare: [Workers Rate Limiting API](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/), привязки `[[ratelimits]]` в `wrangler.toml` (нужен wrangler ≥ 4.36; в проекте — 4.x). Окно — 10 или 60 с, счёт ведётся в каждой точке присутствия отдельно (это защита от наводнения запросами, а не точный учёт). `namespace_id` — любое целое, уникальное в аккаунте Cloudflare.
 - **Без привязок** (локально, в тестах, старый wrangler) работает запасной счётчик «ведро с жетонами» в памяти изолята с теми же числами — слабее (каждый изолят считает сам), но одного клиента, долбящего сервер, останавливает.

@@ -38,7 +38,7 @@ test('client: no baseUrl -> every call resolves offline, nothing throws', async 
   const results = await Promise.all([
     EVNet.save.pull(gameSave()), EVNet.save.push(gameSave()), EVNet.abyss.start(1), EVNet.abyss.finish('x', 3, 1000),
     EVNet.leaderboard.abyss({}), EVNet.clans.mine(), EVNet.raids.opponents(), EVNet.config.get(), EVNet.daily.claim(),
-    EVNet.pay.buy('bp_s1'), EVNet.referrals.get(), EVNet.inbox.list(), EVNet.notify.schedule('forge', 100),
+    EVNet.pay.buy('bp_s1'), EVNet.referrals.get(), EVNet.inbox.list(), EVNet.notify.schedule('forge', 100), EVNet.ads.claim('revive'),
   ]);
   for (const r of results) assert.equal(r.ok, false, JSON.stringify(r));
   assert.ok(results.filter((r) => r.offline).length >= 12);

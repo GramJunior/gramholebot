@@ -160,7 +160,7 @@ function runEnd(win,reason,keep){
   if(win){ stars=1+(r.t<=I.par?1:0)+(r.minHp>=.35?1:0); starTxt=`${r.t<=I.par?'★ быстро':'☆ медленно'} · ${r.minHp>=.35?'★ стойко':'☆ было опасно'}`;
     const prev=S.prog.stages[I.key]; const first=!prev;
     S.prog.stages[I.key]={stars:Math.max(stars,prev?prev.stars:0),best:Math.min(r.t,prev?prev.best:1e9)};
-    if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; addXp(xpNeed(Math.min(S.hero.lvl,I.lvl))*(I.s===5?.45:.3)*xpLvlK32(I.lvl)); /* v32: перекачанному меньше */ if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
+    if(first){ const bonus=Math.round(60*F(I.lvl)*(I.s===5?4:1)); S.res.gold+=bonus; r.gold+=bonus; r.firstBonus=bonus; /* v39.4: «Удвоить награду» за ролик (p20) */ addXp(xpNeed(Math.min(S.hero.lvl,I.lvl))*(I.s===5?.45:.3)*xpLvlK32(I.lvl)); /* v32: перекачанному меньше */ if(I.s===5){ S.res.ess+=10*I.z; } if(I.z>S.prog.zone&&I.s===5) S.prog.zone=I.z+1; }
     ev('stage',{key:I.key,nopot:r.pots===0,first,stars}); AU.sfx('win'); track('stage_finish',I.key);
   } else if(!keep){ const lost=Math.round(r.gold*.3); S.res.gold=Math.max(0,S.res.gold-lost); r.lost=lost; }
   if(!win) track(keep?'stage_leave':'stage_fail',I.key);

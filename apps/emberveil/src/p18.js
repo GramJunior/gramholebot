@@ -19,32 +19,96 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden) try{ trkF
 // day-N return (local calendar days since the save was created)
 function metaDayTick(){ const m=metaS(); const t=dayKeyL(); if(m.days.last===t) return; m.days.last=t; m.days.n++; const n=Math.floor((Date.parse(t)-Date.parse(dayKeyL(S.created)))/86400000); if(n>=1) track('day_return','d'+Math.min(n,60)); track('session_day',m.days.n>30?'30plus':'n'+m.days.n); saveGame(); }
 
-// ---------- rewarded ads (Adsgram-style adapter). Not configured → «реклама недоступна», nothing breaks ----------
-// Владелец: window.EV_ADS_BLOCK = '<blockId>' в p0.html и SDK Adsgram (<script src="https://sad.adsgram.ai/js/sad.min.js">).
+// ---------- v39.4: rewarded ads — Adsgram (https://docs.adsgram.ai/publisher/). Not configured / SDK blocked → offers simply hidden, nothing breaks ----------
+// Владелец: id блока — одна строка в apps/emberveil/ads.config.js (window.EV_ADS_BLOCK='12345') или в живом конфиге сервера
+// (PUT /admin/config/ads {"blockRewarded":"12345"} → /config.adsBlockRewarded). Interstitial (по желанию) — EV_ADS_BLOCK_INT / blockInterstitial.
+// SDK (https://sad.adsgram.ai/js/sad.min.js) грузится лениво, только когда блок задан; нет SDK — реклама «недоступна», игра идёт дальше.
+// Отладка: Adsgram init({debug:true}) — только в разработке (localhost/127.0.0.1/file:/*.local или EV_DEV_BUILD + ?adsdebug=1).
 // v39: тестовый режим рекламы (?ads=test — награда без ролика) — только в разработке: localhost / 127.0.0.1 / file: / *.local
 // или сборка с window.EV_DEV_BUILD=true (в продакшене не задаётся). В Telegram и на игровом домене адрес ?ads=test ничего не даёт.
 const EV_DEV=(()=>{ try{ if(window.EV_DEV_BUILD===true) return true; const h=location.hostname||''; return location.protocol==='file:'||h==='localhost'||h==='127.0.0.1'||h==='[::1]'||/\.local$/.test(h); }catch(e){ return false; } })();
+const EV_LOCALHOST=(()=>{ try{ const h=location.hostname||''; return location.protocol==='file:'||h==='localhost'||h==='127.0.0.1'||h==='[::1]'; }catch(e){ return false; } })();
+const ADS_SDK_URL='https://sad.adsgram.ai/js/sad.min.js';
 const ADS={
-  lim:{chest:3,exp:3,revive:5,spin:1},
-  blockId:()=>window.EV_ADS_BLOCK||'',
+  // v39.4: ~12 показов в день, только ценные места (дизайн-ревью: было ~26). craft (ковка −30 мин) делит лимит со стройкой.
+  lim:{spin:3,revive:2,chest:1,exp:2,build:2,fchest:1,dealref:1},
+  alias:{craft:'build'},
+  // награды, которые при включённой проверке (/config.adsVerify) тратят «рекламную запись» сервера (POST /ads/claim)
+  verifyPlaces:{revive:1,chest:1,fchest:1},
+  IL:{gapMs:10*60000,perDay:6,minDays:3},   // interstitial: с 4-го игрового дня, не чаще раза в 10 мин, не в бою
+  sdk:'', failAt:0, busy:false, _c:{}, _of:{},
+  cfg(k){ try{ const c=LIVE.cfg||(window.EVNet&&EVNet.config&&EVNet.config.cached&&EVNet.config.cached()); return c?c[k]:undefined; }catch(e){ return undefined; } },
+  blockId(){ return String(window.EV_ADS_BLOCK||this.cfg('adsBlockRewarded')||'').trim(); },
+  blockInt(){ return String(window.EV_ADS_BLOCK_INT||this.cfg('adsBlockInterstitial')||'').trim(); },
+  debug(){ if(!EV_DEV) return false; const q=location.search||''; if(/[?&]adsdebug=0/.test(q)) return false; return EV_LOCALHOST||/[?&]adsdebug=1/.test(q); },
   test:()=>EV_DEV&&/[?&]ads=test/.test(location.search),
-  ready(){ return this.test()||!!(window.Adsgram&&this.blockId()); },
-  left(place){ const a=metaS().ads; const d=dayKeyL(); if(a.day!==d){ a.day=d; a.n={}; } return Math.max(0,(this.lim[place]||1)-(a.n[place]||0)); },
+  key(place){ return this.alias[place]||place; },
+  cap(place){ const k=this.key(place); return Object.prototype.hasOwnProperty.call(this.lim,k)?this.lim[k]|0:0; },
+  sdkOk(){ return this.sdk!=='fail'||Date.now()-this.failAt>60000; },
+  ready(){ return this.test()||(!!this.blockId()&&this.sdkOk()); },
+  ads(){ const a=metaS().ads; const d=dayKeyL(); if(a.day!==d){ a.day=d; a.n={}; } return a; },
+  left(place){ const k=this.key(place); return Math.max(0,this.cap(place)-(this.ads().n[k]||0)); },
+  // ad_offer — когда предложение показано (не чаще раза в минуту на место)
+  offer(place){ const k=this.key(place); const t=Date.now(); if(t-(this._of[k]||0)<60000) return; this._of[k]=t; track('ad_offer',k); },
+  load(){
+    if(window.Adsgram&&typeof window.Adsgram.init==='function'){ this.sdk='ok'; return Promise.resolve(true); }
+    if(this._lp) return this._lp;
+    if(!this.blockId()&&!this.blockInt()) return Promise.resolve(false);
+    this.sdk='loading';
+    this._lp=new Promise(res=>{ let fin=false; const end=()=>{ if(fin) return; fin=true; const ok=!!(window.Adsgram&&typeof window.Adsgram.init==='function'); this.sdk=ok?'ok':'fail'; if(!ok){ this.failAt=Date.now(); this._lp=null; track('ad_fail','sdk'); } res(ok); };
+      try{ const s=document.createElement('script'); s.src=ADS_SDK_URL; s.async=true; s.onload=end; s.onerror=end; (document.head||document.body).appendChild(s); }catch(e){ end(); }
+      setTimeout(end,8000); });
+    return this._lp; },
+  ctl(id,inter){ if(!this._c[id]){ const o={blockId:id}; if(this.debug()){ o.debug=true; o.debugBannerType=inter?'FullscreenMedia':'RewardedVideo'; } this._c[id]=window.Adsgram.init(o); } return this._c[id]; },
+  // пауза игры и тишина на время ролика (контекст звука держим выключенным, даже если его кто-то включит)
+  hold(){ const st={paused:G.paused}; this.busy=true; G.paused=true; const mute=()=>{ try{ const c=AU.ctx&&AU.ctx(); if(c&&c.state==='running') c.suspend().catch(()=>{}); }catch(e){} }; mute(); st.iv=setInterval(mute,400); return st; },
+  release(st){ clearInterval(st.iv); this.busy=false; G.paused=st.paused; try{ const c=AU.ctx&&AU.ctx(); if(c&&!document.hidden&&c.resume) c.resume().catch(()=>{}); }catch(e){} },
+  // отказ Adsgram {done,state,error,description} → причина: skip (закрыл), nofill (нет ролика), error
+  why(r){ if(r&&r.error===false) return 'skip'; const d=String(r&&r.description||''); if(r&&r.state==='load'||/no ?(ad|banner|fill)|not available|нет рекламы/i.test(d)) return 'nofill'; return 'error'; },
+  // показ одного ролика: resolve('done') только если досмотрен
+  play(id,inter){ return this.load().then(ok=>{ if(!ok) return Promise.reject({reason:'nosdk'}); let c; try{ c=this.ctl(id,inter); }catch(e){ return Promise.reject({reason:'error'}); }
+      return new Promise((res,rej)=>{ let fin=false; const wd=setTimeout(()=>{ if(!fin){ fin=true; rej({reason:'timeout'}); } },180000);
+        let p; try{ p=c.show(); }catch(e){ fin=true; clearTimeout(wd); return rej({reason:'error'}); }
+        Promise.resolve(p).then(r=>{ if(fin) return; fin=true; clearTimeout(wd); if(r&&r.done===false&&!inter) rej({reason:'skip'}); else res(r||{done:true}); },
+          r=>{ if(fin) return; fin=true; clearTimeout(wd); rej({reason:this.why(r)}); }); }); }); },
+  verifyOn(){ return this.cfg('adsVerify')===true&&typeof netOn==='function'&&netOn()&&!!(window.EVNet&&EVNet.ads&&EVNet.ads.claim); },
+  // сервер подтверждает награду: вызов Reward URL от Adsgram может прийти на пару секунд позже ролика → несколько попыток
+  claim(k){ const waits=[0,1500,2500,4000]; let i=0;
+    const step=()=>new Promise(r=>setTimeout(r,waits[i])).then(()=>EVNet.ads.claim(k)).then(r=>{ if(r&&r.ok) return true; if(!r||r.offline||r.error==='network'||r.error==='not_configured'||r.error==='rate_limited') return true; /* нет связи → запасной путь: дневные лимиты игры */
+        if(r.error==='no_credit'&&++i<waits.length) return step(); return false; },()=>true);
+    return step(); },
   showRewarded(place){
-    track('ad_offer',place);
+    const k=this.key(place);
     return new Promise(res=>{
+      if(this.busy) return res({ok:false,reason:'busy'});
       if(!this.left(place)) return res({ok:false,reason:'limit'});
-      if(!this.ready()){ track('ad_unavailable',place); return res({ok:false,reason:'unavailable'}); }
-      const done=(ok,why)=>{ if(ok){ const a=metaS().ads; a.n[place]=(a.n[place]||0)+1; track('ad_watch',place); saveGame(); } else track('ad_skip',place); res({ok,reason:why||''}); };
-      if(this.test()){ G.paused=true; setTimeout(()=>{ G.paused=false; done(true); },900); return; }
-      try{ this._c=this._c||window.Adsgram.init({blockId:this.blockId()}); AU.ctx&&AU.ctx()&&AU.ctx().suspend&&AU.ctx().suspend().catch(()=>{});
-        this._c.show().then(r=>{ done(!!(r&&r.done),r&&r.done?'':'skipped'); },()=>done(false,'error')).finally(()=>{ try{ AU.ctx().resume(); }catch(e){} }); }
-      catch(e){ done(false,'error'); }
+      if(!this.ready()){ track('ad_fail',k+'.na'); return res({ok:false,reason:'unavailable'}); }
+      track('ad_start',k);
+      const st=this.hold();
+      const fin=(ok,why)=>{ this.release(st); if(ok){ const a=this.ads(); a.n[k]=(a.n[k]||0)+1; a.last=Date.now(); track('ad_done',k); saveGame(); } else track('ad_fail',k+'.'+(why||'error')); res({ok,reason:why||''}); };
+      const granted=()=>{ if(this.test()||!this.verifyPlaces[k]||!this.verifyOn()) return fin(true); this.claim(k).then(v=>v?fin(true):fin(false,'unverified')); };
+      if(this.test()){ setTimeout(granted,900); return; }
+      this.play(this.blockId(),false).then(granted,e=>fin(false,(e&&e.reason)||'error'));
     });
-  }
+  },
+  // межстраничная реклама (только если задан блок Interstitial): с 4-го игрового дня, не чаще раза в 10 мин (и через 10 мин после ролика за награду), не в бою
+  interstitial(where){
+    const id=this.blockInt(); if(!id||this.busy||this.test()||!this.sdkOk()) return false;
+    try{ if(typeof inCombat==='function'&&inCombat()) return false; }catch(e){}
+    if(G.mode==='stage'||G.mode==='abyss'||G.mode==='raid'||G.mode==='prologue'||G.bot) return false;
+    const m=metaS(); if((m.days&&m.days.n|0)<=this.IL.minDays) return false;
+    const a=this.ads(); const t=Date.now(); if(t-(a.il||0)<this.IL.gapMs||t-(a.last||0)<this.IL.gapMs||(a.n.il|0)>=this.IL.perDay) return false;
+    a.il=t; a.n.il=(a.n.il|0)+1; saveGame(); track('ad_start','il_'+where);
+    const st=this.hold();
+    this.play(id,true).then(()=>{ this.release(st); track('ad_done','il_'+where); },e=>{ this.release(st); track('ad_fail','il.'+((e&&e.reason)||'error')); });
+    return true; },
+  msg(r){ return r==='limit'?'На сегодня всё — лимит наград за рекламу':r==='nofill'?'Сейчас нет подходящего ролика — попробуйте чуть позже':r==='skip'?'Награда не получена: ролик не досмотрен':r==='unverified'?'Сервер не подтвердил просмотр — попробуйте ещё раз':r==='unavailable'||r==='nosdk'?'Реклама сейчас недоступна — загляните позже':r==='busy'?'':'Не удалось показать рекламу — попробуйте позже'; },
+  fail(r){ const t=this.msg(r&&r.reason!==undefined?r.reason:r); if(t) toast(t); }
 };
-// button html for an ad offer: ▶ label (left N)
-function adBtn(place,label,onReward,cls){ const n=ADS.left(place); if(!n) return ''; return `<button class="btn ${cls||'woodb'} small adbtn" ${act(()=>{ ADS.showRewarded(place).then(r=>{ if(r.ok) onReward(); else toast(r.reason==='unavailable'?'Реклама сейчас недоступна — загляните позже':r.reason==='limit'?'На сегодня всё — лимит наград за рекламу':'Награда не получена: ролик не досмотрен'); }); })}>${ico('play')} ${label} <small>${n}/${ADS.lim[place]}</small></button>`; }
+// SDK — заранее, через несколько секунд после старта (только если блок задан): к первому предложению ролик уже готов
+setTimeout(()=>{ try{ if(ADS.blockId()||ADS.blockInt()) ADS.load(); }catch(e){} },6000);
+// button html for an ad offer: ▶ label (left N). Реклама не настроена → кнопки нет.
+function adBtn(place,label,onReward,cls){ const n=ADS.left(place); if(!n||!ADS.ready()) return ''; ADS.offer(place); return `<button class="btn ${cls||'woodb'} small adbtn" ${act(()=>{ ADS.showRewarded(place).then(r=>{ if(r.ok) onReward(); else ADS.fail(r); }); })}>${ico('play')} ${label} <small>${n}/${ADS.cap(place)}</small></button>`; }
 
 // ---------- live config (server /config, cached; local default otherwise) ----------
 const LIVE={cfg:null,at:0,ent:null};

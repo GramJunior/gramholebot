@@ -1,7 +1,7 @@
 // Live config: values stored in the `config` table override these defaults.
 // Admins change them through PUT /admin/config/<key> (see README).
 
-export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid', 'freeChestHours'];
+export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid', 'freeChestHours', 'ads'];
 
 const DAY = 86400000;
 
@@ -39,6 +39,12 @@ export const DEFAULTS = {
   // Village shop rotation (prices in game currency, applied on the client).
   // Free wooden chest timer (POST /chest/free), hours.
   freeChestHours: 4,
+
+  // v39.4: rewarded ads (Adsgram). Block ids are public (they end up in the page anyway), not secrets.
+  // blockRewarded — id of the Rewarded block (e.g. "12345"); blockInterstitial — optional Interstitial block (e.g. "int-12345").
+  // verify — true once the block's Reward URL points at GET /ads/reward: valuable ad rewards then need a server credit.
+  // caps — per-placement daily limits for spending credits on the server (the game has the same caps, src/p18.js ADS.lim).
+  ads: { blockRewarded: '', blockInterstitial: '', verify: false, caps: { revive: 2, chest: 1, fchest: 1 } },
 
   shop: {
     rotationHours: 24,

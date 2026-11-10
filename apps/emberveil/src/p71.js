@@ -475,7 +475,7 @@ function wkEnds(){ const d=new Date(); d.setHours(0,0,0,0); const dow=d.getDay()
 { const _me=metaEv; metaEv=function(type,d){ _me.apply(this,arguments); try{ if(type==='build') wkProg('w_build'); }catch(e){} }; }
 
 // ---------- Колесо судьбы ----------
-ADS.lim.spin=3;
+/* v39.4: ADS.lim.spin=3 — в src/p18.js */
 const WHEEL=[
   {n:'Золото',rw:{gold:500},w:20,ic:'gold'},{n:'Эссенция',rw:{ess:30},w:16,ic:'ess'},{n:'Железный ключ',rw:{key_iron:1},w:14,ic:'key_iron'},{n:'Самоцветы',rw:{sparks:25},w:8,ic:'sparks'},
   {n:'Зелья',rw:{potion:3},w:16,ic:'potion'},{n:'Осколки Бездны',rw:{shards:15},w:14,ic:'shards'},{n:'Железный сундук',rw:{open_iron:1},w:9,ic:'chest_iron'},{n:'Золотой сундук',rw:{open_gold:1},w:3,ic:'chest_gold',jack:1}];
@@ -520,12 +520,12 @@ function whSpin(src,n){ if(WH.busy) return false; n=n||1; const m=metaS(), r=rwS
     const sg=Math.floor(rr/seg); if(sg!==last){ last=sg; AU.sfx('ui',.3,1.3+Math.random()*.2); if(ptr){ ptr.classList.remove('tick'); void ptr.getBoundingClientRect(); ptr.classList.add('tick'); } }
     if(k<1) requestAnimationFrame(step); else fin(); };
   requestAnimationFrame(step); return true; }
-function whAd(){ ADS.showRewarded('spin').then(r=>{ if(r.ok) whSpin('ad',1); else toast(r.reason==='unavailable'?'Реклама сейчас недоступна — загляните позже':r.reason==='limit'?'На сегодня всё — 3 вращения за рекламу':'Награда не получена: ролик не досмотрен'); }); }
+function whAd(){ ADS.showRewarded('spin').then(r=>{ if(r.ok) whSpin('ad',1); else ADS.fail(r); }); }
 function whBuy(n){ const id=n>=10?'spin_10':'spin_1'; if((rwS().wh.paid|0)>=n) return whSpin('paid',n); const p=starProducts().find(x=>x.id===id)||STAR_SPIN.find(x=>x.id===id); starBuy(p); }
 wheelSpin=function(extra){ return extra?whAd():whSpin('free',1); };
 spinDo=function(extra){ return wheelSpin(extra); };
 function whPending(){ return (whFree()?1:0); }
-function whBtns(big){ const r=rwS(); const free=whFree(); const adN=ADS.left('spin'); const paid=r.wh.paid|0; const p1=(starProducts().find(x=>x.id==='spin_1')||{stars:25}).stars, p10=(starProducts().find(x=>x.id==='spin_10')||{stars:200}).stars;
+function whBtns(big){ const r=rwS(); const free=whFree(); const adN=ADS.ready()?ADS.left('spin'):0; if(adN) ADS.offer('spin'); const paid=r.wh.paid|0; const p1=(starProducts().find(x=>x.id==='spin_1')||{stars:25}).stars, p10=(starProducts().find(x=>x.id==='spin_10')||{stars:200}).stars;
   return `${free?`<button class="wb-btn em" ${act(()=>whSpin('free',1))}>${ico('wheel')} Бесплатно<span class="wb-badge">1</span></button>`:`<button class="wb-btn em off" disabled>${ico('clock')} <small>Бесплатно через</small> <b data-end="${new Date(new Date().setHours(24,0,0,0)).getTime()}">${fmtTimer(new Date(new Date().setHours(24,0,0,0))-Date.now())}</b></button>`}
     <button class="wb-btn gr ${adN?'':'off'}" ${adN?act(()=>whAd()):'disabled'}>${ico('ad')} Реклама <small>${adN}/${ADS.lim.spin}</small></button>
     <div class="row"><button class="wb-btn br" ${act(()=>whBuy(1))}>×1 <small>${paid>=1?'есть '+paid:'⭐'+p1}</small></button><button class="wb-btn br" ${act(()=>whBuy(10))}>×10 <small>${paid>=10?'крутить':'⭐'+p10}</small></button></div>`; }
@@ -574,7 +574,7 @@ function scrChest(kind){ const r=rwS(), s=strk(), w=wkS(); const tier={day:'iron
   return {title:{day:'Сундук недели входа',week:'Недельный сундук',month:'Сундук месяца'}[kind],res:rwTopRes(),right:passPill(),body,back:'hub'}; }
 function scrWheel(){ const r=rwS(); const tot=whTot(); const left=WH_PITY-(r.wh.pity|0);
   const odds=WHEEL.map(s=>`<div class="wb-lr ${s.jack?'g':''}"><span class="li">${whImg(s)}</span><span class="la">${esc(s.n)} <span class="wb-muted">${whAmt(s)}</span></span><span class="lp">${wbPct(s.w/tot)}</span></div>`).join('');
-  const body=`<div class="wb-wheel"><div class="big wv wbWheel">${wbWheelSvg()}</div><div class="side">${wbBoard('Крутить',`<div class="acts">${whBtns(1)}</div><div class="wb-card" style="font-size:calc(var(--u)*14)"><b>Гарантия:</b> Золотой сундук раз в ${WH_PITY} вращений.<div class="wb-prog" style="margin-top:4px">${wbBar(r.wh.pity|0,WH_PITY,'em')}<span>${left===1?'следующее!':'ещё '+left}</span></div></div><div class="wb-muted" style="font-size:calc(var(--u)*13)">В день: 1 бесплатно + ${ADS.lim.spin} за рекламу. Купленные не сгорают${(r.wh.paid|0)?` (есть <b>${r.wh.paid}</b>)`:''}.</div>`,'')}
+  const body=`<div class="wb-wheel"><div class="big wv wbWheel">${wbWheelSvg()}</div><div class="side">${wbBoard('Крутить',`<div class="acts">${whBtns(1)}</div><div class="wb-card" style="font-size:calc(var(--u)*14)"><b>Гарантия:</b> Золотой сундук раз в ${WH_PITY} вращений.<div class="wb-prog" style="margin-top:4px">${wbBar(r.wh.pity|0,WH_PITY,'em')}<span>${left===1?'следующее!':'ещё '+left}</span></div></div><div class="wb-muted" style="font-size:calc(var(--u)*13)">В день: 1 бесплатно${ADS.ready()?` + ${ADS.lim.spin} за рекламу`:''}. Купленные не сгорают${(r.wh.paid|0)?` (есть <b>${r.wh.paid}</b>)`:''}.</div>`,'')}
     ${wbBoard('Шансы',`<div class="wb-lt">${odds}</div>`,'')}</div></div>`;
   return {title:'Колесо судьбы',res:rwTopRes(),right:passPill(),body,back:'hub'}; }
 function scrWk(){ const w=wkS();
@@ -628,7 +628,7 @@ function scrBld(id){ const B=BUILDINGS[id], lv=S.bld[id]|0; const j=bqFind(id); 
   if(j){ const left=bqLeft(j), p=skipPrice(left); const tot=Math.max(1,j.end-j.start);
     mid=`<div class="wb-card"><div class="wb-qrow">${ico('hammer')}<b style="font:800 calc(var(--u)*16) var(--sc)">Строится → ${j.lv} ур.</b>${wbBar(tot-left,tot,'em')}<b data-end="${j.end}">${fmtTimer(left)}</b></div></div>`;
     acts=`<button class="wb-btn br" style="flex:1.2" ${act(()=>{ if(!bqSkip(j)) return wbWhere(CRYS); AU.sfx('build'); rerender(); })}>${ico('clock')} Ускорить <small>${ico('crys')}${p}</small></button>
-      ${ADS.left('build')?`<button class="wb-btn gr" style="flex:1" ${act(()=>{ ADS.showRewarded('build').then(r=>{ if(r.ok){ bqAd(j); rerender(); } else toast('Реклама сейчас недоступна'); }); })}>${ico('ad')} −30 мин <small>${ADS.left('build')}/${ADS.lim.build}</small></button>`:''}
+      ${ADS.left('build')&&ADS.ready()?(ADS.offer('build'),`<button class="wb-btn gr" style="flex:1" ${act(()=>{ ADS.showRewarded('build').then(r=>{ if(r.ok){ bqAd(j); rerender(); } else ADS.fail(r); }); })}>${ico('ad')} −30 мин <small>${ADS.left('build')}/${ADS.lim.build}</small></button>`):''}
       ${!j.help?`<button class="wb-btn wd" style="flex:1" ${act(()=>{ const cut=bqHelp(j); if(cut){ toast('Соседи помогли: −'+fmtDur(cut)); AU.sfx('quest'); } rerender(); })}>${ico('help')} Помощь</button>`:''}`; }
   else if(max){ mid=`<div class="wb-card" style="text-align:center;font:800 calc(var(--u)*17) var(--sc)">${ico('crown')} Максимальный уровень</div>`; }
   else { const c=bldCost(id,nl); mid=wbCostCards(c)+(lockU?`<div class="wb-warn">${ico('lock')} Нужна ратуша ${bldUnlock(id)} ур.</div>`:lockHall?`<div class="wb-warn">${ico('lock')} Сначала улучшите ратушу до ${nl} ур.</div>`:why?`<div class="wb-warn">${why}</div>`:'');

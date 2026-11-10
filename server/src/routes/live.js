@@ -21,6 +21,10 @@ export async function getConfig(c) {
     shop: shopRotation(cfg.shop || {}, c.now),
     products: (cfg.products || []).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once, weekly: !!p.weekly, tag: p.tag || undefined, grant: p.grant || undefined })),
     freeChestHours: cfg.freeChestHours,
+    // v39.4: Adsgram block ids (public) and whether ad rewards are verified on the server (src/routes/ads.js)
+    adsBlockRewarded: String((cfg.ads && cfg.ads.blockRewarded) || ''),
+    adsBlockInterstitial: String((cfg.ads && cfg.ads.blockInterstitial) || ''),
+    adsVerify: !!(cfg.ads && cfg.ads.verify),
     daily: { rewards: (cfg.daily || {}).rewards || [] },
   }, 200, { 'cache-control': 'public, max-age=60' });
 }
@@ -95,6 +99,11 @@ function validateConfig(key, v) {
     for (const p of v) if (p.grant !== undefined && (typeof p.grant !== 'object' || !p.grant || Object.values(p.grant).some((x) => !Number.isFinite(x) || x < 0 || x > 1e6))) bad('товар: grant — объект {ключ: число ≥ 0}');
   } else if (key === 'freeChestHours') {
     if (!Number.isFinite(v) || v < 0.5 || v > 72) bad('freeChestHours — число часов 0.5..72');
+  } else if (key === 'ads') {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) bad('ads — объект {blockRewarded, blockInterstitial, verify, caps}');
+    for (const k of ['blockRewarded', 'blockInterstitial']) if (v[k] !== undefined && (typeof v[k] !== 'string' || !/^[A-Za-z0-9_-]{0,40}$/.test(v[k]))) bad(`ads.${k} — id блока Adsgram (например "12345" или "int-12345")`);
+    if (v.verify !== undefined && typeof v.verify !== 'boolean') bad('ads.verify — true/false');
+    if (v.caps !== undefined && (typeof v.caps !== 'object' || !v.caps || Array.isArray(v.caps) || Object.entries(v.caps).some(([k, x]) => !/^[a-z0-9_]{1,16}$/.test(k) || !Number.isInteger(x) || x < 0 || x > 100))) bad('ads.caps — {место: целое 0..100}');
   } else if (key === 'battlepass') {
     if (!v || !Array.isArray(v.tiers)) bad('battlepass.tiers — массив');
   } else if (!v || typeof v !== 'object') bad('ожидался объект');

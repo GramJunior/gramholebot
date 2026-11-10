@@ -451,6 +451,8 @@
     },
 
     pay: payApi,
+    /** v39.4: rewarded ads — spend a server «ad credit» (stored by the Adsgram Reward URL) for a valuable reward. -> { ok } | { ok:false, error:'no_credit'|'limit' } */
+    ads: { claim: function (place) { return call('POST', '/ads/claim', { place: String(place || '').slice(0, 16) }); } },
     /** Free wooden chest timer (server clock): POST /chest/free -> { ok, next } (ok:false + next when not ready yet). */
     chest: { free: function () { return call('POST', '/chest/free', {}); } },
 

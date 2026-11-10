@@ -11,6 +11,7 @@ import * as pay from './routes/payments.js';
 import * as social from './routes/social.js';
 import * as bot from './routes/bot.js';
 import * as metrics from './routes/metrics.js';
+import * as ads from './routes/ads.js';
 import { rateLimit } from './lib/ratelimit.js';
 
 const health = (c) => json({ ok: true, name: 'emberveil', serverTime: c.now, telegram: !!c.env.BOT_TOKEN, guest: c.env.ALLOW_GUEST === '1' });
@@ -69,6 +70,10 @@ export const ROUTES = [
 
   ['POST', '/events', metrics.postEvents],
 
+  // v39.4: Adsgram Reward URL (called by Adsgram) + spending an ad credit (game), src/routes/ads.js
+  ['GET', '/ads/reward', ads.adsReward],
+  ['POST', '/ads/claim', ads.adsClaim],
+
   ['POST', '/tg/webhook', bot.webhook],
 
   ['GET', '/admin/config', live.adminGetConfig],
@@ -115,7 +120,7 @@ export async function handle(req, env, now = Date.now()) {
     if (prefix && path.startsWith(prefix)) path = path.slice(prefix.length) || '/';
     const { h, params, pathMatched } = match(req.method, path);
     if (!h) fail(pathMatched ? 405 : 404, pathMatched ? 'method' : 'not_found', 'Нет такого метода');
-    await rateLimit(req, env, path, now); // v39: 429 на /auth, PUT /save, /events, /pay/invoice, /admin/* (src/lib/ratelimit.js)
+    await rateLimit(req, env, path, now); // v39: 429 на /auth, PUT /save, /events, /pay/invoice, /admin/*, /ads/* (src/lib/ratelimit.js)
     res = await h({ req, env, url, now, params });
   } catch (e) {
     res = errorResponse(e);

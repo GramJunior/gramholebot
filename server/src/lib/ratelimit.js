@@ -1,6 +1,6 @@
 // Rate limiting (v39): per-player / per-IP limits on the expensive or abusable routes.
 //
-// Production: Cloudflare Workers Rate Limiting API — bindings RL_AUTH, RL_SAVE, RL_EVENTS, RL_PAY, RL_ADMIN
+// Production: Cloudflare Workers Rate Limiting API — bindings RL_AUTH, RL_SAVE, RL_EVENTS, RL_PAY, RL_ADMIN, RL_ADS_REWARD, RL_ADS_CLAIM
 // declared in wrangler.toml ([[ratelimits]], counters are kept by Cloudflare per location, 10 s or 60 s windows).
 // Without a binding (local dev, tests, an old wrangler) a small in-memory token bucket per isolate is used instead:
 // weaker (each isolate counts on its own), but it still stops a single client hammering one isolate.
@@ -14,6 +14,9 @@ export const RL_RULES = {
   events: { binding: 'RL_EVENTS', key: 'user', limit: 30, period: 60 },
   pay: { binding: 'RL_PAY', key: 'user', limit: 10, period: 60 },
   admin: { binding: 'RL_ADMIN', key: 'ip', limit: 30, period: 60 },
+  // v39.4: Adsgram Reward URL — keyed by the Telegram id in the query (calls come from Adsgram's servers, few IPs)
+  adsreward: { binding: 'RL_ADS_REWARD', key: 'userid', limit: 20, period: 60 },
+  adsclaim: { binding: 'RL_ADS_CLAIM', key: 'user', limit: 20, period: 60 },
 };
 
 /** Which limit group a request falls into (null = not limited). */
@@ -24,6 +27,8 @@ export function rlGroup(method, path) {
   if (method === 'POST' && path === '/events') return 'events';
   if (method === 'POST' && path === '/pay/invoice') return 'pay';
   if (path === '/admin' || path.startsWith('/admin/')) return 'admin';
+  if (method === 'GET' && path === '/ads/reward') return 'adsreward';
+  if (method === 'POST' && path === '/ads/claim') return 'adsclaim';
   return null;
 }
 
@@ -48,6 +53,11 @@ function tokenSub(req) {
 export function rlKey(rule, req) {
   const ip = clientIp(req);
   if (rule.key === 'user') { const u = tokenSub(req); return u ? 'u:' + u : 'ip:' + ip; }
+  if (rule.key === 'userid') {
+    let q = '';
+    try { const s = new URL(req.url).searchParams; q = String(s.get('userid') || s.get('userId') || '').replace(/\D/g, '').slice(0, 16); } catch { /* bad url */ }
+    return q ? 'tg:' + q : 'ip:' + ip;
+  }
   return 'ip:' + ip;
 }
 

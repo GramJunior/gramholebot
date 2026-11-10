@@ -5,7 +5,7 @@ function timerBar(start,end){ const tot=Math.max(1,end-start), left=Math.max(0,e
 function fmtTimer(ms){ const s=Math.ceil(ms/1000); if(s<=0) return 'готово'; const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return h?`${h} ч ${String(m).padStart(2,'0')} мин`:m?`${m}:${String(x).padStart(2,'0')}`:`${x} с`; }
 // live countdowns in any open panel / overlay
 setInterval(()=>{ if(document.hidden) return; for(const b of document.querySelectorAll('[data-end]')){ const e=+b.dataset.end; b.textContent=fmtTimer(e-Date.now()); const bar=b.parentElement&&b.parentElement.querySelector('i'); if(bar&&bar.parentElement.classList.contains('tbar')&&b.dataset.start){} } },1000);
-ADS.lim.build=4; ADS.lim.dealref=2; ADS.lim.fchest=3; ADS.lim.craft=3;
+/* v39.4: лимиты рекламы — в одном месте, ADS.lim (src/p18.js): build 2 (ковка делит его), dealref 1, fchest 1 */
 function speedBtns(j,kind){ // kind: 'bld'|'craft'
   const left=kind==='bld'?bqLeft(j):Math.max(0,j.end-Date.now()); const p=skipPrice(left); let h='';
   h+=`<button class="btn leather small" ${act(()=>{ if(kind==='bld'){ if(!bqSkip(j)) return toast(`Нужно ${p} самоцветов`); } else { if(!crysSpend(p,'craft_skip')) return; craftFinish(j); } AU.sfx('build'); rerender(); })}>${ico('boost')} ${crysHtml(p)}</button>`;
