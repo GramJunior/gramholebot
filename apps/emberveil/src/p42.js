@@ -19,7 +19,7 @@ function townTex(){
   const url='assets/kits/'+(qLow()?'town_atlas_s.jpg':'town_atlas.jpg');
   TOWN.tex=new THREE.TextureLoader().load(url,t=>{ TOWN.texOk=true; TOWN.stat.atlas=t.image&&t.image.width; try{ for(const k in ART) if(/^b_/.test(k)) delete ART[k]; }catch(e){} }, // рендеры зданий в окнах — заново
     undefined,()=>{ TOWN.texErr=true; console.info('town atlas: нет — здания прежние'); if(G.mode==='village'&&W&&W.kind==='village'){ try{ buildVillageBuildings(); }catch(e){ console.warn('town rebuild',e); } } });
-  const t=TOWN.tex; t.flipY=false; t.encoding=R.outputEncoding===THREE.LinearEncoding?THREE.LinearEncoding:THREE.sRGBEncoding;
+  const t=TOWN.tex; t.userData=Object.assign(t.userData||{},{keep:1}); /* v39.4: общий атлас набора не освобождается при выгрузке мира (p6 worldGpuFree) — без повторной загрузки и «голых» зданий на возврате */ t.flipY=false; t.encoding=R.outputEncoding===THREE.LinearEncoding?THREE.LinearEncoding:THREE.sRGBEncoding;
   t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; t.anisotropy=Math.min(4,R.capabilities.getMaxAnisotropy()); t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter;
 }
 // части набора: позиции/нормали/uv в системе части (метры), тайл на вершину
@@ -94,20 +94,21 @@ function iconUV(i){ const cx=i%6, cy=Math.floor(i/6), m=.06; return [(cx+m)/6,(c
 
 // ---------- материал: общий toon + кисть v10/v21, атлас с «заворотом» uv по тайлу, свечение окон/огня, колыхание ткани ----------
 function townPatch(sh,nocut){
-  sh.uniforms.uCut=nocut?{value:new THREE.Vector4(0,0,1,0)}:TOWN_CUT.uCut; sh.uniforms.uCutZ=TOWN_CUT.uCutZ; sh.uniforms.uHeroC=nocut?{value:new THREE.Vector4(0,0,0,0)}:TOWN_CUT.uHeroC; sh.uniforms.uCamB=TOWN_CUT.uCamB;
+  sh.uniforms.uCutB=nocut?{value:townCutArr()}:TOWN_CUT.uCutB; // v39.4: срез — только у зданий, которые на самом деле заслоняют героя (решает CPU, см. townCutTick)
   sh.uniforms.uTiles={value:TOWN_RECT.map(r=>new THREE.Vector4(r[0],r[1],r[2],r[3]))};
-  sh.vertexShader='attribute float aTile;\nattribute float aSway;\nuniform vec4 uTiles[15];\nuniform float uTime;\nuniform vec4 uHeroC;\nuniform vec2 uCamB;\nvarying vec4 vRect;\nvarying float vTileF;\nvarying vec2 vCutY;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  sh.vertexShader='attribute float aTile;\nattribute float aSway;\nuniform vec4 uTiles[15];\nuniform float uTime;\nuniform vec4 uCutB['+TOWN_CUTN+'];\nvarying vec4 vRect;\nvarying float vTileF;\nvarying vec2 vCutY;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
   vRect=uTiles[int(aTile+0.5)]; vTileF=aTile;
-  // v23 «кукольный дом»: здание между камерой и героем теряет крышу и верхний этаж (первый этаж остаётся); высота среза плавно растёт с удалением
-  { vec3 bo=(modelMatrix*vec4(0.0,0.0,0.0,1.0)).xyz; vec2 rel=bo.xz-uHeroC.xy; float lx=abs(dot(rel,vec2(uCamB.y,-uCamB.x))), dz=dot(rel,uCamB); /* v38: оси камеры (uCamB — «к камере») */
-    float k=uHeroC.z*(1.0-smoothstep(uHeroC.w,uHeroC.w+3.0,lx))*smoothstep(-2.0,0.5,dz)*(1.0-smoothstep(14.0,18.0,dz));
+  // v23 «кукольный дом»: здание между камерой и героем теряет крышу и верхний этаж (первый этаж остаётся).
+  // v39.4: какие здания резать и насколько (0..1, плавно) — решает CPU лучом от настоящей камеры к герою; здесь — поиск по точке начала сетки
+  { vec2 bo=(modelMatrix*vec4(0.0,0.0,0.0,1.0)).xz; float k=0.0;
+    for(int i=0;i<${TOWN_CUTN};i++){ vec4 c=uCutB[i]; if(abs(bo.x-c.x)+abs(bo.y-c.y)<0.05) k=max(k,c.z); }
     vCutY=vec2(mix(60.0,2.75,k),(modelMatrix*vec4(transformed,1.0)).y); }
   transformed.x+=sin(uTime*2.3+position.y*1.7+position.z)*aSway*0.10; transformed.z+=sin(uTime*1.9+position.y*1.3+position.x)*aSway*0.07;`);
   let fs=sh.fragmentShader;
-  fs='varying vec4 vRect;\nvarying float vTileF;\nvarying vec2 vCutY;\nuniform vec4 uCut;\nuniform float uCutZ;\n'+fs.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
-  if(vCutY.y>vCutY.x){ float hc=fract(sin(dot(floor(gl_FragCoord.xy*0.5),vec2(41.31,17.17)))*9631.7); if(vCutY.y>vCutY.x+0.35*hc) discard; }
-  // «окно» к герою: всё, что ближе к камере, чем герой, в круге вокруг него — вырезается (край — дизеринг)
-  if(uCut.w>0.5&&vViewPosition.z<uCutZ){ float dd=length(gl_FragCoord.xy-uCut.xy)/uCut.z; float hs=fract(sin(dot(floor(gl_FragCoord.xy),vec2(12.9898,78.233)))*43758.5453); if(dd<0.72+0.42*hs) discard; }`).replace('#include <map_fragment>',`
+  fs='varying vec4 vRect;\nvarying float vTileF;\nvarying vec2 vCutY;\n'+fs.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+  // срез с рваным краем 2,4–2,75 м (v39.4: край ниже отметки, иначе перекрытие второго этажа на ~3 м оставалось «плоской плитой» над героем);
+  // стены первого этажа ниже 2,4 м не режутся никогда (v39.4: экранное «окно» вокруг героя убрано — оно съедало стены соседних зданий)
+  if(vCutY.y>vCutY.x-0.35){ float hc=fract(sin(dot(floor(gl_FragCoord.xy*0.5),vec2(41.31,17.17)))*9631.7); if(vCutY.y>vCutY.x-0.35*hc) discard; }`).replace('#include <map_fragment>',`
 #ifdef USE_MAP
   vec2 tU=fract(vUv); vec2 aU=vRect.xy+tU*vRect.zw;
   #if __VERSION__ >= 300
@@ -129,13 +130,62 @@ function townPatch(sh,nocut){
 function townMat(stage){ const k=stage?'matS':'mat'; if(TOWN[k]) return TOWN[k]; if(!TOWN.tex) townTex(); const m=EVAssets.toonMat(TOWN.tex,{paint:true}); m.vertexColors=true; m.extensions={derivatives:true,shaderTextureLOD:true};
   const base=m.onBeforeCompile; m.onBeforeCompile=(sh,r)=>{ base(sh,r); townPatch(sh,stage); }; m.customProgramCacheKey=()=>'evtown'+(stage?'S':''); m.userData.town=1; return TOWN[k]=m; } // stage: пропсы этапов (инстансы) — без «окна»
 function townMesh(geo){ const m=new THREE.Mesh(geo,townMat()); m.matrixAutoUpdate=false; m.updateMatrix(); m.onBeforeRender=townCutPre; return m; }
-// параметры «окна»: считаются раз за кадр, только для игровой камеры в деревне/набеге (иконки, портреты, крупные планы — без выреза)
-const TOWN_CUT={uCut:{value:new THREE.Vector4(0,0,1,0)},uCutZ:{value:0},uHeroC:{value:new THREE.Vector4(0,0,0,5.5)},uCamB:{value:new THREE.Vector2(0,1)},frame:-1,v:new THREE.Vector3(),sz:new THREE.Vector2()};
+// v39.4 «кукольный дом» по-честному: раз за кадр (только игровая камера в деревне/набеге) для каждого здания проверяем, проходит ли луч
+// от НАСТОЯЩЕЙ камеры (с поворотом v38 и колесом зума) к герою (ноги/грудь/голова, ±плечи) через его часть выше 2,75 м: сначала рамка, затем
+// (~раз в 5 кадров) точный луч по сетке. Доля среза у каждого здания плавно идёт к цели (~0,25 с) и уходит в шейдер массивом uCutB.
+// До v39.4 срез решался в шейдере по центру здания (±6,5 м вбок, от «чуть позади героя» до 18 м к камере): резались и соседние здания
+// сбоку/позади героя, а экранное «окно» вокруг героя выедало им ещё и стены первого этажа — «пропадающие» здания со скриншота владельца.
+const TOWN_CUTN=16, TOWN_CUTY=2.75;
+function townCutArr(){ const a=[]; for(let i=0;i<TOWN_CUTN;i++) a.push(new THREE.Vector4(1e5,1e5,0,0)); return a; }
+const TOWN_CUT={uCutB:{value:townCutArr()},frame:-1,live:false,lastT:0,n:0};
+function townCutBlds(){ const L=[]; if(!W) return L; const add=g=>{ if(g&&g.visible&&g.parent&&g.userData&&g.userData.cutaway) L.push(g); };
+  for(const k in (W.bmesh||{})) add(W.bmesh[k]); for(const k in (W.rsMesh||{})) add(W.rsMesh[k]); if(typeof SCAF!=='undefined') for(const k in SCAF) add(SCAF[k]); return L; }
+const _tcB=new THREE.Box3(), _tcR=new THREE.Ray(), _tcV=new THREE.Vector3(), _tcH=new THREE.Vector3(), _tcM=new THREE.Matrix4(), _tcO=new THREE.Vector3(), _tcD=new THREE.Vector3();
+// треугольники сетки выше среза (локально, Float32) пачками по 32 с рамками — точный луч без обхода всей сетки и без выделений памяти
+const TCG=new WeakMap(), TCGA=new WeakMap(), TC_CH=32;
+function townCutTris(ge,all){ const MP=all?TCGA:TCG; let T=MP.get(ge); if(T) return T; const P=ge.attributes.position, ix=ge.index, n=ix?ix.count:P.count, y0=all?-1e9:TOWN_CUTY-.15, tr=[];
+  for(let i=0;i+2<n;i+=3){ const a=ix?ix.getX(i):i, b=ix?ix.getX(i+1):i+1, c=ix?ix.getX(i+2):i+2; if(Math.max(P.getY(a),P.getY(b),P.getY(c))<y0) continue;
+    tr.push(P.getX(a),P.getY(a),P.getZ(a),P.getX(b),P.getY(b),P.getZ(b),P.getX(c),P.getY(c),P.getZ(c)); }
+  const v=new Float32Array(tr), nt=v.length/9, nc=Math.ceil(nt/TC_CH), bb=new Float32Array(nc*6);
+  for(let c=0;c<nc;c++){ let x0=1e9,y0b=1e9,z0=1e9,x1=-1e9,y1=-1e9,z1=-1e9; for(let t=c*TC_CH;t<Math.min(nt,(c+1)*TC_CH);t++) for(let k=0;k<3;k++){ const o=t*9+k*3, x=v[o], y=v[o+1], z=v[o+2];
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0b)y0b=y; if(y>y1)y1=y; if(z<z0)z0=z; if(z>z1)z1=z; } bb.set([x0,y0b,z0,x1,y1,z1],c*6); }
+  MP.set(ge,T={v,bb,nt,nc}); return T; }
+function _tcSlab(o,d,b,i,L){ let t0=0,t1=L; for(let a=0;a<3;a++){ const inv=1/(d[a]||1e-12); let ta=(b[i+a]-o[a])*inv, tb=(b[i+3+a]-o[a])*inv; if(ta>tb){ const q=ta; ta=tb; tb=q; } if(ta>t0)t0=ta; if(tb<t1)t1=tb; if(t0>t1) return false; } return true; }
+// луч (локальные o,d, длина L) против треугольников выше среза: есть ли попадание с точкой выше 2,6 м (высота — по мировому лучу wy+wd·t)
+function townCutTriHit(T,o,d,L,wy,wd){ const v=T.v, y0=TOWN_CUTY-.15;
+  for(let c=0;c<T.nc;c++){ if(!_tcSlab(o,d,T.bb,c*6,L)) continue; const tE=Math.min(T.nt,(c+1)*TC_CH);
+    for(let t=c*TC_CH;t<tE;t++){ const q=t*9; const ax=v[q],ay=v[q+1],az=v[q+2]; const e1x=v[q+3]-ax,e1y=v[q+4]-ay,e1z=v[q+5]-az, e2x=v[q+6]-ax,e2y=v[q+7]-ay,e2z=v[q+8]-az;
+      const px=d[1]*e2z-d[2]*e2y, py=d[2]*e2x-d[0]*e2z, pz=d[0]*e2y-d[1]*e2x; const det=e1x*px+e1y*py+e1z*pz; if(det>-1e-9&&det<1e-9) continue; const id=1/det;
+      const sx=o[0]-ax, sy=o[1]-ay, sz=o[2]-az; const u=(sx*px+sy*py+sz*pz)*id; if(u<0||u>1) continue; const qx=sy*e1z-sz*e1y, qy=sz*e1x-sx*e1z, qz=sx*e1y-sy*e1x;
+      const w=(d[0]*qx+d[1]*qy+d[2]*qz)*id; if(w<0||u+w>1) continue; const tt=(e2x*qx+e2y*qy+e2z*qz)*id; if(tt<0||tt>L) continue; if(wy+wd*tt>y0) return true; } }
+  return false; }
+function townCutInfo(g){ let I=g.userData._cut; if(I&&I.px===g.position.x&&I.pz===g.position.z&&I.ry===g.rotation.y) return I; g.updateMatrixWorld(true);
+  const box=new THREE.Box3(), org=[], parts=[]; g.traverse(o=>{ if(!o.isMesh||o.userData.isOutline||!o.geometry||!o.geometry.attributes.position) return; const spin=!!(o.parent&&o.parent.userData.spin); const T=townCutTris(o.geometry,spin); const e=o.matrixWorld.elements; org.push([e[12],e[14]]);
+    if(!T.nt) return; // колёса лесопилки/копра крутятся: рамка — по сфере, матрица — каждый раз
+    if(spin){ const ge=o.geometry; if(!ge.boundingSphere) ge.computeBoundingSphere(); const c=_tcO.copy(ge.boundingSphere.center).applyMatrix4(o.matrixWorld), r=ge.boundingSphere.radius+ge.boundingSphere.center.length(); _tcB.min.set(c.x-r,c.y-r,c.z-r); _tcB.max.set(c.x+r,c.y+r,c.z+r); box.union(_tcB); }
+    else for(let c=0;c<T.nc;c++){ _tcB.min.fromArray(T.bb,c*6); _tcB.max.fromArray(T.bb,c*6+3); _tcB.applyMatrix4(o.matrixWorld); box.union(_tcB); }
+    parts.push({T,m:o,spin,inv:new THREE.Matrix4().copy(o.matrixWorld).invert()}); });
+  return g.userData._cut=I={px:g.position.x,pz:g.position.z,ry:g.rotation.y,box,tall:parts.length>0&&!box.isEmpty(),org,parts,k:0,t:0,chk:-99,exact:0}; }
+// точки героя (ноги, грудь, голова; грудь ± плечи по оси «вправо» камеры)
+function townCutPts(){ const P=G.P, y=P.y||0, s=CAMR.ys, c=CAMR.yco; return [[P.x,y+.5,P.z],[P.x,y+1.2,P.z],[P.x,y+1.9,P.z],[P.x+c*.4,y+1.2,P.z-s*.4],[P.x-c*.4,y+1.2,P.z+s*.4]]; }
+// цель среза здания (0/1): луч камера→точка героя пересекает часть здания выше 2,75 м (рамка; exact — точно по треугольникам)
+const _tcOA=[0,0,0], _tcDA=[0,0,0];
+function townCutHit(I,camera,pts,exact){ const o=camera.position;
+  for(const p of pts){ _tcH.set(p[0],p[1],p[2]); _tcV.subVectors(_tcH,o); const L=_tcV.length(); _tcR.set(o,_tcV.divideScalar(L||1));
+    if(!I.box.containsPoint(o)){ const hp=_tcR.intersectBox(I.box,_tcV); if(!hp||o.distanceTo(hp)>L) continue; } if(!exact) return true; // камера внутри рамки (шпиль храма при приближении) — сразу точный луч
+    for(const q of I.parts){ if(q.spin) q.inv.copy(q.m.matrixWorld).invert(); _tcO.copy(o).applyMatrix4(q.inv); _tcD.copy(_tcR.direction).transformDirection(q.inv); _tcO.toArray(_tcOA); _tcD.toArray(_tcDA); if(townCutTriHit(q.T,_tcOA,_tcDA,L,o.y,_tcR.direction.y)) return true; } }
+  return false; }
+function townCutKOf(g){ const I=g&&g.userData._cut; return I?I.k:0; }
+function townCutTick(camera,snap){ const U=TOWN_CUT, now=performance.now(), dt=Math.min(.25,(now-U.lastT)/1000); if(now-U.lastT>500) snap=true; U.lastT=now;
+  const pts=townCutPts(), f=(U.n=(U.n+1)|0), a=snap?1:1-Math.exp(-dt*9), arr=U.uCutB.value; let j=0;
+  for(const g of townCutBlds()){ const I=townCutInfo(g); let t=0;
+    if(I.tall&&townCutHit(I,camera,pts,false)){ if(snap||f-I.chk>=5||f<I.chk){ I.chk=f; I.exact=townCutHit(I,camera,pts,true)?1:0; } t=I.exact; } else I.chk=-99;
+    I.t=t; I.k+=(t-I.k)*a; if(I.k<.004&&t===0) I.k=0;
+    if(I.k>0) for(const q of I.org){ if(j>=TOWN_CUTN) break; arr[j++].set(q[0],q[1],I.k,0); } }
+  for(;j<TOWN_CUTN;j++) arr[j].set(1e5,1e5,0,0); U.live=true; }
+function townCutOff(){ const U=TOWN_CUT; if(!U.live) return; for(const v of U.uCutB.value) v.set(1e5,1e5,0,0); U.live=false; }
 function townCutPre(r,sc,camera){ const U=TOWN_CUT; const on=camera===cam&&!!G.P&&!!W&&W.kind==='village'&&(G.mode==='village'||G.mode==='raid')&&!(typeof CINE!=='undefined'&&CINE.on)&&!G.dialog;
-  if(!on){ U.uCut.value.w=0; U.uHeroC.value.z=0; U.frame=-1; return; } const f=r.info.render.frame; if(U.frame===f&&U.uCut.value.w) return; U.frame=f; U.uHeroC.value.set(G.P.x,G.P.z,1,6.5); U.uCamB.value.set(CAMR.ys,CAMR.yco);
-  const rt=r.getRenderTarget(); let w,h; if(rt){ w=rt.width; h=rt.height; } else { r.getDrawingBufferSize(U.sz); w=U.sz.x; h=U.sz.y; }
-  const v=U.v.set(G.P.x,1.0,G.P.z); v.applyMatrix4(camera.matrixWorldInverse); U.uCutZ.value=-v.z-1.6; v.applyMatrix4(camera.projectionMatrix);
-  U.uCut.value.set((v.x*.5+.5)*w,(v.y*.5+.5)*h,h*.25,1); }
+  if(!on){ townCutOff(); U.frame=-1; return; } const f=r.info.render.frame; if(U.frame===f&&U.live) return; U.frame=f; townCutTick(camera,false); }
 
 // ---------- корпус здания: стены по модулям 2 м, этажи по 3 м, углы, окна/двери/ставни, крыша, фронтоны, труба ----------
 // o: {x,z — центр корпуса; w,d — модулей по x/z; fl — этажи снизу: 'st' камень | 'pl' штукатурка+брус | 'gr' фахверк-решётка;
@@ -426,8 +476,8 @@ const _bldMeshV22=bldMesh; bldMesh=function(id,lv,geoFn){ const g=_bldMeshV22(id
 const _townSpin=[]; function townSpinScan(){ _townSpin.length=0; if(!W||!W.bmesh) return; for(const k in W.bmesh){ const g=W.bmesh[k]; if(g&&g.userData.town) g.traverse(o=>{ if(o.userData.spin) _townSpin.push(o); }); } }
 const _bvbV22=buildVillageBuildings; buildVillageBuildings=function(){ _bvbV22(); try{ townSpinScan(); }catch(e){ console.warn(e); } };
 const _sysLabelsV22=sysLabels; sysLabels=function(dt){ _sysLabelsV22(dt); if(G.mode!=='village'||!_townSpin.length) return; for(const p of _townSpin){ const a=p.userData.spin; if(a.axis==='x') p.rotation.x+=a.spd*dt; else p.rotation.z+=a.spd*dt; } };
-// отладка: __game.town() — сводка (части, треугольники зданий)
-Object.assign(window.__game,{ town:()=>({ready:townReady(),parts:TOWN.stat.parts,atlas:TOWN.stat.atlas,geo:Object.fromEntries(Object.entries(TOWN.geo).map(([k,e])=>[k,{tris:e.tris,ms:+e.ms.toFixed(1),miss:e.miss}]))}) });
+// отладка: __game.town() — сводка (части, треугольники зданий); __game.townDbg() — «кукольный дом» v39.4 для стенда (scratchpad f394/cut.js)
+Object.assign(window.__game,{ townDbg:()=>({cam,CAMR,camYawSet,camUpdate,scene,R,TOWN,G,tick:townCutTick,kOf:townCutKOf,hit:townCutHit,info:townCutInfo,pts:townCutPts}), town:()=>({ready:townReady(),parts:TOWN.stat.parts,atlas:TOWN.stat.atlas,geo:Object.fromEntries(Object.entries(TOWN.geo).map(([k,e])=>[k,{tris:e.tris,ms:+e.ms.toFixed(1),miss:e.miss}]))}) });
 // полупрозрачность заслоняющих зданий: детальные здания крупнее — прозрачнее (иначе мутная «пелена» поверх героя)
 const _ghostOfV22=ghostOf; ghostOf=function(m){ const g=_ghostOfV22(m); if(m&&m.userData&&m.userData.town&&!g.userData._t22){ g.userData=Object.assign({},m.userData,{_t22:1}); g.opacity=.17; } return g; };
 // ---------- строительные леса по размеру здания (столбы через ~2,4 м, настилы через 2 м, раскосы на фасаде) ----------
