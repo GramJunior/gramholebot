@@ -60,3 +60,9 @@
 - (опционально) **creative-director** — проверка, что предложения не ломают тон (dark fantasy, 16–26, не детское).
 Контекст для агентов: эта страница, PROGRESSION.md, CANON.md, README (разделы v24–v40), отзывы студии v39 (docs/review — если перенесены), реальный код систем (p47–p53, p65–p68, p71, p18).
 Результат для владельца: короткое резюме на русском + артефакт-страница с вариантами и рекомендацией, решения — за владельцем.
+
+## 9. Вторая рекламная сеть (водопад) — ждём Zone ID Monetag от владельца
+- Adsgram иногда без роликов (nofill). План: Adsgram → при nofill Monetag (rewarded interstitial для TMA).
+- Сделать: ленивый SDK Monetag в p18 (window.EV_ADS_MONETAG_ZONE в ads.config.js), fallback в showRewarded при 'nofill'/'nosdk';
+  серверное подтверждение через postback Monetag (ymid = подписанный токен игрока) → ad_credits (тот же /ads/claim), тест в server/test.
+- Альтернативы на потом: RichAds, OnClicka, AdRadar (медиация). Решать по eCPM/fill после теста.
