@@ -397,7 +397,7 @@ function wbGrant(rw){ const out=[]; for(const k in rw){ const v=rw[k]; if(!v) co
 function wbTiles(rw,max){ return wbGrant(rw).slice(0,max||9).map(g=>`<div class="wb-tile">${g.img}<span>${g.t}</span></div>`).join(''); }
 // подсказка «где взять» для ресурса
 const WB_WHERE={gold:['Этапы и боссы на карте','Налог Ратуши и дома','Лавка — предложения дня'],wood:['Лесопилка (доход деревни)','Первая победа на этапе','Лавка — древесина'],ore:['Рудник (доход деревни)','Первая победа на этапе','Лавка — руда'],
-  ess:['Родник эссенции','Разбор вещей','Сундуки и Колесо судьбы'],shards:['Бездна и владыки зон','Дары очага','Колесо судьбы'],dust:['Разбор эпических вещей','Сундуки'],sparks:['Лавка — самоцветы за Stars','Путь Угля','Колесо судьбы']};
+  ess:['Родник эссенции','Разбор вещей','Сундуки и Колесо судьбы'],shards:['Бездна и владыки зон','Дар дня','Колесо судьбы'],dust:['Разбор эпических вещей','Сундуки'],sparks:['Лавка — самоцветы за Stars','Путь Угля','Колесо судьбы']};
 function wbWhere(k){ const p=$('pFrame'); if(!p) return; p.querySelector('.wb-sheet')?.remove(); const L=WB_WHERE[k]||['Этапы, сундуки и Лавка'];
   p.insertAdjacentHTML('beforeend',`<div class="wb-sheet">${wbBoard(`${esc(RES_NAME[k]||'Ресурс')}`,`<div style="display:flex;gap:12px;align-items:center">${wbRes(k)}<div class="wb-muted">Где взять: ${L.map(esc).join(' · ')}.</div></div><div class="row2">
     <button class="wb-btn em sm" ${act(()=>{ openShop(k==='sparks'?'crys':'deals'); })}>${ico('shop')} Лавка</button>
@@ -439,15 +439,15 @@ function v11Migrate(d){ try{ const m=d.meta; if(!m) return; const n=(m.cal&&m.ca
   if(m.wk&&Array.isArray(m.wk.list)){ m.wk.seal=m.wk.list.filter(q=>q&&q.c).length; m.wk.gch=false; }
 }catch(e){ console.error(e); } }
 
-// ---------- 7-дневная серия «Дары очага» ----------
+// ---------- 7-дневная серия «Дар дня» (до v40 — «Дары очага»; «Дары Очага» — благословения Ратуши, p65) ----------
 function dayRw(pos,cyc){ const R=calRewards(); const o=Object.assign({},R[((cyc|0)%4)*7+pos]||{}); delete o.cosmetic; delete o.chest_gold; if(pos!==6) delete o.sparks; if(pos===6) o.open_iron=1; return o; }
 function dayMain(rw){ const ks=Object.keys(rw).filter(k=>k!=='open_iron'); const pri=['gold','shards','ess','wood','ore','key_iron','chest_wood','frag','sparks']; ks.sort((a,b)=>(pri.indexOf(a)<0?99:pri.indexOf(a))-(pri.indexOf(b)<0?99:pri.indexOf(b))); return ks[0]; }
 function strk(){ const m=metaS(); const can=CAL.lastCan!==undefined?CAL.lastCan:calCanClaimLocal(); const n=m.cal.n|0; const pos=can?n%7:(n-1)%7; const cyc=Math.floor((can?n:n-1)/7); return {can,n,pos:Math.max(0,pos),cyc:Math.max(0,cyc),done:can?n%7:((n-1)%7)+1}; }
 calClaim=function(){ if(CAL.busy) return; CAL.busy=true;
   const fin=(T)=>{ CAL.busy=false; CAL.lastCan=false; const m=metaS(); m.cal.last=dayKeyL(); m.cal.n=T; const pos=(T-1)%7, cyc=Math.floor((T-1)/7); const rw=dayRw(pos,cyc);
     const r=rwS(); r.mo.n=Math.min(31,(r.mo.n|0)+1); const op=rw.open_iron; delete rw.open_iron;
-    rwGive(rw,'Дары очага, день '+(pos+1)); if(op){ const o=chestOpen('iron',{free:1,src:'day7'}); setTimeout(()=>chestShow([o]),500); }
-    wkProg('w_login'); passXp(40,'login'); track('login_claim','s'+(pos+1)); AU.sfx('quest'); vib('success'); saveGame(true); hudRefresh(); hudPassDot(); if(PANEL.kind==='pass') rerender(); };
+    rwGive(rw,'Дар дня, день '+(pos+1)); if(op){ const o=chestOpen('iron',{free:1,src:'day7'}); setTimeout(()=>chestShow([o]),500); }
+    wkProg('w_login'); passXp(PASS_XP.login,'login'); track('login_claim','s'+(pos+1)); AU.sfx('quest'); vib('success'); saveGame(true); hudRefresh(); hudPassDot(); if(PANEL.kind==='pass') rerender(); };
   const local=()=>{ if(!calCanClaimLocal()){ CAL.busy=false; CAL.lastCan=false; return; } fin((metaS().cal.n|0)+1); };
   if(!netOn()) return local();
   EVNet.daily.claim().then(c=>{ if(c&&c.ok){ const m=metaS(); fin(Math.max(c.total||0,(m.cal.n|0)+1)); }
@@ -468,7 +468,7 @@ wkS=function(){ const m=metaS(); const w=isoWeekL(); const pool=WEEKLY_POOL.filt
   else if(m.wk.list.length<WK_N){ const r=mulberry(hashStr(w+'b')); const p=pool.filter(x=>!m.wk.list.some(q=>q.id===x.id)); while(m.wk.list.length<WK_N&&p.length){ const x=p.splice(Math.floor(r()*p.length),1)[0]; m.wk.list.push({id:x.id,v:x.v,p:0,c:false}); } }
   if(m.wk.seal===undefined) m.wk.seal=m.wk.list.filter(q=>q.c).length; if(m.wk.gch===undefined) m.wk.gch=false; return m.wk; };
 function wkRwHalf(){ const r=wkRw(); const o={}; for(const k in r) o[k]=Math.max(1,Math.round(r[k]/2)); return o; }
-function wkClaim(q){ if(q.c||q.p<q.v) return; const w=wkS(); q.c=true; w.seal=(w.seal|0)+1; giveReward(wkRwHalf(),'Контракт недели · +1 печать'); passXp(150,'weekly'); track('weekly_done',q.id); AU.sfx('quest'); vib('success'); saveGame(true); hudPassDot(); rerender(); }
+function wkClaim(q){ if(q.c||q.p<q.v) return; const w=wkS(); q.c=true; w.seal=(w.seal|0)+1; giveReward(wkRwHalf(),'Контракт недели · +1 печать'); passXp(PASS_XP.weekly,'weekly'); track('weekly_done',q.id); AU.sfx('quest'); vib('success'); saveGame(true); hudPassDot(); rerender(); }
 function wkChestClaim(){ const w=wkS(); if(w.gch||(w.seal|0)<WK_SEALS) return; w.gch=true; track('week_chest','gold'); const o=chestOpen('gold',{free:1,src:'week'}); saveGame(true); setTimeout(()=>chestShow([o]),200); hudPassDot(); rerender(); }
 function wkPending(){ const w=wkS(); return w.list.filter(q=>!q.c&&q.p>=q.v).length+((w.seal|0)>=WK_SEALS&&!w.gch?1:0); }
 function wkEnds(){ const d=new Date(); d.setHours(0,0,0,0); const dow=d.getDay()||7; d.setDate(d.getDate()+8-dow); return d.getTime(); }
@@ -552,7 +552,7 @@ function hubContracts(){ const w=wkS(); const L=w.list.slice().sort((a,b)=>((b.p
     `<div class="wb-seals" ${act(()=>{ PANEL.tab='wk'; renderPanel(); })}>Печати ${Array.from({length:WK_SEALS},(_,i)=>`<i class="${i<(w.seal|0)?'':'e'}"></i>`).join('')}</div>`,'wb-ctr'); }
 function scrHub(){ const s=strk();
   const body=`<div class="wb-hub"><div class="wb-board wb-wheelb"><div class="wb-bt wb-plate brass rivets">Колесо судьбы</div><div class="wv wbWheel" ${act(()=>{ PANEL.tab='spin'; renderPanel(); })}>${wbWheelSvg()}</div><div class="btns">${whBtns()}</div></div>
-    <div class="rt">${wbBoard(`Дары очага · день ${s.can?s.pos+1:Math.min(7,s.done)} из 7`,hubStreak(),'wb-streak')}
+    <div class="rt">${wbBoard(`Дар дня · день ${s.can?s.pos+1:Math.min(7,s.done)} из 7`,hubStreak(),'wb-streak')}
       <div class="bot">${crateBoard('day')}${crateBoard('week')}${crateBoard('month')}${hubContracts()}</div></div></div>`;
   return {title:'Награды',res:rwTopRes(),right:passPill(),body}; }
 function scrChest(kind){ const r=rwS(), s=strk(), w=wkS(); const tier={day:'iron',week:'gold',month:'leg'}[kind]; const O=chestOdds(tier); const C=CHESTS[tier];
@@ -579,7 +579,7 @@ function scrWheel(){ const r=rwS(); const tot=whTot(); const left=WH_PITY-(r.wh.
   return {title:'Колесо судьбы',res:rwTopRes(),right:passPill(),body,back:'hub'}; }
 function scrWk(){ const w=wkS();
   const cards=w.list.map(q=>{ const D=WEEKLY_POOL.find(x=>x.id===q.id); const cl=!q.c&&q.p>=q.v; return `<div class="wb-card wb-kc ${cl?'claim':''} ${q.c?'done':''}">${ico(WK_IC[q.id]||'quest')}<div class="t"><b>${esc(D.n)}</b><small>${esc(D.d.replace('{v}',q.v))}</small><div class="wb-prog">${wbBar(q.p,q.v,q.c?'ok':'')}${q.p}/${q.v}</div></div>${q.c?'<span class="wb-cr"><span class="ok">✓</span></span>':cl?`<button class="wb-btn em sm" ${act(()=>wkClaim(q))}>Сдать</button>`:''}</div>`; }).join('');
-  const body=`<div class="wb-wk">${wbBoard('Контракты недели',`<div class="wb-muted" style="margin-bottom:6px">Обновятся через ${fmtDur(wkEnds()-Date.now())} · за каждый: печать, ${wbGrant(wkRwHalf()).slice(0,3).map(x=>x.t).join(', ')} и 150 оп. пути</div><div class="list">${cards}</div>`,'')}
+  const body=`<div class="wb-wk">${wbBoard('Контракты недели',`<div class="wb-muted" style="margin-bottom:6px">Обновятся через ${fmtDur(wkEnds()-Date.now())} · за каждый: печать, ${wbGrant(wkRwHalf()).slice(0,3).map(x=>x.t).join(', ')} и ${PASS_XP.weekly} оп. пути</div><div class="list">${cards}</div>`,'')}
     ${wbBoard('Печати',`<div class="wb-ped ${(w.seal|0)>=WK_SEALS&&!w.gch?'ready':''}" style="height:calc(var(--u)*110)">${wbChest('gold')}</div><div class="wb-seals" style="margin:6px 0">${Array.from({length:WK_SEALS},(_,i)=>`<i class="${i<(w.seal|0)?'':'e'}"></i>`).join('')}</div><div class="wb-muted" style="text-align:center">${WK_SEALS} печатей — Золотой сундук</div>
       <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">${w.gch?`<button class="wb-btn wd off" disabled>${ico('check')} Открыт</button>`:(w.seal|0)>=WK_SEALS?`<button class="wb-btn em" ${act(()=>wkChestClaim())}>${ico('chest')} Открыть</button>`:''}<button class="wb-btn wd sm" ${act(()=>{ PANEL.tab='ch_week'; renderPanel(); })}>Что внутри?</button></div>`,'','')}</div>`;
   return {title:'Контракты',res:rwTopRes(),right:passPill(),body,back:'hub'}; }
@@ -588,7 +588,7 @@ function wbPassTile(rw,trk,t,got,claimed,lock){ let inner='';
   else if(rw){ const k=Object.keys(rw)[0]; inner=`${wbRes(k)}<span>${wbNum(rw[k])}</span>`; }
   const ready=got&&!claimed&&!lock; return `<div class="wb-pt ${trk==='premium'?'prem':''} ${claimed?'got':''} ${ready?'ready':''} ${lock?'lock':''}" ${ready?act(()=>{ passClaim(t,trk); hudPassDot(); rerender(); }):''}>${inner}${claimed?'<i class="ck">✓</i>':lock?`<i class="lk">${ico('lock')}</i>`:''}</div>`; }
 function scrPass(){ const s=passSeason(), p=passS(), T=passTiers(), tier=passTier(), xp=passXpNow(), per=s.xpPerTier; const into=xp-tier*per; const live=passLive(); const cl=passClaimable();
-  const hd=`<div class="g"><div class="wb-h">Уровень ${tier} <span class="wb-muted" style="font:700 calc(var(--u)*14) var(--body)">· ${tier>=T.length?'максимум':into+' / '+per+' оп.'} · ${live?`сезон закончится через ${fmtDur(s.end-Date.now())}`:Date.now()<s.start?`начнётся через ${fmtDur(s.start-Date.now())}`:'сезон завершён'}</span></div><div class="wb-prog" style="margin-top:4px">${wbBar(tier>=T.length?1:into,tier>=T.length?1:per,'em')}</div><div class="wb-muted" style="font-size:calc(var(--u)*13);margin-top:3px">Опыт — за этапы, боссов, Бездну, набеги, контракты и вход · премиум — только облики</div></div>
+  const hd=`<div class="g"><div class="wb-h">Уровень ${tier} <span class="wb-muted" style="font:700 calc(var(--u)*14) var(--body)">· ${tier>=T.length?'максимум':into+' / '+per+' оп.'} · ${live?`сезон закончится через ${fmtDur(s.end-Date.now())}`:Date.now()<s.start?`начнётся через ${fmtDur(s.start-Date.now())}`:'сезон завершён'}</span></div><div class="wb-prog" style="margin-top:4px">${wbBar(tier>=T.length?1:into,tier>=T.length?1:per,'em')}</div><div class="wb-muted" style="font-size:calc(var(--u)*13);margin-top:3px">Опыт: первая победа на этапе — 30, повтор и этаж Бездны — 10 (до 20 в день), «Дар дня» — 60, контракты, набеги · премиум — только облики</div></div>
     ${cl?`<button class="wb-btn em" ${act(()=>{ for(const t of T){ passClaim(t.tier,'free'); passClaim(t.tier,'premium'); } hudPassDot(); rerender(); })}>${ico('check')} Забрать всё <small>${cl}</small></button>`:''}
     ${p.prem?`<span class="wb-plate brass rivets">${ico('crown')} Премиум</span>`:`<button class="wb-btn br" ${act(()=>payBuy(s.premiumProduct))}>${ico('crown')} Премиум <small>⭐${(shopProducts().find(x=>x.id===s.premiumProduct)||{stars:250}).stars}</small></button>`}`;
   const cols=T.map(t=>{ const got=t.tier<=tier; return `<div class="wb-pc ${got?'on':''} ${t.tier===tier+1?'next':''}"><span class="n">${t.tier}</span>${wbPassTile(t.free,'free',t.tier,got,p.cl.includes('free:'+t.tier),false)}${wbPassTile(t.premium,'premium',t.tier,got,p.cl.includes('premium:'+t.tier),!p.prem)}</div>`; }).join('');
@@ -613,7 +613,7 @@ const BLD_ROWS={
   houses:l=>[['house','Домов',l],['gold','Золото в час',l*25],['star','Опыт и золото','+'+l*VB24.houses.k+'%']]
 };
 const BLD_SAY={hall:'Ведана: «Выше ратуша — дальше ворота, шире Брод».',forge:'Горан: «Раздую горн жарче — и сталь станет злее».',alch:'Мира: «Новый котёл — зелья крепче, флаконов больше».',pen:'Ойка: «Тёплое гнездо — и малыши вылупятся быстрее».',
-  tavern:'Серый: «Больше столов — больше слухов и работы».',temple:'Храм гудит: угли помнят старые чары.',store:'Кладовщик: «Полки до потолка — ничего не пропадёт».',saw:'Пила поёт — брёвна сами катятся к складу.',
+  tavern:'Трактирщик: «Больше столов — больше слухов и работы».',temple:'Храм гудит: угли помнят старые чары.',store:'Кладовщик: «Полки до потолка — ничего не пропадёт».',saw:'Пила поёт — брёвна сами катятся к складу.',
   mine:'Кирки звенят глубже: жила ещё не кончилась.',well:'Кристаллы родника светятся ярче.',walls:'Плотники обещают башни, что не проспят набег.',houses:'Новые очаги — новые соседи и звонкая монета.'};
 function wbCostCards(c){ return `<div class="wb-costs">${Object.keys(c).filter(k=>c[k]>0).map(k=>{ const have=S.res[k]||0, ok=have>=c[k]; return `<div class="wb-cs ${ok?'ok':'no'}" data-k="${k}">${wbRes(k)}<div><b>${wbNum(c[k])}</b><small>есть ${wbNum(have)}</small></div>${ok?'':`<button class="plus" aria-label="Где взять" ${act(()=>wbWhere(k))}>+</button>`}</div>`; }).join('')}</div>`; }
 function wbBldTabs(id,cur){ const t=bldTabs(id); if(t.length<2) return ''; return `<div class="wb-tabs" id="wbTabs">${t.map(x=>`<button class="wb-tab ${t.length>4?'ic1':''} ${x[0]===cur?'on':''}" data-tab="${x[0]}" title="${esc(x[1])}">${x[2]?ico(x[2]):''}<span>${x[1]}</span></button>`).join('')}</div>`; }

@@ -20,7 +20,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 
 // ---------- storage (every access guarded) ----------
 const SKEY='emberveil_save_v1'; // ключ не меняется: версия формата хранится внутри (S.v)
-const SAVE_V=11;
+const SAVE_V=12;
 const Store={
   ok:true,
   get(k){try{return window.localStorage.getItem(k);}catch(e){this.ok=false;return null;}},
@@ -133,6 +133,8 @@ function migrateSave(d){
     try{ if(typeof v10Migrate==='function') v10Migrate(d); }catch(e){ console.error(e); } d.v=10; }
   if(d.v<11){ // v10 → v11 (игра v34): «Награды» — серия 7 дней, месяц (28 входов), печати недельных контрактов, Колесо судьбы (src/p71.js → v11Migrate)
     try{ if(typeof v11Migrate==='function') v11Migrate(d); }catch(e){ console.error(e); } d.v=11; }
+  if(d.v<12){ // v11 → v12 (игра v40): «Путь Угля» 50 × 200 оп. вместо 30 × 100 — опыт сезона ×2, уровень пропуска прежний (src/p90.js → v12Migrate)
+    try{ if(typeof v12Migrate==='function') v12Migrate(d); }catch(e){ console.error(e); } d.v=12; }
   return d;
 }
 let _saveT=0;

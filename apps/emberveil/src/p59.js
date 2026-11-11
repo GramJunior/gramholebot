@@ -52,81 +52,81 @@ const tutDT=(k,fb)=>()=>tutFind(`[data-tut="${k}"]`)||tutFind(fb);
 // open — как открыть экран для повтора, steps: {el, t, d, do, txt}
 const TOURS=[
   {id:'village',n:'Первые шаги по Броду',g:'Деревня',basic:1,on:'village',open:()=>{ if(PANEL.kind) closePanel(); if(G.mapOpen) closeMap(); },
-    steps:[{el:()=>tutTouch()?$('joy'):'center',any:1,t:'Движение',d:()=>tutTouch()?'Коснитесь левой половины экрана и ведите палец — герой побежит следом.':'WASD или стрелки — бег. Кнопки интерфейса — мышью.',
+    steps:[{el:()=>tutTouch()?$('joy'):'center',any:1,t:'Движение',d:()=>tutTouch()?'Коснись левой половины экрана и веди палец — побежим.':'WASD или стрелки — бег. Кнопки интерфейса — мышью.',
         enter:()=>{ const j=$('joy'); if(j&&tutTouch()) j.style.opacity='.85'; },leave:()=>{ const j=$('joy'); if(j) j.style.opacity=''; }},
       {el:'#bAtk',t:'Главная кнопка',d:'Рядом с жителем или зданием она говорит и открывает. В походе это атака.'},
-      {el:'#hQuest',t:'Текущая цель',d:'Что делать дальше. Коснитесь — откроется журнал заданий.'},
-      {el:'#mBuild',t:'Стройка',d:'Здания усиливают героя и открывают новые зоны. Начните с кузницы.'},
+      {el:'#hQuest',t:'Текущая цель',d:'Что делать дальше. Коснись — отведу прямо к цели.'},
+      {el:'#mBuild',t:'Стройка',d:'Здания усиливают героя и открывают новые зоны. Начни с кузницы.'},
       {el:'#mMap',t:'Поход',d:'Карта этапов: отсюда — в бой. Новые зоны — дальше по тропе.'}]},
   {id:'hall',n:'Ратуша и стройка',g:'Деревня',basic:1,on:'bld:hall:list',pri:2,open:()=>openPanel('bld',{id:'hall',tab:'list'}),also:['hearthNew'],
     steps:[{el:'#pBody .qhead',t:'Строители',d:'Стройка идёт по таймеру и занимает строителя. Сколько свободно — здесь.'},
       {el:'#pBody .blist .bcard',t:'Постройки',d:'Уровень, цена и время. Ратуша ограничивает уровень остальных зданий.'},
       {el:'#pBody .h24h',t:'Пламя Очага',d:'Уровни всех зданий разжигают Очаг: бонус ко всему и ключи к новым зонам.'},
-      {el:()=>{ const c=[...document.querySelectorAll('#pBody .blist .bcard')].find(x=>/Кузница/.test(x.textContent)); const b=c&&[...c.querySelectorAll('button')].find(b=>/Строить|Построить|Улучшить/.test(b.textContent)&&!b.disabled); return b||tutBtn('#pBody .blist',/Строить|Построить/)(); },t:'Постройте',d:'Нажмите «Строить» у кузницы — первые здания встают сразу.',do:1}]},
+      {el:()=>{ const c=[...document.querySelectorAll('#pBody .blist .bcard')].find(x=>/Кузница/.test(x.textContent)); const b=c&&[...c.querySelectorAll('button')].find(b=>/Строить|Построить|Улучшить/.test(b.textContent)&&!b.disabled); return b||tutBtn('#pBody .blist',/Строить|Построить/)(); },t:'Построй',d:'Жми «Строить» у кузницы — первые здания встают сразу.',do:1}]},
   {id:'hearthNew',n:'Пламя Очага (кратко)',g:'Деревня',on:'bld:hall:list',pri:1,cond:()=>tutSeen('hall'),open:()=>openPanel('bld',{id:'hall',tab:'list'}),
     steps:[{el:'#pBody .h24h',t:'Пламя Очага',d:'Сумма уровней зданий разжигает Очаг: урон и здоровье, вехи 10/20/30 и ворота зон.'},
-      {el:()=>tutBtn('#pBody .h24h',/Подробнее/)(),t:'Подробнее',d:'Загляните — там вехи пламени и что нужно для следующей зоны.',do:1}]},
+      {el:()=>tutBtn('#pBody .h24h',/Подробнее/)(),t:'Подробнее',d:'Загляни — там вехи пламени и что нужно для следующей зоны.',do:1}]},
   {id:'hearth',n:'Пламя Очага: вехи и ворота',g:'Деревня',on:'bld:hall:hearth',open:()=>openPanel('bld',{id:'hall',tab:'hearth'}),
     steps:[{el:'#pBody .h24h',t:'Уровень пламени',d:'Каждые 2 уровня зданий — +1 к пламени, а каждый уровень пламени — немного урона и здоровья.'},
       {el:'#pBody .h24ms',t:'Вехи',d:'На 10, 20 и 30 — особые награды: очко таланта, гнездо для камня, второе заклинание.'},
       {el:'#pBody .h24g',t:'Ворота зон',d:'Новые зоны открываются ратушей и пламенем. Не пускают — значит, пора строить.'}]},
   {id:'forge',n:'Кузница: наковальня',g:'Кузница',basic:1,on:'bld:forge:up',cond:()=>S.bld.forge>0,open:()=>openPanel('bld',{id:'forge',tab:'up'}),
-    steps:[{el:'#pBody .invgrid.pick',t:'Выберите вещь',d:'Коснитесь любого предмета — он ляжет на наковальню.',do:1},
+    steps:[{el:'#pBody .invgrid.pick',t:'Выбери вещь',d:'Коснись любого предмета — он ляжет на наковальню.',do:1},
       {el:'#pBody .anv, #pBody .f-r',late:1,t:'Наковальня',d:'Заточка поднимает силу вещи. Шанс и цена — здесь; неудача не сбрасывает ступень.'},
       {el:'#pTabs',t:'Ремёсла',d:'Ковка — новые вещи, Переработка — слитки из руды, Перековка — новое свойство, Камни — в гнёзда.'},
-      {el:'#pTabs .tab[data-tab="codex"]',t:'Кодекс',d:'Аспекты легендарных вещей: извлеките один и впечатайте в другую вещь.'}]},
+      {el:'#pTabs .tab[data-tab="codex"]',t:'Кодекс',d:'Аспекты легендарных вещей: извлеки один и впечатай в другую вещь.'}]},
   {id:'forgeCraft',n:'Кузница: ковка',g:'Кузница',basic:1,on:'bld:forge:craft',cond:()=>S.bld.forge>0,open:()=>openPanel('bld',{id:'forge',tab:'craft'}),
     steps:[{el:'#pBody .chips.one',t:'Что ковать',d:'Слот и оружие. Стихию можно выбрать или оставить случаю.'},
-      {el:'#pBody .rcards .rcard',t:'Рецепт',d:'Материалы, время и превью. Горн работает, пока вы в походе.'},
+      {el:'#pBody .rcards .rcard',t:'Рецепт',d:'Материалы, время и превью. Горн работает, пока ты в походе.'},
       {el:'#pBody .qhead',t:'Горн',d:'Один заказ за раз; второй горн — на 4-м уровне кузницы.'}]},
   {id:'codex',n:'Кодекс аспектов',g:'Кузница',on:'bld:forge:codex',cond:()=>S.bld.forge>0,open:()=>openPanel('bld',{id:'forge',tab:'codex'}),
     steps:[{el:'#pBody .cx50h',t:'Кодекс',d:'Аспект — особое свойство легендарной вещи, меняющее умение или защиту.'},
-      {el:'#pBody .cx50g',t:'Коллекция',d:'Извлечённый аспект остаётся навсегда: впечатайте его в любую подходящую вещь.'}]},
+      {el:'#pBody .cx50g',t:'Коллекция',d:'Извлечённый аспект остаётся навсегда: впечатай его в любую подходящую вещь.'}]},
   {id:'alch',n:'Лавка алхимика',g:'Деревня',basic:1,on:'bld:alch:shop',cond:()=>S.bld.alch>0,open:()=>openPanel('bld',{id:'alch',tab:'shop'}),
     steps:[{el:'#pBody .scene',t:'Котёл Миры',d:'Травы и эссенции — с врагов, из сундуков и разбора вещей.'},
       {el:'#pBody .bcards .bcard2',t:'Зелья',d:'Зелье лечит в бою, фляги восполняют костры. Эликсиры усиливают одну вылазку.'},
-      {el:()=>tutBtn('#pBody .bcards',/Сварить/)(),t:'Сварить',d:'Варите заранее — в бою на это не будет времени.'}]},
+      {el:()=>tutBtn('#pBody .bcards',/Сварить/)(),t:'Сварить',d:'Вари заранее — в бою будет не до того.'}]},
   {id:'temple',n:'Храм Угля',g:'Деревня',basic:1,on:'bld:temple:magic',cond:()=>S.bld.temple>0,open:()=>openPanel('bld',{id:'temple',tab:'magic'}),
     steps:[{el:'#pBody',t:'Храм Угля',d:'Магия и сброс талантов. Благословения теперь — «Дары Очага» в Ратуше.'},
       {el:'#pTabs .tab[data-tab="magic"]',t:'Магия',d:'Фолианты и руны поднимают ранг заклинаний.'},
       {el:'#pTabs .tab[data-tab="respec"]',t:'Сброс',d:'Перераспределить таланты и развилки умений.'}]},
   {id:'tavern',n:'Таверна и спутники',g:'Деревня',basic:1,on:'bld:tavern:roster',cond:()=>S.bld.tavern>0,open:()=>openPanel('bld',{id:'tavern',tab:'roster'}),
-    steps:[{el:'#pBody .grid2 .card',t:'Спутники',d:'Один спутник идёт с вами в бой. Новые приходят по сюжету.'},
-      {el:'#pTabs .tab[data-tab="exp"]',t:'Походы',d:'Свободные спутники приносят ресурсы, пока вы играете.'},
+    steps:[{el:'#pBody .grid2 .card',t:'Спутники',d:'Один спутник идёт с тобой в бой. Новые приходят по сюжету.'},
+      {el:'#pTabs .tab[data-tab="exp"]',t:'Походы',d:'Свободные спутники приносят ресурсы, пока ты играешь.'},
       {el:'#pTabs .tab[data-tab="daily"]',t:'Контракты',d:'Ежедневные цели за ресурсы и знаки доблести.'}]},
   {id:'pen',n:'Питомник',g:'Деревня',basic:1,on:'bld:pen:eggs',cond:()=>S.bld.pen>0,open:()=>openPanel('bld',{id:'pen',tab:'eggs'}),
-    steps:[{el:'#pBody .emptyArt, #pBody .card, #pBody .bcard2',t:'Яйца',d:'Яйца — в тайниках и у боссов. Отдайте Ойке — вылупится питомец.'},
-      {el:'#pTabs .tab[data-tab="pets"]',t:'Питомцы',d:'Кормите и берите с собой: питомец сражается рядом и даёт бонус.'}]},
+    steps:[{el:'#pBody .emptyArt, #pBody .card, #pBody .bcard2',t:'Яйца',d:'Яйца — в тайниках и у боссов. Отдай Ойке — вылупится питомец.'},
+      {el:'#pTabs .tab[data-tab="pets"]',t:'Питомцы',d:'Корми и бери с собой: питомец бьётся рядом и даёт бонус.'}]},
   // герой
   {id:'prof',n:'Профиль героя',g:'Герой',basic:1,on:'hero:prof',open:()=>openPanel('hero',{tab:'prof'}),
-    steps:[{el:'#pBody .ph-lv',t:'Сила героя',d:'Главное число. Сравнивайте с «реком.» в карточке этапа: слабее — будет тяжело.'},
-      {el:'#pBody .attrs',t:'Атрибуты',d:'Каждый уровень даёт 2 очка. Под атрибутом — что даёт одно очко и сколько набрано сейчас; значки — оружие, которому он важнее. Коснитесь строки — карточка с порогами, «?» — чем атрибуты отличаются от характеристик.'},
-      {el:()=>tutBtn('#pBody .attrB',/Распределить/)()||tutFind('#pBody .attrB'),t:'Распределить',d:()=>S.hero.ap>0?'Нажмите «Распределить» — очки лягут под ваше оружие.':'Когда появятся очки — эта кнопка разложит их под ваше оружие.',do:()=>S.hero.ap>0},
-      {el:'#pBody .dstats',t:'Характеристики',d:'Итог от снаряжения, атрибутов, талантов и деревни. Коснитесь строки — что она делает и откуда взялась.'},
+    steps:[{el:'#pBody .ph-lv',t:'Сила героя',d:'Главное число. Сравнивай с «реком.» в карточке этапа: слабее — будет тяжко.'},
+      {el:'#pBody .attrs',t:'Атрибуты',d:'Каждый уровень даёт 2 очка. Под атрибутом — что даёт одно очко и сколько набрано сейчас; значки — оружие, которому он важнее. Коснись строки — карточка с порогами, «?» — чем атрибуты отличаются от характеристик.'},
+      {el:()=>tutBtn('#pBody .attrB',/Распределить/)()||tutFind('#pBody .attrB'),t:'Распределить',d:()=>S.hero.ap>0?'Жми «Распределить» — очки лягут под твоё оружие.':'Когда появятся очки — эта кнопка разложит их под твоё оружие.',do:()=>S.hero.ap>0},
+      {el:'#pBody .dstats',t:'Характеристики',d:'Итог от снаряжения, атрибутов, талантов и деревни. Коснись строки — что она делает и откуда взялась.'},
       {el:'#pBody .pk48w',t:'Пороги атрибутов',d:'10, 25 и 50 очков в атрибуте открывают особые свойства; число — ближайший порог. Названия и действие — в карточке атрибута.'}]},
   {id:'gear',n:'Снаряжение и сумка',g:'Герой',basic:1,on:'hero:gear',open:()=>openPanel('hero',{tab:'gear'}),
-    steps:[{el:'#pBody .doll2',t:'Снаряжение',d:'Десять слотов. Коснитесь слота — карточка вещи и сравнение.'},
-      {el:'#pBody .invgrid',t:'Сумка',d:'Зелёная стрелка ▲ — вещь лучше надетой. Коснитесь её и выберите «Надеть».'},
+    steps:[{el:'#pBody .doll2',t:'Снаряжение',d:'Десять слотов. Коснись слота — карточка вещи и сравнение.'},
+      {el:'#pBody .invgrid',t:'Сумка',d:'Зелёная стрелка ▲ — вещь лучше надетой. Коснись её и выбери «Надеть».'},
       {el:'#pBody .invbar .chips',t:'Фильтры',d:'«Лучше» оставит только улучшения.'},
-      {el:'#pBody .invact',t:'Разбор',d:'Лишнее разбирайте в материалы — они нужны кузнице.'}]},
+      {el:'#pBody .invact',t:'Разбор',d:'Лишнее разбирай в материалы — они нужны кузнице.'}]},
   {id:'mats',n:'Материалы',g:'Герой',basic:1,on:'hero:mats',open:()=>openPanel('hero',{tab:'mats'}),
     steps:[{el:'#pBody .mgrid',t:'Материалы',d:'Всё, что дали разбор и добыча, по типам: металл, ткань, дерево, камни, стихии.'},
-      {el:'#pBody .mt-r, #pBody .mdet',t:'Откуда и куда',d:'Коснитесь материала — видно, где его взять и на что он идёт.'}]},
+      {el:'#pBody .mt-r, #pBody .mdet',t:'Откуда и куда',d:'Коснись материала — видно, где его взять и на что он идёт.'}]},
   {id:'forks',n:'Развилки умений',g:'Герой',pri:3,on:'hero:skills',cond:()=>typeof forkPending==='function'&&forkPending()>0,open:()=>openPanel('hero',{tab:'skills'}),
     steps:[{el:'#pBody .fk49r.pend',t:'Развилка',d:'На 5, 10, 15, 20, 30 и 40 уровнях — выбор одного из трёх модификаторов умения.'},
-      {el:()=>tutFind('#pBody .fk49r.pend .fk49b')||tutFind('#pBody .fk49r.pend .fk49o.can'),t:'Выбор',d:'Коснитесь — и выберите тот, что нравится. Перевыбор — в Храме Угля.',do:1}]},
+      {el:()=>tutFind('#pBody .fk49r.pend .fk49b')||tutFind('#pBody .fk49r.pend .fk49o.can'),t:'Выбор',d:'Коснись — и выбери тот, что по душе. Перевыбор — в Храме Угля.',do:1}]},
   {id:'skills',n:'Умения и таланты',g:'Герой',basic:1,on:'hero:skills',open:()=>openPanel('hero',{tab:'skills'}),
-    steps:[{el:'#pBody .skhead .chips',t:'Умения оружия',d:'У каждого оружия свои умения. Сменили оружие — сменился набор.'},
-      {el:'#pBody .tpbox',t:'Очки талантов',d:'+1 за уровень. Вкладывайте в умения ниже.'},
+    steps:[{el:'#pBody .skhead .chips',t:'Умения оружия',d:'У каждого оружия свои умения. Сменил оружие — сменился и набор.'},
+      {el:'#pBody .tpbox',t:'Очки талантов',d:'+1 за уровень. Вкладывай в умения ниже.'},
       {el:'#pBody .tree2 .tn2',t:'Умение',d:'Ранг поднимает силу и сокращает перезарядку. «+» — вложить очко.'},
       {el:'#pBody .fk49',t:'Развилки',d:'С 5 уровня — модификаторы, меняющие умение.'}]},
   {id:'magic',n:'Магия',g:'Герой',basic:1,on:'hero:magic',open:()=>openPanel('hero',{tab:'magic'}),
     steps:[{el:'#pBody .schools',t:'Школы',d:'Новая школа — с каждой зоной.'},
-      {el:'#pBody .spcard',t:'Заклинание',d:'Поставьте в слот — в бою появится кнопка. Фолианты поднимают ранг.'}]},
+      {el:'#pBody .spcard',t:'Заклинание',d:'Поставь в слот — в бою появится кнопка. Фолианты поднимают ранг.'}]},
   {id:'pets',n:'Питомцы',g:'Герой',basic:1,on:'hero:pets',open:()=>openPanel('hero',{tab:'pets'}),
     steps:[{el:'#pBody .emptyArt, #pBody .card, #pBody > div',t:'Питомцы',d:'Питомец бьётся рядом и даёт бонус. Яйца — в тайниках и у боссов, высиживает Ойка.'}]},
   {id:'squad',n:'Отряд',g:'Герой',basic:1,on:['hero:squad'],open:()=>openPanel('hero',{tab:'squad'}),
-    steps:[{el:'#pBody .grid2 .card',t:'Отряд',d:'Спутник идёт с вами в бой. Новые — спасённые по сюжету и наёмники таверны.'}]},
+    steps:[{el:'#pBody .grid2 .card',t:'Отряд',d:'Спутник идёт с тобой в бой. Новые — спасённые по сюжету и наёмники таверны.'}]},
   {id:'mast',n:'Мастерство оружия',g:'Герой',on:'hero:mast',open:()=>openPanel('hero',{tab:'mast'}),
     steps:[{el:'#pBody .wm53c.cur',t:'Мастерство',d:'Очки — за убийства этим оружием. Ранги дают урон и особые бонусы.'},
       {el:'#pBody .mb53',t:'Уголь мастерства',d:'После 50 уровня опыт превращается в очки мастерства.'}]},
@@ -146,7 +146,7 @@ const TOURS=[
     steps:[{el:'#pBody .chestc, #pBody .card',t:'Сундуки',d:'Золотые открываются ключами из походов. Шансы — на карточке.'}]},
   {id:'settings',n:'Настройки',g:'Прочее',basic:1,on:'settings',open:()=>openPanel('settings'),
     steps:[{el:'#pBody .tut59set',t:'Подсказки',d:'Вкл, только новое или выкл. Любой тур — «Герой → Знания → Обучение».'},
-      {el:tutTxt('#pBody .set',/Сложность/),t:'Сложность',d:'История, Норма или Кошмар — меняйте в любой момент.'},
+      {el:tutTxt('#pBody .set',/Сложность/),t:'Сложность',d:'История, Норма или Ветеран — меняй когда угодно.'},
       {el:tutTxt('#pBody .set',/Удержание атаки/),t:'Удержание атаки',d:'Заряженный удар или серия — как удобнее.'},
       {el:()=>tutFind('#pBody button',/Учебный плац/),t:'Учебный плац',d:'Потренироваться без риска — в любой момент.'}]},
   // карта (обёртка openMap; цели — data-tut из p58 или прежние классы)
@@ -154,12 +154,12 @@ const TOURS=[
     steps:[{el:tutDT('map-zone','#map .mzone'),t:'Зоны',d:'Пять этапов и босс в каждой. Уровни врагов — под названием.'},
       {el:tutDT('map-chapters','#map .chtabs'),t:'Главы',d:'Переключение между главами сюжета.'},
       {el:()=>tutFind('[data-tut="map-abyss"]')||tutFind('#mapHead button',/Бездна/),t:'Бездна',d:'Бесконечные этажи для осколков и рейтинга.'},
-      {el:tutDT('map-cur','#map .mnode.cur'),t:'Следующий этап',d:'Светится тот, что ждёт вас. Коснитесь его.',do:1}]},
+      {el:tutDT('map-cur','#map .mnode.cur'),t:'Следующий этап',d:'Светится тот, что ждёт нас. Коснись его.',do:1}]},
   {id:'stage',n:'Карточка этапа',g:'Поход',basic:1,on:'stage',also:['stars'],open:()=>{ const c=findCurrentStage()||[1,1]; if(!G.mapOpen) openMap(); stageCard(c[0],c[1]); },
     steps:[{el:tutDT('stage-type','#stageCard .card'),t:'Задача',d:'Тип этапа и что нужно сделать.'},
-      {el:()=>tutFind('[data-tut="stage-power"]')||tutFind('#stageCard .row',/реком/),t:'Сила',d:'Ваша сила против рекомендуемой. Если слабее — враги заметно больнее.'},
+      {el:()=>tutFind('[data-tut="stage-power"]')||tutFind('#stageCard .row',/реком/),t:'Сила',d:'Твоя сила против рекомендуемой. Если слабее — враги бьют заметно больнее.'},
       {el:tutDT('stage-stars','#stageCard .sc51'),t:'Три звезды',d:'Без гибели, в срок, все тайники. Звёзды зоны открывают сундуки.'},
-      {el:()=>tutFind('[data-tut="stage-go"]')||tutFind('#stageCard button',/В путь/),t:'В путь',d:'Готовы — вперёд!',do:1}]},
+      {el:()=>tutFind('[data-tut="stage-go"]')||tutFind('#stageCard button',/В путь/),t:'В путь',d:'Готов? Вперёд!',do:1}]},
   {id:'stars',n:'Звёзды этапа',g:'Поход',on:'stage',open:()=>{ const c=findCurrentStage()||[1,1]; if(!G.mapOpen) openMap(); stageCard(c[0],c[1]); },
     steps:[{el:tutDT('stage-stars','#stageCard .sc51'),t:'Три звезды',d:'Каждая звезда — своё условие и сохраняется навсегда. Звёзды зоны открывают сундуки на карте.'}]},
   {id:'nightmare',n:'Кошмар I–X',g:'Поход',pri:2,on:'stage',cond:()=>typeof nmOpen==='function'&&nmOpen()&&!!tutFind('#stageCard .nm52:not(.lock)'),open:()=>{ if(!G.mapOpen) openMap(); stageCard(1,1); },
@@ -173,29 +173,33 @@ const TOUR=Object.fromEntries(TOURS.map(d=>[d.id,d]));
 // ---------- подсказки в моменте ----------
 // tg — кнопка HUD; w(ctx) — точка мира {x,y,z}; slow — короткое замедление; ttl — сколько ждать удобного момента (мс)
 const JITD={
-  atk:{t:'Атака',d:'Касания — серия ударов, цель выбирается сама. Удерживайте — заряженный удар.',tg:'#bAtk',basic:1,ttl:20000},
-  dodge:{t:'Красные зоны',d:'Сюда сейчас ударят. Уйдите или сделайте кувырок — в нём вы неуязвимы.',tg:'#bDodge',basic:1,ttl:30000},
+  atk:{t:'Атака',d:'Касания — серия ударов, цель выбирается сама. Удержи — заряженный удар.',tg:'#bAtk',basic:1,ttl:20000},
+  dodge:{t:'Красные зоны',d:'Сюда сейчас ударят. Отойди или кувыркнись — в кувырке ты неуязвим.',tg:'#bDodge',basic:1,ttl:30000},
   brk:{t:'Разрушаемое',d:'Бочки, ящики и руда бьются. Искрящиеся стены прячут тайники.',basic:1,ttl:30000},
   stamina:{t:'Силы на исходе',d:'Удары, блок и кувырок тратят силы. Секунда передышки — и шкала полна.',tg:'#stB',basic:1,slow:1,ttl:3000},
-  potion:{t:'Зелье',d:'Мало здоровья — выпейте зелье. Фляги восполняются у костров.',tg:'#bPot',basic:1,slow:1,ttl:3000},
-  poise:{t:'Стойкость вожака',d:'Золотая шкала под здоровьем — стойкость. Сбейте её ударами: вожак оглушён и уязвим.',basic:1,slow:1,ttl:4000},
-  charge:{t:'Заряженный удар',d:'Удерживайте атаку и отпустите: удар по площади, ломает стойкость.',tg:'#bAtk',basic:1,ttl:5000},
-  parry:{t:'Золотая вспышка',d:'Враг замахнулся — нажмите блок в момент удара. Парирование оглушит его.',tg:'#bBlock',basic:1,slow:1,ttl:1500},
-  unbl:{t:'Красная вспышка',d:'Этот удар не заблокировать. Только кувырок!',tg:'#bDodge',basic:1,slow:1,ttl:1500},
+  potion:{t:'Зелье',d:'Мало здоровья — выпей зелье. Фляги восполняются у костров.',tg:'#bPot',basic:1,slow:1,ttl:3000},
+  poise:{t:'Стойкость вожака',d:'Золотая шкала под здоровьем — стойкость. Сбей её ударами — вожак оглушён и уязвим.',basic:1,slow:1,ttl:4000},
+  charge:{t:'Заряженный удар',d:'Удержи атаку и отпусти: удар по площади, ломает стойкость.',tg:'#bAtk',basic:1,ttl:5000},
+  parry:{t:'Золотое кольцо',d:'Враг замахнулся — держи блок, а жми точно в миг удара: парирование оглушит его.',tg:'#bBlock',basic:1,slow:1,ttl:1500},
+  unbl:{t:'Красная штриховка',d:'Этот удар не заблокировать. Только кувырок!',tg:'#bDodge',basic:1,slow:1,ttl:1500},
   bomb:{t:'Бомба',d:'Летит в ближайшего врага. Пять стихий: огонь, лёд, яд, гром и дым.',tg:'#bBomb',basic:1,ttl:15000},
-  bonfire:{t:'Костёр',d:'Отдых восполняет здоровье, силы и фляги. Падёте — очнётесь здесь.',basic:1,ttl:6000,w:()=>{ const P=G.P; if(!P||!W||!W.bonfires) return null; let b=null,bd=12; for(const x of W.bonfires){ const d=Math.hypot(x.x-P.x,x.z-P.z); if(d<bd){ bd=d; b=x; } } return b&&{x:b.x,y:1.3,z:b.z}; }},
-  urn:{t:'Угасшая искра',d:'Часть золота осталась на месте гибели. Подберите, пока не пали снова.',basic:1,ttl:15000,w:()=>W&&W.urn?{x:W.urn.x,y:1.5,z:W.urn.z}:null},
+  bonfire:{t:'Костёр',d:'Отдых восполняет здоровье, силы и фляги. Упадёшь — очнёшься здесь.',basic:1,ttl:6000,w:()=>{ const P=G.P; if(!P||!W||!W.bonfires) return null; let b=null,bd=12; for(const x of W.bonfires){ const d=Math.hypot(x.x-P.x,x.z-P.z); if(d<bd){ bd=d; b=x; } } return b&&{x:b.x,y:1.3,z:b.z}; }},
+  urn:{t:'Угасшая искра',d:'Часть золота осталась на месте гибели. Подбери, пока не упал снова.',basic:1,ttl:15000,w:()=>W&&W.urn?{x:W.urn.x,y:1.5,z:W.urn.z}:null},
   ap:{t:'Очки атрибутов',d:'Новый уровень — новые очки. «Герой» → «Профиль» → «Распределить».',tg:'#mHero',basic:1,ttl:60000},
   yard:{t:'Учебный плац',d:'Потренироваться можно в любой момент: «Настройки» → «Учебный плац».',tg:'#bPause',basic:1,ttl:60000},
-  cold:{t:'Стужа',d:'Шкала растёт на морозе: медленнее удары и бег. Грейтесь у жаровни.',tg:'#bmB',ttl:20000},
-  air:{t:'Воздух',d:'В глубоких залах Пузырь Искры сжимается. Дышите у колоколов, жерл и на мелководье.',tg:'#bmB',ttl:20000},
+  cold:{t:'Стужа',d:'Шкала растёт на морозе: медленнее удары и бег. Грейся у жаровни.',tg:'#bmB',ttl:20000},
+  air:{t:'Воздух',d:'В глубоких залах Пузырь Искры сжимается. Дыши у колоколов, жерл и на мелководье.',tg:'#bmB',ttl:20000},
   heat:{t:'Зной',d:'Растёт на солнце. Тень колонн, парусов и островов охлаждает, колодец — сразу.',tg:'#bmB',ttl:20000},
   fork:{t:'Развилка умения',d:'Новый модификатор ждёт выбора: «Герой» → «Умения».',tg:'#mHero',ttl:60000,info:1,again:1},
   aspect:{t:'Аспект',d:'Легендарная вещь с аспектом меняет умение. Аспект можно извлечь в Кодекс кузницы.',ttl:20000},
   perk:{t:'Порог атрибута',d:'Открыт особый бонус атрибута. Все пороги — в профиле героя.',tg:'#mHero',ttl:60000},
   stars:{t:'Звёзды этапа',d:'Три условия — три звезды. Лучшее по каждой сохраняется, звёзды зоны открывают сундуки.',tg:'#res .stars',ttl:8000},
-  gate:{t:'Ворота зоны',d:'Новая зона ждёт ратушу и Пламя Очага. Стройте — это и сила героя.',tg:'#mBuild',ttl:60000,info:1},
-  raid:{t:'Набег',d:'Коснитесь светящегося места на тропе, поставьте башню — и «В бой».',ttl:20000,info:1},
+  gate:{t:'Ворота зоны',d:'Новая зона ждёт ратушу и Пламя Очага. Строй — это и сила героя.',tg:'#mBuild',ttl:60000,info:1},
+  raid:{t:'Набег',d:'Коснись светящегося места на тропе, поставь башню — и «В бой».',ttl:20000,info:1},
+  skill:{t:'Новое умение',d:'Кнопка умения у атаки — сильный приём, потом перезарядка. Цифра — ранг.',tg:'#bS1',basic:1,ttl:20000},
+  ult:{t:'Вспышка Искры',d:'Шкала жара полна — жми сияющую кнопку: мощнейший удар.',tg:'#bUlt',basic:1,slow:1,ttl:8000},
+  spell:{t:'Заклинание',d:'Кнопка цвета стихии — заклинание из фолианта. Своя перезарядка, не мешает умениям.',tg:'#bSpell',basic:1,ttl:20000},
+  block:{t:'Блок',d:'Держи щит — урон меньше, силы тают. Золотое кольцо над врагом — жми в миг удара.',tg:'#bBlock',basic:1,ttl:20000},
   mastEmber:{t:'Уголь мастерства',d:'Опыт после 50 уровня — очки мастерства: «Герой» → «Мастерство».',ttl:30000,info:1},
 };
 const JIT={q:[],cur:null,last:0};
@@ -269,7 +273,7 @@ function tutNudge(){ const c=document.querySelector('#tutO .tcd'); if(!c) return
 function tutRender(){ const C=TUT.cur, o=$('tutO'); if(!C||!o) return; const s=C.steps[C.i];
   o.querySelector('h4').textContent=s.t; o.querySelector('.tcd p').textContent=typeof s.d==='function'?s.d():s.d;
   o.querySelector('.tcn').textContent=`${C.d.n} · ${C.i+1}/${C.steps.length}`; const last=C.i>=C.steps.length-1||!C.steps.slice(C.i+1).some(x=>tutStepEl(x));
-  const nx=o.querySelector('.tnext'); nx.textContent=last?'Понятно':'Далее'; nx.style.display=C.do?'none':''; o.querySelector('.tdo').innerHTML=C.do?`${ico('up')} Ваш ход`:'';
+  const nx=o.querySelector('.tnext'); nx.textContent=last?'Понятно':'Далее'; nx.style.display=C.do?'none':''; o.querySelector('.tdo').innerHTML=C.do?`${ico('up')} Твой ход`:'';
   o.querySelector('.tskip').style.visibility=last&&!C.do?'hidden':''; o.classList.toggle('isdo',C.do); o.querySelector('.th').style.display=C.do?'none':'block';
   o.classList.add('anim'); clearTimeout(o._at); o._at=setTimeout(()=>o.classList.remove('anim'),320); C.lay=null; tutLayout(); }
 // прямоугольник цели: пересечение с прокручиваемыми предками и экраном
@@ -384,7 +388,7 @@ function jitScan(){ const P=G.P; const T=tutS();
 if(typeof glint==='function'){ const _gl=glint; glint=function(e,col){ const r=_gl.apply(this,arguments); try{ if(!tutOff()&&e&&e.alive&&G.P&&Math.hypot(e.x-G.P.x,e.z-G.P.z)<10){ if(col===0xffd060&&!jitSeen('parry')) jitWant('parry',{}); else if(col===0xff3a2a&&!jitSeen('unbl')&&jitSeen('parry')) jitWant('unbl',{}); } }catch(er){} return r; }; }
 { const _sr=showResults; showResults=function(o){ const r=_sr.apply(this,arguments); try{ if(!tutOff()&&o&&o.stars!==undefined&&o.stars>0&&G.run&&G.run.info&&!G.run.raid) jitWant('stars',{}); }catch(e){} return r; }; }
 // «Учебный плац» пройден до конца — атака, кувырок, зелье и бомба уже показаны там
-if(typeof yardEnd==='function'){ const _ye=yardEnd; yardEnd=function(err,skipped){ const was=typeof YARD!=='undefined'&&YARD.on; const r=_ye.apply(this,arguments); try{ if(was&&!err&&!skipped&&!tutEnvOff()&&S&&S.started){ const T=tutS(); for(const k of ['atk','dodge','potion','bomb']) T.jit[k]=1; } }catch(e){} return r; }; }
+if(typeof yardEnd==='function'){ const _ye=yardEnd; yardEnd=function(err,skipped){ const was=typeof YARD!=='undefined'&&YARD.on; const r=_ye.apply(this,arguments); try{ if(was&&!err&&!skipped&&!tutEnvOff()&&S&&S.started){ const T=tutS(); for(const k of ['atk','dodge','potion']) T.jit[k]=1; } }catch(e){} return r; }; }
 if(typeof ftueHint==='function'){ const _fh=ftueHint; ftueHint=function(force){ if(TUT.cur||TUT.pend){ TUT.after.push(()=>_fh(force)); return; } return _fh.apply(this,arguments); }; }
 
 // ---------- настройки: «Подсказки» ----------
@@ -398,9 +402,9 @@ function tutSetHtml(){ const m=tutMode(); const b=(v,l)=>`<button class="${m===v
 function tutAvail(d){ if(d.cond&&d.id!=='forks'&&d.id!=='nightmare'&&d.id!=='hearthNew'&&!d.cond()) return false;
   if(d.id==='forks') return S.hero.lvl>=5; if(d.id==='nightmare') return typeof nmOpen==='function'&&nmOpen(); if(d.id==='abyss') return stageDone('1-5'); if(d.id==='mast') return true; if(d.on==='village') return G.mode==='village';
   if(/^(map|stage|stars|abyss)$/.test(d.id)) return G.mode==='village'; return true; }
-function tutWhy(d){ const m=/^bld:(\w+)/.exec(d.on); if(m&&!(S.bld[m[1]]>0)) return 'постройте: '+(BUILDINGS[m[1]]||{n:m[1]}).n; if(d.id==='forks') return 'с 5 уровня'; if(d.id==='nightmare') return 'после финала Главы I'; if(d.id==='abyss') return 'после 1-5'; return 'в деревне'; }
+function tutWhy(d){ const m=/^bld:(\w+)/.exec(d.on); if(m&&!(S.bld[m[1]]>0)) return 'построй: '+(BUILDINGS[m[1]]||{n:m[1]}).n; if(d.id==='forks') return 'с 5 уровня'; if(d.id==='nightmare') return 'после финала Главы I'; if(d.id==='abyss') return 'после 1-5'; return 'в деревне'; }
 function tutKnowHtml(){ const T=tutS(); const groups={}; for(const d of TOURS){ if(d.id==='hearthNew'||d.id==='stars') continue; (groups[d.g]=groups[d.g]||[]).push(d); }
-  let h=`<div class="tut59k"><div class="sect">${ico('help')} Обучение <small class="muted">— повторите любой тур</small></div><div class="tkg">`;
+  let h=`<div class="tut59k"><div class="sect">${ico('help')} Обучение <small class="muted">— повтори любой тур</small></div><div class="tkg">`;
   for(const g in groups){ h+=`<div class="tkgr"><b class="tkgn">${g}</b>${groups[g].map(d=>{ const ok=tutAvail(d); return `<button class="tkb ${T.seen[d.id]?'seen':''}" ${ok?`data-tut-replay="${d.id}"`:'disabled'} title="${ok?'':tutWhy(d)}">${T.seen[d.id]?ico('check'):ico('play')}<span>${d.n}${ok?'':`<small>${tutWhy(d)}</small>`}</span></button>`; }).join('')}</div>`; }
   h+=`</div><div class="sect">${ico('bolt')} Подсказки в бою <small class="muted">— ${Object.keys(JITD).filter(k=>T.jit[k]).length}/${Object.keys(JITD).length} встречено</small></div><div class="tkj">`;
   for(const k in JITD){ const d=JITD[k], s=!!T.jit[k]; h+=`<details class="tkd ${s?'':'new'}"><summary>${s?ico('check'):ico('lock')} ${d.t}</summary><p>${s?d.d:'Появится, когда встретится в игре.'}</p></details>`; }

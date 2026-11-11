@@ -186,7 +186,7 @@ chestFly=function(out){ const w=$('chestW'); const box=document.querySelector('#
   if(best>=3){ setTimeout(()=>{ if(!w||!w.isConnected) return; fxFlash(); w.insertAdjacentHTML('beforeend',`<div class="legban">${best>=4?'МИФИЧЕСКИЙ!':'ЛЕГЕНДАРНЫЙ!'}<small>${best>=4?'вещь из легенд':'редчайшая находка'}</small></div>`); },180+out.items.findIndex(x=>x.rar===best)*230+300); }
   else AU.sfx('loot'); };
 
-// ---------- «Дары очага»: календарь 28 дней большими плитками ----------
+// ---------- «Дар дня»: календарь 28 дней большими плитками ----------
 pCal=function(){ const m=metaS(); const R=calRewards(); const can=CAL.lastCan!==undefined?CAL.lastCan:calCanClaimLocal(); const n=m.cal.n; const doneN=can?n%28:((n-1)%28)+1; const todayI=can?n%28:-1; const just=CAL.just; CAL.just=undefined;
   let h=`<div class="calTop"><div class="ttl"><b>${can?`День ${n%28+1} — забирайте!`:`Завтра — день ${n%28+1}`}</b><small><span class="hideS">Награды растут каждую неделю; на 7, 14, 21 и 28 день — облики и украшения. </span>${netOn()?'День считает сервер.':'Без сети — по часам устройства.'}${CAL.srv&&CAL.srv.streak?` Серия: <b>${can?CAL.srv.nextStreak:CAL.srv.streak}</b>`:''}</small></div>
     ${can?`<button class="btn leather big" ${act(ev=>{ const t=document.querySelector('.calD.today'); const r=t&&t.getBoundingClientRect(); const pos=n%28; CAL.just=pos; calClaim(); if(r) setTimeout(()=>flyRes(r,calRewards()[pos]),60); })}>${ico('gold')} Забрать</button>`:`<span class="pill">${ico('check')} Сегодня получено</span>`}</div><div class="calGrid">`;
@@ -234,7 +234,7 @@ function wheelSpin(extra){ if(WH.busy) return; const m=metaS(); if(!extra&&m.cal
     if(k<1) requestAnimationFrame(step); else fin(); };
   requestAnimationFrame(step); }
 spinDo=function(extra){ PANEL.kind==='pass'&&PANEL.tab==='spin'?wheelSpin(extra):wheelSpin(extra); };
-PANEL_EXT.pass=()=>{ const tab=PANEL.tab||'pass'; return {title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','pass'],['cal','Дары очага'+(calCanClaimLocal()?' •':''),'cal'],['spin','Колесо'+(spinFree()?' •':''),'wheel'],['wk','Контракты','quest']],body:tab==='cal'?pCal():tab==='spin'?pSpin():tab==='wk'?wkHtml():pPass()}; };
+PANEL_EXT.pass=()=>{ const tab=PANEL.tab||'pass'; return {title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','pass'],['cal','Дар дня'+(calCanClaimLocal()?' •':''),'cal'],['spin','Колесо'+(spinFree()?' •':''),'wheel'],['wk','Контракты','quest']],body:tab==='cal'?pCal():tab==='spin'?pSpin():tab==='wk'?wkHtml():pPass()}; };
 PANEL_EXT.spin=()=>{ PANEL.kind='pass'; PANEL.tab='spin'; return PANEL_EXT.pass(); };
 Object.assign(window.__game,{ spin:(extra)=>wheelSpin(!!extra), art:()=>({cached:Object.keys(ART).length,queue:ARTQ.length}) });
 
