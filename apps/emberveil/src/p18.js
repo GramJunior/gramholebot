@@ -46,7 +46,7 @@ const ADS={
   cap(place){ const k=this.key(place); return Object.prototype.hasOwnProperty.call(this.lim,k)?this.lim[k]|0:0; },
   sdkOk(){ return this.sdk!=='fail'||Date.now()-this.failAt>60000; },
   // v39.5: блок не активен (модерация Adsgram) — прячем кнопки рекламы на 6 ч, чтобы игроки не видели окно ошибки повторно
-  offKey:'ev_ads_off', isOff(){ try{ const v=JSON.parse(localStorage.getItem(this.offKey)||'null'); return !!(v&&v.id===this.blockId()&&Date.now()-v.t<6*3600e3); }catch(e){ return false; } },
+  offKey:'ev_ads_off', isOff(){ try{ const v=JSON.parse(localStorage.getItem(this.offKey)||'null'); return !!(v&&v.id===this.blockId()&&Date.now()-v.t<30*60e3); }catch(e){ return false; } },
   setOff(){ try{ localStorage.setItem(this.offKey,JSON.stringify({id:this.blockId(),t:Date.now()})); }catch(e){} },
   ready(){ return this.test()||(!!this.blockId()&&this.sdkOk()&&!this.isOff()); },
   ads(){ const a=metaS().ads; const d=dayKeyL(); if(a.day!==d){ a.day=d; a.n={}; } return a; },
