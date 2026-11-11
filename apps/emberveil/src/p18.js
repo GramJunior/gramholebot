@@ -241,17 +241,23 @@ function payBuy(pid){ const p=shopProducts().find(x=>x.id===pid)||{id:pid,stars:
   toast('Открываем окно оплаты…'); EVNet.pay.buy(pid).then(r=>{ if(r&&r.ok&&r.status==='paid'){ track('purchase_success',pid); if(r.entitlements&&r.entitlements.ok) entApply(r.entitlements.items); for(const id of PRODUCT_GRANT[pid]||[]) cosGrant(id); if(pid===passSeason().premiumProduct){ metaS().pass.prem=true; saveGame(); toast('<b>Путь Угля</b>: премиум-дорожка открыта!',null,4,'quest'); } AU.sfx('legend'); if(PANEL.kind) rerender(); } else { track('purchase_fail',(r&&(r.status||r.error))||'x'); if(r&&r.status==='cancelled') toast('Покупка отменена'); else if(r&&r.message) toast(esc(r.message)); } }); }
 
 // ---------- season pass «Путь Угля» ----------
-const SEASON_DEF={id:'s1',name:'Путь Угля',start:Date.parse('2026-11-01T00:00:00+03:00'),end:Date.parse('2027-01-15T00:00:00+03:00'),xpPerTier:100,premiumProduct:'bp_s1'};
-function passTiersDefault(){ const FREE={5:'glow_ember',10:'skin_ash',15:'deco_banners',20:'frame_ember',25:'pet_ember',30:'glow_gold'}; const PREM=['frame_gold','glow_frost','pet_shadow','skin_frost','deco_statue','glow_void','skin_abyss','pet_gold','deco_bonfire','skin_royal'];
-  return Array.from({length:30},(_,i)=>{ const t=i+1; return {tier:t,free:FREE[t]?{cosmetic:FREE[t]}:t%3===0?{shards:6+t}:t%2?{gold:150+t*40}:{ess:8+t},premium:t%3===0?{cosmetic:PREM[t/3-1]}:{sparks:10+Math.floor(t/5)*5}}; }); }
-function passSeason(){ const c=LIVE.cfg; const s=Object.assign({},SEASON_DEF); if(c&&c.season&&c.season.id){ Object.assign(s,{id:c.season.id,name:c.season.name||s.name,start:c.season.start||s.start,end:c.season.end||s.end}); } if(c&&c.battlepass){ if(c.battlepass.xpPerTier) s.xpPerTier=c.battlepass.xpPerTier; if(c.battlepass.premiumProduct) s.premiumProduct=c.battlepass.premiumProduct; if(c.battlepass.name&&!(c.season&&c.season.name)) s.name=c.battlepass.name; } return s; }
-function passTiers(){ const c=LIVE.cfg; const t=c&&c.battlepass&&Array.isArray(c.battlepass.tiers)&&c.battlepass.tiers.length>=5?c.battlepass.tiers:null; return t||passTiersDefault(); }
+const SEASON_DEF={id:'s1',name:'Путь Угля',start:Date.parse('2026-11-01T00:00:00+03:00'),end:Date.parse('2027-01-15T00:00:00+03:00'),xpPerTier:200,premiumProduct:'bp_s1'};
+// v40: 50 уровней × 200 оп. (было 30 × 100 — путь закрывался за неделю). Опыт: первая победа на этапе 30, повтор 10 (не больше 20 повторов/этажей Бездны в день),
+// «Дар дня» 60, контракт дня 25 (как в v34), контракт недели 250, набег 30. Премиум — только облики и искры. Старый прогресс: опыт ×2 (тот же уровень, сохранение v12).
+const PASS_XP={first:30,replay:10,replayCap:20,login:60,daily:25,weekly:250,raid:30};
+function passReplayXp(src){ const p=passS(); const d=dayKeyL(); if(!p.rp||p.rp.d!==d) p.rp={d,n:0}; if(p.rp.n>=PASS_XP.replayCap) return; p.rp.n++; passXp(PASS_XP.replay,src); }
+function passTiersDefault(){ const FREE={5:'glow_ember',10:'skin_ash',20:'deco_banners',30:'frame_ember',40:'pet_ember',50:'glow_gold'}; const PREM=['frame_gold','glow_frost','pet_shadow','skin_frost','deco_statue','glow_void','skin_abyss','pet_gold','deco_bonfire','skin_royal'];
+  return Array.from({length:50},(_,i)=>{ const t=i+1; return {tier:t,free:FREE[t]?{cosmetic:FREE[t]}:t%3===0?{shards:6+Math.round(t*.6)}:t%2?{gold:150+t*25}:{ess:8+Math.round(t*.6)},premium:t%5===0?{cosmetic:PREM[t/5-1]}:{sparks:10+Math.floor(t/10)*5}}; }); }
+// сервер до v40 (30 × 100) — его дорожку и шаг не берём: опыт сезона считаем по-новому
+function passCfgOk(c){ return !!(c&&c.battlepass&&(c.battlepass.xpPerTier|0)>=200); }
+function passSeason(){ const c=LIVE.cfg; const s=Object.assign({},SEASON_DEF); if(c&&c.season&&c.season.id){ Object.assign(s,{id:c.season.id,name:c.season.name||s.name,start:c.season.start||s.start,end:c.season.end||s.end}); } if(passCfgOk(c)){ if(c.battlepass.xpPerTier) s.xpPerTier=c.battlepass.xpPerTier; if(c.battlepass.premiumProduct) s.premiumProduct=c.battlepass.premiumProduct; if(c.battlepass.name&&!(c.season&&c.season.name)) s.name=c.battlepass.name; } return s; }
+function passTiers(){ const c=LIVE.cfg; const t=passCfgOk(c)&&Array.isArray(c.battlepass.tiers)&&c.battlepass.tiers.length>=5?c.battlepass.tiers:null; return t||passTiersDefault(); }
 function passS(){ const p=metaS().pass; const s=passSeason(); if(p.season!==s.id){ p.season=s.id; p.xp=0; p.cl=[]; p.prem=false; p.srvXp=0; } return p; }
 function passLive(){ const s=passSeason(), now=Date.now(); return now>=s.start&&now<s.end; }
 function passXpNow(){ const p=passS(); return Math.max(p.xp,p.srvXp||0); }
 function passTier(){ return Math.min(passTiers().length,Math.floor(passXpNow()/passSeason().xpPerTier)); }
 function passXp(n,src){ if(!passLive()||!n) return; const p=passS(); const before=passTier(); p.xp+=Math.round(n*evMod('xpMul')); const after=passTier(); if(after>before){ track('pass_tier','t'+after); later(.6,()=>toast(`<b>Путь Угля</b>: уровень ${after}! Награды ждут.`,null,3,'quest')); } saveGame(); hudPassDot(); }
-function passSync(){ if(!netOn()||!EVNet.battlepass) return; EVNet.battlepass.get().then(r=>{ if(r&&r.ok&&r.season===passSeason().id){ passS().srvXp=r.xp||0; if(r.premium) passS().prem=true; saveGame(); } }).catch(()=>{}); entSync(); }
+function passSync(){ if(!netOn()||!EVNet.battlepass) return; EVNet.battlepass.get().then(r=>{ if(r&&r.ok&&r.season===passSeason().id){ passS().srvXp=Math.round((r.xp||0)*passSeason().xpPerTier/Math.max(1,r.xpPerTier||100)); if(r.premium) passS().prem=true; saveGame(); } }).catch(()=>{}); entSync(); }
 function rwGive(rw,label){ const res={}; for(const k in rw){ if(k==='cosmetic') cosGrant(rw[k]); else if(k in S.res||k==='sparks') res[k]=rw[k]; else if(k in S.cons){ S.cons[k]=(S.cons[k]||0)+rw[k]; } } if(Object.keys(res).length) giveReward(res,label); }
 function passClaim(tier,track0){ const T=passTiers().find(t=>t.tier===tier); const p=passS(); const key=track0+':'+tier; if(!T||!T[track0]||p.cl.includes(key)||passTier()<tier) return false; if(track0==='premium'&&!p.prem) return false; p.cl.push(key); rwGive(T[track0],'Путь Угля'); AU.sfx('chest'); saveGame(); return true; }
 function passClaimable(){ const p=passS(); const tier=passTier(); let n=0; for(const T of passTiers()){ if(T.tier>tier) break; if(T.free&&!p.cl.includes('free:'+T.tier)) n++; if(p.prem&&T.premium&&!p.cl.includes('premium:'+T.tier)) n++; } return n; }
@@ -278,7 +284,7 @@ function calCanClaimLocal(){ return metaS().cal.last!==dayKeyL(); }
 function calPos(){ return metaS().cal.n%28; }
 function calStatus(){ if(!netOn()) return Promise.resolve({ok:true,can:calCanClaimLocal(),local:true}); return EVNet.daily.status().then(d=>{ if(!d||!d.ok) return {ok:true,can:calCanClaimLocal(),local:true}; CAL.srv=d; if(d.total!==undefined&&d.total>metaS().cal.n) metaS().cal.n=d.total; if(!d.canClaim) metaS().cal.last=dayKeyL(); return {ok:true,can:d.canClaim,streak:d.canClaim?d.nextStreak:d.streak}; }); }
 function calClaim(){ if(CAL.busy) return; CAL.busy=true;
-  const fin=(pos)=>{ CAL.busy=false; CAL.lastCan=false; const m=metaS(); m.cal.last=dayKeyL(); rwGive(calRewards()[pos],'Дары очага, день '+(pos+1)); passXp(40,'login'); track('login_claim','d'+(pos+1)); AU.sfx('quest'); vib('success'); saveGame(true); hudRefresh(); hudPassDot(); if(PANEL.kind==='pass') rerender(); };
+  const fin=(pos)=>{ CAL.busy=false; CAL.lastCan=false; const m=metaS(); m.cal.last=dayKeyL(); rwGive(calRewards()[pos],'Дар дня, день '+(pos+1)); passXp(PASS_XP.login,'login'); track('login_claim','d'+(pos+1)); AU.sfx('quest'); vib('success'); saveGame(true); hudRefresh(); hudPassDot(); if(PANEL.kind==='pass') rerender(); };
   const local=()=>{ if(!calCanClaimLocal()){ CAL.busy=false; CAL.lastCan=false; return; } const m=metaS(); const pos=m.cal.n%28; m.cal.n++; fin(pos); };
   if(!netOn()) return local();
   EVNet.daily.claim().then(c=>{ if(c&&c.ok){ const m=metaS(); const T=Math.max(c.total||0,m.cal.n+1); m.cal.n=T; fin((T-1)%28); }
@@ -307,17 +313,17 @@ function wkS(){ const m=metaS(); const w=isoWeekL(); if(m.wk.week!==w){ const po
 function wkRw(){ const L=S.hero.lvl; return {gold:Math.round(900*F(L)*.6),ess:20+L*2,shards:12,sparks:15}; }
 function wkProg(id,n){ for(const q of wkS().list){ if(q.id!==id||q.p>=q.v) continue; q.p=Math.min(q.v,q.p+(n||1)); if(q.p>=q.v){ toast(`Контракт недели выполнен: <b>${WEEKLY_POOL.find(x=>x.id===id).n}</b>`,null,null,'quest'); AU.sfx('quest'); } } }
 function wkHtml(){ const w=wkS(); const ends=(()=>{ const d=new Date(); d.setHours(0,0,0,0); const dow=d.getDay()||7; d.setDate(d.getDate()+8-dow); return d.getTime(); })();
-  return `<div class="sect">Контракты недели <small class="muted">· обновятся через ${fmtDur(ends-Date.now())}</small></div>`+w.list.map(q=>{ const D=WEEKLY_POOL.find(x=>x.id===q.id); return `<div class="card row"><div class="grow"><h4>${D.n}</h4><div class="muted">${D.d.replace('{v}',q.v)} — ${q.p}/${q.v}</div><div>${costHtml(wkRw()).replace(/cost no/g,'cost')} <span class="muted">+150 оп. пути</span></div></div>${q.c?'<span class="pill">Получено</span>':q.p>=q.v?`<button class="btn leather small" ${act(()=>{ if(q.c) return; q.c=true; giveReward(wkRw(),'Контракт недели'); passXp(150,'weekly'); track('weekly_done',q.id); AU.sfx('quest'); saveGame(); rerender(); })}>Забрать</button>`:''}</div>`; }).join(''); }
+  return `<div class="sect">Контракты недели <small class="muted">· обновятся через ${fmtDur(ends-Date.now())}</small></div>`+w.list.map(q=>{ const D=WEEKLY_POOL.find(x=>x.id===q.id); return `<div class="card row"><div class="grow"><h4>${D.n}</h4><div class="muted">${D.d.replace('{v}',q.v)} — ${q.p}/${q.v}</div><div>${costHtml(wkRw()).replace(/cost no/g,'cost')} <span class="muted">+${PASS_XP.weekly} оп. пути</span></div></div>${q.c?'<span class="pill">Получено</span>':q.p>=q.v?`<button class="btn leather small" ${act(()=>{ if(q.c) return; q.c=true; giveReward(wkRw(),'Контракт недели'); passXp(150,'weekly'); track('weekly_done',q.id); AU.sfx('quest'); saveGame(); rerender(); })}>Забрать</button>`:''}</div>`; }).join(''); }
 
 // ---------- game event hook (called from ev() in p5) ----------
 function metaEv(type,d){ try{
-  if(type==='kill'){ wkProg('w_kill'); if(d.boss){ wkProg('w_boss'); passXp(60,'boss'); } }
-  else if(type==='stage'){ wkProg('w_stage'); passXp(d.first?60:25,'stage'); }
-  else if(type==='abyss'){ wkProg('w_floor'); passXp(10,'abyss'); track('abyss_floor','f'+Math.min(d.floor,50)); }
-  else if(type==='raid'){ if(d.win){ wkProg('w_raid'); passXp(50,'raid'); } }
+  if(type==='kill'){ wkProg('w_kill'); if(d.boss){ wkProg('w_boss'); } } // v40: владыка — без отдельного опыта пропуска (входит в победу на этапе)
+  else if(type==='stage'){ wkProg('w_stage'); if(d.first) passXp(PASS_XP.first,'stage'); else passReplayXp('stage'); }
+  else if(type==='abyss'){ wkProg('w_floor'); passReplayXp('abyss'); track('abyss_floor','f'+Math.min(d.floor,50)); }
+  else if(type==='raid'){ if(d.win){ wkProg('w_raid'); passXp(PASS_XP.raid,'raid'); } }
   else if(type==='chest') wkProg('w_chest');
   else if(type==='craft') wkProg('w_craft');
-  else if(type==='daily_done'){ wkProg('w_daily'); passXp(25,'daily'); }
+  else if(type==='daily_done'){ wkProg('w_daily'); passXp(PASS_XP.daily,'daily'); }
   if(typeof storyEv==='function') storyEv(type,d);
 }catch(e){ console.error(e); } }
 
@@ -355,7 +361,7 @@ PANEL_EXT.shop=()=>{ const P=shopProducts(); let body=`<div class="card"><p clas
   for(const p of P){ const g=PRODUCT_GRANT[p.id]||[]; const owned=p.id===passSeason().premiumProduct?passS().prem:p.id==='keeper_30d'?keeperActive():g.length&&g.every(cosOwned);
     body+=`<div class="shopItem ${owned?'own':''}"><div class="row" style="gap:4px">${g.length?g.map(id=>cosIcon(id,1)).join(''):p.type==='battlepass'?`<span class="cosic big" style="--c:#ffd27a">${ico('crown')}</span>`:`<span class="cosic big" style="--c:#9ad0ff">${ico('house')}</span>`}</div><b>${esc(p.title)}</b><small>${esc(p.description||'')}</small>${owned?`<span class="pill">${p.id==='keeper_30d'?'Активно':'Куплено'}</span>`:`<button class="btn leather small" ${act(()=>payBuy(p.id))}>⭐ ${p.stars}</button>`}</div>`; }
   body+=`</div>${friendsCard()}`; return {title:'Лавка Странника',sub:'облики и удобство за Telegram Stars',body}; };
-PANEL_EXT.pass=()=>({title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','pass'],['cal','Дары очага','cal'],['wk','Контракты','quest']],body:(PANEL.tab||'pass')==='cal'?pCal():(PANEL.tab==='wk')?wkHtml():pPass()});
+PANEL_EXT.pass=()=>({title:'Путь Угля',sub:`Сезон · уровень ${passTier()}/${passTiers().length}`,tabs:[['pass','Путь','pass'],['cal','Дар дня','cal'],['wk','Контракты','quest']],body:(PANEL.tab||'pass')==='cal'?pCal():(PANEL.tab==='wk')?wkHtml():pPass()});
 PANEL_EXT.cal=()=>{ PANEL.kind='pass'; PANEL.tab='cal'; return PANEL_EXT.pass(); };
 PANEL_EXT.events=()=>{ const L=liveEvents(); let body=L.active.length?'':'<div class="card muted">Сейчас событий нет — загляните позже.</div>';
   for(const e of L.active) body+=`<div class="evCard" style="--c:${e.col||'#ffd27a'}"><div class="evIc">${ico(e.icon||'star')}</div><div class="grow"><h4>${esc(e.name)}</h4><div>${esc(e.descr||'')}</div><div class="muted">Закончится через ${fmtDur(e.end-Date.now())}</div>${e.modifiers&&e.modifiers.seasonBoss?`<button class="btn leather small" style="margin-top:6px" ${act(()=>{ closePanel(); if(!stageDone('1-5')){ toast('Бездна откроется после победы над Брюханом (1-5)'); return; } startAbyss(5); })}>${ico('skull')} Сразиться (Бездна, 5 этаж)</button><div class="muted" style="font-size:11px">Забег с 5 этажа не идёт в рейтинг: рейтинг считает только забеги с 1 этажа.</div>`:''}${e.modifiers&&e.modifiers.abyssMod?`<button class="btn leather small" style="margin-top:6px" ${act(()=>{ closePanel(); if(!stageDone('1-5')){ toast('Бездна откроется после победы над Брюханом (1-5)'); return; } startAbyss(1); })}>${ico('abyss')} В Бездну</button>`:''}</div></div>`;

@@ -47,7 +47,7 @@ export async function getBp(c) {
   const sid = bpSeasonId(cfg, c.now);
   const row = sid ? await c.env.DB.prepare('SELECT xp, claimed FROM bp_progress WHERE uid=? AND season=?').bind(user.id, sid).first() : null;
   const xp = row ? row.xp : 0;
-  const per = cfg.battlepass.xpPerTier || 100;
+  const per = cfg.battlepass.xpPerTier || 200;
   return json({ ok: true, season: sid, xp, tier: Math.floor(xp / per), xpPerTier: per, claimed: row ? JSON.parse(row.claimed) : [], premium: await hasPremium(c.env, user.id, cfg.battlepass.premiumProduct), tiers: cfg.battlepass.tiers });
 }
 
@@ -64,7 +64,7 @@ export async function claimBp(c) {
   if (!T || !T[track]) fail(404, 'no_tier', 'Нет такой награды');
   const row = await c.env.DB.prepare('SELECT xp, claimed FROM bp_progress WHERE uid=? AND season=?').bind(user.id, sid).first();
   const xp = row ? row.xp : 0;
-  if (!row || Math.floor(xp / (cfg.battlepass.xpPerTier || 100)) < tier) fail(409, 'locked', 'Уровень пропуска ещё не открыт');
+  if (!row || Math.floor(xp / (cfg.battlepass.xpPerTier || 200)) < tier) fail(409, 'locked', 'Уровень пропуска ещё не открыт');
   if (track === 'premium' && !(await hasPremium(c.env, user.id, cfg.battlepass.premiumProduct))) fail(402, 'no_premium', 'Нужен премиум-пропуск');
   const claimed = row ? JSON.parse(row.claimed) : [];
   const key = `${track}:${tier}`;

@@ -9,26 +9,28 @@ export const DEFAULTS = {
   // Current season. null = no season (season leaderboard is empty).
   season: null, // { id:'s1', name:'Сезон 1', start: <ms>, end: <ms> }
 
-  // Season pass «Путь Угля»: 30 tiers. `cosmetic` ids are the game's cosmetics (apps/emberveil/src/p18.js COSM).
+  // Season pass «Путь Угля»: 50 tiers × 200 XP (v40; was 30 × 100 — finished in the first week). Existing progress: migration 0006 doubles XP (same tier). `cosmetic` ids are the game's cosmetics (apps/emberveil/src/p18.js COSM).
   // The game counts pass XP from play itself; the server keeps its own XP from validated actions (abyss, raids, daily),
   // and the game shows the larger of the two. Premium = entitlement `premiumProduct` (Telegram Stars).
   battlepass: {
     season: 's1',
     name: 'Путь Угля',
-    xpPerTier: 100,
+    xpPerTier: 200,
     premiumProduct: 'bp_s1',
-    tiers: Array.from({ length: 30 }, (_, i) => {
+    tiers: Array.from({ length: 50 }, (_, i) => {
       const t = i + 1;
-      const FREE_COS = { 5: 'glow_ember', 10: 'skin_ash', 15: 'deco_banners', 20: 'frame_ember', 25: 'pet_ember', 30: 'glow_gold' };
+      const FREE_COS = { 5: 'glow_ember', 10: 'skin_ash', 20: 'deco_banners', 30: 'frame_ember', 40: 'pet_ember', 50: 'glow_gold' };
       const PREM_COS = ['frame_gold', 'glow_frost', 'pet_shadow', 'skin_frost', 'deco_statue', 'glow_void', 'skin_abyss', 'pet_gold', 'deco_bonfire', 'skin_royal'];
       return {
         tier: t,
-        free: FREE_COS[t] ? { cosmetic: FREE_COS[t] } : t % 3 === 0 ? { shards: 6 + t } : t % 2 ? { gold: 150 + t * 40 } : { ess: 8 + t },
-        premium: t % 3 === 0 ? { cosmetic: PREM_COS[t / 3 - 1] } : { sparks: 10 + Math.floor(t / 5) * 5 }, // sparks = cosmetic-only currency
+        // same table as the game (apps/emberveil/src/p18.js passTiersDefault)
+        free: FREE_COS[t] ? { cosmetic: FREE_COS[t] } : t % 3 === 0 ? { shards: 6 + Math.round(t * 0.6) } : t % 2 ? { gold: 150 + t * 25 } : { ess: 8 + Math.round(t * 0.6) },
+        premium: t % 5 === 0 ? { cosmetic: PREM_COS[t / 5 - 1] } : { sparks: 10 + Math.floor(t / 10) * 5 }, // sparks = cosmetic-only currency
       };
     }),
     // XP earned for server-validated actions:
-    xp: { abyssFloor: 8, raidStar: 10, daily: 25, quest: 15 },
+    // v40: daily login 60, daily contract 25 (as v34), abyss floor 8, raid star 10
+    xp: { abyssFloor: 8, raidStar: 10, daily: 60, quest: 25 },
   },
 
   // [{ id, name, start, end, modifiers: { goldMul, dropMul, abyssMod, ... }, descr }]

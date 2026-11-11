@@ -5,7 +5,7 @@
 //   • уровень врагов — max(уровень этапа, 30 + 2t) (I — 32 … X — 50, предел героя);
 //   • здоровье и урон врагов ×(1 + 0,25·t) — ЛИНЕЙНО (I ×1,25 … X ×3,5): рост уровня уже даёт сложный процент, линейная ступень
 //     держит лестницу проходимой вещами следующей ступени;
-//   • база — «Норма» при любой настройке сложности (История/Испытание на ступени не действуют), возрождений у костра — 3 (с VI — 2, с IX — 1);
+//   • база — «Норма» при любой настройке сложности (История/Ветеран на ступени не действуют), возрождений у костра — 3 (с VI — 2, с IX — 1);
 //   • элита: +1 особенность с III, +2 с VII; обычные враги с V становятся элитой с шансом 5% за ступень выше IV;
 //   • добыча: удача +12 за ступень, уровень вещей +1 с VI и +2 с IX; золото этапа +15% за ступень;
 //   • первая победа на ступени (на любом этапе) — награда ступени (золотой сундук I–IV, легендарный V–X, ключ, эссенция, пыль, ядра)
@@ -15,7 +15,7 @@
 
 const NM52={max:10,hpK:.25,lvl0:30,lvlK:2,mf:12,gold:.15};
 const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX','X'];
-V20D.night.n='Испытание';
+V20D.night.n='Ветеран'; // v40: «Испытание» путали с Испытаниями (p66/p67) — сложность теперь «Ветеран»
 if(V20D.night.d) V20D.night.d=V20D.night.d.replace(/^Для мастеров/,'Для мастеров (не путать с Кошмаром I–X)');
 function nmS(){ if(!S.nm||typeof S.nm!=='object') S.nm={max:1,got:{},runs:0}; if(!S.nm.got) S.nm.got={}; if(!(S.nm.max>=1)) S.nm.max=1; return S.nm; }
 function nmOpen(){ return stageDone('6-5'); }
@@ -82,8 +82,8 @@ function nmPanel(z,s){ const I=stageInfo(z,s); const key=I.key; const st=S.prog.
 { const _dm=drawMap; drawMap=function(){ const r=_dm.apply(this,arguments); try{ if(!nmOpen()) return r; const box=$('mapNodes'), sc=$('mapScroll'); if(!box||!sc) return r; const w=MAP.W; const off=(sc.clientWidth-w)/2;
     const nodes=[...box.querySelectorAll('.mnode')]; const zs=MAP.ch===2?[7,8,9,10]:[1,2,3,4,5,6];
     for(const z of zs) for(let s=1;s<=5;s++){ const st=S.prog.stages[z+'-'+s]; if(!st||!st.nm) continue; const [x,y]=nodePos(z,s,w); const b=nodes.find(n=>Math.abs(parseFloat(n.style.left)-(x+off))<1.5&&Math.abs(parseFloat(n.style.top)-y)<1.5); if(b&&!b.querySelector('.nm52m')) b.insertAdjacentHTML('beforeend',`<i class="nm52m">К·${ROMAN[st.nm]}</i>`); } }catch(e){ console.error(e); } return r; }; }
-// настройки: «Кошмар» → «Испытание»
-{ const _ps=pSettings; pSettings=function(){ const h=_ps.apply(this,arguments); return typeof h==='string'?h.replace(/>Кошмар</g,'>Испытание<'):h; }; }
+// настройки: «Кошмар» → «Ветеран» (v40; до v40 — «Испытание»)
+{ const _ps=pSettings; pSettings=function(){ const h=_ps.apply(this,arguments); return typeof h==='string'?h.replace(/>Кошмар</g,'>Ветеран<'):h; }; }
 
 Object.assign(window.__game,{ nm:()=>({S:nmS(),pick:NM_PICK,run:NMRUN,cur:nmCur()}), nmPick:(key,t)=>{ NM_PICK=t?{key,t}:null; return NM_PICK; }, nmSet:(max)=>{ nmS().max=max; } });
 

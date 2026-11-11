@@ -188,8 +188,8 @@ curl -X PUT $API/admin/config/season -H "$ADM" -d '{
 **Боевой пропуск.** Награды уровней. Опыт начисляет сервер: за этажи Бездны, звёзды набегов, награду дня и контракты.
 ```bash
 curl -X PUT $API/admin/config/battlepass -H "$ADM" -d '{
-  "season":"s1","xpPerTier":100,"premiumProduct":"bp_s1",
-  "xp":{"abyssFloor":8,"raidStar":10,"daily":25,"quest":15},
+  "season":"s1","xpPerTier":200,"premiumProduct":"bp_s1",
+  "xp":{"abyssFloor":8,"raidStar":10,"daily":60,"quest":25},
   "tiers":[
     {"tier":1,"free":{"gold":200},"premium":{"cosmetic":"cloak_ash"}},
     {"tier":2,"free":{"shards":10},"premium":{"cosmetic":"frame_ember"}}
@@ -247,7 +247,7 @@ curl -X PUT $API/admin/config/products -H "$ADM" -d '[
 
 Пока `events` пуст, игра крутит встроенную недельную ротацию (Эхо Колосса пн–вт, Ночь Пепла ср–чт, Выходные удачи сб–вс). Модификаторы, которые понимает игра: `dropMul`, `goldMul`, `xpMul` (опыт пропуска), `shardMul`, `abyssMod: "ashnight"`, `seasonBoss: "colossus"` (или id другого босса). Известные `id` (`colossus_echo`, `ash_night`, `lucky_weekend`) получают свои иконки.
 
-По умолчанию пропуск «Путь Угля» — 30 уровней: бесплатная дорожка (ресурсы + облики на 5/10/15/20/25/30), премиум — только облики (`{"cosmetic":"skin_frost"}`) и самоцветы (`{"sparks":15}` — ключ остался прежним: бывшие «искры» стали премиум-валютой «Самоцветы»). Список id обликов — `COSM` в `apps/emberveil/src/p18.js`. Опыт пути игра считает сама по игре; сервер ведёт свой (Бездна, набеги, награда дня, контракты), игра показывает больший.
+По умолчанию пропуск «Путь Угля» — 50 уровней × 200 оп. (с игры v40; было 30 × 100 — пропуск закрывался за неделю): бесплатная дорожка (ресурсы + облики на 5/10/20/30/40/50), премиум — только облики (каждые 5 уровней) (`{"cosmetic":"skin_frost"}`) и самоцветы (`{"sparks":15}` — ключ остался прежним: бывшие «искры» стали премиум-валютой «Самоцветы»). Список id обликов — `COSM` в `apps/emberveil/src/p18.js`. Опыт пути игра считает сама по игре; сервер ведёт свой (Бездна, набеги, награда дня, контракты), игра показывает больший.
 
 Есть ещё ключи `daily` (награды 7-дневного цикла — игра растит их по неделям в 28-дневном календаре, список контрактов) и `referral` (подарки за друга). Посмотреть всё, включая значения по умолчанию: `curl $API/admin/config -H "$ADM"`. Вернуть ключ к значению по умолчанию: `curl -X DELETE $API/admin/config/events -H "$ADM"`.
 
@@ -306,6 +306,8 @@ npx wrangler d1 execute emberveil --remote --command "WITH f AS (SELECT uid, MIN
    - Игра тратит запись на ценные награды: `POST /ads/claim {place}` 🔒 → `{ok:true}` / `409 no_credit` (ролик не подтверждён) / `409 limit` (дневной лимит `ads.caps[place]`, по игровым суткам). Списание атомарное: две параллельные траты не получат одну запись.
    - **Включение:** `"verify": true` в ключе `ads` — только когда Reward URL настроен и вызовы доходят (проверка: `npx wrangler d1 execute emberveil --remote --command "SELECT uid, at, used_at, place FROM ad_credits ORDER BY id DESC LIMIT 5"`). Пока `verify:false` (по умолчанию) или игрок без связи, игра выдаёт награду по своим дневным лимитам.
    - Частота: `GET /ads/reward` — 20 в минуту на один Telegram id (`RL_ADS_REWARD`), `POST /ads/claim` — 20 в минуту на игрока (`RL_ADS_CLAIM`). Записи старше 3 дней удаляет cron.
+
+**Выкладка v40 (пропуск 50 × 200):** сначала `npx wrangler d1 migrations apply emberveil --remote` (`migrations/0006_pass_v40.sql` — опыт сезона s1 ×2, уровень у всех прежний), затем `npx wrangler deploy`. Если в таблице `config` лежит своя запись `battlepass` с `xpPerTier: 100`, обновите её (PUT `/admin/config/battlepass`) или удалите — игра v40 не берёт с сервера дорожку с шагом меньше 200 оп. и считает по своей. Тесты — `test/meta.test.js`, `test/misc.test.js`.
 
 **Выкладка v39.4:** `npx wrangler d1 migrations apply emberveil --remote` (таблица `ad_credits`, `migrations/0005_ads.sql`), затем `npx wrangler deploy` (маршруты `/ads/*`, привязки `RL_ADS_REWARD`/`RL_ADS_CLAIM`). Тесты — `test/ads.test.js`.
 

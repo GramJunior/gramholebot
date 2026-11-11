@@ -293,7 +293,7 @@ function pGear(){
     ${['fire','ice','poison','light'].filter(k=>S0[k]>0).map(k=>`<div>${EL_NAME[k]}: <b>+${Math.round(S0[k])}</b></div>`).join('')}
     <div>Удача: <b>+${S0.mf.toFixed(0)}%</b></div><div>Золото: <b>+${S0.gold.toFixed(0)}%</b></div>${S0.synP?`<div>Синергии: <b>+${Math.round(S0.synP)}%</b></div>`:''}</div>`;
   h+=`<div class="sect" style="margin-top:0">Сумка ${S.inv.length}/${invCap()}</div><div class="row" style="margin-bottom:8px;flex-wrap:wrap">
-    <button class="btn woodb small" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сортировать</button>
+    <button class="btn woodb small" title="Сортировать" ${act(()=>{ sortInv(); rerender(); })}>${ico('sort')} Сорт.</button>
     <button class="btn woodb small" ${act(()=>{ let n=0; for(const it of S.inv.slice()){ if(!it.lock&&it.rar<=1&&compareTo(it)<0){ salvage(it); n++; } } toast(n?`Разобрано предметов: <b>${n}</b>`:'Нечего разбирать'); AU.sfx('hit'); rerender(); })}>${ico('salvage')} Разобрать хлам</button></div>`;
   h+=`<div id="invGrid">${S.inv.map(it=>`<div>${slotHtml(ITEM_BASES[it.base].slot,it,act(()=>{ it.nw=false; PANEL.sel=PANEL.sel===it?null:it; rerender(); }))}${compareTo(it)>0?'<span style="display:block;text-align:center;font-size:10px;color:#3f7a2a;font-family:var(--sc);font-weight:800;margin-top:-2px">▲ лучше</span>':''}</div>`).join('')}</div>`;
   if(PANEL.sel&&S.inv.includes(PANEL.sel)) h+=`<div id="itemTip">${itemTip(PANEL.sel,'inv')}</div>`;

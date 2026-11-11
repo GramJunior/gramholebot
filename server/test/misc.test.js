@@ -105,9 +105,10 @@ test('config + admin + battle pass claims', async () => {
   assert.deepEqual(r1, r2);
 
   const s = await loginTg(call, 60);
-  await env.DB.prepare("INSERT INTO bp_progress (uid, season, xp) VALUES ('t60','s1',250)").run();
+  await env.DB.prepare("INSERT INTO bp_progress (uid, season, xp) VALUES ('t60','s1',450)").run();
   const bp = await call('GET', '/bp', { token: s.token });
-  assert.equal(bp.body.tier, 2);
+  assert.equal(bp.body.tier, 2); // v40: 200 XP per tier
+  assert.equal(bp.body.xpPerTier, 200);
   assert.equal((await call('POST', '/bp/claim', { token: s.token, body: { tier: 1, track: 'free' } })).status, 200);
   assert.equal((await call('POST', '/bp/claim', { token: s.token, body: { tier: 1, track: 'free' } })).status, 409);
   assert.equal((await call('POST', '/bp/claim', { token: s.token, body: { tier: 3, track: 'free' } })).status, 409);
@@ -176,4 +177,17 @@ test('DELETE /me erases personal data', async () => {
   const u = await env.DB.prepare("SELECT first_name, username FROM users WHERE id='t80'").first();
   assert.deepEqual(u, { first_name: '', username: null });
   assert.equal((await env.DB.prepare("SELECT COUNT(*) n FROM saves WHERE uid='t80'").first()).n, 0);
+});
+
+test('migration 0006 (game v40): pass XP ×2 — same tier at 200 XP per tier', async () => {
+  const env = makeEnv();
+  const clock = { now: Date.parse('2026-11-04T10:00:00Z') };
+  const call = api(env, clock);
+  const s = await loginTg(call, 61);
+  await env.DB.prepare("INSERT INTO bp_progress (uid, season, xp) VALUES ('t61','s1',350)").run(); // old: tier 3 at 100/tier
+  const sql = readFileSync(new URL('../migrations/0006_pass_v40.sql', import.meta.url), 'utf8').split('\n').filter((l) => !l.startsWith('--')).join('\n').trim();
+  await env.DB.prepare(sql).run();
+  const bp = await call('GET', '/bp', { token: s.token });
+  assert.equal(bp.body.xp, 700);
+  assert.equal(bp.body.tier, 3);
 });
