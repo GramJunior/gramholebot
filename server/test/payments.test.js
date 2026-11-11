@@ -92,3 +92,24 @@ test('bot: /start replies with web_app button and links referral; /notify toggle
     assert.equal((await env.DB.prepare("SELECT notify FROM users WHERE id='t901'").first()).notify, 1);
   } finally { tg.restore(); }
 });
+
+test('bot: /privacy and /terms reply with legal page links; /play shows the button', async () => {
+  const env = makeEnv();
+  const call = api(env);
+  const tg = mockTelegram();
+  try {
+    const send = (id, text) => call('POST', '/tg/webhook', { headers: hook(env), body: { message: { message_id: id, chat: { id: 905, type: 'private' }, from: { id: 905, first_name: 'Читатель' }, text } } });
+    await send(1, '/privacy');
+    await send(2, '/terms@emberveil_game_bot');
+    await send(3, '/play');
+    const sm = tg.calls.filter((c) => c.method === 'sendMessage');
+    assert.equal(sm.length, 3);
+    const base = new URL('../legal/', env.WEBAPP_URL).href;
+    assert.ok(sm[0].params.text.includes(base + 'privacy.html'), sm[0].params.text);
+    assert.ok(sm[1].params.text.includes(base + 'terms.html'), sm[1].params.text);
+    assert.ok(sm[2].params.reply_markup.inline_keyboard[0][0].web_app);
+    env.LEGAL_BASE_URL = 'https://legal.example/x';
+    await send(4, '/terms');
+    assert.ok(tg.calls.filter((c) => c.method === 'sendMessage')[3].params.text.includes('https://legal.example/x/terms.html'));
+  } finally { tg.restore(); }
+});
