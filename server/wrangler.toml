@@ -26,6 +26,8 @@ WEBAPP_URL = "https://YOUR-GAME-HOST.example/apps/emberveil/"
 # Имя бота без @ и короткое имя Mini App из @BotFather (для реферальных ссылок).
 BOT_USERNAME = "your_bot"
 APP_SHORT_NAME = "play"
+# v40: где лежат страницы для /privacy и /terms бота (apps/legal/). Не задано — папка legal/ рядом с WEBAPP_URL (…/emberveil/ → …/legal/).
+# LEGAL_BASE_URL = "https://YOUR-GAME-HOST.example/legal/"
 # Гостевой вход без Telegram (только для теста!). В бою — "0".
 ALLOW_GUEST = "0"
 # 1 = тестовая среда Telegram (оплата без настоящих Stars).

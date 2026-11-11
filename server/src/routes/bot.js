@@ -70,8 +70,27 @@ export async function handleUpdate(env, upd, now) {
     await safeSend(env, msg.chat.id, link ? `Твоя ссылка для друзей:\n${link}\nПодарок получите оба.` : 'Сначала зайди в игру: /start');
     return { invite: true };
   }
+  if (cmd === '/privacy' || cmd === '/terms' || cmd.startsWith('/privacy@') || cmd.startsWith('/terms@')) {
+    const priv = cmd.startsWith('/privacy');
+    const url = legalUrl(env, priv ? 'privacy.html' : 'terms.html');
+    await safeSend(env, msg.chat.id, priv
+      ? `Политика конфиденциальности: какие данные получает игра, зачем и как их удалить.\n${url}\n\nУдалить аккаунт: в игре «Настройки» → «Удалить аккаунт и данные».`
+      : `Пользовательское соглашение: правила игры, покупки за Stars и честная игра.\n${url}\n\nВопрос по покупке: /paysupport`);
+    return { legal: priv ? 'privacy' : 'terms' };
+  }
+  if (cmd === '/play' || cmd.startsWith('/play@')) {
+    await safeSend(env, msg.chat.id, 'Брод ждёт. Жми «Играть».', true);
+    return { play: true };
+  }
   await safeSend(env, msg.chat.id, 'Игра открывается кнопкой ниже.', true);
   return { fallback: true };
+}
+
+/** v40: legal pages (apps/legal/ on Cloudflare Pages). LEGAL_BASE_URL, else «../legal/» next to WEBAPP_URL. */
+export function legalUrl(env, file) {
+  let base = env.LEGAL_BASE_URL;
+  if (!base) { try { base = new URL('../legal/', env.WEBAPP_URL || '').href; } catch { base = 'https://emberveil-dwp.pages.dev/legal/'; } }
+  return base.replace(/\/?$/, '/') + file;
 }
 
 async function safeSend(env, chatId, text, button = false) {
