@@ -91,7 +91,7 @@ function proStrike(){ PRO.ph=7; const P=G.P, k=PRO.king; DECALS.spawn('circle',P
     setTimeout(()=>prologueOutro(),4200); }); }
 function prologueOutro(){ const f=$('fade'); f.classList.add('on'); proCap('<p>Дракон унёс Сердце-Уголь под гору Игнар. Говорят — чтобы сожрать.</p>',0);
   setTimeout(()=>proCap('<p>Король исчез в пепле. Столица стала серым лесом.</p>',0),2600);
-  setTimeout(()=>proCap('<p>А осколок Искры упал в маленькую деревню у брода — и сорок лет искал нового носителя.</p>',0),5200);
+  setTimeout(()=>proCap('<p>А осколок Искры упал в маленькую деревню у брода — и ты вместе с ним. Сорок лет ты спал у чужого очага.</p>',0),5200);
   setTimeout(()=>prologueEnd(false),8200); }
 function prologueSkip(){ if(!PRO.on) return; track('ftue','prologue_skip_t'+Math.min(90,Math.round(PRO.t/10)*10)); prologueEnd(false); }
 function prologueEnd(err){ if(!PRO.on) return; PRO.on=false; G.prologue=false; const sk=$('proSkip'); if(sk) sk.style.display='none';

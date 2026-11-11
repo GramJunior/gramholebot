@@ -193,7 +193,7 @@ onBossDeath=function(e){ if(G.abyss||!(e.kind==='chamberlain'||e.kind==='inkmaw'
   if(!S.rec.bp_deepcourt){ S.rec.bp_deepcourt=1; later(2.2,()=>toast(`${ico('scroll')} Чертёж комплекта <b>«Глубинный двор»</b> — в кузнице (5 ур.).`,null,3,'quest')); }
   const vela=compS().active==='vela'&&G.allies.some(a=>a.id==='vela');
   if(e.kind==='chamberlain'){ if(first||chance(.25)) later(1.4,()=>{ const it=a2GiveUnique('steward'); if(it) toast(`Легендарный посох: <b class="r3">«${esc(it.name)}»</b>`,iconFor(it),3,'loot'); });
-    later(4.5,()=>{ playDialog('chamberlain_post',()=>{ if(first) toast(`${ico('key')} <b>Ключ Архива</b> — путь в Архив Глубин (8-5) открыт.`,null,3,'quest'); if(vela) later(1.2,()=>toast('<b>Велеслава:</b> Я стояла у этих дверей в ночь бала. Меня не пустили — рылом не вышла. Повезло.',compPortrait('vela'),3,'quest')); W.a2wait=false; objText(); }); }); }
+    later(4.5,()=>{ playDialog('chamberlain_post',()=>{ if(first) toast(`${ico('key')} <b>Ключ Архива</b> — путь в Архив Глубин (8-5) открыт.`,null,3,'quest'); if(vela) later(1.2,()=>toast('<b>Велеслава:</b> Я стояла у этих дверей в ночь бала. Внутрь стражу не пускали. Потом ударил набат — и я побежала на площадь.',compPortrait('vela'),3,'quest')); W.a2wait=false; objText(); }); }); }
   if(e.kind==='inkmaw'){ later(4.5,()=>{ playDialog('ch_ink',()=>{ const A=a2S(); if((A.mem||0)<2){ A.mem=2; later(.6,()=>{ banner('Память Уголька II · «Дыхание»','Запас Воздуха +20%'); AU.sfx('legend'); }); }
       COSM.troph_inkmaw.n=STS().ch.ink==='father'?'Перо летописца':'Лист Первой летописи'; later(2.6,()=>toast(`${ico('rune')} Сердце Брода: зажглась вторая руна второй главы.`,null,3,'quest')); W.a2wait=false; objText(); saveGame(true); }); }); }
 };

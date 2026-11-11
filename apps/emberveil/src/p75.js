@@ -21,13 +21,13 @@ const SFX75=(()=>{
   function voice(o,p){ const {t,ctx}=o; const B=AU.bus&&AU.bus(); if(!B) return; const F=VOW[p.v||'a'], d=p.d||1, vol=p.vol||.3, f=p.f||90;
     const src=ctx.createOscillator(); src.type='sawtooth'; src.frequency.setValueAtTime(f*(p.up||1.2),t); src.frequency.exponentialRampToValueAtTime(Math.max(20,f*(p.glide||.8)),t+d);
     const lfo=ctx.createOscillator(); lfo.frequency.value=p.vib||5.5; const lg=ctx.createGain(); lg.gain.value=f*.05; lfo.connect(lg); lg.connect(src.frequency);
-    const f1=ctx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=F[0]*(p.fk||1); f1.Q.value=5; const f2=ctx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.value=F[1]*(p.fk||1); f2.Q.value=7;
+    /* v40: p.nv — без гласных-формант (не «речь»): низкий фильтр, рык и выдох */ const f1=ctx.createBiquadFilter(); f1.type=p.nv?'lowpass':'bandpass'; f1.frequency.value=p.nv?Math.min(700,F[0]*.7):F[0]*(p.fk||1); f1.Q.value=p.nv?.7:5; const f2=ctx.createBiquadFilter(); f2.type=p.nv?'lowpass':'bandpass'; f2.frequency.value=p.nv?260:F[1]*(p.fk||1); f2.Q.value=p.nv?.5:7;
     const g2=ctx.createGain(); g2.gain.value=.6; const out=ctx.createGain(); out.gain.setValueAtTime(.0001,t); out.gain.exponentialRampToValueAtTime(vol,t+Math.min(.12,d*.2)); out.gain.setValueAtTime(vol,t+d*.6); out.gain.exponentialRampToValueAtTime(.0001,t+d);
     const am=ctx.createOscillator(); am.frequency.value=(p.rasp||30)+Math.random()*8; const ag=ctx.createGain(); ag.gain.value=vol*(p.growl==null?.45:p.growl); am.connect(ag); ag.connect(out.gain);
     src.connect(f1); src.connect(f2); f2.connect(g2); f1.connect(out); g2.connect(out); out.connect(B.out); if(p.rv!==0) out.connect(B.rev);
     for(const n of [src,lfo,am]){ n.start(t); n.stop(t+d+.08); }
     src.onended=()=>{ try{ out.disconnect(); }catch(e){} };
-    if(p.breath!==0) o.noise(t,d,vol*(p.breath||.35),'bandpass',F[1]*1.3,null,{a:Math.min(.1,d*.2),rv:1,q:1.2}); }
+    if(p.breath!==0) o.noise(t,d,vol*(p.breath||.35),'bandpass',p.nv?900:F[1]*1.3,null,{a:Math.min(.1,d*.2),rv:1,q:p.nv?.6:1.2}); }
   // профили голосов боссов: f — основной тон, v — гласная, x — «окраска»
   const BV={gobKing:{f:120,v:'a',x:'gob',vib:7},rotroot:{f:52,v:'o',x:'creak',vib:3},bogMother:{f:210,v:'i',x:'cackle',vib:8},morven:{f:72,v:'u',x:'metal'},colossus:{f:38,v:'o',x:'rumble',growl:.2},
     dragon:{f:46,v:'a',x:'fire',rasp:22},ashKing:{f:88,v:'o',x:'whisper'},stuzhen:{f:78,v:'a',x:'metal'},belava:{f:340,v:'i',x:'glass',growl:.1},chamberlain:{f:150,v:'e',x:'glass',growl:.15},
@@ -88,8 +88,8 @@ const SFX75=(()=>{
   function play(name,v=1,p=1){ const L=LIB[name]; if(!L||!AU.ctx()||AU.ctx().state!=='running') return false; if(!room(L.p==null?1:L.p)){ V75.st.drop++; return false; }
     let ok=false; AU.synth('v75_'+name,(o)=>{ L.f(o,v,p*(.96+Math.random()*.08)); ok=true; }); if(ok){ mark(L.d||.3); V75.st.n[name]=(V75.st.n[name]||0)+1; V75.st.total++; } return ok; }
   function bossVoice(kind,mode){ const P0=BV[kind]; if(!P0||!AU.ctx()||AU.ctx().state!=='running') return false; if(!room(2)){ V75.st.drop++; return false; }
-    const M={roar:{d:1.4,vol:.34,glide:.75},bark:{d:.55,vol:.2,glide:.9,up:1.05},pain:{d:.8,vol:.3,glide:.55,up:1.4},death:{d:2.1,vol:.34,glide:.4,up:1.3}}[mode]||{d:.6,vol:.2};
-    let ok=false; AU.synth('v75v_'+mode,(o)=>{ voice(o,Object.assign({},P0,M)); flavor(o,P0.x,M.d,mode==='bark'?.6:1); if(P0.x==='cackle'&&mode!=='death') for(let i=1;i<3;i++) voice(Object.assign({},o,{t:o.t+i*.14}),Object.assign({},P0,{d:.12,vol:M.vol*.7,breath:0})); ok=true; });
+    const M={roar:{d:1.4,vol:.34,glide:.75},bark:{d:.7,vol:.17,glide:.7,up:1.02,nv:1,vib:2,growl:.7,breath:.6},pain:{d:.8,vol:.3,glide:.55,up:1.4},death:{d:2.1,vol:.34,glide:.4,up:1.3}}[mode]||{d:.6,vol:.2};
+    let ok=false; AU.synth('v75v_'+mode,(o)=>{ voice(o,Object.assign({},P0,M)); if(mode!=='bark'||P0.x==='rumble'||P0.x==='fire'||P0.x==='whisper') flavor(o,P0.x,M.d,mode==='bark'?.6:1); if(P0.x==='cackle'&&mode==='roar') for(let i=1;i<3;i++) voice(Object.assign({},o,{t:o.t+i*.14}),Object.assign({},P0,{d:.12,vol:M.vol*.7,breath:0})); ok=true; });
     if(ok){ mark(M.d); const k='voice_'+kind+'_'+mode; V75.st.n[k]=(V75.st.n[k]||0)+1; V75.st.total++; } return ok; }
   return {play,bossVoice,room,mark,DUR,LOWP,LIB,BV};
 })();
@@ -186,7 +186,7 @@ const V75_PRE={
     ['spirit','Камень размером с Брод и с сердцем из расплавленной горы. «Просто».'],
     ['c_*','Ноги у него медленные. Бей по трещинам, когда они светятся.']],
   boss6_pre:[['spirit','Подожди. Он не встаёт. Он… закрывает собой Сердце.'],
-    ['dragon','Серый всегда торопится, правда? Сорок лет торопится. Спроси себя, Искроносец, почему он сам не поднимается сюда.'],
+    ['dragon','Серый всегда торопится, правда? Всё торопится и торопится. Спроси себя, Искроносец, почему он сам не поднимается сюда.'],
     ['hero','Ты сжёг Златоверх.'],
     ['dragon','Я сжёг то, что пришло за Сердцем. Остальное — ваша память. Бей, если должен. Я выдержу.']],
 };
@@ -309,13 +309,13 @@ function v75AvHTML(spec,fb){ const [k,b]=spec||[fb]; let inner='';
 function v75Choice(id){ const C=CHOICES[id]; const box=$('dlgBox'), tx=$('dlgText'); if(!C||!box||!tx) return; const old=tx.querySelector('.chopts'); if(!old) return;
   box.classList.add('v75C'); box.classList.remove('v75L','v75R','v75N'); const p2=$('dlgPort2'); if(p2) p2.style.display='none';
   const av=V75_CHAV[id]||{}; const prev=(DLGS.q.slice(0,DLGS.i).reverse().find(l=>l[0]!=='narrator'&&l[0]!=='choice')||['hero'])[0];
-  const opts=[...old.querySelectorAll('.chopt')].map(b=>{ const o=C.opts.find(x=>x.k===b.dataset.k)||{}; return {k:b.dataset.k,n:o.n||b.textContent,h:o.h||''}; });
+  const opts=[...old.querySelectorAll('.chopt')].map(b=>{ const o=C.opts.find(x=>x.k===b.dataset.k)||{}; const lk=!!b.disabled; return {k:b.dataset.k,n:o.n||b.textContent,h:lk&&o.lock?o.lock():o.h||'',lk}; });
   const hold=document.createElement('div'); hold.className='v75hold'; hold.appendChild(old);
-  tx.innerHTML=`<div class="v75q"><span>${esc(C.q)}</span><button class="btn v75go" disabled>Выберите</button></div><div class="v75cards ${opts.length>=4?'v75v':''}" style="--n:${opts.length}">${opts.map(o=>`<button class="v75card" data-k="${o.k}">${v75AvHTML(av[o.k],prev)}<span class="tx"><b>${esc(o.n)}</b><small>${esc(o.h)}</small></span></button>`).join('')}</div>`;
+  tx.innerHTML=`<div class="v75q"><span>${esc(C.q)}</span><button class="btn v75go" disabled>Выберите</button></div><div class="v75cards ${opts.length>=4?'v75v':''}" style="--n:${opts.length}">${opts.map(o=>`<button class="v75card${o.lk?' locked':''}" data-k="${o.k}"${o.lk?' disabled':''}>${v75AvHTML(av[o.k],prev)}<span class="tx"><b>${esc(o.n)}</b><small>${esc(o.h)}</small></span></button>`).join('')}</div>`;
   tx.appendChild(hold); $('dlgName').innerHTML=`${esc(C.n)}<small>ваш выбор</small>`;
   let sel=null; const go=tx.querySelector('.v75go');
   const commit=()=>{ if(!sel||DLGS.choice!==id) return; SFX75.play('choose'); const b=old.querySelector(`.chopt[data-k="${sel}"]`); if(b) b.click(); };
-  for(const c of tx.querySelectorAll('.v75card')) c.addEventListener('click',ev=>{ ev.stopPropagation(); if(DLGS.choice!==id) return; const k=c.dataset.k; if(sel===k){ commit(); return; } sel=k; SFX75.play('select');
+  for(const c of tx.querySelectorAll('.v75card')) c.addEventListener('click',ev=>{ ev.stopPropagation(); if(DLGS.choice!==id||c.disabled) return; const k=c.dataset.k; if(sel===k){ commit(); return; } sel=k; SFX75.play('select');
     for(const o of tx.querySelectorAll('.v75card')){ o.classList.toggle('sel',o.dataset.k===k); o.classList.toggle('dim',o.dataset.k!==k); }
     const o=opts.find(x=>x.k===k); go.disabled=false; go.innerHTML=`Выбрать: ${esc(o?o.n:'')}`; });
   go.addEventListener('click',ev=>{ ev.stopPropagation(); commit(); });
@@ -378,3 +378,82 @@ body.v75dlg.cine::before,body.v75dlg.cine::after{height:6vh}
 
 Object.assign(window.__game,{ v75:()=>({st:JSON.parse(JSON.stringify(V75.st)),bus:!!(AU.bus&&AU.bus()),ctx:AU.ctx()&&AU.ctx().state,lib:Object.keys(SFX75.LIB).length,voices:Object.keys(SFX75.BV).length}),
   v75sfx:(n,v)=>SFX75.play(n,v), v75voice:(k,m)=>SFX75.bossVoice(k,m||'roar') });
+
+// ================= v40: сюжетные правки (docs/CANON.md) =================
+// 1) Серый после 6-5 уходит из деревни: на его месте у таверны — плащ (осмотреть; личная история «Пепел помнит» дочитывается у плаща),
+//    его поручения переходят к Ведане, просьба «Свечи для мёртвых» — запиской. «Колодец Первых» теперь у Добромира (p66).
+// 2) Велеслава: при найме (и один раз для старых сохранений) — сцена встречи через сорок лет.
+// 3) Уголёк: пулы ≥8 реплик на частые поводы (низкое здоровье, гибель, простой, начало боя с владыкой, победа) — свои для Главы I и II;
+//    перекличка спутника с Угольком на этапе (по одной паре на спутника, каждая — один раз).
+function v40Act2(){ try{ if(G.run&&G.run.info&&G.run.info.z>=7) return true; return G.mode==='village'&&typeof a2On==='function'&&a2On(); }catch(e){ return false; } }
+const V40_GONE=()=>stageDone('6-5');
+// ---- 1. Серый ----
+const V40_CLOAK_LOOK=[['narrator','На скамье у таверны лежит серый плащ. Его никто не трогает — даже дети обходят скамью стороной.'],['narrator','Ткань тёплая. Совсем не пепельная. В складке — горсть золы и обрывок золотой нити: когда-то ею была вышита корона.']];
+function v40CloakTalk(){ try{ if(typeof arcReady==='function'&&arcReady('stranger')){ arcTalk('stranger'); return; } }catch(e){ console.error(e); }
+  const L=V40_CLOAK_LOOK.slice(); const c=STS().ch; if(c.trust==='trust') L.push(['spirit','Пепельный оберег у тебя на шее теплеет рядом с плащом. Он помнит хозяина.']); else if(c.trust==='doubt') L.push(['spirit','Ты тогда спросил его прямо. Он не ответил. Плащ тоже молчит.']);
+  playDialog(null,null,L); }
+function v40VillageGone(){ if(!W||W.kind!=='village'||!V40_GONE()) return;
+  for(const q of SIDE) if(q.g==='stranger') q.g='elder'; for(const q of STORY) if(q.g==='stranger') q.g='elder';
+  try{ if(BUILDINGS.tavern&&BUILDINGS.tavern.npc==='stranger') BUILDINGS.tavern.npc=null; }catch(e){}
+  if(W.v40cloak) return; const [x,z]=NPC_POS.stranger; const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=Math.atan2(-x,-z); worldRoot.add(g);
+  pmesh(cgeo('v40bench',b=>{ b.box(1.1,.08,.42,0x6a4a2a,{p:[0,.42,0],j:.03}); for(const sx of [-.45,.45]) b.box(.08,.42,.34,0x5a3b22,{p:[sx,.21,0]}); },0.03),g);
+  pmesh(cgeo('v40cloak',b=>{ b.box(.62,.1,.36,0x6e6e76,{p:[.12,.51,0],j:.05}); b.box(.5,.07,.3,0x5e5e66,{p:[.1,.59,.02],r:[0,.25,0],j:.05}); b.box(.22,.36,.05,0x6e6e76,{p:[.38,.3,.18],r:[.15,0,0],j:.04}); },0.03),g);
+  W.v40cloak={x,z,g}; if(W.obst) W.obst.push({x,z,r:.6}); }
+{ const _vt=villageTargets; villageTargets=function(){ const t=_vt(); try{ const C=W&&W.v40cloak, P=G.P; if(C&&P&&G.mode==='village'){ const d=Math.hypot(C.x-P.x,C.z-P.z); if(d<2.6){ const c={d:d-.2,label:arcReady('stranger')?'Плащ Серого: дочитать историю':'Осмотреть: плащ Серого',fn:v40CloakTalk}; if(!t||c.d<t.d) return c; } } }catch(e){} return t; }; }
+// записки вместо реплик Серого, если просьба «Свечи для мёртвых» берётся или сдаётся после его ухода
+const V40_NOTE={q4b:{in:[['narrator','На доске в таверне — записка, приколотая ножом. Почерк Серого: «Зажги две свечи в Склепах. Одну — в Зале тотемов, вторую — в Погребальном ходе. По тем, кто не просил».']],
+  out:[['narrator','Обе свечи горят. Записки на доске больше нет. На её месте процарапано ножом: «Одну из них ты зажёг по мне».']]}};
+function v40NoteWrap(fn){ return function(id){ const q=sqDef(id), N=V40_NOTE[id]; if(!q||!N||q.g!=='stranger'||!V40_GONE()) return fn.apply(this,arguments); const L=q.lines; q.lines=N; try{ return fn.apply(this,arguments); } finally{ q.lines=L; } }; }
+sqTake=v40NoteWrap(sqTake); sqTurnIn=v40NoteWrap(sqTurnIn);
+// шаги личной истории Серого, оставшиеся после его ухода, — записками из кармана плаща
+{ const _at=arcTalk; arcTalk=function(n){ const st=(n==='stranger'&&V40_GONE())?arcStep(n):null; if(!st||!st.dlg) return _at.apply(this,arguments); const L=st.dlg; st.dlg=L.map(l=>l[0]==='stranger'?['narrator','В кармане плаща — записка его почерком: «'+l[1]+'»']:l); try{ return _at.apply(this,arguments); } finally{ st.dlg=L; } }; }
+// ---- 2. Велеслава ----
+DLG.vela_reunion=[
+  ['narrator','У дверей таверны стоит седая женщина с топором за спиной. Она долго смотрит на тебя — потом подходит, чуть припадая на левую ногу.'],
+  ['c_vela','Не может быть. Ты. Тот же. Ни морщины.'],
+  ['hero','Велеслава?.. Ты стояла рядом. У Сердца. Это было… вчера.'],
+  ['c_vela','Вчера. <em>(коротко смеётся, без радости)</em> Для тебя — вчера. Для меня — сорок лет, Искроносец. Видишь седину? Вся — с той ночи.'],
+  ['c_vela','Три дня я разбирала камни на площади. Потом решила, что ты сгорел вместе с Сердцем. Все так решили.'],
+  ['c_vela','Я ушла к горе и сторожила пустую тропу. Стража Сердца не уходит с поста, даже когда поста больше нет.'],
+  ['spirit','…Я её помню. Она пахла железом и яблоками. Теперь — только железом.'],
+  ['c_vela','Колени уже не те. Глаза — те. И топор тот же. <em>(протягивает руку)</em> Встань рядом, как тогда. В этот раз я тебя не потеряю.']];
+{ const _rc=recruit; recruit=function(id){ const r=_rc.apply(this,arguments); if(r&&id==='vela'&&!S.seen.vela_reunion&&!G.bot&&G.mode==='village') setTimeout(()=>{ if(S.seen.vela_reunion||G.dialog||G.mode!=='village') return; try{ if(PANEL.kind) closePanel(); }catch(e){} playDialog('vela_reunion'); },450); return r; }; }
+{ const _cv=compVillageSeq; compVillageSeq=function(seq){ _cv(seq); seq.push(cb=>{ if(compOwned('vela')&&!S.seen.vela_reunion&&!G.bot) playDialog('vela_reunion',cb); else cb(); }); }; }
+// ---- 3. Уголёк: пулы по главам ----
+Object.assign(SPIRIT,{
+  low_hp:SPIRIT.low_hp.concat(['Кровь на рукаве — твоя. Пей зелье, я не шучу.','Отходи! Я не хочу снова собирать себя по осколкам.','Здоровья — на донышке. Как в Горановой кружке к вечеру.','Слышишь, как стучит? Это не барабаны. Это ты. Береги.','Ещё удар — и мы оба в летопись. Я не хочу в летопись.']),
+  low_hp_a2:['Холод лезет под кожу. Зелье — сейчас!','Мы тускнеем. Отступи к свету!','Она ждёт, когда ты сломаешься. Не сегодня.','Не геройствуй. Герои тут становятся воспоминаниями.','Я чувствую твоё сердце. Оно частит. Отходи.','Кувырок! Ещё один! И зелье!','Держись. Мы прошли Предел — пройдём и это.','Ещё немного — и меня будет нечем зажечь. Пей!'],
+  death:SPIRIT.death.concat(['Вставай. Хмарь не ждёт, пока ты отдышишься.','Я держу искру. Ты держи меч. Договорились?','Больно? Мне тоже. Значит, мы ещё живые.','Тихо. Считаю до трёх — и ты встаёшь. Раз…','Брюхан бы смеялся. Не дадим ему повода.','Упасть — не стыдно. Стыдно не встать. Это Ведана так говорит, не я.','Всё. Отдышись. А теперь — снова.']),
+  death_a2:['Холодно… Нет. Не отдам. Вставай.','Она смотрит, как мы падаем. Не доставляй ей удовольствия.','Я ещё горю. Значит, и ты встанешь.','Мы проиграли бой. Не войну.','Вдох. Ещё вдох. Вот так.','Тише, тише. Я с тобой. Я всегда с тобой.','Вейл ещё стоит. И мы постоим.','Помнишь Брод? Там ждут. Поднимайся.'],
+  idle:SPIRIT.idle.concat(['Слышишь? Горан опять спорит с наковальней. Наковальня побеждает.','Ойка кормит кого-то с ладони. Надеюсь, не волка.','Тут тепло. Я почти забыл, как это — просто стоять у огня.','Мне снился Златоверх. Площадь, музыка, и никто никуда не бежит.']),
+  boss_any:['Он большой. Мы — упрямые. Посмотрим, что крепче.','Глубокий вдох. Я подсвечу, куда бить.','Смотри на его плечи. Перед ударом всегда замах.','Мы уже били его. Значит, знаем, где у него больно.','Снова ты? Ну что ж. Снова мы.','Не торопись. Пусть он ошибётся первым.','Я горю. Ты держишь меч. Начали.','Каждый владыка когда-то был кем-то. Этот — тоже. Бей.'],
+  boss_any_a2:['Это память, а не он. Но бьёт она по-настоящему.','Холодный. Как всё, что она хранит. Согреем.','Держи дистанцию. И держи меня.','Он ничего не просит. Это хуже всего.','Мы это уже проходили. Пройдём ещё раз.','Смотри на свет, а не на тень. Тень врёт.','Я не боюсь. Ладно, боюсь. Но мы всё равно идём.','Ещё один из её снов. Разбудим.'],
+  win:['Тишина. Хорошая тишина. Пошли домой.','Жив? Жив. Я тоже. Записываю.','Брод сегодня будет спать спокойно.','Видишь — Хмарь отступает. На шаг. Но отступает.','Неплохо. Горан сказал бы «криво, но крепко».','Ещё одна тропа — наша.','Чувствуешь? Теплее стало. Это не я — это земля.','Отдышись. Потом — добыча. Потом — Ведана: будет ворчать, что задержались.'],
+  win_a2:['Здесь стало теплее. На одну свечу — но теплее.','Ещё одна её память затихла. Хорошо… наверное.','Мы выстояли. Снова.','Слышишь? Лёд перестал звенеть.','Пойдём, пока она не передумала.','Мы вернём всё, что можно вернуть. Это — уже вернули.','Теперь — к очагу. Мне надо погреться о тебя.','Не оглядывайся. Тут прошлое любит смотреть в спину.']
+});
+// свои слова у владык с личной историей — всегда; у остальных после первой встречи — общий пул главы
+const V40_BOSS_OWN={boss_attal:1,boss_faceless:1,boss_ashKing:1,boss_ostenMem:1,boss_shade:1,boss_belava:1};
+{ const _sp=spirit; spirit=function(trig,force){ let t=trig; try{ const a2=v40Act2();
+    if(/^boss_/.test(t)&&t!=='boss_any'&&!V40_BOSS_OWN[t]){ const L=SPIRIT[t], n=(STS().sp||{})[t]||0; if(!L||n>=L.length) t='boss_any'; }
+    if(a2&&SPIRIT[t+'_a2']) t=t+'_a2'; }catch(e){} return _sp(t,force); }; }
+{ const _re=runEnd; runEnd=function(win){ const st=G.mode==='stage'; const r=_re.apply(this,arguments); try{ if(win&&st&&!G.bot) later(1.4,()=>spirit('win')); }catch(e){} return r; }; }
+// ---- перекличка: спутник — Уголёк ----
+const V40_BANTER={
+  bran:['Мельницу я отстрою. Когда будет кому молоть.','Будет. Я видел, сколько в Броде новых крыш.'],
+  lisa:['Ты светишься, когда он злится. На охоте это неудобно.','Тогда пусть злится реже. Я не гасну по заказу.'],
+  tihomir:['От тебя пахнет дымом и мятой. Странно для духа.','Мята — это Мира. Она сушит на мне травы.'],
+  yarina:['Научишь меня гореть без пепла?','Сначала научись не поджигать библиотеки. Потом поговорим.'],
+  hvat:['Если продать осколок Сердца — сколько выручишь?','Меня? Нисколько. Я уйду вместе с покупателем — у него в кармане станет очень жарко.'],
+  moroz:['Дома говорили: огонь, который болтает, долго не горит.','А я всё горю. Значит, дома врали.'],
+  zlata:['Гром и искра — родня. Чувствуешь?','Чувствую, что у меня от тебя волосы дыбом. А у меня нет волос.'],
+  vela:['Ты стал меньше. Тогда, у Сердца, ты гудел, как кузнечный мех.','Меня раскололи, Велеслава. Тебя — нет. Ты просто стала тише.'],
+  irga:['По уставу духам в строю не положено.','А я не в строю. Я внутри. Внутри устав не действует.'],
+  sabira:['Бабка говорила: огонь, который смеётся, — краденый.','…Твоя бабка много знала. Давай не будем ей об этом рассказывать.']
+};
+function v40Banter(){ try{ if(!W||W.kind!=='stage'||!S.set.spirit||G.dialog||PANEL.kind) return false; const a=G.allies.find(x=>x.kind==='comp'&&!x.dead); if(!a) return false; const B=V40_BANTER[a.id]; const sp=STS().sp; if(!B||(sp['bt_'+a.id]||0)>0) return false;
+  sp['bt_'+a.id]=1; dmgNum(a.x,2.6,a.z,'«'+B[0]+'»','tag'); later(2.6,()=>{ try{ spiritSay(B[1]); SP_RT.t=performance.now(); }catch(e){} }); return true; }catch(e){ return false; } }
+{ const _ss=startStage2; startStage2=function(z,s){ const r=_ss.apply(this,arguments); try{ if(!G.bot&&Math.random()<.5) later(40+Math.random()*20,v40Banter); }catch(e){} return r; }; }
+{ const _ev=enterVillage; enterVillage=function(){ const r=_ev.apply(this,arguments); try{ v40VillageGone(); }catch(e){ console.error(e); } return r; }; }
+(function(){ const st=document.createElement('style'); st.id='v40Css'; st.textContent='.chopt.locked,.v75card.locked{opacity:.55;filter:saturate(.35);cursor:not-allowed}.v75card.locked small{font-style:italic}'; document.head.appendChild(st); })();
+Object.assign(window.__game,{ v40:()=>({gone:V40_GONE(),cloak:!!(W&&W.v40cloak),npcs:(W&&W.npcs||[]).map(n=>n.kind),act2:v40Act2(),q9b:(sqDef('q9b')||{}).g,vela:compOwned('vela'),reunion:!!S.seen.vela_reunion}),
+  v40cloak:()=>v40CloakTalk(), v40banter:()=>{ const sp=STS().sp; for(const k in sp) if(k.startsWith('bt_')) delete sp[k]; return v40Banter(); }, v40spirit:(t)=>{ SP_RT.t=0; return spirit(t,true); } });

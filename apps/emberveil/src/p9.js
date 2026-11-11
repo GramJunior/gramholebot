@@ -15,7 +15,7 @@ function placePlayer(x,z,face){ const P=G.P; P.x=x; P.z=z; P.face=face===undefin
 function enterVillage(after){
   show('res',false); show('boons',false); clearEntities(); RUNBUF={}; G.run=null; G.abyss=null; computeStats();
   makeVillage(); G.mode='village'; heroRebuildRig(); refreshPlayer(true); spawnPets(); spawnCompanion(); placePlayer(W.start.x,W.start.z,PI);
-  W.npcs=W.npcs.filter(n=>{ const need={smith:'forge',alch:'alch',beast:'pen'}[n.kind]; const ok=n.kind==='elder'||(n.kind==='stranger'?stageDone('1-5'):S.bld[need]>0); if(!ok) worldRoot.remove(n.rig.root); return ok; });
+  W.npcs=W.npcs.filter(n=>{ const need={smith:'forge',alch:'alch',beast:'pen'}[n.kind]; const ok=n.kind==='elder'||(n.kind==='stranger'?stageDone('1-5')&&!stageDone('6-5'):S.bld[need]>0) /* v40: после 6-5 Серого в деревне нет — остаётся плащ (p75) */; if(!ok) worldRoot.remove(n.rig.root); return ok; });
   show('hud'); hudBuild(); AU.music('village'); cullProps(0,0,true);
   const got=collectProduction(); const keys=Object.keys(got).filter(k=>got[k]>0);
   const seq=[];
