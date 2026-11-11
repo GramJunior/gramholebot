@@ -45,7 +45,10 @@ const ADS={
   key(place){ return this.alias[place]||place; },
   cap(place){ const k=this.key(place); return Object.prototype.hasOwnProperty.call(this.lim,k)?this.lim[k]|0:0; },
   sdkOk(){ return this.sdk!=='fail'||Date.now()-this.failAt>60000; },
-  ready(){ return this.test()||(!!this.blockId()&&this.sdkOk()); },
+  // v39.5: блок не активен (модерация Adsgram) — прячем кнопки рекламы на 6 ч, чтобы игроки не видели окно ошибки повторно
+  offKey:'ev_ads_off', isOff(){ try{ const v=JSON.parse(localStorage.getItem(this.offKey)||'null'); return !!(v&&v.id===this.blockId()&&Date.now()-v.t<6*3600e3); }catch(e){ return false; } },
+  setOff(){ try{ localStorage.setItem(this.offKey,JSON.stringify({id:this.blockId(),t:Date.now()})); }catch(e){} },
+  ready(){ return this.test()||(!!this.blockId()&&this.sdkOk()&&!this.isOff()); },
   ads(){ const a=metaS().ads; const d=dayKeyL(); if(a.day!==d){ a.day=d; a.n={}; } return a; },
   left(place){ const k=this.key(place); return Math.max(0,this.cap(place)-(this.ads().n[k]||0)); },
   // ad_offer — когда предложение показано (не чаще раза в минуту на место)
@@ -64,7 +67,7 @@ const ADS={
   hold(){ const st={paused:G.paused}; this.busy=true; G.paused=true; const mute=()=>{ try{ const c=AU.ctx&&AU.ctx(); if(c&&c.state==='running') c.suspend().catch(()=>{}); }catch(e){} }; mute(); st.iv=setInterval(mute,400); return st; },
   release(st){ clearInterval(st.iv); this.busy=false; G.paused=st.paused; try{ const c=AU.ctx&&AU.ctx(); if(c&&!document.hidden&&c.resume) c.resume().catch(()=>{}); }catch(e){} },
   // отказ Adsgram {done,state,error,description} → причина: skip (закрыл), nofill (нет ролика), error
-  why(r){ if(r&&r.error===false) return 'skip'; const d=String(r&&r.description||''); if(r&&r.state==='load'||/no ?(ad|banner|fill)|not available|нет рекламы/i.test(d)) return 'nofill'; return 'error'; },
+  why(r){ if(r&&r.error===false) return 'skip'; const d=String(r&&r.description||''); if(/not active|moderation/i.test(d)){ this.setOff(); return 'inactive'; } if(r&&r.state==='load'||/no ?(ad|banner|fill)|not available|нет рекламы/i.test(d)) return 'nofill'; return 'error'; },
   // показ одного ролика: resolve('done') только если досмотрен
   play(id,inter){ return this.load().then(ok=>{ if(!ok) return Promise.reject({reason:'nosdk'}); let c; try{ c=this.ctl(id,inter); }catch(e){ return Promise.reject({reason:'error'}); }
       return new Promise((res,rej)=>{ let fin=false; const wd=setTimeout(()=>{ if(!fin){ fin=true; rej({reason:'timeout'}); } },180000);
@@ -102,7 +105,7 @@ const ADS={
     const st=this.hold();
     this.play(id,true).then(()=>{ this.release(st); track('ad_done','il_'+where); },e=>{ this.release(st); track('ad_fail','il.'+((e&&e.reason)||'error')); });
     return true; },
-  msg(r){ return r==='limit'?'На сегодня всё — лимит наград за рекламу':r==='nofill'?'Сейчас нет подходящего ролика — попробуйте чуть позже':r==='skip'?'Награда не получена: ролик не досмотрен':r==='unverified'?'Сервер не подтвердил просмотр — попробуйте ещё раз':r==='unavailable'||r==='nosdk'?'Реклама сейчас недоступна — загляните позже':r==='busy'?'':'Не удалось показать рекламу — попробуйте позже'; },
+  msg(r){ return r==='limit'?'На сегодня всё — лимит наград за рекламу':r==='nofill'?'Сейчас нет подходящего ролика — попробуйте чуть позже':r==='skip'?'Награда не получена: ролик не досмотрен':r==='unverified'?'Сервер не подтвердил просмотр — попробуйте ещё раз':r==='inactive'?'Реклама скоро появится — блок ещё на проверке':r==='unavailable'||r==='nosdk'?'Реклама сейчас недоступна — загляните позже':r==='busy'?'':'Не удалось показать рекламу — попробуйте позже'; },
   fail(r){ const t=this.msg(r&&r.reason!==undefined?r.reason:r); if(t) toast(t); }
 };
 // SDK — заранее, через несколько секунд после старта (только если блок задан): к первому предложению ролик уже готов
