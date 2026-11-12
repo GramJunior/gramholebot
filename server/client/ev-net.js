@@ -88,7 +88,7 @@
       var dev = store.get(DEV_KEY);
       if (!dev) { dev = randomDevice(); store.set(DEV_KEY, dev); }
       var ref = '';
-      try { var m = /[?&](?:ref|startapp)=(ref_[a-z0-9]+)/.exec(root.location.search); if (m) ref = m[1]; } catch (e) { /* ignore */ }
+      try { var m = /[?&](?:ref|startapp)=((?:ref_[a-z0-9]+)?(?:(?:__)?src_[A-Za-z0-9_]{1,32})?)/.exec(root.location.search); if (m) ref = m[1].slice(0, 64); } catch (e) { /* ignore */ } // v41: src_<tag> too
       p = rawFetch('POST', '/auth/guest', { deviceId: dev, startParam: ref });
     }
     state.authing = p.then(function (r) {
@@ -504,8 +504,15 @@
     },
 
     events: {
-      /** Analytics batch: [{e:'ftue', k:'first_kill'}, ...] (max 50; the server keeps daily counters only). Not queued offline. */
-      send: function (list) { return call('POST', '/events', { events: (list || []).slice(0, 50) }); },
+      /**
+       * Analytics batch: [{e:'ftue', k:'first_kill', v?, t?, o?}, ...] (max 50; the server keeps daily counters + milestones).
+       * v41 `extra` (optional): { now, sess, sec, st, na, ver } — client clock, sessions/active seconds, «stats off» flag. Not queued offline.
+       */
+      send: function (list, extra) {
+        var b = { events: (list || []).slice(0, 50) };
+        if (extra) for (var k in extra) if (k !== 'events' && extra[k] !== undefined) b[k] = extra[k];
+        return call('POST', '/events', b);
+      },
     },
 
     /** Low-level escape hatch: authenticated request. */

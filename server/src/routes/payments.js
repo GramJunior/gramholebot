@@ -92,6 +92,8 @@ export async function grantPayment(env, msg, now) {
       .bind(uid, productId, ext ? now + ext : null, now, ext, now, ext),
     env.DB.prepare("UPDATE invoices SET status='paid' WHERE payload=?").bind(inv.payload),
   ]);
+  // v41: first-payer milestone (cohort conversion) — not for players who turned «Отправлять статистику» off
+  await env.DB.prepare("INSERT OR IGNORE INTO milestones (uid, m, ts) SELECT ?, 'pay:first', ? WHERE NOT EXISTS (SELECT 1 FROM users WHERE id=? AND stats_off=1)").bind(uid, now, uid).run();
   return { granted: true, uid, productId };
 }
 

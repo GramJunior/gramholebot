@@ -15,6 +15,10 @@ import { getConfigKey } from '../lib/config.js';
 import { dayKey } from '../lib/time.js';
 
 export const PLACE_RE = /^[a-z0-9_]{1,16}$/;
+// v41: daily server-side truth for the admin dashboard (table ads_daily, no player id): Reward URL calls and spent credits
+async function adsDaily(env, day, place, col) {
+  await env.DB.prepare(`INSERT INTO ads_daily (day, place, ${col}) VALUES (?,?,1) ON CONFLICT(day, place) DO UPDATE SET ${col} = ${col} + 1`).bind(day, place).run();
+}
 const ttlMs = (env) => envInt(env, 'ADS_CREDIT_TTL_SEC', 900) * 1000;
 
 /** GET /ads/reward?userid=… — called by Adsgram (not by the game). Never reveals whether the user exists. */
@@ -31,6 +35,7 @@ export async function adsReward(c) {
   const day = await c.env.DB.prepare('SELECT COUNT(*) n FROM ad_credits WHERE uid=? AND at>=?').bind(u.id, c.now - 86400000).first('n');
   if (open >= maxOpen || day >= maxDay) return json({ ok: true });
   await c.env.DB.prepare('INSERT INTO ad_credits (uid, at) VALUES (?,?)').bind(u.id, c.now).run();
+  await adsDaily(c.env, dayKey(c.now, c.env), 'any', 'rewarded');
   return json({ ok: true });
 }
 
@@ -52,5 +57,6 @@ export async function adsClaim(c) {
     WHERE id=(SELECT id FROM ad_credits WHERE uid=? AND used_at IS NULL AND at>=? ORDER BY at LIMIT 1) AND used_at IS NULL`)
     .bind(c.now, place, day, user.id, c.now - ttlMs(c.env)).run();
   if (!r.meta.changes) fail(409, 'no_credit', 'Просмотр рекламы не подтверждён');
+  await adsDaily(c.env, day, place, 'claimed');
   return json({ ok: true, place });
 }

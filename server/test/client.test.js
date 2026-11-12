@@ -122,6 +122,11 @@ test('client: profile.setName + events.send', async () => {
   assert.equal(EVNet.me().customName, true);
   const ev = await EVNet.events.send([{ e: 'ftue', k: 'wake' }, { e: 'stage_start', k: '1-1' }]);
   assert.deepEqual([ev.ok, ev.accepted], [true, 2]);
+  // v41: batch-level extras (client clock, sessions, opt-out)
+  const ev2 = await EVNet.events.send([{ e: 'stage_start', k: '1-2', t: Date.now(), v: 3, o: 1 }], { now: Date.now(), sess: 1, sec: 30, na: 0, events: 'ignored' });
+  assert.deepEqual([ev2.ok, ev2.accepted, ev2.milestones, ev2.statsOff], [true, 1, 1, false]);
+  const ev3 = await EVNet.events.send([{ e: 'stage_start', k: '1-2' }], { na: 1 });
+  assert.deepEqual([ev3.accepted, ev3.skipped, ev3.statsOff], [0, 1, true]);
   const off = sandbox();
   await off.EVNet.init({});
   assert.equal((await off.EVNet.events.send([{ e: 'x' }])).offline, true);

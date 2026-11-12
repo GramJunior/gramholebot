@@ -78,14 +78,14 @@ test('auth endpoint: login, /me, never leaks bot token, guest mode switch', asyn
   assert.equal((await call('POST', '/auth/guest', { body: { deviceId: 'dev-device-0123456789' } })).status, 403);
 });
 
-test('referral via start_param: both get inbox rewards and become friends', async () => {
+test('referral via start_param: friend gets a gift at once, both become friends (inviter waits for 1-5, see analytics.test.js)', async () => {
   const env = makeEnv();
   const call = api(env);
   const a = await loginTg(call, 1001, 'Горан');
   const b = await loginTg(call, 1002, 'Мира', { startParam: 'ref_' + a.me.refCode });
   const inboxA = await call('GET', '/inbox', { token: a.token });
   const inboxB = await call('GET', '/inbox', { token: b.token });
-  assert.equal(inboxA.body.items.length, 1);
+  assert.equal(inboxA.body.items.length, 0, 'v41: no reward for the inviter at registration');
   assert.equal(inboxB.body.items.length, 1);
   const cl = await call('POST', '/inbox/claim', { token: b.token, body: { id: inboxB.body.items[0].id } });
   assert.equal(cl.status, 200);
@@ -97,5 +97,6 @@ test('referral via start_param: both get inbox rewards and become friends', asyn
   assert.equal(refs.body.friends[0].name, 'Мира');
   // Re-login of an existing user with someone's code does nothing; self-referral impossible.
   await loginTg(call, 1001, 'Горан', { startParam: 'ref_' + b.me.refCode });
-  assert.equal((await call('GET', '/inbox', { token: a.token })).body.items.length, 1);
+  assert.equal((await call('GET', '/inbox', { token: a.token })).body.items.length, 0);
+  assert.equal((await call('GET', '/inbox', { token: b.token })).body.items.length, 0, 'b claimed its gift; no new letters');
 });

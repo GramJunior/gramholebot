@@ -64,7 +64,7 @@ test('events: batching, validation, aggregated counters + unique users, quota, D
   assert.deepEqual([row.n, row.users], [3, 2], '3 events from 2 players');
   // no payload columns at all
   const cols = (await env.DB.prepare("SELECT name FROM pragma_table_info('ev_counts')").all()).results.map((c) => c.name);
-  assert.deepEqual(cols.sort(), ['day', 'n', 'name', 'users']);
+  assert.deepEqual(cols.sort(), ['day', 'n', 'name', 'users', 'v'], 'v41: v is a summed number, still no payloads');
   // quota: a spammer stops being counted after 2000 events/day
   for (let i = 0; i < 41; i++) await call('POST', '/events', { token: b.token, body: { events: Array.from({ length: 50 }, () => ({ e: 'spam' })) } });
   const sp = await env.DB.prepare("SELECT n FROM ev_counts WHERE name='spam'").first();

@@ -67,7 +67,7 @@ export async function handleUpdate(env, upd, now) {
   if (cmd === '/invite') {
     const u = await getUser(env, uid);
     const link = u && refLink(env, u.ref_code);
-    await safeSend(env, msg.chat.id, link ? `Твоя ссылка для друзей:\n${link}\nПодарок получите оба.` : 'Сначала зайди в игру: /start');
+    await safeSend(env, msg.chat.id, link ? `Твоя ссылка для друзей:\n${link}\nДруг получит подарок сразу, а ты — когда он победит владыку 1-5.` : 'Сначала зайди в игру: /start');
     return { invite: true };
   }
   if (cmd === '/privacy' || cmd === '/terms' || cmd.startsWith('/privacy@') || cmd.startsWith('/terms@')) {
@@ -141,6 +141,7 @@ export async function runCron(env, now) {
     }
   }
   // Housekeeping (cheap, bounded).
+  const ret = retentionCutoffs(now);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM notifications WHERE status<>'pending' AND due_at<?").bind(now - 7 * 86400000),
     env.DB.prepare("UPDATE runs SET status='abandoned' WHERE status='open' AND started_at<?").bind(now - 6 * 3600000),
@@ -151,6 +152,18 @@ export async function runCron(env, now) {
     env.DB.prepare('DELETE FROM ev_seen WHERE day<?').bind(new Date(now - 3 * 86400000).toISOString().slice(0, 10)),
     env.DB.prepare('DELETE FROM err_reports WHERE day<?').bind(new Date(now - 30 * 86400000).toISOString().slice(0, 10)),
     env.DB.prepare('DELETE FROM ad_credits WHERE at<?').bind(now - 3 * 86400000),
+    // v41 retention (privacy policy): per-player activity days and milestones — 13 months; anonymous aggregates — 25 months
+    env.DB.prepare('DELETE FROM active_days WHERE day<?').bind(ret.day13),
+    env.DB.prepare('DELETE FROM milestones WHERE ts<?').bind(ret.ms13),
+    env.DB.prepare('DELETE FROM ev_counts WHERE day<?').bind(ret.day25),
+    env.DB.prepare('DELETE FROM ads_daily WHERE day<?').bind(ret.day25),
   ]);
   return stats;
+}
+
+/** v41: retention cutoffs — 13 months for per-player analytics (active_days, milestones), 25 months for aggregates. */
+export function retentionCutoffs(now) {
+  const back = (months) => { const d = new Date(now); d.setUTCMonth(d.getUTCMonth() - months); return d; };
+  const d13 = back(13), d25 = back(25);
+  return { day13: d13.toISOString().slice(0, 10), ms13: d13.getTime(), day25: d25.toISOString().slice(0, 10) };
 }

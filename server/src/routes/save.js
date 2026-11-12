@@ -8,7 +8,7 @@
 import { fail, json, readJson } from '../lib/http.js';
 import { requireUser } from './auth.js';
 import { summarize, checkSave } from '../lib/savecheck.js';
-import { audit, envInt } from '../lib/common.js';
+import { audit, envInt, activateReferral } from '../lib/common.js';
 
 export async function getSave(c) {
   const user = await requireUser(c);
@@ -66,5 +66,7 @@ export async function putSave(c) {
     // Lost a race with another device between SELECT and UPDATE.
     return conflict(await c.env.DB.prepare('SELECT version, data, updated_at FROM saves WHERE uid=?').bind(user.id).first());
   }
+  // v41: the invited friend's save shows the chapter-1 boss (1-5) beaten -> reward the inviter (also via milestone 'ftue:boss' in /events)
+  if (user.ref_state === 'pending' && data.prog && data.prog.stages && typeof data.prog.stages === 'object' && data.prog.stages['1-5']) await activateReferral(c.env, user, c.now);
   return json({ ok: true, version, updatedAt: c.now, warnings: soft });
 }

@@ -12,6 +12,7 @@ import * as social from './routes/social.js';
 import * as bot from './routes/bot.js';
 import * as metrics from './routes/metrics.js';
 import * as ads from './routes/ads.js';
+import * as stats from './routes/stats.js';
 import { rateLimit } from './lib/ratelimit.js';
 
 const health = (c) => json({ ok: true, name: 'emberveil', serverTime: c.now, telegram: !!c.env.BOT_TOKEN, guest: c.env.ALLOW_GUEST === '1' });
@@ -84,7 +85,7 @@ export const ROUTES = [
   ['POST', '/admin/ban', live.adminBan],
   ['POST', '/admin/refund', pay.adminRefund],
   ['GET', '/admin/audit', live.adminAudit],
-  ['GET', '/admin/stats', live.adminStats],
+  ['GET', '/admin/stats', stats.adminStats], // v41: dashboard JSON for apps/admin/index.html (src/routes/stats.js)
   ['GET', '/admin/metrics', metrics.adminMetrics],
   ['GET', '/admin/errors', metrics.adminErrors],
 ];
