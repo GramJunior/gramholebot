@@ -455,7 +455,7 @@ function interactObjs(){
     if((o.kind==='chest'||o.kind==='vault')&&!o.opened&&d<1.9){
       if(o.sealed){ if(!o.warned||G.time-o.warned>6){ o.warned=G.time; toast(o.sealTxt||'Сундук запечатан — решите загадку комнаты'); } continue; }
       if(o.puz){ o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++; puzzleLoot(o); continue; }
-      if(o.kind==='vault'&&S.keys<=0){ if(!o.warned){ o.warned=1; toast('Сундук заперт — нужен ключ сокровищницы',null,null); } continue; }
+      if(o.kind==='vault'&&S.keys<=0){ if(!o.warned){ o.warned=1; toast('Сокровищница заперта — нужен железный ключ',null,null); } continue; }
       if(o.kind==='vault') S.keys--; o.opened=true; o.openT=0; AU.sfx('chest'); ev('chest'); if(G.run) G.run.chests++;
       worldChestLoot(o);
     }
@@ -496,7 +496,7 @@ function pickup(d){
   else if(d.kind==='mat'){ S.res[d.res]+=d.v; if(r){ r.mats[d.res]=(r.mats[d.res]||0)+d.v; } AU.sfx('pick',.6); dmgNum(G.P.x,2.2,G.P.z,'+'+d.v+' '+RES_NAME[d.res].toLowerCase(),'txt'); }
   else if(d.kind==='potion'){ if(S.cons.potion<S.potMax+S.bld.alch){ S.cons.potion++; dmgNum(G.P.x,2.2,G.P.z,'+зелье','heal'); } else healPlayer(G.P.maxHp*.15); AU.sfx('pick'); }
   else if(d.kind==='gem'){ S.gems[d.gem]=(S.gems[d.gem]||0)+1; AU.sfx('loot',.6); const G0=GEMS[d.gem.slice(0,-1)]; toast(`${GEM_TIER[+d.gem.slice(-1)]}: <b style="color:${G0.c}">${G0.n}</b>`,null,0,'loot'); }
-  else if(d.kind==='key'){ S.keys++; AU.sfx('loot'); toast(S.seen.keyTip?'<b>Ключ сокровищницы</b>':'<b>Ключ сокровищницы</b> — открывает золотые сундуки',null,3,S.seen.keyTip?'loot':undefined); S.seen.keyTip=1; }
+  else if(d.kind==='key'){ S.keys++; AU.sfx('loot'); toast(S.seen.keyTip?'<b>Железный ключ</b>':'<b>Железный ключ</b> — открывает сокровищницы на этапах и железный сундук в «Лавке»',null,3,S.seen.keyTip?'loot':undefined); S.seen.keyTip=1; }
   else if(d.kind==='item'){ const ok=addItem(d.item); if(r) r.items.push(d.item); AU.sfx(d.item.rar>=3?'legend':'loot',.8); }
   hudRefresh();
 }

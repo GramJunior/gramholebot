@@ -76,7 +76,7 @@ function stars51Html(o,cls){ const ic=i=>ico(ST51[i].ic); return `<span class="s
 
 // ---------- звёздные сундуки зон (5 / 10 / 15 ★) ----------
 function zsrReward(z,i){ const ch=i===0?(z>=5?'iron':'wood'):i===1?(z>=3?'gold':'iron'):(z>=4?'leg':'gold'); const L=z<=6?ZONES[z-1].lv+4:z===7?35:z>=10?48:40; const f=Math.sqrt(F(L));
-  const rw={ch,key:ch==='wood'?null:ch,gold:Math.round([80,160,300][i]*f),ess:[4,10,20][i]+z*2}; if(i===2){ rw.dust=2+z; if(z>=6) rw.core=1; } return rw; }
+  const rw={ch,key:null /* v41: хранимый сундук открывается без ключа */,gold:Math.round([80,160,300][i]*f),ess:[4,10,20][i]+z*2}; if(i===2){ rw.dust=2+z; if(z>=6) rw.core=1; } return rw; }
 function zsrHtml(rw){ const a=[`<b style="color:${CHESTS[rw.ch].col}">${CHESTS[rw.ch].n}</b>${rw.key?' + ключ':''}`]; const c={gold:rw.gold,ess:rw.ess}; if(rw.dust) c.dust=rw.dust; if(rw.core) c.core=rw.core; return a.join('')+' '+costHtml(c).replace(/cost no/g,'cost'); }
 function zsrClaim(z,i){ const need=ZSR51[i]; const m=starRwS()[z]|0; if(m&(1<<i)) return false; if(zoneStars(z)<need) return false; const rw=zsrReward(z,i);
   starRwS()[z]=m|(1<<i); chestAdd(rw.ch,1,true); if(rw.key) keyAdd(rw.key,1); S.res.gold+=rw.gold; S.res.ess=(S.res.ess||0)+rw.ess; if(rw.dust) S.res.dust=(S.res.dust||0)+rw.dust; if(rw.core) S.res.core=(S.res.core||0)+rw.core;

@@ -28,7 +28,7 @@ function giverName(g){ return (NPC_INFO[g]||{n:g}).n; }
 function c33Asp(){ const cls=curCls(); const C=codexS(); const ids=ASP_IDS.filter(k=>!C[k]&&(!ASPECTS[k].cls||ASPECTS[k].cls===cls)); const pool=ids.length?ids:ASP_IDS.filter(k=>!C[k]); return pool.length?pick(pool):null; }
 function c33RwHtml(rw){ if(!rw) return ''; const res={}, pills=[];
   for(const k in rw){ const v=rw[k]; if(!v) continue;
-    if(k==='ch') pills.push(`<b style="color:${CHESTS[v].col}">${CHESTS[v].n}</b>${rw.key===v?' + ключ':''}`);
+    if(k==='ch') pills.push(`<b style="color:${CHESTS[v].col}">${CHESTS[v].n}</b>`);
     else if(k==='key'){ if(rw.ch!==v) pills.push(`${ico('key')} ключ`); }
     else if(k==='cos'){ const C=COSM[v]; if(C) pills.push(`${ico('cloak')} <b style="color:${C.c}">${esc(C.n)}</b> <small>(${{skin:'облик',glow:'свечение',pet:'облик питомца',frame:'рамка',trophy:'трофей',deco:'украшение'}[C.t]||''})</small>`); }
     else if(k==='asp') pills.push(`${ico('spark')} <b>аспект в Кодекс</b>`);
@@ -44,7 +44,7 @@ function c33Give(rw,label){ if(!rw) return []; const got=[]; const res={};
   for(const k in rw){ const v=rw[k]; if(!v) continue;
     try{
       if(k==='ch'){ chestAdd(v,1,true); got.push(CHESTS[v].n); }
-      else if(k==='key') keyAdd(v,1);
+      else if(k==='key'){ if(rw.ch!==v) keyAdd(v,1); } /* v41: пара «сундук + ключ» = одно открытие */
       else if(k==='cos'){ if(cosGrant(v,true)) got.push((COSM[v]||{}).n); }
       else if(k==='asp'){ const id=c33Asp(); if(id){ const C=codexS(); C[id]=(C[id]||0)+1; got.push(ASPECTS[id].n); } else res.dust=(res.dust||0)+3; }
       else if(k==='item'){ const sl=v.cls&&v.cls!==curCls()?'weapon':v.slot; /* колчан — лучнику; другим — оружие своего класса */
