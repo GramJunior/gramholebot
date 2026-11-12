@@ -205,9 +205,13 @@ function grantSup(s){
   else S.res[s.k]=(S.res[s.k]||0)+s.v;
 }
 function chestGrant(out){ for(const it of out.items){ if(!addItem(it,true)) {} } for(const s of out.sup) grantSup(s); S.st.chests=(S.st.chests||0)+1; S.st.chestT=S.st.chestT||{}; S.st.chestT[out.tier]=(S.st.chestT[out.tier]||0)+1; ev('chest'); saveGame(); }
-// open a stored chest (needs a key, except wooden); `free` = bought/gifted chest opened immediately
+// v41: «ключ = сундук». Хранимый сундук (награда) открывается без ключа; ключ сам открывает сундук своего уровня
+// (железный ключ → железный сундук). `free` — купленный/подаренный сундук, открывается сразу; o.key — открыть именно ключом.
+function chestStored(tier){ return Math.max(0,S.chests[tier]|0); }
+function chestKeys(tier){ const C=CHESTS[tier]; return C&&C.key?Math.max(0,keyCount(C.key)|0):0; }
+function chestCan(tier){ return chestStored(tier)+chestKeys(tier); }
 function chestOpen(tier,o={}){
-  const C=CHESTS[tier]; if(!o.free){ if((S.chests[tier]||0)<=0) return null; if(C.key&&keyCount(C.key)<=0) return null; S.chests[tier]--; if(C.key) keyAdd(C.key,-1); }
+  const C=CHESTS[tier]; if(!C) return null; if(!o.free){ if(!o.key&&chestStored(tier)>0) S.chests[tier]--; else if(C.key&&chestKeys(tier)>0) keyAdd(C.key,-1); else return null; }
   const out=chestRoll(tier,o.L); chestGrant(out); track('chest_open',tier+(o.src?'_'+o.src:'')); return out; }
 function chestAdd(tier,n,quiet){ S.chests[tier]=(S.chests[tier]||0)+(n||1); if(!quiet) toast(`${ico('chest')} <b style="color:${CHESTS[tier].col}">${CHESTS[tier].n}</b>${n>1?' ×'+n:''} — откройте в «Лавке» → «Сундуки»`,null,tier==='leg'?4:tier==='gold'?3:1,'loot'); }
 // world chests/vaults in stages roll the same tables (as drops)
@@ -297,7 +301,7 @@ const DEAL_POOL=[
   {id:'dust15',n:'Рунная пыль ×15',cost:{ess:45},give:{dust:15},ic:'dust'},
   {id:'scroll',n:'Свиток возвращения',cost:{gold:200},give:{scroll:1},ic:'scroll'},
   {id:'shards15',n:'Осколки Бездны ×15',cost:{ess:60},give:{shards:15},ic:'shard'},
-  {id:'ikey2',n:'Железный ключ ×2',cost:{[CRYS]:40},give:{key_iron:2},ic:'key',crys:1},
+  {id:'ikey2',n:'Железный ключ ×2',cost:{[CRYS]:100},give:{key_iron:2},ic:'key',crys:1}, /* v41: ключ = железный сундук (60 💎) — было 40 */
   {id:'prot2',n:'Свиток защиты ×2',cost:{[CRYS]:45},give:{prot:2},ic:'scroll',crys:1},
   {id:'core3',n:'Ядро стихий ×3',cost:{[CRYS]:50},give:{core:3},ic:'core',crys:1},
   {id:'ichest',n:'Железный сундук (с ключом)',cost:{[CRYS]:55},give:{open_iron:1},ic:'chest',crys:1}
@@ -359,7 +363,7 @@ const _runEndV5=runEnd; runEnd=function(win,reason,keep){
   _runEndV5(win,reason,keep);
   if(!win||!I||mode!=='stage') return;
   const give=[]; if(first){ const k=Math.sqrt(F(I.lvl))*(I.s===5?3:1); const w=Math.round(30*k), o=Math.round(18*k); S.res.wood+=w; S.res.ore+=o; give.push(`${w} древесины, ${o} руды`); }
-  if(I.s===5){ if(first){ chestAdd('iron',1,true); keyAdd('iron',1); keyAdd('frag',2); give.push(`${ico('chest')} <b style="color:${CHESTS.iron.col}">Железный сундук</b> + ключ`,'2 обломка золотого ключа');
+  if(I.s===5){ if(first){ chestAdd('iron',1,true); keyAdd('frag',2); give.push(`${ico('chest')} <b style="color:${CHESTS.iron.col}">Железный сундук</b>`,'2 обломка золотого ключа');
       const bp=BLUEPRINT_BOSS[ZONES[I.z-1].boss]||(I.z===6?BLUEPRINT_BOSS.ashKing:null); if(bp&&!S.rec[bp]){ S.rec[bp]=1; const r=Object.keys(RECIPES).find(k=>RECIPES[k].need===bp); give.push(`Чертёж: <b>${RECIPES[r].n}</b>`); }
       const sch=Object.keys(SPELLS).find(k=>SPELLS[k].z===I.z+1); if(sch){ spS().tomes[sch]=(spS().tomes[sch]||0)+1; give.push(`Фолиант школы «${SPELLS[sch].sch}»`); } }
     else if(Math.random()<.5){ chestAdd('wood',1,true); give.push('Деревянный сундук'); } }

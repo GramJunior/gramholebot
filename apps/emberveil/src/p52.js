@@ -51,8 +51,8 @@ function nmRec(I){ const t=I.nm||0; const L=I.lvl; const ze=Math.min(10,Math.max
       const bonus=Math.round((r.gold||0)*NM52.gold*t); if(bonus>0){ S.res.gold+=bonus; r.gold+=bonus; } }
     const res=_re.apply(this,arguments);
     try{ if(t&&win){ const st=S.prog.stages[I.key]; if(st) st.nm=Math.max(st.nm||0,t);
-        if(first){ chestAdd(first.ch,1,true); keyAdd(first.ch,1); S.res.gold+=first.gold; S.res.ess=(S.res.ess||0)+first.ess; S.res.dust=(S.res.dust||0)+first.dust; if(first.core) S.res.core=(S.res.core||0)+first.core;
-          later(1.6,()=>toast(`${ico('skull')} <b>Кошмар ${ROMAN[t]}</b> покорён впервые: <b style="color:${CHESTS[first.ch].col}">${CHESTS[first.ch].n}</b> + ключ, ${costHtml({gold:first.gold,ess:first.ess,dust:first.dust,core:first.core}).replace(/cost no/g,'cost')}`,null,first.ch==='leg'?4:3,'quest')); }
+        if(first){ chestAdd(first.ch,1,true); /* v41: сундук открывается без ключа */ S.res.gold+=first.gold; S.res.ess=(S.res.ess||0)+first.ess; S.res.dust=(S.res.dust||0)+first.dust; if(first.core) S.res.core=(S.res.core||0)+first.core;
+          later(1.6,()=>toast(`${ico('skull')} <b>Кошмар ${ROMAN[t]}</b> покорён впервые: <b style="color:${CHESTS[first.ch].col}">${CHESTS[first.ch].n}</b>, ${costHtml({gold:first.gold,ess:first.ess,dust:first.dust,core:first.core}).replace(/cost no/g,'cost')}`,null,first.ch==='leg'?4:3,'quest')); }
         if(unlock) later(2.4,()=>{ banner('Кошмар '+ROMAN[unlock]+' открыт','Враги ×'+String(nmK(unlock)).replace('.',',')+' · уровень '+nmLvl(1,unlock)); }); track('nm_win',I.key+':'+t); saveGame(true); } }catch(e){ console.error(e); }
     NMRUN=null; return res; }; }
 { const _sr=showResults; showResults=function(o){ try{ const I=G.run&&G.run.info; if(o&&I&&I.nm&&G.mode==='result'){ o.lines=(o.lines||[]).concat([`${ico('skull')} Кошмар: <b>${ROMAN[I.nm]}</b>`]); } }catch(e){} return _sr.apply(this,arguments); }; }
