@@ -8,7 +8,8 @@
 import { fail, json, readJson, int } from '../lib/http.js';
 import { requireUser } from './auth.js';
 import { requireAdmin } from './live.js';
-import { dayKey, DAY_MS } from '../lib/time.js';
+import { dayKey, DAY_MS, offsetMs } from '../lib/time.js';
+import { activateReferral, REF_ACTIVATE_MILESTONE } from '../lib/common.js';
 
 export const EVENT_RE = /^[a-z0-9_]{1,24}(?::[a-z0-9_.-]{1,24})?$/;
 export const MAX_BATCH = 50;
@@ -23,9 +24,11 @@ export function errDetail(ev, name) {
   return { sig: name.slice(6), msg: clip(d.m, 200), stack: clip(d.s, 300), ver: clip(d.v, 24), mode: clip(d.md, 16) };
 }
 
-/** Mark a player as active today (used by auth and /events). */
-export async function markActive(env, uid, now) {
-  await env.DB.prepare('INSERT OR IGNORE INTO active_days (uid, day) VALUES (?,?)').bind(uid, dayKey(now, env)).run();
+/** Mark a player as active today (used by auth and /events). v41: also fixes the player's cohort day (users.day0) once. */
+export async function markActive(env, uid, now, user) {
+  const day = dayKey(now, env);
+  await env.DB.prepare('INSERT OR IGNORE INTO active_days (uid, day) VALUES (?,?)').bind(uid, day).run();
+  if (user && !user.day0) { await env.DB.prepare('UPDATE users SET day0=? WHERE id=? AND day0 IS NULL').bind(day, uid).run(); user.day0 = day; }
 }
 
 /** Normalise one client event into a counter name ('name' or 'name:key'), or null if invalid. */
@@ -37,37 +40,112 @@ export function eventName(ev) {
   return EVENT_RE.test(name) ? name : null;
 }
 
+// v41 protocol (old clients keep working: every new field is optional):
+//   POST /events { events: [{ e, k?, v?, t?, o?, d? }], now?, sess?, sec?, st?, na?, ver? }
+//   v   — integer 0..10^7, summed into ev_counts.v (gold earned, seconds in a stage, ms to boot…)
+//   t   — client time (ms) of the event; `now` — client clock at send time: t + (server − client) skew puts an
+//         offline event into its real game day. Allowed window: [server now − 72 h (not before the profile), now + 5 min],
+//         anything outside lands in the current day.
+//   o:1 — one-time step -> also a per-player milestone (table milestones, max 64 per player); 'ftue:*', 'ret:*',
+//         'first_*', 'pay:*', 'app_open:*' are milestones even without o (old clients send them via trackOnce too).
+//   sess / sec — sessions started and active seconds since the last batch (active_days.sess/sec, capped); st — when.
+//   na:1 — «Отправлять статистику» is off: only error reports are counted, no milestones/sessions; remembered in
+//          users.stats_off (na:0 clears it; a batch without na follows the stored flag).
+export const T_PAST_MS = 72 * 3600000;
+export const T_FUTURE_MS = 5 * 60000;
+export const V_MAX = 1e7;
+export const MS_MAX = 64;
+const SEC_BATCH_MAX = 4 * 3600;
+const SEC_DAY_MAX = 20 * 3600;
+const MS_AUTO = /^(?:ftue|ret|first_fail|first_win|pay|app_open):/;
+
+/** Server-side time of a client timestamp: skew-corrected and clamped to the allowed window (else `now`). */
+export function eventTime(t, skew, now, createdAt) {
+  const x = Number(t);
+  if (t === undefined || t === null || !Number.isFinite(x) || x <= 0) return now;
+  const ts = Math.round(x + skew);
+  const lo = Math.max(now - T_PAST_MS, Number(createdAt) || 0);
+  return ts < lo || ts > now + T_FUTURE_MS ? now : ts;
+}
+const clampInt = (v, lo, hi) => { const n = Math.trunc(Number(v)); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo; };
+const changed = (r) => (r && r.meta && r.meta.changes ? 1 : 0);
+
 export async function postEvents(c) {
   const user = await requireUser(c);
   const body = await readJson(c.req, 16 * 1024);
   const list = Array.isArray(body.events) ? body.events : [];
   if (list.length > MAX_BATCH) fail(413, 'too_many', `Не больше ${MAX_BATCH} событий за раз`);
-  const day = dayKey(c.now, c.env);
-  const counts = new Map();
-  let bad = 0;
+  const DB = c.env.DB;
+  const na = body.na === 1 || body.na === true ? 1 : body.na === 0 || body.na === false ? 0 : null;
+  const off = na === null ? !!user.stats_off : !!na;
+  if (na !== null && na !== (user.stats_off ? 1 : 0)) await DB.prepare('UPDATE users SET stats_off=? WHERE id=?').bind(na, user.id).run();
+  const cn = Number(body.now);
+  const skew = Number.isFinite(cn) && cn > 0 && Math.abs(c.now - cn) < 30 * 86400000 ? c.now - cn : 0;
+  const today = dayKey(c.now, c.env);
+  const agg = new Map(); // 'day|name' -> { day, name, n, v }
+  const perDay = new Map(); // day -> events
+  const ms = new Map(); // milestone -> ts
   const errs = new Map();
+  let bad = 0, skipped = 0;
   for (const ev of list) {
-    const n = eventName(ev); if (!n) { bad++; continue; } counts.set(n, (counts.get(n) || 0) + 1);
-    const ed = errDetail(ev, n); if (ed) { const o = errs.get(ed.sig); if (o) o.n++; else if (errs.size < ERR_PER_BATCH) errs.set(ed.sig, { ...ed, n: 1 }); }
+    const n = eventName(ev); if (!n) { bad++; continue; }
+    if (off && !n.startsWith('error:')) { skipped++; continue; }
+    const ts = eventTime(ev.t, skew, c.now, user.created_at);
+    const day = dayKey(ts, c.env);
+    const v = ev.v === undefined || ev.v === null ? 0 : clampInt(ev.v, 0, V_MAX);
+    const key = day + '|' + n;
+    const a = agg.get(key); if (a) { a.n++; a.v += v; } else agg.set(key, { day, name: n, n: 1, v });
+    perDay.set(day, (perDay.get(day) || 0) + 1);
+    if (!off && (ev.o === 1 || ev.o === true || MS_AUTO.test(n)) && !n.startsWith('error:')) { const p = ms.get(n); if (!p || ts < p) ms.set(n, ts); }
+    const ed = errDetail(ev, n); if (ed) { const o = errs.get(day + '|' + ed.sig); if (o) o.n++; else if (errs.size < ERR_PER_BATCH) errs.set(day + '|' + ed.sig, { ...ed, day, n: 1 }); }
   }
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  await c.env.DB.prepare('INSERT INTO active_days (uid, day, ev) VALUES (?,?,?) ON CONFLICT(uid, day) DO UPDATE SET ev = ev + excluded.ev').bind(user.id, day, total).run();
-  const used = await c.env.DB.prepare('SELECT ev FROM active_days WHERE uid=? AND day=?').bind(user.id, day).first();
-  if (!total || (used && used.ev > MAX_PER_DAY)) return json({ ok: true, accepted: 0, rejected: list.length });
-  const names = [...counts.keys()];
-  // first time this player sends this event today -> +1 unique user
-  const seenRes = await c.env.DB.batch(names.map((name) => c.env.DB.prepare('INSERT OR IGNORE INTO ev_seen (day, name, uid) VALUES (?,?,?)').bind(day, name, user.id)));
-  await c.env.DB.batch(names.map((name, i) => c.env.DB.prepare(
-    'INSERT INTO ev_counts (day, name, n, users) VALUES (?,?,?,?) ON CONFLICT(day, name) DO UPDATE SET n = n + excluded.n, users = users + excluded.users'
-  ).bind(day, name, counts.get(name), seenRes[i] && seenRes[i].meta && seenRes[i].meta.changes ? 1 : 0)));
-  if (errs.size) {
-    const fresh = (sig) => { const i = names.indexOf('error:' + sig); return i >= 0 && seenRes[i] && seenRes[i].meta && seenRes[i].meta.changes ? 1 : 0; };
-    await c.env.DB.batch([...errs.values()].map((x) => c.env.DB.prepare(
-      `INSERT INTO err_reports (day, sig, msg, stack, ver, mode, n, users, last) VALUES (?,?,?,?,?,?,?,?,?)
-       ON CONFLICT(day, sig) DO UPDATE SET n = n + excluded.n, users = users + excluded.users, last = excluded.last, ver = excluded.ver, mode = excluded.mode`
-    ).bind(day, x.sig, x.msg, x.stack, x.ver, x.mode, x.n, fresh(x.sig), c.now)));
+  const sess = off ? 0 : clampInt(body.sess, 0, 5);
+  const sec = off ? 0 : clampInt(body.sec, 0, SEC_BATCH_MAX);
+  const sDay = dayKey(eventTime(body.st, skew, c.now, user.created_at), c.env);
+  if (sess || sec) perDay.set(sDay, perDay.get(sDay) || 0);
+  if (!perDay.size) perDay.set(today, 0);
+  const days = [...perDay.keys()];
+  await DB.batch(days.map((d) => DB.prepare(
+    'INSERT INTO active_days (uid, day, ev, sess, sec) VALUES (?,?,?,?,?) ' +
+    'ON CONFLICT(uid, day) DO UPDATE SET ev = ev + excluded.ev, sess = sess + excluded.sess, sec = MIN(' + SEC_DAY_MAX + ', sec + excluded.sec)'
+  ).bind(user.id, d, perDay.get(d), d === sDay ? sess : 0, d === sDay ? sec : 0)));
+  if (!user.day0) { await DB.prepare('UPDATE users SET day0=? WHERE id=? AND day0 IS NULL').bind(today, user.id).run(); user.day0 = today; }
+  if (!off && !user.ver0 && typeof body.ver === 'string' && /^[A-Za-z0-9._-]{1,24}$/.test(body.ver)) await DB.prepare('UPDATE users SET ver0=? WHERE id=? AND ver0 IS NULL').bind(body.ver, user.id).run();
+  // spam guard per player and game day: extra events are dropped silently
+  const over = new Set();
+  for (const d of days) {
+    if (!perDay.get(d)) continue;
+    const used = await DB.prepare('SELECT ev FROM active_days WHERE uid=? AND day=?').bind(user.id, d).first();
+    if (used && used.ev > MAX_PER_DAY) over.add(d);
   }
-  return json({ ok: true, accepted: list.length - bad, rejected: bad });
+  const rows = [...agg.values()].filter((r) => !over.has(r.day));
+  if (rows.length) {
+    // first time this player sends this event this day -> +1 unique user
+    const seenRes = await DB.batch(rows.map((r) => DB.prepare('INSERT OR IGNORE INTO ev_seen (day, name, uid) VALUES (?,?,?)').bind(r.day, r.name, user.id)));
+    const fresh = rows.map((r, i) => changed(seenRes[i]));
+    await DB.batch(rows.map((r, i) => DB.prepare(
+      'INSERT INTO ev_counts (day, name, n, users, v) VALUES (?,?,?,?,?) ON CONFLICT(day, name) DO UPDATE SET n = n + excluded.n, users = users + excluded.users, v = v + excluded.v'
+    ).bind(r.day, r.name, r.n, fresh[i], r.v)));
+    const live = [...errs.values()].filter((x) => !over.has(x.day));
+    if (live.length) {
+      const isFresh = (x) => { const i = rows.findIndex((r) => r.day === x.day && r.name === 'error:' + x.sig); return i >= 0 ? fresh[i] : 0; };
+      await DB.batch(live.map((x) => DB.prepare(
+        `INSERT INTO err_reports (day, sig, msg, stack, ver, mode, n, users, last) VALUES (?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(day, sig) DO UPDATE SET n = n + excluded.n, users = users + excluded.users, last = excluded.last, ver = excluded.ver, mode = excluded.mode`
+      ).bind(x.day, x.sig, x.msg, x.stack, x.ver, x.mode, x.n, isFresh(x), c.now)));
+    }
+  }
+  let milestones = 0;
+  if (ms.size) {
+    const have = await DB.prepare('SELECT COUNT(*) n FROM milestones WHERE uid=?').bind(user.id).first('n');
+    const ins = [...ms.entries()].slice(0, Math.max(0, MS_MAX - (have || 0)));
+    if (ins.length) {
+      const res = await DB.batch(ins.map(([m, ts]) => DB.prepare('INSERT OR IGNORE INTO milestones (uid, m, ts) VALUES (?,?,?)').bind(user.id, m, ts)));
+      milestones = res.reduce((a, r) => a + changed(r), 0);
+    }
+    if (ms.has(REF_ACTIVATE_MILESTONE)) await activateReferral(c.env, user, c.now);
+  }
+  return json({ ok: true, accepted: list.length - bad - skipped, rejected: bad, skipped, milestones, statsOff: off });
 }
 
 /** Retention cohorts: a player's cohort is the first day they were seen in active_days. */

@@ -172,17 +172,3 @@ export async function adminAudit(c) {
   const recent = (await c.env.DB.prepare('SELECT a.kind, a.detail, a.ts, u.ref_code pid FROM audit a JOIN users u ON u.id=a.uid ORDER BY a.id DESC LIMIT ?').bind(limit).all()).results;
   return json({ ok: true, top, recent });
 }
-
-export async function adminStats(c) {
-  requireAdmin(c);
-  const q = async (sql, ...a) => (await c.env.DB.prepare(sql).bind(...a).first()).n;
-  return json({
-    ok: true,
-    users: await q('SELECT COUNT(*) n FROM users'),
-    active24h: await q('SELECT COUNT(*) n FROM users WHERE last_seen>=?', c.now - 86400000),
-    saves: await q('SELECT COUNT(*) n FROM saves'),
-    clans: await q('SELECT COUNT(*) n FROM clans'),
-    payments: await q("SELECT COUNT(*) n FROM payments WHERE status='paid'"),
-    stars: await q("SELECT COALESCE(SUM(stars),0) n FROM payments WHERE status='paid'"),
-  });
-}

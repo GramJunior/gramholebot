@@ -19,6 +19,7 @@ function meView(user, clan) {
     notify: !!user.notify,
     canPm: !!user.can_pm,
     customName: !!user.display_name,
+    statsOff: !!user.stats_off,
     createdAt: user.created_at,
     clan: clan ? { id: clan.clan_id, name: clan.name, tag: clan.tag, role: clan.role } : null,
   };
@@ -39,7 +40,7 @@ export async function authTelegram(c) {
   }, c.now);
   if (user.banned) fail(403, 'banned', 'Аккаунт заблокирован');
   const s = await issue(c.env, user, c.now, 'tg');
-  await markActive(c.env, user.id, c.now);
+  if (!user.stats_off) await markActive(c.env, user.id, c.now, user); // v41: «Отправлять статистику» выкл. — день входа не отмечаем
   return json({ ok: true, ...s, isNew, me: meView(user, await clanOf(c.env, user.id)), serverTime: c.now });
 }
 
@@ -53,7 +54,7 @@ export async function authGuest(c) {
   const { user, isNew } = await upsertUser(c.env, { uid, firstName: str(body.name, 32) || 'Гость', startParam: str(body.startParam, 64) }, c.now);
   if (user.banned) fail(403, 'banned', 'Аккаунт заблокирован');
   const s = await issue(c.env, user, c.now, 'guest');
-  await markActive(c.env, user.id, c.now);
+  if (!user.stats_off) await markActive(c.env, user.id, c.now, user); // v41: «Отправлять статистику» выкл. — день входа не отмечаем
   return json({ ok: true, ...s, isNew, me: meView(user, null), serverTime: c.now });
 }
 
@@ -80,7 +81,7 @@ export async function getMe(c) {
   return json({ ok: true, me: meView(user, await clanOf(c.env, user.id)), serverTime: c.now });
 }
 
-/** POST /me/settings { notify?: boolean, name?: string|null } — bot reminders opt-in, display name (null = back to Telegram name). */
+/** POST /me/settings { notify?: boolean, name?: string|null, stats?: boolean } — bot reminders opt-in, display name (null = back to Telegram name). */
 export async function postSettings(c) {
   const user = await requireUser(c);
   const body = await readJson(c.req, 1024);
@@ -89,12 +90,15 @@ export async function postSettings(c) {
     await c.env.DB.prepare('UPDATE users SET notify=? WHERE id=?').bind(body.notify ? 1 : 0, user.id).run();
     if (!body.notify) await c.env.DB.prepare("UPDATE notifications SET status='dropped' WHERE uid=? AND status='pending'").bind(user.id).run();
   }
+  // v41: «Отправлять статистику» (the game also sends na:1 with its event batches)
+  if (body.stats !== undefined && typeof body.stats !== 'boolean') fail(400, 'bad_stats', 'stats: true/false');
+  if (typeof body.stats === 'boolean') await c.env.DB.prepare('UPDATE users SET stats_off=? WHERE id=?').bind(body.stats ? 0 : 1, user.id).run();
   if (body.name !== undefined) {
     const name = body.name === null || body.name === '' ? null : cleanName(body.name);
     await c.env.DB.prepare('UPDATE users SET display_name=? WHERE id=?').bind(name, user.id).run();
   }
   const u = await getUser(c.env, user.id);
-  return json({ ok: true, notify: !!u.notify, canPm: !!u.can_pm, me: pub(u), customName: !!u.display_name });
+  return json({ ok: true, notify: !!u.notify, canPm: !!u.can_pm, me: pub(u), customName: !!u.display_name, statsOff: !!u.stats_off });
 }
 
 /** DELETE /me — erase all personal data (GDPR-style "forget me"). */
@@ -103,7 +107,7 @@ export async function deleteMe(c) {
   const uid = user.id;
   const clan = await clanOf(c.env, uid);
   if (clan && clan.role === 'leader') fail(409, 'leader', 'Сначала передайте лидерство или покиньте клан');
-  const tables = ['saves', 'runs', 'lb_abyss', 'villages', 'daily', 'quest_claims', 'bp_progress', 'inbox', 'notifications', 'weekly_contrib', 'audit', 'active_days', 'ev_seen'];
+  const tables = ['saves', 'runs', 'lb_abyss', 'villages', 'daily', 'quest_claims', 'bp_progress', 'inbox', 'notifications', 'weekly_contrib', 'audit', 'active_days', 'ev_seen', 'milestones'];
   const st = tables.map((t) => c.env.DB.prepare(`DELETE FROM ${t} WHERE uid=?`).bind(uid));
   st.push(c.env.DB.prepare('DELETE FROM friends WHERE uid=? OR friend_uid=?').bind(uid, uid));
   if (clan) {
@@ -111,7 +115,7 @@ export async function deleteMe(c) {
     st.push(c.env.DB.prepare('UPDATE clans SET members=members-1 WHERE id=?').bind(clan.clan_id));
   }
   // Payments/entitlements are kept for accounting, but detached from the profile name.
-  st.push(c.env.DB.prepare("UPDATE users SET first_name='', display_name=NULL, username=NULL, lang=NULL, notify=0, can_pm=0 WHERE id=?").bind(uid));
+  st.push(c.env.DB.prepare("UPDATE users SET first_name='', display_name=NULL, username=NULL, lang=NULL, notify=0, can_pm=0, src=NULL, ver0=NULL WHERE id=?").bind(uid));
   await c.env.DB.batch(st);
   return json({ ok: true });
 }

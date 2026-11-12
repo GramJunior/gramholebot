@@ -48,8 +48,23 @@ export async function userByPid(env, pid) {
 }
 
 /**
+ * Parse a Mini App / bot start parameter (Telegram allows 64 chars of A-Za-z0-9_-):
+ *   ref_<code>               — invited by a player
+ *   src_<tag>                — traffic source label (ad campaign, channel post, share card…)
+ *   ref_<code>__src_<tag>    — both
+ * Returns { ref: code|null, src: tag|null } (src lower-cased, a-z0-9_ up to 32 chars).
+ */
+export function parseStart(startParam) {
+  const s = String(startParam || '').slice(0, 64);
+  const m = /^(?:ref_([a-z0-9]{4,16}))?(?:(?:^|__)src_([A-Za-z0-9_]{1,32}))?$/.exec(s);
+  if (!m || (!m[1] && !m[2])) return { ref: null, src: null };
+  return { ref: m[1] || null, src: m[2] ? m[2].toLowerCase() : null };
+}
+
+/**
  * Create or refresh a user. Only minimal data is stored: id, first name, optional
- * username, language. For brand-new users a `ref_<code>` start param links the referrer.
+ * username, language. For brand-new users a `ref_<code>` start param links the referrer
+ * and `src_<tag>` is kept as the first-touch source (users.src, never overwritten).
  */
 export async function upsertUser(env, { uid, tgId = null, firstName = '', username = null, lang = null, canPm = null, startParam = '' }, now) {
   const cur = await getUser(env, uid);
@@ -61,11 +76,12 @@ export async function upsertUser(env, { uid, tgId = null, firstName = '', userna
       .bind(fn || cur.first_name, un, lg, canPm === null ? null : canPm ? 1 : 0, now, uid).run();
     return { user: { ...cur, first_name: fn || cur.first_name, username: un, last_seen: now }, isNew: false };
   }
+  const sp = parseStart(startParam);
   let code = newRefCode();
   for (let i = 0; i < 4; i++) {
     const r = await env.DB.prepare(
-      'INSERT INTO users (id, tg_id, first_name, username, lang, ref_code, can_pm, created_at, last_seen) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING'
-    ).bind(uid, tgId, fn, un, lg, code, canPm ? 1 : 0, now, now).run();
+      'INSERT INTO users (id, tg_id, first_name, username, lang, ref_code, can_pm, created_at, last_seen, src) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING'
+    ).bind(uid, tgId, fn, un, lg, code, canPm ? 1 : 0, now, now, sp.src).run();
     if (r.meta.changes) break;
     const again = await getUser(env, uid);
     if (again) return { user: again, isNew: false }; // concurrent insert
@@ -73,25 +89,50 @@ export async function upsertUser(env, { uid, tgId = null, firstName = '', userna
   }
   const user = await getUser(env, uid);
   if (!user) throw new Error('user_insert_failed');
-  if (startParam) await applyReferral(env, user, startParam, now);
+  if (sp.ref) await applyReferral(env, user, 'ref_' + sp.ref, now);
   return { user: await getUser(env, uid), isNew: true };
 }
 
-/** Link a new user to their referrer, make them friends and mail rewards to both. */
+// v41: the inviter's reward waits until the friend beats the chapter-1 boss (stage 1-5, milestone 'ftue:boss').
+export const REF_ACTIVATE_MILESTONE = 'ftue:boss';
+const REF_MIN_PLAY_MS = 10 * 60000; // anti-farm: the friend's profile must be at least 10 min old when the boss falls
+
+/**
+ * Link a new user to their referrer and make them friends. The friend gets their gift at once;
+ * the inviter is rewarded later by activateReferral() (anti-abuse: a twink farm no longer pays at registration).
+ */
 export async function applyReferral(env, user, startParam, now) {
   const m = /^ref_([a-z0-9]{4,16})$/.exec(String(startParam));
   if (!m || user.referred_by) return false;
   const ref = await env.DB.prepare('SELECT * FROM users WHERE ref_code=?').bind(m[1]).first();
   if (!ref || ref.id === user.id) return false;
   const cfg = await getConfigKey(env, 'referral');
-  const r = await env.DB.prepare('UPDATE users SET referred_by=? WHERE id=? AND referred_by IS NULL').bind(ref.id, user.id).run();
+  const r = await env.DB.prepare("UPDATE users SET referred_by=?, ref_state='pending', src=COALESCE(src,'ref') WHERE id=? AND referred_by IS NULL").bind(ref.id, user.id).run();
   if (!r.meta.changes) return false;
   await addFriendPair(env, user.id, ref.id, now);
+  await addInbox(env, user.id, 'referee', 'Подарок за приглашение', cfg.referee, now);
+  await env.DB.prepare('INSERT OR IGNORE INTO milestones (uid, m, ts) VALUES (?,?,?)').bind(ref.id, 'ref:joined', now).run();
+  return true;
+}
+
+/**
+ * The invited friend reached the activation milestone: reward the inviter once (cap: referral.maxRewarded letters).
+ * Safe to call repeatedly — only a 'pending' referral flips to 'done' (atomic UPDATE).
+ */
+export async function activateReferral(env, user, now) {
+  if (!user || user.ref_state !== 'pending' || !user.referred_by) return false;
+  if (now - (user.created_at || now) < REF_MIN_PLAY_MS) return false;
+  const r = await env.DB.prepare("UPDATE users SET ref_state='done' WHERE id=? AND ref_state='pending'").bind(user.id).run();
+  if (!r.meta.changes) return false;
+  user.ref_state = 'done';
+  await env.DB.prepare('INSERT OR IGNORE INTO milestones (uid, m, ts) VALUES (?,?,?)').bind(user.id, 'ref:activated', now).run();
+  const ref = await getUser(env, user.referred_by);
+  if (!ref || ref.banned) return true;
+  const cfg = await getConfigKey(env, 'referral');
   const rewarded = await env.DB.prepare("SELECT COUNT(*) n FROM inbox WHERE uid=? AND kind='referrer'").bind(ref.id).first();
   if ((rewarded?.n || 0) < (cfg.maxRewarded ?? 50)) {
-    await addInbox(env, ref.id, 'referrer', `Друг ${user.first_name || 'Искроносец'} пришёл по вашему приглашению`, cfg.referrer, now);
+    await addInbox(env, ref.id, 'referrer', `Друг ${shownName(user)} победил владыку 1-5 — награда за приглашение`, cfg.referrer, now);
   }
-  await addInbox(env, user.id, 'referee', 'Подарок за приглашение', cfg.referee, now);
   return true;
 }
 
