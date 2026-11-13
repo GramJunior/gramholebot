@@ -426,7 +426,7 @@ function wMeshFit(geo,fit){ const m=new THREE.Mesh(geo,MTW); m.scale.setScalar(f
   if(!geo.boundingBox) geo.computeBoundingBox(); g.updateMatrixWorld(true); g.userData.evBox=new THREE.Box3().setFromObject(m); g.userData.wProc=1; return g; }
 function heroProcWeapons(rig,gear){ const a=rig.actor; if(!a||S.set.models==='simple') return; const V=heroVis(gear);
   try{ const wp=V.wp==='sw0'?'sw1':V.wp, cls=V.cls, fit=WFIT[wp==='ax2'?'hammer':cls]||WFIT.sword; const geo=wpnGeo(wp,V.wp==='sw0'?0:V.wpr,V.wpe,V.wpu);
-    a.attach(cls==='bow'?'l':'r',wMeshFit(geo,fit)); if(cls==='bow') a.attach('r',null);
+    a.attach(cls==='bow'?'l':'r',wMeshFit(geo,fit),cls==='bow'?{grip:'p:'+wp}:undefined); if(cls==='bow') a.attach('r',null); // v42: лук — за центр рукояти, тетивой к лучнику (lab/assets.js GRIP_TYPES.bow, Actor.bowGrip)
     const oh=V.oh; if(oh&&cls!=='bow'){ const t=ITEM_BASES[gear.offhand.base].oh; if(t==='shield'&&cls==='sword'||t==='tome'||t==='orb') a.attach('l',wMeshFit(wpnGeo(oh,V.ohr,V.ohe),WFIT[t]),{grip:'p:'+oh}); } // v42: хват по типу (lab/assets.js gripFit)
     rig._wFx={rar:V.wpr,el:V.wpe,uq:V.wpu,cls}; }catch(e){ console.warn('procWeapons',e); } }
 const _dressHeroV13=dressHero; dressHero=function(rig,gear){ _dressHeroV13(rig,gear); if(rig.actor){ heroProcWeapons(rig,gear); asTipTo(rig); if(G.P&&rig===G.P.rig) asHeroTrailBind(); } };

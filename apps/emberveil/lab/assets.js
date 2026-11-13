@@ -710,6 +710,12 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     shield: { f: [-0.987, 0, -0.16], u: [-0.16, 0, 0.987], at: [-0.118, -0.048, 0.32], back: 0.055 },
     tome: { f: [-1, 0, 0], u: [0, 0, 1], at: [-0.01, 0.0, -0.085], back: 0, center: true },
     orb: { f: [-1, 0, 0], u: [0, 0, 1], at: [0.09, 0.04, -0.2], back: 0, center: true },
+    // v42 «Хват луков»: лук — в левой (лучной) руке за середину рукояти, плечи — вдоль оси, которую клипы UAL (Bow_Draw/Bow_Hold)
+    // ставят вертикально (−X гнезда — вверх), «спинка» лука (f) — к цели, от лучника; тетива — в −f, к локтю, к лицу и тянущей руке.
+    // До v42 лук KayKit ложился «как есть»: тетива смотрела от лучника, а в кулаке оказывался не центр рукояти, а точка за тетивой.
+    bow: { f: [0, 0, -1], u: [-1, 0, 0], at: [0, 0, 0], back: 0, center: true },
+    // то же для гнезда handslot.l рига KayKit (классические персонажи, гоблины): верх — +Z гнезда, к лучнику — +X
+    'bow:kk': { f: [-1, 0, 0], u: [0, 0, 1], at: [0, 0, 0], back: 0, center: true },
   };
   const GRIP_MODELS = {
     // KayKit (спутники, враги; меню-превью до v42): лицо +Z, верх +Y, ручка — горизонтально по X сзади
@@ -720,6 +726,10 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     // процедурные вещи героя (src/p27.js wOff): лицо/обложка +Z, верх +Y
     'p:sh1': { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.62 }, 'p:sh2': { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.68 }, 'p:sh3': { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.72 },
     'p:tm1': { t: 'tome', f: [0, 0, 1], u: [0, 1, 0], h: 0.42 }, 'p:or1': { t: 'orb', f: [0, 0, 1], u: [0, 1, 0], h: 0.44 },
+    // луки: плечи — по X модели (+X — верхнее плечо), тетива — у −Z, «спинка» — +Z; h: 0 — размер не меняется; o — центр рукояти
+    // в начале координат модели (процедурный лук героя, src/p27.js wBow + WFIT.bow), иначе — центр рамки (луки KayKit симметричны)
+    w_bow_short: { t: 'bow', f: [0, 0, 1], u: [1, 0, 0], h: 0 }, w_bow_long: { t: 'bow', f: [0, 0, 1], u: [1, 0, 0], h: 0 }, w_bow_horn: { t: 'bow', f: [0, 0, 1], u: [1, 0, 0], h: 0 },
+    'p:bw1': { t: 'bow', f: [0, 0, 1], u: [1, 0, 0], h: 0, o: 1 }, 'p:bw2': { t: 'bow', f: [0, 0, 1], u: [1, 0, 0], h: 0, o: 1 }, 'p:bw3': { t: 'bow', f: [0, 0, 1], u: [1, 0, 0], h: 0, o: 1 },
   };
   const _gv = (a) => new T.Vector3().fromArray(a).normalize();
   const _gBasis = (f, u) => { const F = _gv(f), U = _gv(u), R = new T.Vector3().crossVectors(U, F).normalize(); U.crossVectors(F, R); return new T.Matrix4().makeBasis(R, U, F); };
@@ -732,20 +742,22 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   }
   /** посадить вещь в гнездо кисти по её типу; key — id модели KayKit ('w_shield_kite'), '@orb' или 'p:<vis>' (процедурная);
    *  torso — рост торса (таз → голова) в единицах гнезда этого персонажа */
-  function gripFit(obj, key, torso) {
-    const M = GRIP_MODELS[key]; if (!M) return false; const Tt = GRIP_TYPES[M.t];
+  function gripFit(obj, key, torso, rig) {
+    const M = GRIP_MODELS[key]; if (!M) return false; const Tt = GRIP_TYPES[rig && GRIP_TYPES[M.t + ':' + rig] ? M.t + ':' + rig : M.t];
     const R = _gBasis(Tt.f, Tt.u).multiply(_gBasis(M.f, M.u).transpose()); // оси модели → оси гнезда
-    const bb = gripBox(obj), c = bb.getCenter(new T.Vector3()), sz = bb.getSize(new T.Vector3()), mf = _gv(M.f);
-    const ext = M.t === 'orb' ? Math.max(sz.x, sz.y, sz.z) : Math.abs(sz.dot(_gv(M.u))) || 1, s = M.h * (torso || 1.07) / ext;
+    const bb = gripBox(obj), c = M.o ? new T.Vector3() : bb.getCenter(new T.Vector3()), sz = bb.getSize(new T.Vector3()), mf = _gv(M.f);
+    const ext = M.t === 'orb' ? Math.max(sz.x, sz.y, sz.z) : Math.abs(sz.dot(_gv(M.u))) || 1, s = M.h ? M.h * (torso || 1.07) / ext : obj.scale.x;
     obj.quaternion.setFromRotationMatrix(R); obj.scale.setScalar(s);
     let minF = Infinity; for (const xx of [bb.min.x, bb.max.x]) for (const yy of [bb.min.y, bb.max.y]) for (const zz of [bb.min.z, bb.max.z]) minF = Math.min(minF, xx * mf.x + yy * mf.y + zz * mf.z);
     const depthBack = Tt.center ? 0 : (c.dot(mf) - minF) * s; // от центра модели до её тыла (вместе с ручкой)
     const at = new T.Vector3().fromArray(Tt.at).addScaledVector(_gv(Tt.f), Tt.back + depthBack);
     obj.position.copy(at).sub(c.clone().applyMatrix4(R).multiplyScalar(s)); // центр модели — в точку привязки
-    obj.userData.evGrip = { key, t: M.t, h: M.h }; obj.userData.evBox = bb.clone().applyMatrix4(new T.Matrix4().makeScale(s, s, s)); return true;
+    obj.userData.evGrip = { key, t: M.t, h: M.h, c: c.toArray(), u: Tt.u, f: Tt.f }; obj.userData.evBox = bb.clone().applyMatrix4(new T.Matrix4().makeScale(s, s, s)); return true;
   }
   function gripKey(what, o) { if (o && o.grip) return o.grip; if (typeof what === 'string' && GRIP_MODELS[what]) return what; return null; }
 
+  const BOW_LOCO = /^(run|runB|walk|walkB|sprint)$/;
+  const _bw = { v: [0, 1, 2, 3, 4].map(() => new T.Vector3()), q: [0, 1, 2].map(() => new T.Quaternion()), m: [0, 1].map(() => new T.Matrix4()) };
   class Actor {
     constructor(id, def, opts) {
       this.id = id; this.def = def; this.opts = opts || {};
@@ -1029,7 +1041,9 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (o.glow || (typeof what === 'string' && o.glowColor)) glowify(obj, o.glow || o.glowColor);
       obj.scale.multiplyScalar(o.s || 1);
       if (slot === 'back' && !this.ubc) { obj.position.set(0, 0.3, -0.35); obj.rotation.set(0.3, 0, 0); }
-      if (this.ubc && (slot === 'l' || slot === 'r')) { const gk = gripKey(what, o); if (gk) gripFit(obj, gk, this._gripTorso()); } // v42: хват по типу вещи
+      if (slot === 'l') { if (this._bowQ0 && this.handL) this.handL.quaternion.copy(this._bowQ0); this._bowG = null; }
+      if (slot === 'l' || slot === 'r') { const gk = gripKey(what, o), M = gk && GRIP_MODELS[gk]; // v42: хват по типу вещи (у KayKit — только луки: свои оси гнезда)
+        if (M && (this.ubc || M.t === 'bow') && gripFit(obj, gk, this._gripTorso(), this.ubc ? '' : 'kk') && M.t === 'bow' && slot === 'l') this._bowSet(obj.userData.evGrip); }
       bone.add(obj); this.slots[slot] = obj; return obj;
     }
     /** tint everything (e.g. elite / elemental): color + amount 0..1 ; null clears */
@@ -1047,6 +1061,32 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (this._flashT > 0) { this._flashT -= dt; this.setFlash(Math.max(0, this._flashT / this._flashMax) * 0.85); }
       const step = o && o.step ? o.step : o && o.far ? S.Q.animStepFar : 1;
       this._acc += dt; if (++this._t % step !== 0) return; this._charTick(this._acc); this.mixer.update(this._acc); this._acc = 0;
+      if (this._bowG) this.bowGrip();
+    }
+    // v42 «Хват луков»: лук в левой руке ставится по миру, а не «как лежит в кулаке» — плечи вертикально (вдоль корпуса; в кувырке
+    // наполовину за телом), тетива — к телу и тянущей руке (середина между тазом и правой кистью), «спинка» — наружу. В клипах
+    // натяжения это почти поза клипа; в покое и на бегу (кулак смотрит вперёд) лук иначе лежал плашмя. Поворачивается гнездо кисти
+    // вокруг центра рукояти (он в начале гнезда), кисть остаётся на рукояти; у склеенных KayKit-актёров лук привязан к кости гнезда.
+    _bowSet(g) { this._bowG = { u: new T.Vector3().fromArray(g.u).normalize(), s: new T.Vector3().fromArray(g.f).normalize().negate() }; this._bowG.x = new T.Vector3().crossVectors(this._bowG.u, this._bowG.s); }
+    bowGrip(o) {
+      const sl = this.handL, G = this._bowG; if (!sl || !G || !sl.parent) return false;
+      const q0 = this._bowQ0 || (this._bowQ0 = sl.quaternion.clone()); sl.quaternion.copy(q0);
+      const w = o && o.w !== undefined ? o.w : 1; if (w <= 0.001) { sl.updateMatrixWorld(true); return true; }
+      const V = _bw.v, B = this.bones, pel = B.pelvis || B.hips || B.Hips, top = B.spine_03 || B.chest || B.spine_02 || B.neck_01 || B.neck;
+      const P = sl.getWorldPosition(V[0]), U = V[1].set(0, 0.35, 0);
+      if (pel && top) { const a = pel.getWorldPosition(V[2]), b = top.getWorldPosition(V[3]).sub(a); if (b.lengthSq() > 1e-10) U.add(b.normalize()); else U.y = 1; } else U.y = 1;
+      if (U.lengthSq() < 1e-6) U.set(0, 1, 0); U.normalize();
+      // на бегу и шагом — по вертикали мира (без наклона корпуса), верхнее плечо чуть вперёд (~20°): кисть ходит у груди, вертикальный
+      // лук закрывал бы лицо; при натяжении (o.aim) — как стоя
+      const loco = BOW_LOCO.test(this.currentName || '') ? 1 - (o && o.aim || 0) : 0;
+      if (loco > 0) { const F = V[2].set(0, 0, 1).applyQuaternion(this.root.getWorldQuaternion(_bw.q[0])); F.y = 0; if (F.lengthSq() > 1e-6) { F.normalize(); U.lerp(V[3].set(0, 1, 0).addScaledVector(F, 0.36).normalize(), loco).normalize(); } }
+      const C = pel ? pel.getWorldPosition(V[2]) : this.root.getWorldPosition(V[2]); if (this.handR) C.add(this.handR.getWorldPosition(V[3])).multiplyScalar(0.5);
+      const S = C.sub(P); S.addScaledVector(U, -S.dot(U));
+      if (S.lengthSq() < 1e-6) { S.set(0, 0, -1).applyQuaternion(this.root.getWorldQuaternion(_bw.q[0])); S.addScaledVector(U, -S.dot(U)); }
+      S.normalize(); const X = V[4].crossVectors(U, S);
+      const M = _bw.m[0].makeBasis(U, S, X).multiply(_bw.m[1].makeBasis(G.u, G.s, G.x).transpose());
+      const q = _bw.q[1].setFromRotationMatrix(M).premultiply(sl.parent.getWorldQuaternion(_bw.q[2]).invert());
+      sl.quaternion.slerp(q, w); sl.updateMatrixWorld(true); return true;
     }
     dispose() {
       if (this._cm) { this._cm.geometry.userData.users--; this._cm = null; }
