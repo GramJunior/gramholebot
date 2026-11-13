@@ -23,7 +23,7 @@ HV.yaw=HOLD42.yaw;
 const _h42v=()=>new THREE.Vector3();
 function hold42Pose(a,clip,t){ if(!a.clipMap) return false; let c=clip; if(!a.clipMap[c]&&!(EVAssets._S.clips[a.rig]||{})[c]) return false;
   try{ a.mixer.stopAllAction(); a.current=null; a.currentName=null; a.play(c,{fade:0,once:c!=='idle',returnTo:null}); a.mixer.update(0); const ac=a.current, d=ac.getClip().duration; ac.time=Math.min(d*.999,(t||0)*d); a.mixer.update(0); }catch(e){ return false; }
-  a.root.updateMatrixWorld(true); return true; }
+  a.root.updateMatrixWorld(true); if(a.bowGrip) a.bowGrip(); a.root.updateMatrixWorld(true); return true; }
 // измерить вещь в гнезде slot актёра a: нормаль лица, верх, центр, размер, расстояния до тела/кисти/предплечья
 function hold42Measure(a,slot){ const o=a.slots[slot]; if(!o) return null; const g=o.userData.evGrip; const B=a.bones;
   const P=b=>b?b.getWorldPosition(_h42v()):null; o.updateMatrixWorld(true);
@@ -55,6 +55,23 @@ const HOLD42_RULES={
   tome:[['обложка смотрит от тела',(m,p)=>p.n==='attack'||m.out>(p.rest?.2:-.25)],['книга у кисти',(m)=>m.handDist<.25],['размер 0,3–0,5 торса',(m)=>m.hT>=.3&&m.hT<=.5]],
   orb:[['сфера у кисти',(m)=>m.handDist<.35],['размер 0,3–0,55 торса (с кольцами)',(m)=>m.hT>=.3&&m.hT<=.55]],
 };
+// ---------- луки (v42 «Хват луков»): центр рукояти в кулаке левой руки, плечи вертикально, тетива к телу и тянущей руке ----------
+function hold42Bow(a){ const o=a.slots.l, g=o&&o.userData.evGrip; if(!g||g.t!=='bow') return null; const M=EVAssets.grip.models[g.key]; const B=a.bones;
+  o.updateMatrixWorld(true); const q=o.getWorldQuaternion(new THREE.Quaternion());
+  const riser=new THREE.Vector3().fromArray(g.c).applyMatrix4(o.matrixWorld), fist=a.handL.getWorldPosition(_h42v()), wrist=a.handL.parent.getWorldPosition(_h42v());
+  const U=new THREE.Vector3().fromArray(M.u).normalize().applyQuaternion(q), Sd=new THREE.Vector3().fromArray(M.f).normalize().negate().applyQuaternion(q);
+  const pel=(B.pelvis||B.hips||B.Hips||a.root).getWorldPosition(_h42v()), hr=a.handR?a.handR.getWorldPosition(_h42v()):pel.clone();
+  const hz=v=>{ v.y=0; return v.lengthSq()>1e-8?v.normalize():v; };
+  const toBody=hz(pel.clone().lerp(hr,.5).sub(riser)), toHand=hz(hr.clone().sub(riser)), sh=hz(Sd.clone());
+  const sc=a.root.getWorldScale(_h42v()).y||1;
+  return {key:g.key,grip:+(riser.distanceTo(fist)/sc).toFixed(3),wrist:+(riser.distanceTo(wrist)/sc).toFixed(3),vert:+(Math.acos(THREE.MathUtils.clamp(U.y,-1,1))*180/Math.PI).toFixed(1),up:+U.y.toFixed(2),
+    str:+sh.dot(toBody).toFixed(2),strH:+sh.dot(toHand).toFixed(2)}; }
+const HOLD42_BOW=[['центр рукояти в кулаке (±4 см)',m=>m.grip<=.04],['кисть у рукояти',m=>m.wrist<=.17],
+  ['плечи ±30° от вертикали',(m,p)=>p.free||m.vert<=30],['верхнее плечо выше нижнего',(m,p)=>p.free||m.up>.5],
+  ['тетива к телу и тянущей руке',(m,p)=>p.free||m.str>.5&&(p.n==='idle'||p.n==='calm'||p.n==='run'||m.strH>.5)]];
+const HOLD42_BOWPOSES=[{n:'calm',clip:HOLD42.idle,t:.3},{n:'idle',clip:'idle',t:.3},{n:'aimIdle',clip:'aimIdle',t:.5},{n:'draw',clip:'aim',t:.9},{n:'release',clip:'attack',t:.65},{n:'run',clip:'run',t:.25},{n:'roll',clip:'roll',t:.35,free:1},{n:'hit',clip:'hit',t:.3}];
+function hold42BowRun(res,label,a,bad){ for(const p of HOLD42_BOWPOSES){ if(!hold42Pose(a,p.clip,p.t)) continue; const m=hold42Bow(a); if(!m){ bad('нет лука',label+' '+p.n); continue; } res.stats.cells++; res.stats.bow=(res.stats.bow||0)+1;
+    for(const [rn,fn] of HOLD42_BOW) if(!fn(m,p)) bad('лук: '+rn,label+' · '+p.n+' · '+JSON.stringify(m)); if(res._log) res.violations.push({rule:'log',msg:label+' '+p.n+' '+JSON.stringify(m)}); } }
 function hold42Check(o){ o=o||{}; const res={key:'hold42',type:'hold',n:0,by:{},violations:[],stats:{cells:0}}; const bad=(rule,msg)=>{ res.n++; res.by[rule]=(res.by[rule]||0)+1; res.violations.push({rule,msg,x:0,z:0}); };
   const mk=(b,r)=>b?Object.assign(genItem(10,{base:b,rar:r|0}),{rar:r|0}):null;
   const POSES=[{n:'calm',clip:HOLD42.idle,t:.3,calm:1,rest:1},{n:'idle',clip:'idle',t:.3,rest:1},{n:'block',clip:'block',t:.45},{n:'blocking',clip:'blocking',t:.3},{n:'attack',clip:'attack',t:.5},{n:'run',clip:'run',t:.25,rest:1}];
@@ -69,9 +86,17 @@ function hold42Check(o){ o=o||{}; const res={key:'hold42',type:'hold',n:0,by:{},
     const a=EVAssets.spawn('hero',{outline:false,merge:false}); sc.add(a.root); a.setGear(asHeroGear(heroVis(gear))); heroProcWeapons({actor:a},gear); run('меню '+c.w+'+'+c.oh+' r'+c.r,a,'l'); a.dispose(); }
   // спутники и враги с вещами KayKit в левой руке
   res.stats.skip=[]; for(const id of ['comp:knight','comp:cleric','comp:irga','frostRanker','morven']){ if(!EVAssets.has(id)||!(EVAssets.info(id)||{}).l) continue; let a=null; try{ a=EVAssets.spawn(id,{outline:false}); }catch(e){ a=null; } if(!a){ res.stats.skip.push(id); continue; } sc.add(a.root); run(id,a,'l'); a.dispose(); }
-  res.stats.viol=res.n; return res; }
+  // луки: игровой риг и живой герой меню (процедурные луки), спутницы и враги-лучники с луками KayKit
+  res._log=o.log; const sc2=new THREE.Scene();
+  for(const [w,r,set] of [['bow1',0],['bow2',2],['bow3',4,'owl']]){ const gear={weapon:mk(w,r),offhand:mk('quiver1',r),helm:null,chest:mk('chest_cloth',2),gloves:null,boots:null,amulet:null,ring1:null,ring2:null}; if(set){ gear.weapon.set=set; gear.offhand.set=set; }
+    const rig=buildHero(); if(!rig.actor) break; sc2.add(rig.root); dressHero(rig,gear); hold42BowRun(res,'игра '+w,rig.actor,bad); rig.actor.dispose();
+    const a=EVAssets.spawn('hero',{outline:false,merge:false}); sc2.add(a.root); a.setGear(asHeroGear(heroVis(gear))); heroProcWeapons({actor:a},gear); hold42BowRun(res,'меню '+w,a,bad); a.dispose(); }
+  for(const id of ['comp:ranger','comp:sabira','goblinArcher']){ if(!EVAssets.has(id)) { res.stats.skip.push(id); continue; } let a=null;
+    try{ a=EVAssets.spawn(id,{outline:false,merge:false}); }catch(e){ a=null; }
+    if(!a){ res.stats.skip.push(id); continue; } sc2.add(a.root); hold42BowRun(res,id,a,bad); a.dispose(); }
+  delete res._log; res.stats.viol=res.n; return res; }
 Object.assign(window.__game,{ hold42:{
-  check:o=>hold42Check(o), measure:(a,s)=>hold42Measure(a,s||'l'), pose:(a,c,t)=>hold42Pose(a,c,t),
+  check:o=>hold42Check(o), measure:(a,s)=>hold42Measure(a,s||'l'), bowMeasure:a=>hold42Bow(a), pose:(a,c,t)=>hold42Pose(a,c,t),
   genItem:(l,o)=>genItem(l,o), heroVis:g=>heroVis(g), asHeroGear:V=>asHeroGear(V), buildHero:()=>buildHero(), dressHero:(r,g)=>dressHero(r,g), procW:(a,g)=>heroProcWeapons({actor:a},g), calm:a=>{ if(a.clipMap&&EVAssets._S.clips[a.rig]&&EVAssets._S.clips[a.rig][HOLD42.idle]) a.clipMap.idle=HOLD42.idle; }, refresh:()=>refreshPlayer(false),
   buildCompanion:(id,g)=>buildCompanion(id,g), compGearObj:id=>compGearObj(id), PAINT_U:()=>PAINT_U, COMP_ASSET:()=>COMP_ASSET, HV:()=>({yaw:HV.yaw,clip:HV.actor&&HV.actor.currentName,idle:HV.actor&&HV.actor.clipMap&&HV.actor.clipMap.idle,l:HV.actor&&HV.actor.slots.l&&HV.actor.slots.l.userData.evGrip}), hvGear:()=>hvGear42()
 } });
