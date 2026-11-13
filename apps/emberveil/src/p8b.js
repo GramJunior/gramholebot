@@ -143,7 +143,7 @@ const MAP={W:0,H:0,zoneH:380};
 function stageUnlocked(z,s){ if(z===1&&s===1) return true; if(s===1) return stageDone((z-1)+'-5'); return stageDone(z+'-'+(s-1)); }
 function openMap(){
   if(G.dialog) return; AU.sfx('page'); show('map'); G.mapOpen=true;
-  const m=$('map'); const abyss=stageDone('1-5');
+  const m=$('map'); const abyss=evUnl('abyss');
   m.innerHTML=`<div id="mapHead"><h2>Карта Вейла</h2>${abyss?`<button class="btn leather small" ${act(()=>abyssCard())}>${ico('abyss')} Бездна</button>`:''}<button class="hbtn" id="mapClose">${ico('close')}</button></div><div id="mapScroll"><canvas id="mapCv"></canvas><div id="mapNodes"></div></div>`;
   $('mapClose').onclick=closeMap;
   drawMap(); bindPanel();

@@ -2,8 +2,15 @@
 // Всё работает офлайн: сеть только проверяет (день календаря, покупки, премиум) и получает аналитику. Без сети — локальные значения.
 RES_IC.sparks='spark'; RES_NAME.sparks='Искры'; RES_COL.sparks='#ffb347';
 const metaS=()=>S.meta;
-const dayKeyL=(t)=>{ const d=new Date(t||Date.now()); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
-function isoWeekL(t){ const d=new Date(t||Date.now()); const u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const dow=u.getUTCDay()||7; u.setUTCDate(u.getUTCDate()+4-dow); const y=u.getUTCFullYear(); const w=Math.ceil(((u-Date.UTC(y,0,1))/86400000+1)/7); return y+'-W'+String(w).padStart(2,'0'); }
+// v42: игровой день — с 05:00 МСК, как на сервере (server/src/lib/time.js: DAY_OFFSET_MIN 180 + RESET_HOUR 5; до 16.11.2026 05:00 — полночь МСК,
+// день переключения длится 29 ч — без двойных наград и потерянного дня). Старые ключи по часам телефона переводятся один раз (src/p97.js → rst42Migrate).
+const EV_RST={off:180,h:5,sw:'2026-11-16'};
+function evRstAt(){ return Date.parse(EV_RST.sw+'T00:00:00Z')-EV_RST.off*60000+EV_RST.h*3600000; }
+function evOffMs(t){ return (t<evRstAt()?EV_RST.off:EV_RST.off-EV_RST.h*60)*60000; }
+function evNextDay(t){ t=t||Date.now(); const o=evOffMs(t), T=evRstAt(); const s=Math.floor((t+o)/864e5)*864e5+864e5-o; return t<T&&s>T?s+EV_RST.h*3600000:s; }
+function evNextWeek(t){ t=t||Date.now(); const o=evOffMs(t), T=evRstAt(); const ds=Math.floor((t+o)/864e5)*864e5; const dow=new Date(ds).getUTCDay()||7; const s=ds+(8-dow)*864e5-o; return t<T&&s>T?s+EV_RST.h*3600000:s; }
+const dayKeyL=(t)=>{ t=t||Date.now(); return new Date(t+evOffMs(t)).toISOString().slice(0,10); };
+function isoWeekL(t){ t=t||Date.now(); const d=new Date(t+evOffMs(t)); const u=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())); const dow=u.getUTCDay()||7; u.setUTCDate(u.getUTCDate()+4-dow); const y=u.getUTCFullYear(); const w=Math.ceil(((u-Date.UTC(y,0,1))/86400000+1)/7); return y+'-W'+String(w).padStart(2,'0'); }
 const fmtDur=(ms)=>{ ms=Math.max(0,ms); const m=Math.floor(ms/60000), h=Math.floor(m/60), d=Math.floor(h/24); return d>0?`${d} д ${h%24} ч`:h>0?`${h} ч ${m%60} мин`:`${Math.max(1,m)} мин`; };
 
 // ---------- analytics: track(event, key) — local queue, batched to the server (POST /events) when online ----------
@@ -309,10 +316,10 @@ const WEEKLY_POOL=[
   {id:'w_stage',n:'Дорога зовёт',d:'Пройдите {v} этапов кампании',v:10},{id:'w_boss',n:'Гроза владык',d:'Победите {v} боссов',v:3},{id:'w_floor',n:'Пленник Бездны',d:'Пройдите {v} этажей Бездны',v:15},
   {id:'w_raid',n:'Щит Брода',d:'Отразите {v} набега Хмари',v:2},{id:'w_kill',n:'Буря стали',d:'Убейте {v} врагов',v:400},{id:'w_chest',n:'Кладовщик',d:'Откройте {v} сундуков',v:20},
   {id:'w_craft',n:'Звон наковальни',d:'Улучшите или выкуйте {v} предметов',v:6},{id:'w_daily',n:'Верность Броду',d:'Выполните {v} контрактов дня',v:8}];
-function wkS(){ const m=metaS(); const w=isoWeekL(); if(m.wk.week!==w){ const pool=WEEKLY_POOL.filter(x=>x.id!=='w_raid'||raidUnlocked()).filter(x=>x.id!=='w_floor'||stageDone('1-5')); const r=mulberry(hashStr(w)); const list=[]; const p=pool.slice(); while(list.length<3&&p.length){ const x=p.splice(Math.floor(r()*p.length),1)[0]; list.push({id:x.id,v:x.v,p:0,c:false}); } m.wk={week:w,list}; } return m.wk; }
+function wkS(){ const m=metaS(); const w=isoWeekL(); if(m.wk.week!==w){ const pool=WEEKLY_POOL.filter(x=>x.id!=='w_raid'||raidUnlocked()).filter(x=>x.id!=='w_floor'||evUnl('abyss')); const r=mulberry(hashStr(w)); const list=[]; const p=pool.slice(); while(list.length<3&&p.length){ const x=p.splice(Math.floor(r()*p.length),1)[0]; list.push({id:x.id,v:x.v,p:0,c:false}); } m.wk={week:w,list}; } return m.wk; }
 function wkRw(){ const L=S.hero.lvl; return {gold:Math.round(900*F(L)*.6),ess:20+L*2,shards:12,sparks:15}; }
 function wkProg(id,n){ for(const q of wkS().list){ if(q.id!==id||q.p>=q.v) continue; q.p=Math.min(q.v,q.p+(n||1)); if(q.p>=q.v){ toast(`Контракт недели выполнен: <b>${WEEKLY_POOL.find(x=>x.id===id).n}</b>`,null,null,'quest'); AU.sfx('quest'); } } }
-function wkHtml(){ const w=wkS(); const ends=(()=>{ const d=new Date(); d.setHours(0,0,0,0); const dow=d.getDay()||7; d.setDate(d.getDate()+8-dow); return d.getTime(); })();
+function wkHtml(){ const w=wkS(); const ends=evNextWeek();
   return `<div class="sect">Контракты недели <small class="muted">· обновятся через ${fmtDur(ends-Date.now())}</small></div>`+w.list.map(q=>{ const D=WEEKLY_POOL.find(x=>x.id===q.id); return `<div class="card row"><div class="grow"><h4>${D.n}</h4><div class="muted">${D.d.replace('{v}',q.v)} — ${q.p}/${q.v}</div><div>${costHtml(wkRw()).replace(/cost no/g,'cost')} <span class="muted">+${PASS_XP.weekly} оп. пути</span></div></div>${q.c?'<span class="pill">Получено</span>':q.p>=q.v?`<button class="btn leather small" ${act(()=>{ if(q.c) return; q.c=true; giveReward(wkRw(),'Контракт недели'); passXp(150,'weekly'); track('weekly_done',q.id); AU.sfx('quest'); saveGame(); rerender(); })}>Забрать</button>`:''}</div>`; }).join(''); }
 
 // ---------- game event hook (called from ev() in p5) ----------

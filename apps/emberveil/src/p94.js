@@ -104,7 +104,7 @@ setTimeout(()=>{ try{ if(window.EVNet&&EVNet.referrals&&EVNet.referrals.share&&!
 
 // ---------- открытия функций (unlock:<id>, разовые вехи) ----------
 function anUnlocks(){ const L=[]; const add=(id,f)=>{ try{ if(f()) L.push(id); }catch(e){} };
-  add('raid',()=>raidUnlocked()); add('abyss',()=>stageDone('1-5'));
+  add('raid',()=>raidUnlocked()); add('abyss',()=>evUnl('abyss'));
   for(let z=2;z<=7;z++) add('zone'+z,()=>stageUnlocked(z,1));
   if(typeof COMPANIONS==='object') for(const id in COMPANIONS) add('comp_'+id,()=>compUnlocked(id));
   if(typeof UNLOCKS==='object'&&UNLOCKS) for(const id in UNLOCKS){ const u=UNLOCKS[id]; add(id,()=>typeof u==='function'?u():u&&typeof u.test==='function'?u.test():false); }

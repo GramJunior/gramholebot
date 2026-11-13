@@ -400,9 +400,9 @@ function tutSetHtml(){ const m=tutMode(); const b=(v,l)=>`<button class="${m===v
 
 // ---------- «Знания → Обучение»: повтор туров и боевые подсказки ----------
 function tutAvail(d){ if(d.cond&&d.id!=='forks'&&d.id!=='nightmare'&&d.id!=='hearthNew'&&!d.cond()) return false;
-  if(d.id==='forks') return S.hero.lvl>=5; if(d.id==='nightmare') return typeof nmOpen==='function'&&nmOpen(); if(d.id==='abyss') return stageDone('1-5'); if(d.id==='mast') return true; if(d.on==='village') return G.mode==='village';
+  if(d.id==='forks') return S.hero.lvl>=5; if(d.id==='nightmare') return typeof nmOpen==='function'&&nmOpen(); if(d.id==='abyss') return evUnl('abyss'); if(d.id==='mast') return true; if(d.on==='village') return G.mode==='village';
   if(/^(map|stage|stars|abyss)$/.test(d.id)) return G.mode==='village'; return true; }
-function tutWhy(d){ const m=/^bld:(\w+)/.exec(d.on); if(m&&!(S.bld[m[1]]>0)) return 'построй: '+(BUILDINGS[m[1]]||{n:m[1]}).n; if(d.id==='forks') return 'с 5 уровня'; if(d.id==='nightmare') return 'после финала Главы I'; if(d.id==='abyss') return 'после 1-5'; return 'в деревне'; }
+function tutWhy(d){ const m=/^bld:(\w+)/.exec(d.on); if(m&&!(S.bld[m[1]]>0)) return 'построй: '+(BUILDINGS[m[1]]||{n:m[1]}).n; if(d.id==='forks') return 'с 5 уровня'; if(d.id==='nightmare') return 'после финала Главы I'; if(d.id==='abyss') return 'после 2-5'; return 'в деревне'; }
 function tutKnowHtml(){ const T=tutS(); const groups={}; for(const d of TOURS){ if(d.id==='hearthNew'||d.id==='stars') continue; (groups[d.g]=groups[d.g]||[]).push(d); }
   let h=`<div class="tut59k"><div class="sect">${ico('help')} Обучение <small class="muted">— повтори любой тур</small></div><div class="tkg">`;
   for(const g in groups){ h+=`<div class="tkgr"><b class="tkgn">${g}</b>${groups[g].map(d=>{ const ok=tutAvail(d); return `<button class="tkb ${T.seen[d.id]?'seen':''}" ${ok?`data-tut-replay="${d.id}"`:'disabled'} title="${ok?'':tutWhy(d)}">${T.seen[d.id]?ico('check'):ico('play')}<span>${d.n}${ok?'':`<small>${tutWhy(d)}</small>`}</span></button>`; }).join('')}</div>`; }

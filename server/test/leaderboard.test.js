@@ -14,7 +14,7 @@ test('ISO week edge cases', () => {
   assert.equal(w('2021-01-04T00:00:00Z'), '2021-W01');
   assert.equal(w('2026-12-31T12:00:00Z'), '2026-W53'); // 2026 has 53 ISO weeks
   assert.equal(w('2027-01-01T12:00:00Z'), '2026-W53');
-  assert.equal(w('2027-01-04T00:00:00Z'), '2027-W01');
+  assert.equal(w('2027-01-04T06:00:00Z'), '2027-W01'); // v42: after the switch the week starts at 05:00
   assert.equal(w('2024-12-30T00:00:00Z'), '2025-W01'); // Monday belongs to next ISO year
   // Offset: Sunday 22:00 UTC is already Monday 01:00 in Moscow.
   assert.equal(w('2026-11-08T22:00:00Z', UTC), '2026-W45');

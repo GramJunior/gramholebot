@@ -469,7 +469,7 @@ function atOverlay(){ const box=$('mapNodes'); if(!box) return; const C=AT_CH[MA
       const stars=ns?`<span class="st">${[1,2,3].map(i=>sv&&sv.stars>=i?'★':'<i>★</i>').join('')}</span>`:'';
       const nmb=nm&&sv&&sv.nm?`<i class="nm52m">К·${ROMAN[sv.nm]}</i>`:'';
       h+=`<button class="mnode at ${['locked','avail','done'][ns]} ${boss?'boss':''} ${ns?'':'lock'} ${isCur?'cur':''}" data-z="${z}" data-s="${s}" data-wx="${x}" data-wy="${y}" data-k="n"${isCur?' data-tut="map-cur"':''} ${ns?act(()=>{ atFocus(x,y); stageCard(z,s); }):''} aria-label="${esc(STAGE_NAMES[z-1]&&STAGE_NAMES[z-1][s-1]||k)}"><span class="sl">${boss?ico('skull'):s}</span>${stars}${nmb}${isCur?'<i class="atFlag"></i>':''}</button>`; } }
-  if(MAP.ch===1&&stageDone('1-5')) h+=`<button class="atA atAby" data-wx="455" data-wy="1405" data-k="pl" ${act(()=>abyssCard())}><span class="atAbyP">${ico('abyss')}</span><b>Бездна</b></button>`;
+  if(MAP.ch===1&&evUnl('abyss')) h+=`<button class="atA atAby" data-wx="455" data-wy="1405" data-k="pl" ${act(()=>abyssCard())}><span class="atAbyP">${ico('abyss')}</span><b>Бездна</b></button>`;
   box.innerHTML=h; AT.el=[...box.querySelectorAll('[data-wx]')].map(e=>({e,x:+e.dataset.wx,y:+e.dataset.wy,k:e.dataset.k,h:0})); bindPanel(); AT.dirty=1; }
 function atLayout(){ const sc=$('mapScroll'), cv=$('mapCv'), hd=$('mapHead'); if(!sc||!cv) return; AT.vw=sc.clientWidth||innerWidth; AT.vh=sc.clientHeight||innerHeight; AT.pt=hd?Math.max(0,hd.offsetHeight-14):0; AT.dpr=Math.min(2,window.devicePixelRatio||1);
   { const ct=$('atCtl'); if(ct){ const a=sc.getBoundingClientRect(), r=ct.getBoundingClientRect(); AT.ctl=[r.left-a.left-6,r.top-a.top-6,r.right-a.left+6,r.bottom-a.top+6]; AT.ins={l:Math.round(r.right-a.left+8)}; } } sc.style.setProperty('--atPt',(AT.pt+6)+'px');
@@ -477,7 +477,7 @@ function atLayout(){ const sc=$('mapScroll'), cv=$('mapCv'), hd=$('mapHead'); if
 
 // ---------- открытие/переключение ----------
 openMap=function(){ if(G.dialog) return; const t0=performance.now(); AU.sfx('page'); show('map'); G.mapOpen=true; AT.t0=t0; AT.stat.sharp=0;
-  const m=$('map'); m.classList.add('atlas'); const abyss=stageDone('1-5'), a2=atA2();
+  const m=$('map'); m.classList.add('atlas'); const abyss=evUnl('abyss'), a2=atA2();
   if(a2&&MAP._chAuto!==1){ MAP._chAuto=1; const c=findCurrentStage(); if(c&&c[0]>=7) MAP.ch=2; }
   m.innerHTML=`<div id="mapScroll"><canvas id="mapCv"></canvas><div id="mapNodes"></div><div id="atCtl"><button data-zc="in" aria-label="Приблизить">+</button><button data-zc="out" aria-label="Отдалить">−</button><button data-zc="go" aria-label="К текущей цели">${ico('target')}</button></div>${(S.seen.at29|0)<2?'<div class="atHint">Тяните карту · щипок или колесо — масштаб</div>':''}</div>`+
     `<div id="mapHead"><h2>Карта Вейла</h2><div class="chtabs" data-tut="map-chapters"><button class="btn small ${MAP.ch===1?'leather':'woodb'}" data-ch="1">Глава I</button><button class="btn small ${MAP.ch===2?'leather':'woodb'} ch2" data-ch="2">Глава II${a2?'':' '+ico('lock')}</button>${abyss?`<button class="btn small leather atAbB" data-tut="map-abyss" ${act(()=>abyssCard())}>${ico('abyss')} Бездна</button>`:''}</div><button class="hbtn" id="mapClose">${ico('close')}</button></div>`;

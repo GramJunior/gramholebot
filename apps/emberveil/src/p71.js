@@ -463,7 +463,7 @@ WEEKLY_POOL.push({id:'w_login',n:'Верный очагу',d:'Заберите �
 const WK_N=6, WK_SEALS=5;
 const WK_SH={w_stage:'Пройти {v} этапов',w_boss:'Сразить {v} владык',w_floor:'{v} этажей Бездны',w_raid:'Отбить {v} набега',w_kill:'Убить {v} врагов',w_chest:'Открыть {v} сундуков',w_craft:'Выковать {v} вещей',w_daily:'{v} контрактов дня',w_login:'Дар очага {v} раза',w_spin:'Колесо {v} раз',w_build:'Стройка {v} раза'};
 const WK_IC={w_stage:'map',w_boss:'skull',w_floor:'abyss',w_raid:'tower',w_kill:'swords',w_chest:'chest',w_craft:'anvil',w_daily:'quest',w_login:'flame',w_spin:'wheel',w_build:'hammer'};
-wkS=function(){ const m=metaS(); const w=isoWeekL(); const pool=WEEKLY_POOL.filter(x=>x.id!=='w_raid'||raidUnlocked()).filter(x=>x.id!=='w_floor'||stageDone('1-5')).filter(x=>x.id!=='w_daily'||S.bld.tavern>0);
+wkS=function(){ const m=metaS(); const w=isoWeekL(); const pool=WEEKLY_POOL.filter(x=>x.id!=='w_raid'||raidUnlocked()).filter(x=>x.id!=='w_floor'||evUnl('abyss')).filter(x=>x.id!=='w_daily'||S.bld.tavern>0);
   if(m.wk.week!==w){ const r=mulberry(hashStr(w)); const list=[]; const p=pool.slice(); while(list.length<WK_N&&p.length){ const x=p.splice(Math.floor(r()*p.length),1)[0]; list.push({id:x.id,v:x.v,p:0,c:false}); } m.wk={week:w,list,seal:0,gch:false}; }
   else if(m.wk.list.length<WK_N){ const r=mulberry(hashStr(w+'b')); const p=pool.filter(x=>!m.wk.list.some(q=>q.id===x.id)); while(m.wk.list.length<WK_N&&p.length){ const x=p.splice(Math.floor(r()*p.length),1)[0]; m.wk.list.push({id:x.id,v:x.v,p:0,c:false}); } }
   if(m.wk.seal===undefined) m.wk.seal=m.wk.list.filter(q=>q.c).length; if(m.wk.gch===undefined) m.wk.gch=false; return m.wk; };
@@ -471,7 +471,7 @@ function wkRwHalf(){ const r=wkRw(); const o={}; for(const k in r) o[k]=Math.max
 function wkClaim(q){ if(q.c||q.p<q.v) return; const w=wkS(); q.c=true; w.seal=(w.seal|0)+1; giveReward(wkRwHalf(),'Контракт недели · +1 печать'); passXp(PASS_XP.weekly,'weekly'); track('weekly_done',q.id); AU.sfx('quest'); vib('success'); saveGame(true); hudPassDot(); rerender(); }
 function wkChestClaim(){ const w=wkS(); if(w.gch||(w.seal|0)<WK_SEALS) return; w.gch=true; track('week_chest','gold'); const o=chestOpen('gold',{free:1,src:'week'}); saveGame(true); setTimeout(()=>chestShow([o]),200); hudPassDot(); rerender(); }
 function wkPending(){ const w=wkS(); return w.list.filter(q=>!q.c&&q.p>=q.v).length+((w.seal|0)>=WK_SEALS&&!w.gch?1:0); }
-function wkEnds(){ const d=new Date(); d.setHours(0,0,0,0); const dow=d.getDay()||7; d.setDate(d.getDate()+8-dow); return d.getTime(); }
+function wkEnds(){ return evNextWeek(); }
 { const _me=metaEv; metaEv=function(type,d){ _me.apply(this,arguments); try{ if(type==='build') wkProg('w_build'); }catch(e){} }; }
 
 // ---------- Колесо судьбы ----------
@@ -526,7 +526,7 @@ wheelSpin=function(extra){ return extra?whAd():whSpin('free',1); };
 spinDo=function(extra){ return wheelSpin(extra); };
 function whPending(){ return (whFree()?1:0); }
 function whBtns(big){ const r=rwS(); const free=whFree(); const adN=ADS.ready()?ADS.left('spin'):0; if(adN) ADS.offer('spin'); const paid=r.wh.paid|0; const p1=(starProducts().find(x=>x.id==='spin_1')||{stars:25}).stars, p10=(starProducts().find(x=>x.id==='spin_10')||{stars:200}).stars;
-  return `${free?`<button class="wb-btn em" ${act(()=>whSpin('free',1))}>${ico('wheel')} Бесплатно<span class="wb-badge">1</span></button>`:`<button class="wb-btn em off" disabled>${ico('clock')} <small>Бесплатно через</small> <b data-end="${new Date(new Date().setHours(24,0,0,0)).getTime()}">${fmtTimer(new Date(new Date().setHours(24,0,0,0))-Date.now())}</b></button>`}
+  return `${free?`<button class="wb-btn em" ${act(()=>whSpin('free',1))}>${ico('wheel')} Бесплатно<span class="wb-badge">1</span></button>`:`<button class="wb-btn em off" disabled>${ico('clock')} <small>Бесплатно через</small> <b data-end="${new Date(evNextDay()).getTime()}">${fmtTimer(new Date(evNextDay())-Date.now())}</b></button>`}
     <button class="wb-btn gr ${adN?'':'off'}" ${adN?act(()=>whAd()):'disabled'}>${ico('ad')} Реклама <small>${adN}/${ADS.lim.spin}</small></button>
     <div class="row"><button class="wb-btn br" ${act(()=>whBuy(1))}>×1 <small>${paid>=1?'есть '+paid:'⭐'+p1}</small></button><button class="wb-btn br" ${act(()=>whBuy(10))}>×10 <small>${paid>=10?'крутить':'⭐'+p10}</small></button></div>`; }
 
@@ -674,12 +674,12 @@ function wbMapDeco(){ const m=$('map'); if(!m||!m.classList.contains('atlas')) r
   const z=wbMapZone(); const Z=atZoneN(z); const h2=hd.querySelector('h2'); if(h2) h2.textContent=`Глава ${MAP.ch===2?'II':'I'} · ${Z.n||''}`;
   let sk=hd.querySelector('.wbmSocks'); if(!sk){ sk=document.createElement('div'); sk.className='wbmSocks'; hd.appendChild(sk); } sk.innerHTML=['gold',CRYS].map(k=>`<div class="wb-sock" data-k="${k}">${wbRes(k)}<span>${wbNum(S.res[k]||0)}</span></div>`).join('');
   const sc=$('mapScroll'); if(!sc) return;
-  if(!$('wbRail')){ const ab=stageDone('1-5'); const hu=S.bld.tavern>0&&typeof huBoard==='function'; const chN=typeof CH33!=='undefined'?CH33.filter(chOpen).length:0;
+  if(!$('wbRail')){ const ab=evUnl('abyss'); const hu=S.bld.tavern>0&&typeof huBoard==='function'; const chN=typeof CH33!=='undefined'?CH33.filter(chOpen).length:0;
     m.insertAdjacentHTML('beforeend',`<div id="wbRail"><button data-r="zones">${ico('map')}Зоны</button><button data-r="abyss" data-tut="map-abyss" class="${ab?'':'lock'}">${ico('abyss')}Бездна</button><button data-r="hunts" class="${hu?'':'lock'}">${ico('target')}Охоты</button><button data-r="chal" class="${chN?'':'lock'}">${ico('crown')}Испыт.</button></div>`);
     const ab0=hd.querySelector('.atAbB'); if(ab0) ab0.removeAttribute('data-tut');
     for(const b of $('wbRail').querySelectorAll('button')) b.addEventListener('click',ev=>{ ev.stopPropagation(); AU.init(); AU.sfx('ui'); const r=b.dataset.r;
       if(r==='zones'){ const [a]=atZL(); atAnimTo({x:AT.W/2,y:AT.H/2,z:a},450); }
-      else if(r==='abyss'){ if(!stageDone('1-5')) return toast(`${ico('lock')} Бездна откроется после победы над Брюханом (1-5)`); abyssCard(); }
+      else if(r==='abyss'){ if(!evUnl('abyss')) return toast(`${ico('lock')} ${evUnlWhy('abyss')}`); abyssCard(); }
       else if(r==='hunts'){ if(!(S.bld.tavern>0)) return toast(`${ico('lock')} Охоты — на доске в таверне (Ратуша 2 ур.)`); closeMap(); openPanel('bld',{id:'tavern',tab:'hunts'}); }
       else if(r==='chal'){ const el=[...document.querySelectorAll('#mapNodes .c33seal.avail'),...document.querySelectorAll('#mapNodes .c33seal.done')][0]; if(!el) return toast(`${ico('lock')} Печати испытаний появятся у дороги после боссов зон`); el.click(); } }); }
   // плашка сундука зоны

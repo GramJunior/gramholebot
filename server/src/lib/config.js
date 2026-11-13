@@ -96,7 +96,7 @@ export const DEFAULTS = {
       { shards: 8 }, { gold: 400, ess: 20 }, { shards: 20, gold: 500 },
     ],
     quests: ['d_kill', 'd_chest', 'd_stage', 'd_elite', 'd_abyss', 'd_salv', 'd_boss', 'd_nopot'],
-    maxQuestsPerDay: 5,
+    maxQuestsPerDay: 3, // v42: 3 contracts a day (liveops §3)
   },
 
   referral: {

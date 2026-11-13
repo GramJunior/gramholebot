@@ -485,12 +485,13 @@
       /** Opt in/out of bot reminders. Telegram may ask the user to allow messages first. */
       setEnabled: function (on) {
         var w = tg();
+        // v42: the callback says whether the player allowed messages — the server then marks the bot as able to write
         var ask = on && w && typeof w.requestWriteAccess === 'function'
-          ? new Promise(function (res) { try { w.requestWriteAccess(function () { res(); }); } catch (e) { res(); } })
-          : Promise.resolve();
-        return ask.then(function () { return call('POST', '/me/settings', { notify: !!on }); });
+          ? new Promise(function (res) { try { w.requestWriteAccess(function (ok) { res(ok === true); }); } catch (e) { res(false); } })
+          : Promise.resolve(false);
+        return ask.then(function (ok) { return call('POST', '/me/settings', ok ? { notify: !!on, writeAccess: true } : { notify: !!on }); });
       },
-      /** kind: 'forge'|'hatch'|'income'|'daily'; inSec: seconds from now (60..604800). */
+      /** kind: 'forge'|'hatch'|'income'|'daily'|'build_done'|'expedition_done'|'streak'|'comeback'; inSec: seconds from now (60..604800). */
       schedule: function (kind, inSec) { return call('POST', '/notify/schedule', { kind: kind, inSec: Math.round(inSec) }); },
       cancel: function (kind) { return call('POST', '/notify/schedule', { kind: kind, cancel: true }); },
     },

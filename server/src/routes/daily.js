@@ -13,7 +13,8 @@ import { addBpXp, addContrib } from '../lib/common.js';
 /** Pure streak logic. */
 export function nextStreak(row, today) {
   if (!row) return { claimable: true, streak: 1 };
-  if (row.last_day === today) return { claimable: false, streak: row.streak };
+  // v42: a stored day after `today` (the day key moved back when the reset hour changed) counts as claimed today
+  if (row.last_day === today || row.last_day > today) return { claimable: false, streak: row.streak };
   return { claimable: true, streak: row.last_day === prevDayKey(today) ? row.streak + 1 : 1 };
 }
 
@@ -66,7 +67,7 @@ export async function claimQuest(c) {
   if (!(d.quests || []).includes(qid)) fail(400, 'bad_quest', 'Неизвестный контракт');
   if (body.day && body.day !== today) fail(409, 'day_over', 'Этот день уже закончился', { day: today });
   const n = await c.env.DB.prepare('SELECT COUNT(*) n FROM quest_claims WHERE uid=? AND day=?').bind(user.id, today).first();
-  if ((n ? n.n : 0) >= (d.maxQuestsPerDay || 5)) fail(429, 'quest_limit', 'Контракты на сегодня закончились');
+  if ((n ? n.n : 0) >= (d.maxQuestsPerDay || 3)) fail(429, 'quest_limit', 'Контракты на сегодня закончились');
   const r = await c.env.DB.prepare('INSERT INTO quest_claims (uid, day, quest_id, ts) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(user.id, today, qid, c.now).run();
   if (!r.meta.changes) fail(409, 'claimed', 'Контракт уже сдан');
   await addBpXp(c.env, user.id, (cfg.battlepass.xp && cfg.battlepass.xp.quest) || 0, c.now, cfg);

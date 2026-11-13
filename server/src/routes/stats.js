@@ -30,7 +30,7 @@ export async function adminStats(c) {
   const env = c.env, DB = env.DB, now = c.now;
   const days = Math.max(1, Math.min(120, int(c.url.searchParams.get('days'), 30)));
   const to = dayKey(now, env), from = dayKey(now - (days - 1) * DAY_MS, env);
-  const off = offsetMs(env);
+  const off = offsetMs(env, now);
   const fromMs = Date.parse(from + 'T00:00:00Z') - off, toMs = Date.parse(to + 'T00:00:00Z') + DAY_MS - off;
   const all = async (sql, ...a) => (await DB.prepare(sql).bind(...a).all()).results;
   const one = async (sql, ...a) => (await DB.prepare(sql).bind(...a).first()) || {};

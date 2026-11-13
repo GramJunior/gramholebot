@@ -4,7 +4,8 @@
 import { fail, json } from '../lib/http.js';
 import { safeEqual } from '../lib/crypto.js';
 import { tgCall, webAppButton } from '../lib/telegram.js';
-import { upsertUser, getUser, envInt } from '../lib/common.js';
+import { upsertUser, getUser, envInt, queueNotification } from '../lib/common.js';
+import { dayKey, localHour } from '../lib/time.js';
 import { checkPreCheckout, grantPayment, revokePayment } from './payments.js';
 import { NOTIFY_TEXT, refLink } from './social.js';
 
@@ -103,26 +104,66 @@ async function safeSend(env, chatId, text, button = false) {
   }
 }
 
+/** v42 (liveops §6.1): priority (lower = more valuable) — on a conflict the more valuable one is sent, the rest dropped. */
+export const NOTIFY_PRIO = { raid: 1, forge: 2, hatch: 2, build_done: 2, expedition_done: 2, streak: 3, clan_goal: 4, boss_week: 5, event: 6, comeback: 7, income: 8, chest_free: 8, daily: 8 };
+/** «Marketing» reminders — at most one a day; the rest are the player's own timers. */
+export const NOTIFY_MARKETING = ['event', 'comeback', 'boss_week'];
+/** Low-value reminders — only if nothing else was sent in the last 24 h. */
+const NOTIFY_FILLER = ['income', 'chest_free', 'daily'];
+/** Quiet hours in the DAY_OFFSET_MIN zone (Moscow): 23:00–09:00 — reminders wait until 09:00. */
+export const QUIET_FROM = 23, QUIET_TO = 9;
+/** 0 outside quiet hours, else UTC ms of the next 09:00 (zone time). */
+export function quietUntil(now, env) {
+  const h = localHour(now, env);
+  if (h < QUIET_FROM && h >= QUIET_TO) return 0;
+  const off = (Number.isFinite(Number(env && env.DAY_OFFSET_MIN)) ? Number(env.DAY_OFFSET_MIN) : 180) * 60000;
+  const day0 = Math.floor((now + off) / 86400000) * 86400000;
+  return day0 + (h >= QUIET_FROM ? 86400000 : 0) + QUIET_TO * 3600000 - off;
+}
+
 /**
  * Cron: deliver due reminders. Rate limits: NOTIFY_MAX_PER_DAY per user (default 3),
  * at least NOTIFY_MIN_GAP_MIN minutes between messages (default 60). Late or
  * over-limit reminders are dropped (never queued forever). Also cleans up old rows.
+ * v42: quiet hours 23:00–09:00 МСК (postponed to 09:00), priorities, ≤1 marketing a day,
+ * income only on an otherwise silent day, streak only if today's gift is not taken,
+ * comeback only while the player is still away (chain: day 2 → 5 → 14, then stop).
  */
 export async function runCron(env, now) {
   const maxDay = envInt(env, 'NOTIFY_MAX_PER_DAY', 3);
   const gap = envInt(env, 'NOTIFY_MIN_GAP_MIN', 60) * 60000;
   const due = (await env.DB.prepare(
-    `SELECT n.id, n.uid, n.kind, n.due_at, u.tg_id, u.notify, u.can_pm FROM notifications n JOIN users u ON u.id=n.uid
+    `SELECT n.id, n.uid, n.kind, n.due_at, u.tg_id, u.notify, u.can_pm, u.last_seen FROM notifications n JOIN users u ON u.id=n.uid
      WHERE n.status='pending' AND n.due_at<=? ORDER BY n.due_at LIMIT 100`
   ).bind(now).all()).results;
+  const prio = (k) => NOTIFY_PRIO[k] || 9;
+  due.sort((a, b) => (a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0) || prio(a.kind) - prio(b.kind) || a.due_at - b.due_at || a.id - b.id);
   const stats = { sent: 0, dropped: 0 };
   const sentNow = new Set();
+  const quiet = quietUntil(now, env);
   for (const n of due) {
     let drop = !n.notify || !n.can_pm || !n.tg_id || now - n.due_at > 12 * 3600000 || sentNow.has(n.uid);
+    if (!drop && quiet) {
+      // quiet hours: wait until 09:00 (counted neither as sent nor as dropped)
+      await env.DB.prepare('UPDATE notifications SET due_at=? WHERE id=?').bind(quiet, n.id).run();
+      stats.postponed = (stats.postponed || 0) + 1;
+      continue;
+    }
     if (!drop) {
       const r = await env.DB.prepare("SELECT COUNT(*) cnt, MAX(sent_at) last FROM notifications WHERE uid=? AND status='sent' AND sent_at>=?").bind(n.uid, now - 86400000).first();
       if ((r.cnt || 0) >= maxDay || (r.last && now - r.last < gap)) drop = true;
+      else if (NOTIFY_FILLER.includes(n.kind) && (r.cnt || 0) > 0) drop = true;
     }
+    if (!drop && NOTIFY_MARKETING.includes(n.kind)) {
+      const m = await env.DB.prepare(`SELECT COUNT(*) cnt FROM notifications WHERE uid=? AND status='sent' AND sent_at>=? AND kind IN (${NOTIFY_MARKETING.map(() => '?').join(',')})`)
+        .bind(n.uid, now - 86400000, ...NOTIFY_MARKETING).first();
+      if ((m.cnt || 0) >= 1) drop = true;
+    }
+    if (!drop && n.kind === 'streak') {
+      const d = await env.DB.prepare('SELECT last_day FROM daily WHERE uid=?').bind(n.uid).first();
+      if (d && d.last_day >= dayKey(now, env)) drop = true; // today's gift is already taken
+    }
+    if (!drop && n.kind === 'comeback' && now - (n.last_seen || 0) < 36 * 3600000) drop = true; // the player is back
     if (drop) {
       await env.DB.prepare("UPDATE notifications SET status='dropped' WHERE id=?").bind(n.id).run();
       stats.dropped++;
@@ -133,6 +174,11 @@ export async function runCron(env, now) {
       await env.DB.prepare("UPDATE notifications SET status='sent', sent_at=? WHERE id=?").bind(now, n.id).run();
       sentNow.add(n.uid);
       stats.sent++;
+      if (n.kind === 'comeback') {
+        const away = (now - (n.last_seen || now)) / 86400000;
+        const next = away < 4.5 ? 5 : away < 13.5 ? 14 : 0;
+        if (next) await queueNotification(env, n.uid, 'comeback', (n.last_seen || now) + next * 86400000);
+      }
     } catch (e) {
       // 403 = user blocked the bot: stop messaging them.
       if (/403|blocked|deactivated/i.test(e.message)) await env.DB.prepare('UPDATE users SET can_pm=0 WHERE id=?').bind(n.uid).run();
