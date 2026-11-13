@@ -18,6 +18,14 @@
 /emberveil/assets/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
 
+# v42: звуки — игра запрашивает sfx/*.ogg|m4a с ?v=<хэш> (sfx/sfx.json), манифест и страница прослушивания — всегда свежие
+/emberveil/sfx/*.ogg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+  Content-Type: audio/ogg
+/emberveil/sfx/*.m4a
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+  Content-Type: audio/mp4
+
 /*.glb
   Content-Type: model/gltf-binary
   X-Content-Type-Options: nosniff
