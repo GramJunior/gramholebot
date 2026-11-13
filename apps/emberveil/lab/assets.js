@@ -696,6 +696,56 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
 
   // ------------------------------------------------------------------ Actor (skinned characters)
   const _tmpEuler = new T.Euler();
+  // ------------------------------------------------------------------ v42 «Хват предметов»: посадка вещи в гнездо кисти UBC по типу
+  // Гнездо кисти (manifest.ubc.slots.l|r, единицы гнезда): +Y — ось рукояти сквозь кулак, +Z — к локтю, −X — тыльная сторона кисти
+  // (наружу от тела, когда рука опущена). Запястье в гнезде ≈ (−0,09; −0,04; 0,155), локоть ≈ (−0,155; −0,06; 0,55) — во всех клипах UAL.
+  // Оружие ложится как есть (клинок по +Y). До v42 щиты/книги/сферы тоже ложились «как есть»: лицо щита (+Z модели) смотрело вдоль
+  // предплечья к телу и назад, ручка — наружу, к зрителю; щит был ~0,9 м (больше торса) и висел на кулаке перед грудью.
+  // Теперь по типу (GRIP_TYPES): f — куда смотрит лицо/обложка, u — куда верх, at — точка привязки, back — зазор от точки до тыла
+  // модели вдоль f (center: до центра). Щит: плоскость — вдоль предплечья (наклон ~9° к тылу, как кость), центр — на середине
+  // предплечья, тыл — в 5 см снаружи от оси руки, лицо — наружу. Книга — зажата между большим и остальными пальцами, обложкой
+  // наружу, свисает из кисти. Сфера — парит у ладони, чуть ниже пальцев.
+  // GRIP_MODELS: оси самой модели (f — лицо/обложка, u — верх) и размер по верху h — в долях торса (таз → голова) этого персонажа.
+  const GRIP_TYPES = {
+    shield: { f: [-0.987, 0, -0.16], u: [-0.16, 0, 0.987], at: [-0.118, -0.048, 0.32], back: 0.055 },
+    tome: { f: [-1, 0, 0], u: [0, 0, 1], at: [-0.01, 0.0, -0.085], back: 0, center: true },
+    orb: { f: [-1, 0, 0], u: [0, 0, 1], at: [0.09, 0.04, -0.2], back: 0, center: true },
+  };
+  const GRIP_MODELS = {
+    // KayKit (спутники, враги; меню-превью до v42): лицо +Z, верх +Y, ручка — горизонтально по X сзади
+    w_shield_round: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.62 }, w_shield_kite: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.68 },
+    w_shield_tower: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.72 }, w_shield_heater: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.68 },
+    e_bk_shield: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.7 }, e_skel_shield: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.62 }, e_plant_shield: { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.62 },
+    w_tome: { t: 'tome', f: [1, 0, 0], u: [0, 1, 0], h: 0.42 }, '@orb': { t: 'orb', f: [0, 0, 1], u: [0, 1, 0], h: 0.36 },
+    // процедурные вещи героя (src/p27.js wOff): лицо/обложка +Z, верх +Y
+    'p:sh1': { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.62 }, 'p:sh2': { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.68 }, 'p:sh3': { t: 'shield', f: [0, 0, 1], u: [0, 1, 0], h: 0.72 },
+    'p:tm1': { t: 'tome', f: [0, 0, 1], u: [0, 1, 0], h: 0.42 }, 'p:or1': { t: 'orb', f: [0, 0, 1], u: [0, 1, 0], h: 0.44 },
+  };
+  const _gv = (a) => new T.Vector3().fromArray(a).normalize();
+  const _gBasis = (f, u) => { const F = _gv(f), U = _gv(u), R = new T.Vector3().crossVectors(U, F).normalize(); U.crossVectors(F, R); return new T.Matrix4().makeBasis(R, U, F); };
+  function gripBox(obj) { // рамка модели в её собственных осях (без контуров)
+    const p = obj.parent; if (p) p.remove(obj); const q = obj.quaternion.clone(), s = obj.scale.clone(), x = obj.position.clone();
+    obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.scale.setScalar(1); obj.updateMatrixWorld(true);
+    const bb = new T.Box3();
+    obj.traverse((o) => { if (!o.isMesh || o.userData.isOutline) return; const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); bb.union(g.boundingBox.clone().applyMatrix4(o.matrixWorld)); });
+    obj.position.copy(x); obj.quaternion.copy(q); obj.scale.copy(s); if (p) p.add(obj); obj.updateMatrixWorld(true); return bb;
+  }
+  /** посадить вещь в гнездо кисти по её типу; key — id модели KayKit ('w_shield_kite'), '@orb' или 'p:<vis>' (процедурная);
+   *  torso — рост торса (таз → голова) в единицах гнезда этого персонажа */
+  function gripFit(obj, key, torso) {
+    const M = GRIP_MODELS[key]; if (!M) return false; const Tt = GRIP_TYPES[M.t];
+    const R = _gBasis(Tt.f, Tt.u).multiply(_gBasis(M.f, M.u).transpose()); // оси модели → оси гнезда
+    const bb = gripBox(obj), c = bb.getCenter(new T.Vector3()), sz = bb.getSize(new T.Vector3()), mf = _gv(M.f);
+    const ext = M.t === 'orb' ? Math.max(sz.x, sz.y, sz.z) : Math.abs(sz.dot(_gv(M.u))) || 1, s = M.h * (torso || 1.07) / ext;
+    obj.quaternion.setFromRotationMatrix(R); obj.scale.setScalar(s);
+    let minF = Infinity; for (const xx of [bb.min.x, bb.max.x]) for (const yy of [bb.min.y, bb.max.y]) for (const zz of [bb.min.z, bb.max.z]) minF = Math.min(minF, xx * mf.x + yy * mf.y + zz * mf.z);
+    const depthBack = Tt.center ? 0 : (c.dot(mf) - minF) * s; // от центра модели до её тыла (вместе с ручкой)
+    const at = new T.Vector3().fromArray(Tt.at).addScaledVector(_gv(Tt.f), Tt.back + depthBack);
+    obj.position.copy(at).sub(c.clone().applyMatrix4(R).multiplyScalar(s)); // центр модели — в точку привязки
+    obj.userData.evGrip = { key, t: M.t, h: M.h }; obj.userData.evBox = bb.clone().applyMatrix4(new T.Matrix4().makeScale(s, s, s)); return true;
+  }
+  function gripKey(what, o) { if (o && o.grip) return o.grip; if (typeof what === 'string' && GRIP_MODELS[what]) return what; return null; }
+
   class Actor {
     constructor(id, def, opts) {
       this.id = id; this.def = def; this.opts = opts || {};
@@ -966,6 +1016,10 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       a.play(); this.current = a; this.currentName = name; return a;
     }
     isPlaying(name) { return this.currentName === name && this.current && this.current.isRunning(); }
+    // v42: рост торса (таз → голова) в единицах гнезда кисти — мерка для размера щитов/книг/сфер (gripFit)
+    _gripTorso() { if (this._gTorso) return this._gTorso; const B = this.bones, a = B.pelvis, h = B.Head || B.head, sl = this.handL || this.handR; if (!a || !h || !sl) return 1.07;
+      this.root.updateMatrixWorld(true); const v = new T.Vector3(); const d = a.getWorldPosition(new T.Vector3()).distanceTo(h.getWorldPosition(v)), k = sl.getWorldScale(v).x;
+      return (this._gTorso = d > 0 && k > 0 ? d / k : 1.07); }
     /** attach a kit model ('w_sword_1h') or Object3D to slot 'r' | 'l' | 'back' | 'head' */
     attach(slot, what, o = {}) {
       const bone = slot === 'r' ? this.handR : slot === 'l' ? this.handL : slot === 'head' ? this.head : this.chest;
@@ -975,6 +1029,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       if (o.glow || (typeof what === 'string' && o.glowColor)) glowify(obj, o.glow || o.glowColor);
       obj.scale.multiplyScalar(o.s || 1);
       if (slot === 'back' && !this.ubc) { obj.position.set(0, 0.3, -0.35); obj.rotation.set(0.3, 0, 0); }
+      if (this.ubc && (slot === 'l' || slot === 'r')) { const gk = gripKey(what, o); if (gk) gripFit(obj, gk, this._gripTorso()); } // v42: хват по типу вещи
       bone.add(obj); this.slots[slot] = obj; return obj;
     }
     /** tint everything (e.g. elite / elemental): color + amount 0..1 ; null clears */
@@ -1254,6 +1309,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     version: '1.0.0', QUALITY, time: { value: 0 },
     init, load, spawn, prop, instanced, building, icon, iconURL, portrait, setQuality, setViewport, stats, tick,
     addOutline, toonMat, recolorTex, makeOrb, glowify,
+    grip: { types: GRIP_TYPES, models: GRIP_MODELS, fit: gripFit }, // v42 «Хват предметов»
     get manifest() { return S.manifest; }, get quality() { return S.q; }, get chars() { return S.chars; },
     has: (id) => !!(S.manifest && S.manifest.entities[id] && S.manifest.entities[id].type !== 'procedural'),
     info: (id) => S.manifest && S.manifest.entities[id],

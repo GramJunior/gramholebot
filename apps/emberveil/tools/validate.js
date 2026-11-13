@@ -1,6 +1,7 @@
 // Валидатор мира: генерирует все этапы кампании (6 зон × 5 + Акт II: зоны 7–10), деревню и этажи Бездны и проверяет правила расстановки.
 // Запуск: node apps/emberveil/tools/validate.js [--shots] [--stages=1-1,4-2] [--abyss=10] [--q=med] [--chal=c1a,c3b | --nochal]
 // v33: проверяются и карты Испытаний (src/p66.js CH33: своя форма, сид и тип этапа) — __game.c33.check(id).
+// v42: + хват предметов в руках героя, спутников и врагов (__game.hold42.check(), src/p101.js).
 // v37: + загадки (решаемость, досягаемость, «Испытание ума») и ловушки коридоров (места, урон) — правила pz*/tr* из src/p76.js; сводка типов в конце.
 // --shots: обзор сверху каждого уровня (EV_OUT/shots/ov_*.png). Код выхода 1, если есть нарушения.
 const {open,serve}=require('./harness.js');
@@ -24,6 +25,8 @@ const CHAL=arg('chal',''), NOCHAL=arg('nochal',false), SHOTS=arg('shots',false),
   if(!ONLY&&!CHAL){ for(let f=1;f<=NAB;f++){ const r=await ev(f=>__game.genAbyss(f),f); report(r); if(SHOTS&&f<=3){ await ev(()=>__game.overview({pad:10})); await wait(700); await shot('ov_abyss'+f); await ev(()=>__game.overviewOff()); } }
     const r=await ev(()=>{ const r=__game.genVillage(); r.key='village'; return r; }); report(r); if(SHOTS){ await ev(()=>__game.overview({pad:10})); await wait(900); await shot('ov_village'); await ev(()=>__game.overviewOff()); } }
   await ev(()=>__game.village()); await wait(1500);
+  // v42: «Хват предметов» — лицо щита/обложка книги от тела, предплечье за щитом, размеры (src/p101.js hold42Check)
+  { const r=await ev(()=>__game.hold42?__game.hold42.check():null); if(r) report(r); }
   console.log('загадки:',Object.keys(PZ).length,'типов',JSON.stringify(PZ),'| ловушки:',Object.keys(TR).length,'типов',JSON.stringify(TR));
   console.log('ИТОГО нарушений:',total,JSON.stringify(sum)); console.log('ошибок консоли:',H.errs.length,H.errs.slice(0,6).join(' | '));
   await H.close(); process.exit(total?1:0); })();
