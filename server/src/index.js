@@ -13,6 +13,7 @@ import * as bot from './routes/bot.js';
 import * as metrics from './routes/metrics.js';
 import * as ads from './routes/ads.js';
 import * as stats from './routes/stats.js';
+import * as liveops from './routes/liveops.js';
 import { rateLimit } from './lib/ratelimit.js';
 
 const health = (c) => json({ ok: true, name: 'emberveil', serverTime: c.now, telegram: !!c.env.BOT_TOKEN, guest: c.env.ALLOW_GUEST === '1' });
@@ -36,6 +37,9 @@ export const ROUTES = [
 
   ['GET', '/clans', clans.listClans],
   ['GET', '/clan/me', clans.myClan],
+  // v42: clan weekly goal with thresholds (before /clan/:id)
+  ['GET', '/clan/goal', liveops.getClanGoal],
+  ['POST', '/clan/goal/claim', liveops.clanGoalClaim],
   ['POST', '/clan/create', clans.createClan],
   ['POST', '/clan/join', clans.joinClan],
   ['POST', '/clan/leave', clans.leaveClan],
@@ -49,6 +53,15 @@ export const ROUTES = [
   ['POST', '/raid/start', raids.raidStart],
   ['POST', '/raid/finish', raids.raidFinish],
   ['GET', '/raid/log', raids.raidLog],
+
+  // v42 live-ops: weekly overlord + its board, server-wide shared goals (src/routes/liveops.js, migration 0008)
+  ['GET', '/wb', liveops.getWb],
+  ['POST', '/wb/start', liveops.wbStart],
+  ['POST', '/wb/finish', liveops.wbFinish],
+  ['GET', '/lb/wb', liveops.lbWb],
+  ['GET', '/goal/:id', liveops.getGoal],
+  ['POST', '/goal/:id/contrib', liveops.goalContrib],
+  ['POST', '/goal/:id/claim', liveops.goalClaim],
 
   ['GET', '/config', live.getConfig],
   ['GET', '/bp', live.getBp],

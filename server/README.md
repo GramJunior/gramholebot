@@ -196,7 +196,9 @@ curl -X PUT $API/admin/config/battlepass -H "$ADM" -d '{
   ]}'
 ```
 
-**События.** Активные события игра получает в `events`, будущие — в `upcoming`:
+**v42: сезоны и календарь по датам.** Без своих настроек сервер берёт таблицы из `src/lib/liveops.js`: календарь событий 16.11.2026–14.02.2027 (`events`), пропуска `passes` (s1 «Путь Угля» 60 уровней с «Огнивом» 51–60 → s2 «Долгая Стужа» с 15.01.2027, премиум `bp_s2`), общая цель `goals.embers26` («Ночь Долгих Углей»), ротация Владыки недели `wb.rotation`, цель клана `clanGoal`. Сезон без `season` = пропуск, в чьё окно попадает «сейчас». Сохранённые `events`/`battlepass` заменяют таблицы — `DELETE /admin/config/<ключ>` возвращает их. Миграция `0008_liveops.sql` — до деплоя v42. Подробно — README игры, «События и сезоны v42».
+
+**События.** Активные события игра получает в `events`, будущие — в `upcoming`, весь календарь — в `calendar`:
 ```bash
 curl -X PUT $API/admin/config/events -H "$ADM" -d '[
   {"id":"ember_week","name":"Неделя Угля","descr":"Золото ×1.5 в Бездне",
@@ -416,7 +418,11 @@ EVNet.raids.publish({ power: gearPower() + S.hero.lvl*10, bld: S.bld, hero: {lvl
 | 🔒 `GET /clan/me`, `POST /clan/create\|join\|leave\|kick\|role\|edit` | управление кланом |
 | 🔒 `PUT /village`, `GET /raid/opponents`, `POST /raid/start\|finish`, `GET /raid/log` | набеги |
 | `GET /config` | сезон, пропуск, события, магазин, товары, id блоков рекламы (`adsBlockRewarded`, `adsBlockInterstitial`, `adsVerify`) |
-| 🔒 `GET /bp`, `POST /bp/claim {tier,track}` | боевой пропуск |
+| 🔒 `GET /bp`, `POST /bp/claim {tier,track}` | боевой пропуск (текущий сезон по датам, v42) |
+| 🔒 `GET /wb`, `POST /wb/start {tier,boss}`, `POST /wb/finish {runId,timeMs,hearth}` | Владыка недели (v42): ротация, бой, лучший результат недели, очки клана 10/20/30 за первое прохождение ступени |
+| `GET /lb/wb?filter=global\|friends\|clan&league=1..3&boss=` | рейтинг Владыки недели по лигам Пламени Очага |
+| `GET /goal/:id`, 🔒 `POST /goal/:id/contrib {points}`, 🔒 `POST /goal/:id/claim {pct}` | общая цель сервера («Ночь Долгих Углей»): вклад с потолками, награды порогов |
+| 🔒 `GET /clan/goal`, `POST /clan/goal/claim {tier}` | недельная цель клана: пороги × участники, награда со своим вкладом ≥ 20 |
 | 🔒 `GET /daily`, `POST /daily/claim`, `POST /quests/claim {questId}` | награда дня и контракты |
 | 🔒 `POST /pay/invoice {productId}`, `GET /entitlements` | покупки за Stars |
 | 🔒 `POST /pay/claim {claimId}` | забрать расходуемые покупки (самоцветы, наборы, сундуки), идемпотентно |

@@ -7,7 +7,7 @@
 //   refunded_payment    -> revoke
 import { fail, json, readJson, str } from '../lib/http.js';
 import { requireUser } from './auth.js';
-import { getConfigKey } from '../lib/config.js';
+import { getConfigKey, loadConfig, activeSeason } from '../lib/config.js';
 import { randomId } from '../lib/crypto.js';
 import { tgCall } from '../lib/telegram.js';
 import { requireAdmin } from './live.js';
@@ -27,6 +27,8 @@ export async function createInvoice(c) {
   const products = await getConfigKey(c.env, 'products');
   const p = (products || []).find((x) => x.id === str(body.productId, 40));
   if (!p) fail(404, 'no_product', 'Товар не найден');
+  // v42: a season's premium pass is sold only while that season runs (s1 → bp_s1, s2 «Долгая Стужа» → bp_s2)
+  if (p.type === 'battlepass' && p.season) { const s = activeSeason(await loadConfig(c.env), c.now); if (!s || s.id !== p.season) fail(409, 'off_season', 'Этот сезон сейчас не идёт'); }
   if (p.once && (await ownedActive(c.env, user.id, p.id, c.now))) fail(409, 'owned', 'Уже куплено');
   if (p.weekly && (await weeklyBought(c.env, user.id, p.id, c.now))) fail(409, 'owned_week', 'Уже куплено на этой неделе');
   const payload = randomId(16);

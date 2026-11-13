@@ -4,6 +4,8 @@ import { requireUser } from './auth.js';
 import { loadConfig, activeSeason, activeEvents, shopRotation, CONFIG_KEYS, DEFAULTS } from '../lib/config.js';
 import { safeEqual } from '../lib/crypto.js';
 import { addInbox, userByPid, getUser } from '../lib/common.js';
+import { currentPass, nextPass, passError, wbWeek, WB_TIERS } from '../lib/liveops.js';
+import { nextWeekStart } from '../lib/time.js';
 
 /** GET /config — public, cacheable. */
 export async function getConfig(c) {
@@ -15,11 +17,16 @@ export async function getConfig(c) {
     version: cfg.version,
     serverTime: c.now,
     season,
-    battlepass: cfg.battlepass,
+    battlepass: currentPass(cfg, c.now),
+    // v42: the next dated season (teaser «скоро»), weekly overlord of this game week (src/routes/liveops.js)
+    nextSeason: (() => { const n = nextPass(cfg, c.now); return n ? { id: n.season, name: n.name, start: n.start, end: n.end, theme: n.theme } : null; })(),
+    wb: { ...wbWeek(c.now, c.env, (cfg.wb && cfg.wb.rotation) || undefined), resetsAt: nextWeekStart(c.now, c.env), tiers: WB_TIERS },
     events: activeEvents(events, c.now),
     upcoming: events.filter((e) => e && e.start && e.start > c.now).slice(0, 5),
+    // v42: the whole dated calendar (for the «Календарь» tab), without descriptions
+    calendar: events.filter((e) => e && e.start && e.end).map((e) => ({ id: e.id, base: e.base, name: e.name, type: e.type, icon: e.icon, col: e.col, start: e.start, end: e.end })),
     shop: shopRotation(cfg.shop || {}, c.now),
-    products: (cfg.products || []).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once, weekly: !!p.weekly, tag: p.tag || undefined, grant: p.grant || undefined, firstX2: p.firstX2 ? true : undefined, days: p.days || undefined, perDay: p.perDay || undefined })),
+    products: (cfg.products || []).filter((p) => p.type !== 'battlepass' || !p.season || p.id === currentPass(cfg, c.now).premiumProduct).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once, weekly: !!p.weekly, tag: p.tag || undefined, grant: p.grant || undefined, firstX2: p.firstX2 ? true : undefined, days: p.days || undefined, perDay: p.perDay || undefined })),
     freeChestHours: cfg.freeChestHours,
     // v39.4: Adsgram block ids (public) and whether ad rewards are verified on the server (src/routes/ads.js)
     adsBlockRewarded: String((cfg.ads && cfg.ads.blockRewarded) || ''),
@@ -31,7 +38,14 @@ export async function getConfig(c) {
 
 function bpSeasonId(cfg, now) {
   const s = activeSeason(cfg, now);
-  return s ? s.id : cfg.battlepass && cfg.battlepass.season;
+  return s ? s.id : currentPass(cfg, now).season;
+}
+/** v42: pass definition for a season id (dated `passes`, or the legacy `battlepass`). */
+function passFor(cfg, sid, now) {
+  const p = currentPass(cfg, now);
+  if (p.season === sid) return p;
+  const list = Array.isArray(cfg.passes) ? cfg.passes : [];
+  return list.find((x) => x.season === sid) || p;
 }
 
 async function hasPremium(env, uid, product) {
@@ -47,8 +61,9 @@ export async function getBp(c) {
   const sid = bpSeasonId(cfg, c.now);
   const row = sid ? await c.env.DB.prepare('SELECT xp, claimed FROM bp_progress WHERE uid=? AND season=?').bind(user.id, sid).first() : null;
   const xp = row ? row.xp : 0;
-  const per = cfg.battlepass.xpPerTier || 200;
-  return json({ ok: true, season: sid, xp, tier: Math.floor(xp / per), xpPerTier: per, claimed: row ? JSON.parse(row.claimed) : [], premium: await hasPremium(c.env, user.id, cfg.battlepass.premiumProduct), tiers: cfg.battlepass.tiers });
+  const P = passFor(cfg, sid, c.now);
+  const per = P.xpPerTier || 200;
+  return json({ ok: true, season: sid, name: P.name, xp, tier: Math.floor(xp / per), xpPerTier: per, claimed: row ? JSON.parse(row.claimed) : [], premium: await hasPremium(c.env, user.id, P.premiumProduct), premiumProduct: P.premiumProduct, tiers: P.tiers });
 }
 
 /** POST /bp/claim { tier, track: 'free'|'premium' } -> { reward } */
@@ -60,12 +75,13 @@ export async function claimBp(c) {
   if (!sid) fail(409, 'no_season', 'Сезон не активен');
   const tier = int(body.tier, 0);
   const track = body.track === 'premium' ? 'premium' : 'free';
-  const T = (cfg.battlepass.tiers || []).find((t) => t.tier === tier);
+  const P = passFor(cfg, sid, c.now);
+  const T = (P.tiers || []).find((t) => t.tier === tier);
   if (!T || !T[track]) fail(404, 'no_tier', 'Нет такой награды');
   const row = await c.env.DB.prepare('SELECT xp, claimed FROM bp_progress WHERE uid=? AND season=?').bind(user.id, sid).first();
   const xp = row ? row.xp : 0;
-  if (!row || Math.floor(xp / (cfg.battlepass.xpPerTier || 200)) < tier) fail(409, 'locked', 'Уровень пропуска ещё не открыт');
-  if (track === 'premium' && !(await hasPremium(c.env, user.id, cfg.battlepass.premiumProduct))) fail(402, 'no_premium', 'Нужен премиум-пропуск');
+  if (!row || Math.floor(xp / (P.xpPerTier || 200)) < tier) fail(409, 'locked', 'Уровень пропуска ещё не открыт');
+  if (track === 'premium' && !(await hasPremium(c.env, user.id, P.premiumProduct))) fail(402, 'no_premium', 'Нужен премиум-пропуск');
   const claimed = row ? JSON.parse(row.claimed) : [];
   const key = `${track}:${tier}`;
   if (claimed.includes(key)) fail(409, 'claimed', 'Награда уже получена');
@@ -107,6 +123,21 @@ function validateConfig(key, v) {
     if (v.caps !== undefined && (typeof v.caps !== 'object' || !v.caps || Array.isArray(v.caps) || Object.entries(v.caps).some(([k, x]) => !/^[a-z0-9_]{1,16}$/.test(k) || !Number.isInteger(x) || x < 0 || x > 100))) bad('ads.caps — {место: целое 0..100}');
   } else if (key === 'battlepass') {
     if (!v || !Array.isArray(v.tiers)) bad('battlepass.tiers — массив');
+    const e = passError(v); if (e) bad('battlepass: ' + e);
+  } else if (key === 'passes') {
+    if (!Array.isArray(v) || !v.length || v.length > 20) bad('passes — массив из 1..20 пропусков');
+    const ids = new Set();
+    for (const p of v) { const e = passError(p); if (e) bad('passes: ' + e); if (!p.start || !p.end) bad('passes: у пропуска нужны start и end (мс)'); if (ids.has(p.season)) bad('passes: повтор season ' + p.season); ids.add(p.season); }
+    const sorted = v.slice().sort((a, b) => a.start - b.start);
+    for (let i = 1; i < sorted.length; i++) if (sorted[i].start < sorted[i - 1].end) bad('passes: сезоны пересекаются (' + sorted[i - 1].season + ' / ' + sorted[i].season + ')');
+  } else if (key === 'goals') {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) bad('goals — объект {id: цель}');
+    for (const [id, g] of Object.entries(v)) {
+      if (!/^[a-z0-9_]{2,32}$/.test(id) || !g || !Number.isInteger(g.target) || g.target < 1 || !Array.isArray(g.tiers) || !g.tiers.length) bad('goals.' + id + ': target (целое ≥ 1) и tiers [{pct, reward}]');
+      for (const t of g.tiers) if (!Number.isFinite(t.pct) || t.pct <= 0 || t.pct > 100 || !t.reward || typeof t.reward !== 'object') bad('goals.' + id + ': порог pct 1..100 и reward');
+    }
+  } else if (key === 'wb') {
+    if (!v || !Array.isArray(v.rotation) || !v.rotation.length || v.rotation.some((w) => !w || typeof w.boss !== 'string' || !Array.isArray(w.mods))) bad('wb.rotation — массив [{boss, mods:[…]}]');
   } else if (!v || typeof v !== 'object') bad('ожидался объект');
 }
 
