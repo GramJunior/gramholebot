@@ -327,6 +327,8 @@
      * returns the same grants, so a lost response can be retried safely. -> { ok, claimId, grants:[{productId, n, grant}] }
      */
     claim: function (claimId) { return call('POST', '/pay/claim', { claimId: claimId }); },
+    /** v41 «Угольная печать»: daily gems of a timed card -> { ok, sparks, daysLeft, expiresAt } | { ok:false, error:'claimed'|'no_seal' } */
+    seal: function (productId) { return call('POST', '/pay/seal', { productId: productId || 'coal_seal' }); },
     /** Product list from config. */
     products: function () { return configApi.get().then(function (c) { return c.ok || c.cached ? { ok: true, products: c.products || [] } : c; }); },
   };

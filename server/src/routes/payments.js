@@ -11,7 +11,7 @@ import { getConfigKey } from '../lib/config.js';
 import { randomId } from '../lib/crypto.js';
 import { tgCall } from '../lib/telegram.js';
 import { requireAdmin } from './live.js';
-import { nextWeekStart } from '../lib/time.js';
+import { nextWeekStart, nextDayStart } from '../lib/time.js';
 
 const DAY = 86400000;
 
@@ -146,7 +146,11 @@ export async function claimPurchases(c) {
     const n = r.qty - r.claimed;
     // compare-and-set: a concurrent claim with another id cannot grant the same purchase twice
     const up = await c.env.DB.prepare('UPDATE entitlements SET claimed=?, updated_at=? WHERE uid=? AND product_id=? AND claimed=?').bind(r.qty, c.now, user.id, r.product_id, r.claimed).run();
-    if (up.meta.changes) grants.push({ productId: p.id, n, grant: p.grant });
+    if (up.meta.changes) {
+      grants.push({ productId: p.id, n, grant: p.grant });
+      // v41: first purchase ×2 — once per product, only when nothing of it was ever claimed before (server-validated)
+      if (p.firstX2 && r.claimed === 0) grants.push({ productId: p.id, n: 1, grant: p.grant, bonus: 'first_x2' });
+    }
   }
   await c.env.DB.prepare('INSERT INTO pay_claims (claim_id, uid, result, created_at) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(claimId, user.id, JSON.stringify(grants), c.now).run();
   return json({ ok: true, claimId, grants });
@@ -171,4 +175,29 @@ export async function freeChest(c) {
     ON CONFLICT(uid, key) DO UPDATE SET at=excluded.at, n=n+1 WHERE user_timers.at <= ?`).bind(user.id, 'free_chest', c.now, c.now - period).run();
   if (!r.meta.changes) return json({ ok: false, error: 'not_ready', next: (t ? t.at : c.now) + period });
   return json({ ok: true, next: c.now + period, n: (t ? t.n : 0) + 1 });
+}
+
+/**
+ * v41 «Угольная печать» (timed card, product with `days` + `perDay`): POST /pay/seal { productId? }
+ * -> { ok:true, sparks, daysLeft, expiresAt, next } once per game day while the entitlement is active;
+ *    { ok:false, error:'claimed', next } — already taken today; 403 no_seal — not bought or expired.
+ */
+export async function claimSeal(c) {
+  const user = await requireUser(c);
+  const body = await readJson(c.req, 256);
+  const products = (await getConfigKey(c.env, 'products')) || [];
+  const want = str(body.productId || 'coal_seal', 40);
+  const p = products.find((x) => x.id === want && x.days > 0 && x.perDay > 0);
+  if (!p) fail(404, 'no_product', 'Товар не найден');
+  const e = await c.env.DB.prepare('SELECT qty, expires_at FROM entitlements WHERE uid=? AND product_id=?').bind(user.id, p.id).first();
+  if (!e || !(e.qty > 0) || !e.expires_at || e.expires_at <= c.now) fail(403, 'no_seal', 'Печать не действует');
+  const next = nextDayStart(c.now, c.env);
+  const dayStart = next - 86400000;
+  const key = 'seal:' + p.id;
+  // conditional upsert: one claim per game day even with parallel taps
+  const r = await c.env.DB.prepare(`INSERT INTO user_timers (uid, key, at, n) VALUES (?,?,?,1)
+    ON CONFLICT(uid, key) DO UPDATE SET at=excluded.at, n=n+1 WHERE user_timers.at < ?`).bind(user.id, key, c.now, dayStart).run();
+  if (!r.meta.changes) return json({ ok: false, error: 'claimed', next, expiresAt: e.expires_at });
+  const daysLeft = Math.max(0, Math.ceil((e.expires_at - c.now) / DAY));
+  return json({ ok: true, productId: p.id, sparks: p.perDay | 0, daysLeft, expiresAt: e.expires_at, next });
 }

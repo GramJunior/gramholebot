@@ -36,7 +36,7 @@ function itemName(it){
   return B.name;
 }
 // заточка: +7% за уровень до +10, затем +5% (до +15)
-const upMul=it=>{ const u=it.up||0; return 1+.07*Math.min(u,10)+.05*Math.max(0,u-10); };
+const upMul=it=>{ const u=it.up||0; return 1+.09*Math.min(u,10)+.05*Math.max(0,u-10); }; // v41 (p93, economy §3 п. 16): +9% за ступень до +10 (было +7%)
 function itemMain(it){
   const B=ITEM_BASES[it.base], m=RAR[it.rar].m*upMul(it), f=F(it.ilvl); const o={};
   if(B.dmg) o.wdmg=B.dmg*f*m;
