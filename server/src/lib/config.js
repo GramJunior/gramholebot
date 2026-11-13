@@ -1,7 +1,8 @@
 // Live config: values stored in the `config` table override these defaults.
 // Admins change them through PUT /admin/config/<key> (see README).
+import { CALENDAR, PASSES, GOALS, WB_ROTATION, CLAN_GOAL } from './liveops.js';
 
-export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid', 'freeChestHours', 'ads'];
+export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid', 'freeChestHours', 'ads', 'passes', 'goals', 'wb', 'clanGoal'];
 
 const DAY = 86400000;
 
@@ -10,33 +11,22 @@ export const DEFAULTS = {
   season: null, // { id:'s1', name:'Сезон 1', start: <ms>, end: <ms> }
 
   // Season pass «Путь Угля»: 50 tiers × 200 XP (v40; was 30 × 100 — finished in the first week). Existing progress: migration 0006 doubles XP (same tier). `cosmetic` ids are the game's cosmetics (apps/emberveil/src/p18.js COSM).
+  // v42: + «Огниво» tiers 51–60 (cosmetics only). Legacy single-pass key; the dated list is `passes` (s1 → s2 «Долгая Стужа» 15.01.2027), src/lib/liveops.js.
   // The game counts pass XP from play itself; the server keeps its own XP from validated actions (abyss, raids, daily),
   // and the game shows the larger of the two. Premium = entitlement `premiumProduct` (Telegram Stars).
-  battlepass: {
-    season: 's1',
-    name: 'Путь Угля',
-    xpPerTier: 200,
-    premiumProduct: 'bp_s1',
-    tiers: Array.from({ length: 50 }, (_, i) => {
-      const t = i + 1;
-      const FREE_COS = { 5: 'glow_ember', 10: 'skin_ash', 20: 'deco_banners', 30: 'frame_ember', 40: 'pet_ember', 50: 'glow_gold' };
-      const PREM_COS = ['frame_gold', 'glow_frost', 'pet_shadow', 'skin_frost', 'deco_statue', 'glow_void', 'skin_abyss', 'pet_gold', 'deco_bonfire', 'skin_royal'];
-      return {
-        tier: t,
-        // same table as the game (apps/emberveil/src/p18.js passTiersDefault)
-        free: FREE_COS[t] ? { cosmetic: FREE_COS[t] } : t % 3 === 0 ? { shards: 6 + Math.round(t * 0.6) } : t % 2 ? { gold: 150 + t * 25 } : { ess: 8 + Math.round(t * 0.6) },
-        premium: t % 5 === 0 ? { cosmetic: PREM_COS[t / 5 - 1] } : { sparks: 10 + Math.floor(t / 10) * 5 }, // sparks = cosmetic-only currency
-      };
-    }),
-    // XP earned for server-validated actions:
-    // v40: daily login 60, daily contract 25 (as v34), abyss floor 8, raid star 10
-    xp: { abyssFloor: 8, raidStar: 10, daily: 60, quest: 25 },
-  },
+  // XP earned for server-validated actions (`xp`): daily login 60, daily contract 25 (as v34), abyss floor 8, raid star 10.
+  battlepass: PASSES[0],
+  // v42: season passes by date (the one whose [start, end) contains now is active; see liveops.js currentPass)
+  passes: PASSES,
+  // v42: server-wide shared goals (owned by calendar events via modifiers.goal), weekly overlord rotation, clan weekly goal
+  goals: GOALS,
+  wb: { rotation: WB_ROTATION },
+  clanGoal: CLAN_GOAL,
 
-  // [{ id, name, start, end, modifiers: { goldMul, dropMul, abyssMod, ... }, descr }]
-  // Empty here = the game uses its built-in rotation (weekend «Выходные удачи», «Ночь Пепла», seasonal boss «Эхо Колосса»).
-  // Put explicit windows here to override (see README «События»).
-  events: [],
+  // [{ id, base, name, start, end, modifiers: { goldMul, dropMul, abyssMod, goal, ... }, descr }]
+  // v42: dated calendar 16.11.2026 – 14.02.2027 (liveops.md §5.4) instead of the eternal weekly rotation; the game has the same list as a fallback.
+  // PUT /admin/config/events replaces it (see README «События и сезоны v42»); [] = no events at all.
+  events: CALENDAR,
 
   // Village shop rotation (prices in game currency, applied on the client).
   // Free wooden chest timer (POST /chest/free), hours.
@@ -86,7 +76,9 @@ export const DEFAULTS = {
     // Колесо судьбы (игра v34, хаб «Награды»): купленные вращения копятся в сохранении и не сгорают; grant.spin — число вращений
     { id: 'spin_1', title: 'Вращение Колеса', description: '1 вращение Колеса судьбы', stars: 25, type: 'spin', grant: { spin: 1 } },
     { id: 'spin_10', title: '10 вращений Колеса', description: '10 вращений Колеса судьбы (−20%)', stars: 200, type: 'spin', grant: { spin: 10 }, tag: '−20%' },
-    { id: 'bp_s1', title: 'Боевой пропуск — Сезон 1', description: 'Премиум-дорожка: облики, рамки, эмоции питомцев', stars: 250, type: 'battlepass', once: true },
+    { id: 'bp_s1', title: 'Боевой пропуск — Сезон 1', description: 'Премиум-дорожка: облики, рамки, эмоции питомцев', stars: 250, type: 'battlepass', once: true, season: 's1' },
+    // v42: S2 «Долгая Стужа» (15.01–26.02.2027); the game shows only the product of the current season
+    { id: 'bp_s2', title: 'Боевой пропуск — «Долгая Стужа»', description: 'Премиум-дорожка сезона 2: облики, свечения, рамки и самоцветы', stars: 250, type: 'battlepass', once: true, season: 's2' },
     { id: 'skin_cloak_ember', title: 'Плащ «Тлеющий»', description: 'Косметический облик героя', stars: 100, type: 'cosmetic', once: true },
     { id: 'pack_village_lanterns', title: 'Фонари Брода', description: 'Украшения для деревни', stars: 75, type: 'cosmetic', once: true },
     { id: 'pet_skin_frost', title: 'Иней для питомца', description: 'Скин питомца', stars: 90, type: 'cosmetic', once: true },
@@ -126,13 +118,15 @@ export const DEFAULTS = {
 export async function loadConfig(env) {
   const out = structuredClone(DEFAULTS);
   let version = 0;
+  const stored = [];
   const rows = (await env.DB.prepare('SELECT key, value, updated_at FROM config').all()).results || [];
   for (const r of rows) {
     if (!CONFIG_KEYS.includes(r.key)) continue;
-    try { out[r.key] = JSON.parse(r.value); } catch { /* keep default */ }
+    try { out[r.key] = JSON.parse(r.value); stored.push(r.key); } catch { /* keep default */ }
     version = Math.max(version, r.updated_at);
   }
   out.version = version;
+  Object.defineProperty(out, '_stored', { value: stored, enumerable: false }); // v42: which keys an admin overrode (liveops.js currentPass)
   return out;
 }
 
@@ -143,8 +137,8 @@ export async function getConfigKey(env, key) {
 }
 
 export function activeSeason(cfg, now) {
-  const s = cfg.season;
-  if (!s || !s.id) return null;
+  const s = cfg.season && cfg.season.id ? cfg.season : null;
+  if (!s) return datedSeason(cfg, now); // v42: no explicit season → the dated pass (s1, s2…) is the season
   if (s.start && now < s.start) return null;
   if (s.end && now >= s.end) return null;
   return s;
@@ -163,6 +157,12 @@ export function shopRotation(shop, now) {
   const rnd = () => { seed = (seed + 0x6d2b79f5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   return { rotation: bucket, items: pool.slice(0, Math.max(0, Number(shop.slots) || 4)), endsAt: (bucket + 1) * hours * 3600000 };
+}
+
+function datedSeason(cfg, now) {
+  const list = Array.isArray(cfg.passes) ? cfg.passes : [];
+  const p = list.find((x) => x && x.season && x.start && x.end && now >= x.start && now < x.end);
+  return p ? { id: p.season, name: p.name, start: p.start, end: p.end } : null;
 }
 
 export { DAY };

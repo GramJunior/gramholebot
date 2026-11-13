@@ -8,7 +8,7 @@ import { fail, json, readJson, str } from '../lib/http.js';
 import { requireUser } from './auth.js';
 import { dayKey, prevDayKey, nextDayStart } from '../lib/time.js';
 import { loadConfig } from '../lib/config.js';
-import { addBpXp } from '../lib/common.js';
+import { addBpXp, addContrib } from '../lib/common.js';
 
 /** Pure streak logic. */
 export function nextStreak(row, today) {
@@ -70,5 +70,6 @@ export async function claimQuest(c) {
   const r = await c.env.DB.prepare('INSERT INTO quest_claims (uid, day, quest_id, ts) VALUES (?,?,?,?) ON CONFLICT DO NOTHING').bind(user.id, today, qid, c.now).run();
   if (!r.meta.changes) fail(409, 'claimed', 'Контракт уже сдан');
   await addBpXp(c.env, user.id, (cfg.battlepass.xp && cfg.battlepass.xp.quest) || 0, c.now, cfg);
+  await addContrib(c.env, user.id, 2, c.now); // v42: a daily contract brings the clan 2 points (liveops.md §6.3)
   return json({ ok: true, day: today, questId: qid });
 }

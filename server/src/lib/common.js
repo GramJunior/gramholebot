@@ -150,8 +150,14 @@ export async function addInbox(env, uid, kind, title, reward, now) {
 
 export async function addContrib(env, uid, points, now) {
   if (!points) return;
+  // v42: calendar event «Цвета сияния» (modifiers.clanMul) multiplies clan points while it runs
+  let mul = 1;
+  try {
+    const evs = await getConfigKey(env, 'events');
+    for (const e of Array.isArray(evs) ? evs : []) if (e && e.modifiers && e.modifiers.clanMul > 0 && now >= e.start && now < e.end) mul *= Math.min(5, e.modifiers.clanMul);
+  } catch { /* default 1 */ }
   await env.DB.prepare('INSERT INTO weekly_contrib (week, uid, points) VALUES (?,?,?) ON CONFLICT(week, uid) DO UPDATE SET points = points + excluded.points')
-    .bind(isoWeek(now, env), uid, Math.trunc(points)).run();
+    .bind(isoWeek(now, env), uid, Math.trunc(points * mul)).run();
 }
 
 export async function clanOf(env, uid) {

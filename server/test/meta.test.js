@@ -85,7 +85,7 @@ test('events: batching, validation, aggregated counters + unique users, quota, D
   assert.ok(f.body.events.every((e) => e.name.startsWith('ftue')) && f.body.events.length === 1);
 });
 
-test('daily: total login days for the 28-day calendar; pass defaults have 50 tiers × 200 XP, premium track is cosmetic-only', async () => {
+test('daily: total login days for the 28-day calendar; pass defaults have 50 tiers × 200 XP (+ «Огниво» 51–60 in v42), premium track is cosmetic-only', async () => {
   const env = makeEnv();
   const clock = { now: Date.parse('2026-11-04T10:00:00Z') };
   const call = api(env, clock);
@@ -96,11 +96,11 @@ test('daily: total login days for the 28-day calendar; pass defaults have 50 tie
   assert.equal((await call('POST', '/daily/claim', { token: s.token })).body.total, 2);
   assert.equal((await call('GET', '/daily', { token: s.token })).body.total, 2);
   const T = DEFAULTS.battlepass.tiers;
-  assert.equal(T.length, 50);
+  assert.equal(T.length, 60); // v42: «Огниво» 51–60
   assert.equal(DEFAULTS.battlepass.xpPerTier, 200);
   assert.equal(DEFAULTS.battlepass.xp.daily, 60);
   for (const t of T) assert.ok(t.premium.cosmetic || (t.premium.sparks && Object.keys(t.premium).length === 1), 'premium tier ' + t.tier + ' must be cosmetic/sparks only');
   const cfg = await call('GET', '/config');
-  assert.equal(cfg.body.battlepass.tiers.length, 50);
+  assert.equal(cfg.body.battlepass.tiers.length, 60);
   assert.equal(cfg.body.battlepass.xpPerTier, 200);
 });
