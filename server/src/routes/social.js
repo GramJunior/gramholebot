@@ -57,8 +57,13 @@ export const NOTIFY_TEXT = {
   income: 'Склад Брода полон — пора собрать доход.',
   daily: 'Новый день в Броде: ежедневная награда и свежие контракты ждут.',
   raid: 'Набег на вашу деревню! Загляните в журнал обороны — можно отомстить.',
+  // v42 (liveops §6.1)
+  build_done: 'Стройка в Броде закончена — заходи, мастера ждут следующего дела.',
+  expedition_done: 'Спутники вернулись из похода с добычей. Брод ждёт тебя.',
+  streak: 'Уголь в очаге гаснет. Дар дня ещё ждёт.',
+  comeback: 'Брод стоит. Для тебя отложен подарок.',
 };
-const CLIENT_KINDS = ['forge', 'hatch', 'income', 'daily'];
+const CLIENT_KINDS = ['forge', 'hatch', 'income', 'daily', 'build_done', 'expedition_done', 'streak', 'comeback'];
 
 export async function scheduleNotify(c) {
   const user = await requireUser(c);

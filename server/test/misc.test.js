@@ -148,7 +148,7 @@ test('cron reminders: opt-in only, rate limited, blocked bot disables', async ()
     assert.equal((await env.DB.prepare("SELECT can_pm FROM users WHERE id='t72'").first()).can_pm, 0);
     // Gap rule: a new reminder 10 min later is dropped; after 30 min it's sent; then the daily cap (2) applies.
     for (const [delay, expectSent] of [[10, 0], [40, 1], [80, 0]]) {
-      await call('POST', '/notify/schedule', { token: a.token, body: { kind: 'income', inSec: 60 } });
+      await call('POST', '/notify/schedule', { token: a.token, body: { kind: 'build_done', inSec: 60 } }); // v42: income is a filler (silent days only)
       clock.now += delay * 60000;
       r = await runCron(env, clock.now);
       assert.equal(r.sent, expectSent, 'delay ' + delay);

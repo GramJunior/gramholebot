@@ -151,15 +151,16 @@ function collectProduction(){
 }
 
 // ---------- events & quests ----------
-function today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function today(){ return dayKeyL(); } // v42: общий игровой день (05:00 МСК)
 function ensureDaily(){
   const t=today(); if(S.q.daily.date===t) return;
-  const n=2+Math.min(Math.max(S.bld.tavern,0),3); const pool=DAILY_POOL.slice(); const list=[];
-  while(list.length<n&&pool.length){ const d=pool.splice(randi(0,pool.length-1),1)[0]; if(d.id==='d_abyss'&&S.endless.best<1&&!stageDone('1-5')) continue; list.push({id:d.id,v:d.v,p:0,c:false}); }
-  S.q.daily={date:t,list};
+  // v42: не больше 3 контрактов в день; награда каждого ×(старое число / 3) — сумма за день та же
+  const n0=2+Math.min(Math.max(S.bld.tavern,0),3), n=Math.min(3,n0); const pool=DAILY_POOL.slice(); const list=[];
+  while(list.length<n&&pool.length){ const d=pool.splice(randi(0,pool.length-1),1)[0]; if(d.id==='d_abyss'&&!evUnl('abyss')) continue; list.push({id:d.id,v:d.v,p:0,c:false}); }
+  S.q.daily={date:t,list,k:n0/n};
 }
 function dailyRw(d){ const D=DAILY_POOL.find(x=>x.id===d.id); const L=S.hero.lvl; const m=(1+(S.bld.tavern-1)*.1); const o={};
-  for(const k in D.rw){ const base=k==='gold'?160*F(L)*.6:k==='shards'?6:k==='ess'?8+L:40+L*6; o[k]=Math.round(D.rw[k]*base*m); } return o; }
+  for(const k in D.rw){ const base=k==='gold'?160*F(L)*.6:k==='shards'?6:k==='ess'?8+L:40+L*6; o[k]=Math.round(D.rw[k]*base*m*((S.q.daily&&+S.q.daily.k)||1)); } return o; }
 function ev(type,d={}){
   const st=S.st;
   if(type==='kill'){ st.kills++; st.kt[d.kind]=(st.kt[d.kind]||0)+1; if(d.elite) st.elites++; if(d.boss) st.boss++; }

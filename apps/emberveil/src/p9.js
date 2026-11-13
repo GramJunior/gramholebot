@@ -24,7 +24,7 @@ function enterVillage(after){
   for(const k of pend) seq.push(cb=>playDialog(k,cb));
   if(stageDone('1-3')&&!S.seen.egg_gift) seq.push(cb=>playDialog('egg_gift',()=>{ S.pets.eggs.push({kind:'wolf',start:0}); toast('Получено яйцо: <b>Волчонок</b>',iconForGeo('eggwolf',eggGeo('wolf')),1); saveGame(); cb(); }));
   if(stageDone('1-5')&&!S.seen.stranger_hi) seq.push(cb=>playDialog('stranger_hi',cb));
-  if(stageDone('1-5')&&!S.seen.abyss_open) seq.push(cb=>playDialog('abyss_open',cb));
+  if(evUnl('abyss')&&!S.seen.abyss_open) seq.push(cb=>playDialog('abyss_open',cb));
   raidVillageSeq(seq); compVillageSeq(seq); if(typeof storyVillageSeq==='function') storyVillageSeq(seq); if(typeof metaVillageSeq==='function') metaVillageSeq(seq); if(typeof ftueVillageSeq==='function') ftueVillageSeq(seq);
   if(after) seq.unshift(after);
   const run=()=>{ const f=seq.shift(); if(f) f(run); else { questCheck(); hudRefresh(); } };

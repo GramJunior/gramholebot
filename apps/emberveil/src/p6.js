@@ -271,7 +271,7 @@ function buildVillageBuildings(){
     if(lv>0&&!bldCol(m,id+lv,x,z,null)){ W.obst.push({x,z,r:id==='pen'?1.4:rad,bld:1,grp:id}); if(id==='pen') W.obst.push({x,z:z-1.6,r:1.6,bld:1,grp:id}); }
   }
   buildRaidStructs();
-  W.abyssOpen=stageDone('1-5');
+  W.abyssOpen=evUnl('abyss');
   if(W.abyssOpen&&!W.abyssPit){ W.abyssPit=mkObj('abyssPit',-15,-21,{ry:0}); }
 }
 function refreshVillagers(){

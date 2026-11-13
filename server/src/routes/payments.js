@@ -11,7 +11,7 @@ import { getConfigKey } from '../lib/config.js';
 import { randomId } from '../lib/crypto.js';
 import { tgCall } from '../lib/telegram.js';
 import { requireAdmin } from './live.js';
-import { nextWeekStart, nextDayStart } from '../lib/time.js';
+import { nextDayStart, dayStart, weekStart } from '../lib/time.js';
 
 const DAY = 86400000;
 
@@ -160,7 +160,7 @@ export async function claimPurchases(c) {
 
 /** Weekly products (weekly:true) can be bought once per ISO week (game-local). */
 export async function weeklyBought(env, uid, productId, now) {
-  const start = nextWeekStart(now, env) - 7 * DAY;
+  const start = weekStart(now, env); // v42: week starts Mon 05:00 МСК (switch week: Mon 00:00)
   const r = await env.DB.prepare("SELECT COUNT(*) n FROM payments WHERE uid=? AND product_id=? AND status='paid' AND created_at>=?").bind(uid, productId, start).first();
   return (r && r.n) > 0;
 }
@@ -194,11 +194,11 @@ export async function claimSeal(c) {
   const e = await c.env.DB.prepare('SELECT qty, expires_at FROM entitlements WHERE uid=? AND product_id=?').bind(user.id, p.id).first();
   if (!e || !(e.qty > 0) || !e.expires_at || e.expires_at <= c.now) fail(403, 'no_seal', 'Печать не действует');
   const next = nextDayStart(c.now, c.env);
-  const dayStart = next - 86400000;
+  const today0 = dayStart(c.now, c.env); // v42: the 29-hour switch day must not allow a second claim
   const key = 'seal:' + p.id;
   // conditional upsert: one claim per game day even with parallel taps
   const r = await c.env.DB.prepare(`INSERT INTO user_timers (uid, key, at, n) VALUES (?,?,?,1)
-    ON CONFLICT(uid, key) DO UPDATE SET at=excluded.at, n=n+1 WHERE user_timers.at < ?`).bind(user.id, key, c.now, dayStart).run();
+    ON CONFLICT(uid, key) DO UPDATE SET at=excluded.at, n=n+1 WHERE user_timers.at < ?`).bind(user.id, key, c.now, today0).run();
   if (!r.meta.changes) return json({ ok: false, error: 'claimed', next, expiresAt: e.expires_at });
   const daysLeft = Math.max(0, Math.ceil((e.expires_at - c.now) / DAY));
   return json({ ok: true, productId: p.id, sparks: p.perDay | 0, daysLeft, expiresAt: e.expires_at, next });

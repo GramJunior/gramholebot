@@ -81,13 +81,16 @@ export async function getMe(c) {
   return json({ ok: true, me: meView(user, await clanOf(c.env, user.id)), serverTime: c.now });
 }
 
-/** POST /me/settings { notify?: boolean, name?: string|null, stats?: boolean } — bot reminders opt-in, display name (null = back to Telegram name). */
+/** POST /me/settings { notify?: boolean, writeAccess?: true, name?: string|null, stats?: boolean } — bot reminders opt-in, display name (null = back to Telegram name). */
 export async function postSettings(c) {
   const user = await requireUser(c);
   const body = await readJson(c.req, 1024);
   if (body.notify !== undefined && typeof body.notify !== 'boolean') fail(400, 'bad_notify', 'notify: true/false');
   if (typeof body.notify === 'boolean') {
     await c.env.DB.prepare('UPDATE users SET notify=? WHERE id=?').bind(body.notify ? 1 : 0, user.id).run();
+    // v42: the game asked Telegram.WebApp.requestWriteAccess and the player allowed it — the bot may write now
+    // (if Telegram still refuses, the cron sees 403 and resets can_pm)
+    if (body.notify && body.writeAccess === true) await c.env.DB.prepare('UPDATE users SET can_pm=1 WHERE id=?').bind(user.id).run();
     if (!body.notify) await c.env.DB.prepare("UPDATE notifications SET status='dropped' WHERE uid=? AND status='pending'").bind(user.id).run();
   }
   // v41: «Отправлять статистику» (the game also sends na:1 with its event batches)
