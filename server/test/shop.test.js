@@ -39,7 +39,8 @@ test('Лавка: gem packs are consumables claimed exactly once (idempotent cla
     await call('POST', '/tg/webhook', { headers: hook(env), body: { ...b.pay, update_id: upd++ } });
     const c1 = await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_aaaa1' } });
     assert.equal(c1.status, 200);
-    assert.deepEqual(c1.body.grants, [{ productId: 'crys_450', n: 1, grant: { sparks: 450 } }]);
+    // v41: the very first purchase of a gem pack is doubled (second grant entry, tagged bonus)
+    assert.deepEqual(c1.body.grants, [{ productId: 'crys_450', n: 1, grant: { sparks: 450 } }, { productId: 'crys_450', n: 1, grant: { sparks: 450 }, bonus: 'first_x2' }]);
     // response lost -> the game retries with the same id -> same result, nothing new granted
     const c1b = await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_aaaa1' } });
     assert.deepEqual(c1b.body.grants, c1.body.grants); assert.equal(c1b.body.repeat, true);
@@ -75,7 +76,7 @@ test('Лавка: starter pack once, weekly pack once per ISO week, bundles carr
     assert.equal(again.status, 409); assert.equal(again.body.error, 'owned_week');
     const cl = await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_pack1' } });
     const byId = Object.fromEntries(cl.body.grants.map((g) => [g.productId, g]));
-    assert.deepEqual(byId.starter_pack.grant, { sparks: 300, open_gold: 2, key_iron: 5, prot: 3 });
+    assert.deepEqual(byId.starter_pack.grant, { sparks: 300, open_gold: 2, chest_iron: 2, prot: 3 });
     assert.equal(byId.weekly_pack.grant.open_leg, 1);
     // next Monday (game-local, UTC+3) the weekly pack is available again
     clock.now = Date.parse('2026-11-09T00:30:00+03:00');
@@ -137,4 +138,69 @@ test('Лавка: admin config validates grants and free chest hours', async () 
   const cfg = await call('GET', '/config');
   assert.equal(cfg.body.freeChestHours, 6);
   assert.deepEqual(cfg.body.products.map((p) => p.id), ['crys_x']);
+});
+
+test('v41 Stars: first purchase ×2 once per gem tier, catalog prices, keeper has no combat bonus', async () => {
+  const env = makeEnv();
+  const call = api(env, { now: Date.parse('2026-11-12T10:00:00Z') });
+  const tg = mockTelegram({ createInvoiceLink: () => 'https://t.me/$inv' });
+  try {
+    const cfg = (await call('GET', '/config')).body;
+    const by = Object.fromEntries(cfg.products.map((p) => [p.id, p]));
+    assert.equal(by.chest_gold3.stars, 99, 'три золотых сундука дешевле легендарного');
+    assert.ok(by.chest_gold3.stars < by.chest_leg1.stars);
+    assert.equal(by.starter_pack.tag, '×4 выгода');
+    assert.ok(!('key_iron' in by.starter_pack.grant), 'вместо ключей — железные сундуки');
+    assert.equal(by.adv_pack.stars, 29); assert.equal(by.adv_pack.once, true); assert.deepEqual(by.adv_pack.grant, { sparks: 100, cos_frame_adv: 1 });
+    assert.equal(by.coal_seal.stars, 199); assert.equal(by.coal_seal.days, 30); assert.equal(by.coal_seal.perDay, 40); assert.deepEqual(by.coal_seal.grant, { sparks: 150 });
+    assert.ok(/Без боевых бонусов/.test(by.keeper_30d.description));
+    for (const id of ['crys_80', 'crys_450', 'crys_1000', 'crys_2200']) assert.equal(by[id].firstX2, true, id);
+    const s = await loginTg(call, 801, 'Первая');
+    await buy(call, env, tg, s, 801, 'crys_80', 'ch_x1');
+    await buy(call, env, tg, s, 801, 'crys_1000', 'ch_x2');
+    const c1 = (await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_x2_01' } })).body.grants;
+    const sum = (g, id) => g.filter((x) => x.productId === id).reduce((a, x) => a + x.n * x.grant.sparks, 0);
+    assert.equal(sum(c1, 'crys_80'), 160); assert.equal(sum(c1, 'crys_1000'), 2000);
+    // second purchase of the same tier: no bonus
+    await buy(call, env, tg, s, 801, 'crys_80', 'ch_x3');
+    const c2 = (await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_x2_02' } })).body.grants;
+    assert.deepEqual(c2, [{ productId: 'crys_80', n: 1, grant: { sparks: 80 } }]);
+    // the adventurer pack is one-time
+    await buy(call, env, tg, s, 801, 'adv_pack', 'ch_adv');
+    assert.equal((await call('POST', '/pay/invoice', { token: s.token, body: { productId: 'adv_pack' } })).status, 409);
+  } finally { tg.restore(); }
+});
+
+test('v41 «Угольная печать»: 150 now, 40 once per game day for 30 days (server entitlement)', async () => {
+  const env = makeEnv();
+  const clock = { now: Date.parse('2026-11-12T10:00:00Z') };
+  const call = api(env, clock);
+  const tg = mockTelegram({ createInvoiceLink: () => 'https://t.me/$inv' });
+  try {
+    const s = await loginTg(call, 901, 'Печать');
+    // not bought -> refused
+    const no = await call('POST', '/pay/seal', { token: s.token, body: {} });
+    assert.equal(no.status, 403); assert.equal(no.body.error, 'no_seal');
+    await buy(call, env, tg, s, 901, 'coal_seal', 'ch_seal1');
+    const cl = (await call('POST', '/pay/claim', { token: s.token, body: { claimId: 'cl_seal01' } })).body.grants;
+    assert.deepEqual(cl, [{ productId: 'coal_seal', n: 1, grant: { sparks: 150 } }]);
+    const ent = (await call('GET', '/entitlements', { token: s.token })).body.items.find((i) => i.productId === 'coal_seal');
+    assert.equal(ent.expiresAt, clock.now + 30 * 86400000); assert.equal(ent.active, true);
+    const d1 = await call('POST', '/pay/seal', { token: s.token, body: {} });
+    assert.equal(d1.status, 200); assert.equal(d1.body.ok, true); assert.equal(d1.body.sparks, 40); assert.equal(d1.body.daysLeft, 30);
+    // same game day -> refused
+    const d1b = await call('POST', '/pay/seal', { token: s.token, body: {} });
+    assert.equal(d1b.body.ok, false); assert.equal(d1b.body.error, 'claimed');
+    // next game day (UTC+3 midnight) -> ok again
+    clock.now = Date.parse('2026-11-13T00:10:00+03:00');
+    const s2 = await loginTg(call, 901, 'Печать');
+    const d2 = await call('POST', '/pay/seal', { token: s2.token, body: {} });
+    assert.equal(d2.body.ok, true); assert.equal(d2.body.daysLeft, 30);
+    // after 30 days the seal expires
+    clock.now = Date.parse('2026-12-13T12:00:00Z');
+    const s3 = await loginTg(call, 901, 'Печать');
+    assert.equal((await call('POST', '/pay/seal', { token: s3.token, body: {} })).status, 403);
+    // guest without auth
+    assert.equal((await call('POST', '/pay/seal', { body: {} })).status, 401);
+  } finally { tg.restore(); }
 });

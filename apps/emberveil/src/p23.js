@@ -60,7 +60,7 @@ forgeBody=function(tab){
           after(); })}>${ico('hammer')} Заточить</button></div>`; }
       if(ENH_FX){ R+=`<div class="enhfx ${ENH_FX}">${ENH_FX==='ok'?'Успех!':ENH_FX==='saved'?'Спасено свитком':'Неудача'}</div>`; setTimeout(()=>{ ENH_FX=null; },50); }
       R+=`<details class="rates"><summary>Таблица заточки</summary><div class="rtab">${ENH_RATE.map((r,i)=>`<span class="${i===u?'cur':''}">+${i}→+${i+1}<b>${Math.round(r*100)}%</b></span>`).join('')}</div></details></div>`; }
-    else R+=`<div class="fempty">${ico('up')}<b>Выберите предмет</b><small>Каждая ступень: +7% ко всем свойствам (после +10 — +5%). Предел кузницы: +${enhCap()}.</small></div>`;
+    else R+=`<div class="fempty">${ico('up')}<b>Выберите предмет</b><small>Каждая ступень: +9% ко всем свойствам (после +10 — +5%). Предел кузницы: +${enhCap()}.</small></div>`;
     L=pickGrid(x=>(x.up||0)<ENH_MAX);
   }
   if(tab==='craft'){ const cls=PANEL.opts.cls||curCls(); const slot=PANEL.opts.slot||'weapon'; const Lq=S.craft.list;

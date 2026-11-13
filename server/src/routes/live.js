@@ -19,7 +19,7 @@ export async function getConfig(c) {
     events: activeEvents(events, c.now),
     upcoming: events.filter((e) => e && e.start && e.start > c.now).slice(0, 5),
     shop: shopRotation(cfg.shop || {}, c.now),
-    products: (cfg.products || []).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once, weekly: !!p.weekly, tag: p.tag || undefined, grant: p.grant || undefined })),
+    products: (cfg.products || []).map((p) => ({ id: p.id, title: p.title, description: p.description, stars: p.stars, type: p.type, once: !!p.once, weekly: !!p.weekly, tag: p.tag || undefined, grant: p.grant || undefined, firstX2: p.firstX2 ? true : undefined, days: p.days || undefined, perDay: p.perDay || undefined })),
     freeChestHours: cfg.freeChestHours,
     // v39.4: Adsgram block ids (public) and whether ad rewards are verified on the server (src/routes/ads.js)
     adsBlockRewarded: String((cfg.ads && cfg.ads.blockRewarded) || ''),
@@ -96,6 +96,7 @@ function validateConfig(key, v) {
   } else if (key === 'products') {
     if (!Array.isArray(v)) bad('products — массив');
     for (const p of v) if (!p || !/^[a-z0-9_]{2,40}$/.test(p.id || '') || !p.title || !Number.isInteger(p.stars) || p.stars < 1 || p.stars > 100000) bad('товар: id (a-z0-9_), title, stars (целое 1..100000)');
+    for (const p of v) if ((p.perDay !== undefined && (!Number.isInteger(p.perDay) || p.perDay < 0 || p.perDay > 10000)) || (p.days !== undefined && (!Number.isInteger(p.days) || p.days < 1 || p.days > 366))) bad('товар: days — целое 1..366, perDay — целое 0..10000');
     for (const p of v) if (p.grant !== undefined && (typeof p.grant !== 'object' || !p.grant || Object.values(p.grant).some((x) => !Number.isFinite(x) || x < 0 || x > 1e6))) bad('товар: grant — объект {ключ: число ≥ 0}');
   } else if (key === 'freeChestHours') {
     if (!Number.isFinite(v) || v < 0.5 || v > 72) bad('freeChestHours — число часов 0.5..72');

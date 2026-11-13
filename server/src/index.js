@@ -61,6 +61,7 @@ export const ROUTES = [
   ['POST', '/pay/invoice', pay.createInvoice],
   ['GET', '/entitlements', pay.listEntitlements],
   ['POST', '/pay/claim', pay.claimPurchases],
+  ['POST', '/pay/seal', pay.claimSeal],
   ['POST', '/chest/free', pay.freeChest],
 
   ['GET', '/referrals', social.getReferrals],
