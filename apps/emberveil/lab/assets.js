@@ -756,7 +756,7 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
   }
   function gripKey(what, o) { if (o && o.grip) return o.grip; if (typeof what === 'string' && GRIP_MODELS[what]) return what; return null; }
 
-  const BOW_LOCO = /^(run|runB|walk|walkB|sprint)$/;
+  const BOW_LOCO = /^(run|runB|walk|walkB|sprint)$/, BOW_ROLL = /^(roll|dodge)/;
   const _bw = { v: [0, 1, 2, 3, 4].map(() => new T.Vector3()), q: [0, 1, 2].map(() => new T.Quaternion()), m: [0, 1].map(() => new T.Matrix4()) };
   class Actor {
     constructor(id, def, opts) {
@@ -1060,8 +1060,8 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
     update(dt, o) {
       if (this._flashT > 0) { this._flashT -= dt; this.setFlash(Math.max(0, this._flashT / this._flashMax) * 0.85); }
       const step = o && o.step ? o.step : o && o.far ? S.Q.animStepFar : 1;
-      this._acc += dt; if (++this._t % step !== 0) return; this._charTick(this._acc); this.mixer.update(this._acc); this._acc = 0;
-      if (this._bowG) this.bowGrip();
+      this._acc += dt; if (++this._t % step !== 0) return; this._charTick(this._acc); this.mixer.update(this._acc); this._dtB = this._acc || 1e-3; this._acc = 0;
+      if (this._bowG) this.bowGrip({ dt: this._dtB });
     }
     // v42 «Хват луков»: лук в левой руке ставится по миру, а не «как лежит в кулаке» — плечи вертикально (вдоль корпуса; в кувырке
     // наполовину за телом), тетива — к телу и тянущей руке (середина между тазом и правой кистью), «спинка» — наружу. В клипах
@@ -1076,10 +1076,17 @@ void main(){ gl_FragColor = vec4(uColor, uOpacity);
       const P = sl.getWorldPosition(V[0]), U = V[1].set(0, 0.35, 0);
       if (pel && top) { const a = pel.getWorldPosition(V[2]), b = top.getWorldPosition(V[3]).sub(a); if (b.lengthSq() > 1e-10) U.add(b.normalize()); else U.y = 1; } else U.y = 1;
       if (U.lengthSq() < 1e-6) U.set(0, 1, 0); U.normalize();
-      // на бегу и шагом — по вертикали мира (без наклона корпуса), верхнее плечо чуть вперёд (~20°): кисть ходит у груди, вертикальный
-      // лук закрывал бы лицо; при натяжении (o.aim) — как стоя
-      const loco = BOW_LOCO.test(this.currentName || '') ? 1 - (o && o.aim || 0) : 0;
-      if (loco > 0) { const F = V[2].set(0, 0, 1).applyQuaternion(this.root.getWorldQuaternion(_bw.q[0])); F.y = 0; if (F.lengthSq() > 1e-6) { F.normalize(); U.lerp(V[3].set(0, 1, 0).addScaledVector(F, 0.36).normalize(), loco).normalize(); } }
+      // на бегу и шагом лук несут низко, вдоль предплечья: верхнее плечо вперёд, чуть вниз и наружу (кончик впереди, сбоку, ниже кисти),
+      // нижнее — назад вдоль руки; кисть ходит у груди, вертикальный лук закрывал лицо; при натяжении (o.aim) — как стоя. В кувырке лук не кувыркается с телом:
+      // стоит по вертикали мира (верх чуть вперёд, ~27°), поворачиваясь в кулаке вокруг рукояти. Переходы — плавно (o.dt, ~0,12 с; dt: 0 — без шага сглаживания).
+      const cn = this.currentName || '', aim = o && o.aim || 0, k = o && o.dt !== undefined ? Math.min(1, o.dt * 8) : 1;
+      this._bwL = (this._bwL || 0) + ((BOW_LOCO.test(cn) ? 1 : 0) - (this._bwL || 0)) * k;
+      this._bwR = (this._bwR || 0) + ((BOW_ROLL.test(cn) ? 1 : 0) - (this._bwR || 0)) * k;
+      const loco = this._bwL * (1 - aim), roll = this._bwR;
+      if (loco > 0.001 || roll > 0.001) { const F = V[2].set(0, 0, 1).applyQuaternion(this.root.getWorldQuaternion(_bw.q[0])); F.y = 0; if (F.lengthSq() > 1e-6) { F.normalize();
+        if (roll > 0.001) U.lerp(V[3].set(0, 1, 0).addScaledVector(F, 0.5).normalize(), roll).normalize();
+        if (loco > 0.001) { const L = V[4].set(1, 0, 0).applyQuaternion(_bw.q[0]); L.y = 0; L.normalize(); // наружу, влево от тела: лук идёт сбоку, а не поперёк груди
+          U.lerp(V[3].set(0, -0.25, 0).addScaledVector(F, 1).addScaledVector(L, 0.45).normalize(), loco).normalize(); } } }
       const C = pel ? pel.getWorldPosition(V[2]) : this.root.getWorldPosition(V[2]); if (this.handR) C.add(this.handR.getWorldPosition(V[3])).multiplyScalar(0.5);
       const S = C.sub(P); S.addScaledVector(U, -S.dot(U));
       if (S.lengthSq() < 1e-6) { S.set(0, 0, -1).applyQuaternion(this.root.getWorldQuaternion(_bw.q[0])); S.addScaledVector(U, -S.dot(U)); }
