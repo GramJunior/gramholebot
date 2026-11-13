@@ -398,7 +398,7 @@ function bowPose(rdt){ const P=G.P; if(!P||!P.rig) return; const cls=PS.cls; con
   // лук стоит вертикально, «спинкой» к цели (иначе в кисти он лежит вдоль предплечья).
   // v42 «Хват луков»: у героя-модели — общий хват всех лучников (lab/assets.js Actor.bowGrip) после ИК рук: центр рукояти в кулаке,
   // тетива к лучнику и тянущей руке. Раньше лук доворачивался здесь своим базисом, и тетива оказывалась снаружи, от тела.
-  if(a&&a.bowGrip&&a._bowG){ if(wpn&&wpn.userData.q0){ wpn.quaternion.copy(wpn.userData.q0); wpn.userData.q0=null; } a.bowGrip({aim:w}); }
+  if(a&&a.bowGrip&&a._bowG){ if(wpn&&wpn.userData.q0){ wpn.quaternion.copy(wpn.userData.q0); wpn.userData.q0=null; } a.bowGrip({aim:w,dt:0}); } // сглаживание бега/кувырка уже шагнуло в Actor.update
   else if(wpn&&(a||R.armL)){ if(!wpn.userData.q0) wpn.userData.q0=wpn.quaternion.clone(); const q0=wpn.userData.q0; if((rig||!a)&&wW>.001&&wpn.parent){ const up=new THREE.Vector3(0,1,0).addScaledVector(fwd,-.08-.1*(1-w)).addScaledVector(right,.12*w).normalize(); const zA=fwd.clone().addScaledVector(up,-fwd.dot(up)).normalize(); const yA=new THREE.Vector3().crossVectors(zA,up);
       const m4=wpn.userData.evBox?new THREE.Matrix4().makeBasis(up,yA,zA):new THREE.Matrix4().makeBasis(zA.clone().negate(),up,new THREE.Vector3().crossVectors(zA.clone().negate(),up)); /* процедурный лук: длинная ось Y, концы плеч — +X */ /* лук: длинная ось — локальная X, изгиб — Z (концы плеч — к лучнику) */ const qW=new THREE.Quaternion().setFromRotationMatrix(m4); if(BOWV.flip) qW.multiply(new THREE.Quaternion().setFromAxisAngle(_sUp,PI)); wpn.parent.updateMatrixWorld(true); wpn.parent.getWorldQuaternion(_q3); _q3.invert().multiply(qW); wpn.quaternion.copy(q0).slerp(_q3,wW); }
     else wpn.quaternion.copy(q0); }

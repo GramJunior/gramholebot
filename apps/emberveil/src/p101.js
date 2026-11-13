@@ -64,12 +64,17 @@ function hold42Bow(a){ const o=a.slots.l, g=o&&o.userData.evGrip; if(!g||g.t!=='
   const hz=v=>{ v.y=0; return v.lengthSq()>1e-8?v.normalize():v; };
   const toBody=hz(pel.clone().lerp(hr,.5).sub(riser)), toHand=hz(hr.clone().sub(riser)), sh=hz(Sd.clone());
   const sc=a.root.getWorldScale(_h42v()).y||1;
-  return {key:g.key,grip:+(riser.distanceTo(fist)/sc).toFixed(3),wrist:+(riser.distanceTo(wrist)/sc).toFixed(3),vert:+(Math.acos(THREE.MathUtils.clamp(U.y,-1,1))*180/Math.PI).toFixed(1),up:+U.y.toFixed(2),
+  // верхний кончик лука против головы: ниже кости Head (у UAL/KayKit она у основания черепа — ниже глаз) или позади плоскости лица
+  const mu=new THREE.Vector3().fromArray(M.u).normalize(), bx=o.userData.evBox, s0=o.scale.x||1; let tipH=null, tipF=null;
+  if(bx){ const half=Math.abs(bx.getSize(_h42v()).dot(mu))/s0/2; const tip=new THREE.Vector3().fromArray(g.c).addScaledVector(mu,half).applyMatrix4(o.matrixWorld); const hd=(B.Head||B.head);
+    if(hd){ const hp=hd.getWorldPosition(_h42v()), fw=new THREE.Vector3(0,0,1).applyQuaternion(a.root.getWorldQuaternion(new THREE.Quaternion())); fw.y=0; fw.normalize(); tipH=+((tip.y-hp.y)/sc).toFixed(3); tipF=+(tip.clone().sub(hp).dot(fw)/sc).toFixed(3); } }
+  return {tipH,tipF,key:g.key,grip:+(riser.distanceTo(fist)/sc).toFixed(3),wrist:+(riser.distanceTo(wrist)/sc).toFixed(3),vert:+(Math.acos(THREE.MathUtils.clamp(U.y,-1,1))*180/Math.PI).toFixed(1),up:+U.y.toFixed(2),
     str:+sh.dot(toBody).toFixed(2),strH:+sh.dot(toHand).toFixed(2)}; }
 const HOLD42_BOW=[['центр рукояти в кулаке (±4 см)',m=>m.grip<=.04],['кисть у рукояти',m=>m.wrist<=.17],
-  ['плечи ±30° от вертикали',(m,p)=>p.free||m.vert<=30],['верхнее плечо выше нижнего',(m,p)=>p.free||m.up>.5],
-  ['тетива к телу и тянущей руке',(m,p)=>p.free||m.str>.5&&(p.n==='idle'||p.n==='calm'||p.n==='run'||m.strH>.5)]];
-const HOLD42_BOWPOSES=[{n:'calm',clip:HOLD42.idle,t:.3},{n:'idle',clip:'idle',t:.3},{n:'aimIdle',clip:'aimIdle',t:.5},{n:'draw',clip:'aim',t:.9},{n:'release',clip:'attack',t:.65},{n:'run',clip:'run',t:.25},{n:'roll',clip:'roll',t:.35,free:1},{n:'hit',clip:'hit',t:.3}];
+  ['плечи ±30° от вертикали',(m,p)=>p.run||p.roll||m.vert<=30],['верхнее плечо выше нижнего',(m,p)=>p.run||(p.roll?m.up>0:m.up>.5)],
+  ['бег: кончик лука ниже глаз или за лицом',(m,p)=>!p.run||m.tipH!==null&&(m.tipH<-.15||m.tipF<-.05)],['кувырок: плечи в пределах 60° от вертикали мира',(m,p)=>!p.roll||m.vert<=60],
+  ['тетива к телу и тянущей руке',(m,p)=>m.str>(p.roll||p.run?.3:.5)&&(p.n==='idle'||p.n==='calm'||p.run||p.roll||m.strH>.5)]];
+const HOLD42_BOWPOSES=[{n:'calm',clip:HOLD42.idle,t:.3},{n:'idle',clip:'idle',t:.3},{n:'aimIdle',clip:'aimIdle',t:.5},{n:'draw',clip:'aim',t:.9},{n:'release',clip:'attack',t:.65},{n:'run',clip:'run',t:.25,run:1},{n:'run2',clip:'run',t:.5,run:1},{n:'run3',clip:'run',t:.75,run:1},{n:'roll',clip:'roll',t:.2,roll:1},{n:'roll2',clip:'roll',t:.45,roll:1},{n:'roll3',clip:'roll',t:.7,roll:1},{n:'hit',clip:'hit',t:.3}];
 function hold42BowRun(res,label,a,bad){ for(const p of HOLD42_BOWPOSES){ if(!hold42Pose(a,p.clip,p.t)) continue; const m=hold42Bow(a); if(!m){ bad('нет лука',label+' '+p.n); continue; } res.stats.cells++; res.stats.bow=(res.stats.bow||0)+1;
     for(const [rn,fn] of HOLD42_BOW) if(!fn(m,p)) bad('лук: '+rn,label+' · '+p.n+' · '+JSON.stringify(m)); if(res._log) res.violations.push({rule:'log',msg:label+' '+p.n+' '+JSON.stringify(m)}); } }
 function hold42Check(o){ o=o||{}; const res={key:'hold42',type:'hold',n:0,by:{},violations:[],stats:{cells:0}}; const bad=(rule,msg)=>{ res.n++; res.by[rule]=(res.by[rule]||0)+1; res.violations.push({rule,msg,x:0,z:0}); };
