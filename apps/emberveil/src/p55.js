@@ -190,7 +190,7 @@ spawnEnemy=function(kind,x,z,L,o={}){ const e=_spawnEnemyA9(kind,x,z,L,o); const
   if(e.elite&&W&&W.zone&&W.zone.id===9&&A2_ELITE9[kind]&&chance(.5)){ const m=pick(A2_ELITE9[kind]); e.mods[0]=m; if(e.ring) e.ring.material.color.set(ELITE_MODS[m].col); }
   try{ if(a9EnemyLook[kind]) a9EnemyLook[kind](e); }catch(err){ console.warn('a9 look',err); }
   // рой: стая Златожуков бежит цепочкой за вожаком (4–5 жуков)
-  if(kind==='goldBeetle'&&o.camp&&!o.summon&&!o.swarm&&W&&W.kind==='stage'&&!e.elite){ e.swarmTrail=[]; const n=G.enemies.filter(x=>x.alive).length>40?1:randi(1,2); for(let i=0;i<n;i++){ const a=rand(TAU); const f=spawnEnemy('goldBeetle',x+Math.cos(a)*1.2,z+Math.sin(a)*1.2,L,Object.assign({},o,{swarm:1,elite:0,champion:0})); f.swarmLead=e; f.swarmK=i+1; if(e.camp&&e.camp.members) e.camp.members.push(f); } }
+  if(kind==='goldBeetle'&&o.camp&&!o.summon&&!o.swarm&&W&&W.kind==='stage'&&!e.elite){ e.swarmTrail=[]; const n=G.enemies.filter(x=>x.alive).length>40?1:randi(1,2); for(let i=0;i<n;i++){ let sx=x, sz=z; for(let k=0;k<10;k++){ const a=rand(TAU), r=rand(1.2,2.2), tx=x+Math.cos(a)*r, tz=z+Math.sin(a)*r; if(walkable(tx,tz,.5)){ sx=tx; sz=tz; break; } } /* v41: свита не появляется внутри препятствия */ const f=spawnEnemy('goldBeetle',sx,sz,L,Object.assign({},o,{swarm:1,elite:0,champion:0})); f.swarmLead=e; f.swarmK=i+1; if(e.camp&&e.camp.members) e.camp.members.push(f); } }
   return e; };
 const A9E={
   bandages:()=>cgeo('a9e_band',b=>{ for(let i=0;i<5;i++){ const a=-1+i*.5; b.box(.08,.5+(i%2)*.25,.01,0xe8dcc0,{p:[Math.sin(a)*.18,-.25-(i%2)*.1,Math.cos(a)*.1-.04],r:[.15,a,0],ol:0}); } },0),
