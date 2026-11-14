@@ -1,4 +1,4 @@
-// ================= p102 (v43, ПИЛОТ 1): «Премиум-стилизация» — включается только адресом ?gfx=next =================
+// ================= p102 (v43, ПИЛОТ 1): «Премиум-стилизация» — включён по умолчанию с v43.1 (настройка «Стиль графики», ?gfx=old — классика) =================
 // Без флага файл ничего не делает (живая игра не меняется). С флагом — тот же Three.js r128, но «современный» конвейер:
 //  • HDR: сцена рисуется в цель half-float (нет расширения — RGBA8 с запасом ×2), тонмаппинг ACES (как в игре) и экспозиция —
 //    в финальном проходе, поэтому свечение (bloom) берёт только то, что ярче белого: угли, огонь, магия, искры, окна ночью;
@@ -15,11 +15,16 @@
 //    30 к/с + low; под полноэкранными меню 3D не перерисовывается (последний кадр остаётся на холсте), раз в 0,5 с — для анимаций.
 // Параметры адреса: &tier=high|med|low (зафиксировать ступень, губернатор выкл.), &dpr=0.6…1.5 (зафиксировать разрешение), &bat=1, &grain=1.
 // Отладка: window.P102 (ступень, dpr, мс кадра, вызовы, треугольники).
-const GFX102=/[?&]gfx=next\b/.test(location.search);
+// v43.1: премиум включён по умолчанию. Выбор игрока хранится отдельно (ev_gfx: auto|max|classic), чтобы читаться до загрузки сохранения.
+//   ?gfx=next — принудительно вкл; ?gfx=old — классика; ?gfx=pre/prebake — пилот 2 (премиум выкл).
+const GFX102_MODE=(function(){ const q=location.search; if(/[?&]gfx=(pre|prebake)\b/.test(q)) return 'classic'; if(/[?&]gfx=old\b/.test(q)) return 'classic'; if(/[?&]gfx=next\b/.test(q)) return 'auto';
+  let m=null; try{ m=window.localStorage.getItem('ev_gfx'); }catch(e){} return m==='max'||m==='classic'?m:'auto'; })();
+const GFX102=GFX102_MODE!=='classic'; try{ window.GFX102_MODE=GFX102_MODE; }catch(e){}
 const P102={on:GFX102,tier:'off',dpr:1,ms:16.7,fps:60,night:false,log:[]};
 if(GFX102){ window.P102=P102; (function(){
+  const BAT0=()=>/[?&]bat=1\b/.test(location.search)||!!(S&&S.set&&S.set.fps===30);
   const QS=location.search, qv=k=>{ const m=new RegExp('[?&]'+k+'=([^&]+)').exec(QS); return m?decodeURIComponent(m[1]):null; };
-  const FIX_TIER=['high','med','low'].includes(qv('tier'))?qv('tier'):null, FIX_DPR=qv('dpr')?clamp(+qv('dpr'),.5,2):null;
+  const FIX_TIER=['high','med','low'].includes(qv('tier'))?qv('tier'):(GFX102_MODE==='max'&&!BAT0()?'high':null), FIX_DPR=qv('dpr')?clamp(+qv('dpr'),.5,2):null;
   const BAT=()=>qv('bat')==='1'||(S&&S.set&&S.set.fps===30);
   const TIERS={
     high:{shadow:1024,shR:15,bloom:3,ao:1,parts:1.0,grain:true,wind:true,decals:1,amb:1},
