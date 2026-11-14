@@ -1,0 +1,87 @@
+# ЭМБЕРВЕЙЛ backend — Cloudflare Worker + D1.
+# Секреты (BOT_TOKEN, JWT_SECRET, ADMIN_SECRET, WEBHOOK_SECRET) НЕ пишутся сюда:
+#   npx wrangler secret put BOT_TOKEN
+# Для локальной разработки положите их в файл .dev.vars (он в .gitignore).
+
+name = "emberveil-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Напоминания бота и уборка старых записей — каждые 10 минут.
+[triggers]
+crons = ["*/10 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "emberveil"
+# Вставьте сюда id из вывода `npx wrangler d1 create emberveil`:
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[vars]
+# Откуда разрешены запросы (адрес, где лежит игра). Через запятую. "*" — откуда угодно.
+ALLOWED_ORIGINS = "https://YOUR-GAME-HOST.example"
+# Адрес Mini App (кнопка «Играть» в боте).
+WEBAPP_URL = "https://YOUR-GAME-HOST.example/apps/emberveil/"
+# Имя бота без @ и короткое имя Mini App из @BotFather (для реферальных ссылок).
+BOT_USERNAME = "your_bot"
+APP_SHORT_NAME = "play"
+# v40: где лежат страницы для /privacy и /terms бота (apps/legal/). Не задано — папка legal/ рядом с WEBAPP_URL (…/emberveil/ → …/legal/).
+# LEGAL_BASE_URL = "https://YOUR-GAME-HOST.example/legal/"
+# Гостевой вход без Telegram (только для теста!). В бою — "0".
+ALLOW_GUEST = "0"
+# 1 = тестовая среда Telegram (оплата без настоящих Stars).
+TG_TEST_ENV = "0"
+# Смещение игровых суток от UTC в минутах (180 = Москва).
+DAY_OFFSET_MIN = "180"
+# Лимиты (можно не трогать).
+SESSION_TTL_SEC = "21600"
+INITDATA_MAX_AGE_SEC = "3600"
+MAX_SAVE_BYTES = "262144"
+CLAN_MAX_MEMBERS = "30"
+RAID_DAILY_LIMIT = "5"
+ABYSS_MAX_FLOORS_PER_MIN = "3"
+ABYSS_MIN_FLOOR_MS = "8000"
+NOTIFY_MAX_PER_DAY = "3"
+NOTIFY_MIN_GAP_MIN = "60"
+
+# v39: ограничение частоты запросов (Workers Rate Limiting API, wrangler ≥ 4.36). Счётчики ведёт Cloudflare
+# в каждой точке присутствия; period — только 10 или 60 с. namespace_id — любое целое, уникальное в аккаунте.
+# Ключи: /auth — по IP, PUT /save, /events, /pay/invoice — по игроку (из токена), /admin/* — по IP (src/lib/ratelimit.js).
+# Без этих привязок (локально, в тестах) работает запасной счётчик в памяти изолята с теми же лимитами.
+# RATE_LIMIT = "0" в [vars] выключает ограничение (нагрузочные тесты).
+[[ratelimits]]
+name = "RL_AUTH"
+namespace_id = "3901"
+simple = { limit = 20, period = 60 }
+
+[[ratelimits]]
+name = "RL_SAVE"
+namespace_id = "3902"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "RL_EVENTS"
+namespace_id = "3903"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "RL_PAY"
+namespace_id = "3904"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "RL_ADMIN"
+namespace_id = "3905"
+simple = { limit = 30, period = 60 }
+
+# v39.4: реклама Adsgram — Reward URL (GET /ads/reward, ключ — Telegram id из запроса) и трата награды (POST /ads/claim, по игроку)
+[[ratelimits]]
+name = "RL_ADS_REWARD"
+namespace_id = "3906"
+simple = { limit = 20, period = 60 }
+
+[[ratelimits]]
+name = "RL_ADS_CLAIM"
+namespace_id = "3907"
+simple = { limit = 20, period = 60 }

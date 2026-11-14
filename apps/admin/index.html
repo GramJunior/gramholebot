@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Эмбервейл · админка</title>
+<!-- v41: статическая страница аналитики. Данные — GET <API>/admin/stats?days=N (server/src/routes/stats.js).
+     Секрет админа (ADMIN_SECRET) вводится вручную, хранится только в sessionStorage этой вкладки и уходит в заголовке
+     Authorization: Bearer … — никогда в адресе. Адрес API запоминается в localStorage (он не секретный). -->
+<style>
+:root{--bg:#f6f4f0;--card:#fff;--ink:#1d1a16;--mute:#6b6459;--line:#e4dfd6;--acc:#b5581c;--acc2:#2f6f8f;--good:#2e7d32;--bad:#b3261e;--bar:#d9893f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15120f;--card:#1f1b17;--ink:#f0ebe3;--mute:#a59d90;--line:#332d26;--acc:#f0a35e;--acc2:#7fc0de;--good:#7bc77f;--bad:#f2867d;--bar:#c97a33}}
+:root[data-theme="dark"]{--bg:#15120f;--card:#1f1b17;--ink:#f0ebe3;--mute:#a59d90;--line:#332d26;--acc:#f0a35e;--acc2:#7fc0de;--good:#7bc77f;--bad:#f2867d;--bar:#c97a33}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
+header h1{font-size:16px;margin:0 12px 0 0}
+input,select,button{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+input[type=url]{width:min(320px,100%)}input[type=password]{width:min(220px,100%)}
+button{cursor:pointer;background:var(--acc);color:#fff;border-color:transparent}button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+main{padding:16px;max-width:1200px;margin:0 auto}
+#msg{color:var(--mute);margin:0 0 12px}#msg.err{color:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.tile b{display:block;font-size:22px}.tile small{color:var(--mute)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:14px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+section h2{font-size:15px;margin:0 0 8px}section p.note{color:var(--mute);margin:6px 0 0;font-size:12px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{color:var(--mute);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+td.na{color:var(--mute)}
+.bar{display:inline-block;height:8px;background:var(--bar);border-radius:4px;vertical-align:middle;margin-right:6px}
+svg text{fill:var(--mute);font-size:10px}
+.heat{border-radius:4px}
+</style></head><body>
+<header>
+  <h1>🔥 Эмбервейл · аналитика</h1>
+  <form id="f" style="display:contents" autocomplete="off">
+    <input id="api" type="url" placeholder="https://…workers.dev (адрес API)" required>
+    <input id="sec" type="password" placeholder="Секрет админа" autocomplete="current-password" required>
+    <select id="days"><option value="7">7 дней</option><option value="14">14 дней</option><option value="30" selected>30 дней</option><option value="60">60 дней</option><option value="120">120 дней</option></select>
+    <button type="submit">Загрузить</button>
+    <button type="button" class="ghost" id="out">Выйти</button>
+  </form>
+</header>
+<main>
+  <p id="msg">Введите адрес API и секрет админа. Секрет хранится только в этой вкладке (sessionStorage) и не попадает в адрес страницы.</p>
+  <div id="app"></div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var $=function(id){return document.getElementById(id);};
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+  var num=function(n){return n==null?'—':Number(n).toLocaleString('ru-RU');};
+  var pc=function(n){return n==null?'—':n+'%';};
+  var dur=function(s){if(s==null)return '—';s=Math.round(s);var m=Math.floor(s/60);return m?m+' мин '+(s%60)+' с':s+' с';};
+  var ls=function(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}};
+  var ss=function(k,v){try{if(v===undefined)return sessionStorage.getItem(k);if(v===null)sessionStorage.removeItem(k);else sessionStorage.setItem(k,v);}catch(e){return null;}};
+  $('api').value=ls('ev_admin_api')||'';
+  $('sec').value=ss('ev_admin_secret')||'';
+  function msg(t,err){var m=$('msg');m.textContent=t;m.className=err?'err':'';}
+  function table(cols,rows,opt){
+    opt=opt||{};
+    var h='<div class="scroll"><table><thead><tr>'+cols.map(function(c){return '<th>'+esc(c[1])+'</th>';}).join('')+'</tr></thead><tbody>';
+    if(!rows.length) h+='<tr><td class="na" colspan="'+cols.length+'">нет данных</td></tr>';
+    rows.forEach(function(r){h+='<tr>'+cols.map(function(c){var v=typeof c[0]==='function'?c[0](r):r[c[0]];var raw=c[2]==='raw';var cls=v==null?' class="na"':'';return '<td'+cls+'>'+(raw?v:esc(c[2]?c[2](v):v==null?'—':v))+'</td>';}).join('')+'</tr>';});
+    return h+'</tbody></table></div>';
+  }
+  function bars(rows,key,label){
+    var max=Math.max.apply(null,rows.map(function(r){return r[key]||0;}).concat([1]));
+    return function(r){return '<span class="bar" style="width:'+Math.max(2,Math.round(60*(r[key]||0)/max))+'px"></span>'+esc(num(r[key]));};
+  }
+  function chart(rows,key){
+    if(!rows.length) return '<p class="note">нет данных</p>';
+    var W=Math.max(320,rows.length*18),H=120,max=Math.max.apply(null,rows.map(function(r){return r[key]||0;}).concat([1])),bw=Math.min(40,W/rows.length);
+    var s='<div class="scroll"><svg width="'+W+'" height="'+(H+18)+'" role="img" aria-label="'+esc(key)+' по дням">';
+    rows.forEach(function(r,i){var h=Math.round((H-12)*(r[key]||0)/max);s+='<rect x="'+(i*bw+2)+'" y="'+(H-h)+'" width="'+Math.max(2,bw-4)+'" height="'+h+'" rx="2" fill="var(--bar)"><title>'+esc(r.day)+': '+esc(r[key])+'</title></rect>';
+      if(rows.length<=31||i%Math.ceil(rows.length/20)===0) s+='<text x="'+(i*bw+bw/2)+'" y="'+(H+12)+'" text-anchor="middle">'+esc(String(r.day).slice(5))+'</text>';});
+    return s+'</svg></div>';
+  }
+  function heat(v){if(v==null)return '<span class="na">—</span>';var a=Math.min(1,v/60);return '<span class="heat" style="padding:1px 6px;background:color-mix(in srgb,var(--acc2) '+Math.round(a*70)+'%,transparent)">'+esc(v)+'%</span>';}
+  function render(d){
+    var t=d.tiles||{},sx=d.sessions||{},R=d.referrals||{},SR=d.starsRevenue||{};
+    var tiles=[['DAU (сегодня)',num(t.dau)],['WAU',num(t.wau)],['MAU',num(t.mau)],['Stickiness DAU/MAU',pc(t.stickiness)],['Новых сегодня',num(t.newToday)],
+      ['Медиана сессии',dur(sx.medianSessionSec)],['Медиана в день',dur(sx.medianDailySec)],['Всего игроков',num(d.users)],['Stars всего',num(d.stars)],['Платежей',num(d.payments)],['Без статистики',num(d.statsOff)]];
+    var h='<div class="tiles">'+tiles.map(function(x){return '<div class="tile"><small>'+esc(x[0])+'</small><b>'+esc(x[1])+'</b></div>';}).join('')+'</div><div class="grid">';
+    h+='<section><h2>DAU по дням</h2>'+chart(d.dau||[],'n')+'<h2 style="margin-top:10px">Новые игроки по дням</h2>'+chart(d.newByDay||[],'n')+'</section>';
+    h+='<section><h2>Новые игроки по источнику</h2>'+table([['src','Источник'],[bars(d.newBySource||[],'n'),'Новых','raw'],['d1Pct','D1',pc],['d7Pct','D7',pc],['payers','Платящих']],d.newBySource||[])+'<p class="note">src — метка из ссылки startapp=src_&lt;метка&gt;; ref — по приглашению; organic — без метки.</p></section>';
+    h+='<section><h2>Удержание когорт (вернулся ровно в день N)</h2>'+table([['day','Когорта'],['n','Игроков'],[function(r){return heat(r.d1Pct);},'D1','raw'],[function(r){return heat(r.d3Pct);},'D3','raw'],[function(r){return heat(r.d7Pct);},'D7','raw'],[function(r){return heat(r.d14Pct);},'D14','raw'],[function(r){return heat(r.d30Pct);},'D30','raw']],(d.cohorts||[]).slice().reverse())+'<p class="note">Пустые клетки — когорта ещё не дожила до дня N.</p></section>';
+    h+='<section><h2>Воронка первого запуска</h2>'+table([['label','Шаг'],[bars(d.funnel||[],'users'),'Игроков','raw'],['pct','% от открывших',pc],['stepPct','% от прошлого шага',pc]],d.funnel||[])+'<p class="note">Когорта — игроки, чей первый день попал в окно. Вехи — разовые события (таблица milestones).</p></section>';
+    h+='<section><h2>Этапы: где проигрывают (топ-10)</h2>'+table([['stage','Этап'],['starts','Начато'],['fails','Поражений'],['failPct','% поражений',pc],['winPct','% побед',pc],['quits','Выходов'],['avgFailSec','До поражения',dur],['topCause','Главная причина']],d.stageFails||[])+'</section>';
+    h+='<section><h2>Сессии</h2>'+table([['bucket','Длина сессии'],[bars(sx.hist||[],'n'),'Сессий','raw']],sx.hist||[])+'<p class="note">Сессий в окне: '+esc(num(sx.sessions))+' · средняя '+esc(dur(sx.avgSessionSec))+' · медиана '+esc(dur(sx.medianSessionSec))+'.</p></section>';
+    h+='<section><h2>Реклама по местам</h2>'+table([['place','Место'],['offered','Предложено'],['requested','Запрошено'],['shown','Показано'],['nofill','Нет рекламы'],['skipped','Пропущено'],['rewarded','Награда'],['fillPct','Fill',pc],['completePct','Досмотр',pc]],d.ads||[])+
+      '<h2 style="margin-top:10px">Сервер (Adsgram Reward URL / потрачено)</h2>'+table([['place','Место'],['rewarded','Reward URL'],['claimed','Потрачено']],d.adsServer||[])+'<p class="note">Показано = награда + пропущено. Расхождение «Reward URL» и «Награда» больше 10% — проверить Reward URL или накрутку.</p></section>';
+    h+='<section><h2>Stars по товарам</h2>'+table([['product_id','Товар'],['views','Видели'],['intents','Нажали'],['buyers','Купили (игроков)'],['purchases','Покупок'],[bars(SR.byProduct||[],'stars'),'Stars','raw']],SR.byProduct||[])+
+      '<p class="note">Выручка — только по таблице payments (сервер). Возвраты в окне: '+esc(num((SR.refunds||{}).n))+' на '+esc(num((SR.refunds||{}).stars))+' ⭐.</p>'+chart(SR.byDay||[],'stars')+'</section>';
+    h+='<section><h2>Приглашения</h2>'+table([['k','Показатель'],['v','Значение']],[{k:'Пришло по ссылке (в окне)',v:num(R.invited)},{k:'Активировано (друг победил 1-5)',v:num(R.activated)},{k:'Ждут активации (всего)',v:num(R.pending)},{k:'Доля приглашённых среди новых (k-share)',v:R.kShare==null?'—':R.kShare}])+
+      '<h2 style="margin-top:10px">Топ пригласивших</h2>'+table([['pid','Код игрока'],['invited','Пригласил'],['activated','Активировано'],['pending','Ждут']],R.top||[])+'</section>';
+    h+='<section><h2>Экономика: приход и расход</h2>'+table([['dir','',function(v){return v==='in'?'+':'−';}],['res','Ресурс'],['src','Источник / сток'],[bars(d.economy||[],'amount'),'Сумма','raw'],['users','Игроков·дней']],(d.economy||[]).slice(0,40))+'</section>';
+    h+='</div><p class="note" style="margin-top:12px">Окно: '+esc(d.from)+' — '+esc(d.to)+' (игровые сутки). Обновлено: '+esc(new Date(d.serverTime).toLocaleString('ru-RU'))+'.</p>';
+    $('app').innerHTML=h;
+  }
+  function load(){
+    var api=$('api').value.trim().replace(/\/+$/,''),sec=$('sec').value;
+    if(!/^https?:\/\//.test(api)||!sec){msg('Нужны адрес API и секрет',true);return;}
+    ls('ev_admin_api',api); ss('ev_admin_secret',sec);
+    msg('Загрузка…');
+    fetch(api+'/admin/stats?days='+encodeURIComponent($('days').value),{headers:{Authorization:'Bearer '+sec},cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'})
+      .then(function(r){return r.json().catch(function(){return {ok:false,message:'HTTP '+r.status};}).then(function(j){j.status=r.status;return j;});})
+      .then(function(j){
+        if(j.status===401){ss('ev_admin_secret',null);msg('Неверный секрет',true);return;}
+        if(!j.ok){msg('Ошибка: '+(j.message||j.error||j.status),true);return;}
+        msg('');render(j);
+      }).catch(function(){msg('Нет связи с API (адрес, CORS: ALLOWED_ORIGINS должен включать адрес этой страницы)',true);});
+  }
+  $('f').addEventListener('submit',function(e){e.preventDefault();load();});
+  $('out').addEventListener('click',function(){ss('ev_admin_secret',null);$('sec').value='';$('app').innerHTML='';msg('Секрет удалён из вкладки.');});
+  if($('api').value&&$('sec').value) load();
+})();
+</script>
+</body></html>
