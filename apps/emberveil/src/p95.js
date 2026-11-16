@@ -140,8 +140,10 @@ function t95Info(cls){ const L=S.hero.lvl; let s=T95.sel; const F=forkS(cls);
     body=`<p class="t95d">Пока окно открыто — любое вложение можно вернуть бесплатно («− Вернуть», «Отменить»). Старые ранги — Храм Угля → «Сброс» (бесплатно), развилки — там же за ${costHtml(forkRespecCost())}.</p>`;
     btn=`<button class="wb-btn em sm" ${S.bld.temple?'':'disabled'} ${act(()=>openPanel('bld',{id:'temple',tab:'respec'}))}>${ico('swap')} В Храм Угля</button>`; }
   else { ic='flame'; t='Очки умений'; st=`${S.hero.tp} ${plural(S.hero.tp,'свободно','свободно','свободно')}`;
-    body=`<p class="t95d">+1 за уровень, +1 за Пламя Очага 10, +1 за ${CONS.tome.n.toLowerCase()}. Тратятся на ранги умений и закалки этого оружия.</p>`;
-    if(S.cons.tome>0) btn=`<button class="wb-btn em sm" ${act(()=>{ S.cons.tome--; S.hero.tp++; AU.sfx('lvl',.6); saveGame(); rerender(); })}>${ico('book')} Прочесть ×${S.cons.tome}</button>`; }
+    // v44: прочесть за очко можно только найденный Фолиант умений; купленный в лавке — только для рангов 6–7 (p105)
+    const rd=typeof tm105Read==='function'?tm105Read():(S.cons.tome|0), tb=(S.cons.tome|0)-rd;
+    body=`<p class="t95d">+1 за уровень, +1 за Пламя Очага 10, +1 за найденный ${CONS.tome.n.toLowerCase()}. Тратятся на ранги умений и закалки этого оружия.</p>${tb>0?`<p class="t95why">${ico('book')} Из лавки: ${tb} — только для рангов 6–7, без очка.</p>`:''}`;
+    if(rd>0) btn=`<button class="wb-btn em sm" ${act(()=>{ if(!(typeof tm105Read!=='function'||tm105Read()>0)) return; S.cons.tome--; S.hero.tp++; AU.sfx('lvl',.6); saveGame(); rerender(); })}>${ico('book')} Прочесть ×${rd}</button>`; }
   return `<div class="t95col t95inf"><div class="t95ih"><span class="ic">${ico(ic)}</span><div><b>${esc(t)}</b><small>${st}</small></div></div><div class="t95ib">${body}</div>${btn?`<div class="t95ia">${btn}</div>`:''}</div>`; }
 
 // ---------- выбор развилки / плетения ----------
