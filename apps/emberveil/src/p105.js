@@ -7,7 +7,7 @@
 //    ⬢ Второе плетение (30/40) зажигает вторую ветку любого ствола; гнездо аспекта — ярлык в Кузницу. Всё на прежних данных
 //    (S.hero.talents, S.hero.forks, ASPECTS) и прежних действиях p95 (t95Up / t95Down / t95Fork / t95ForkUndo).
 //  • Магия — «Созвездие Угля»: шесть школ вокруг Сердца-Угля, дуги рангов 1–5, нити между школами — настоящие синергии p11
-//    (горят, когда обе школы на 3-м ранге; это справка — «созвучия» и «грани» придут в следующем обновлении, выбора-пустышки нет).
+//    (горят, когда обе школы на 3-м ранге). v44.2: грани школ и созвучия — src/p106.js (карта t105Mg заменена там).
 //    Карточка школы: цена ранга (фолиант школы + золото + эссенция + материал школы — как в p21), «Изучить», слот I / слот II
 //    (Пламя Очага 30), руны. Новое правило: ранг школы 4 — с 20 ур. героя, 5 — с 30 ур.
 //  • Песочница p95 одна на всё окно: снимок дополнен S.spell и ресурсами (золото, эссенция, материалы школ), «Отменить» возвращает всё.
@@ -87,9 +87,9 @@ t95Head=function(cls){ const n=T95.sb?sb95List().length:0, seg=T105.seg;
   const sg=SEG.map(([k,t,ic])=>{ const c=t105Cnt(k,cls); return `<button class="t105sg ${k===seg?'on':''}" role="tab" aria-selected="${k===seg}" aria-label="${t}${c?`: дел — ${c}`:''}" ${act(()=>{ if(T105.seg!==k) t105Go(k); })}>${ico(ic)}<span>${t}</span>${c?`<i class="t105n">${c}</i>`:''}</button>`; }).join('');
   const sw=seg==='magic'?'':`<div class="t95wp">${Object.keys(CLS_NAME).map(c=>`<button class="t95wpn ${c===cls?'on':''}" title="${esc(CLS_NAME[c])}" aria-label="${esc(CLS_NAME[c])}: вложено ${t95Inv(c)}" ${act(()=>{ T95.cls=c; T95.sel=null; T95.fk=0; T95.view='trail'; T105.sk=null; T105.skPre=null; AU.sfx('ui'); rerender(); })}>${ico(c)}<b>${t95Inv(c)}</b></button>`).join('')}</div>`;
   const tb=S.cons.tome|0;
-  const pts=seg==='magic'?`<span class="t105st" aria-label="Фолианты школ">${ico('book')}<b>${SP105.reduce((a,k)=>a+(S.spell.tomes[k]||0),0)}</b><small>фолиантов школ</small></span>`
+  const nt=SP105.reduce((a,k)=>a+(S.spell.tomes[k]||0),0); /* v44.2: склонение */ const pts=seg==='magic'?`<span class="t105st" aria-label="Фолианты школ">${ico('book')}<b>${nt}</b><small>${plural(nt,'фолиант','фолианта','фолиантов')} школ</small></span>`
     :`<button class="t95pts ${S.hero.tp>0?'hot':''}" aria-label="Очки Древа: ${S.hero.tp|0}${tb?`, Фолианты умений: ${tb}`:''}" ${act(()=>{ T105.seg='weapon'; t95Sel({k:'pts'}); })}><span class="ic">${ico('flame')}</span><b>${S.hero.tp|0}</b>${tb?`<i>${ico('book')}${tb}</i>`:''}</button>`;
-  const acts=n?`<button class="wb-btn wd sm t95cx" ${act(()=>{ sb95Cancel(); AU.sfx('ui'); T95.sel=null; toast(`${ico('swap')} <b>Древо</b>: изменения отменены`,null,2,'quest'); rerender(); })}>Отменить</button><button class="wb-btn em sm t95ok" ${act(()=>{ sb95Accept(); AU.sfx('lvl',.5); T95.sel=null; rerender(); })}>${ico('check')} Принять · ${n}</button>`
+  const acts=n?`<button class="wb-btn wd sm t95cx" ${act(()=>{ sb95Cancel(); AU.sfx('ui'); T95.sel=null; toast(`${ico('swap')} <b>Древо</b>: изменения отменены`,null,2,'quest'); rerender(); })} aria-label="Отменить">${ico('close')}<span class="t106l">Отменить</span></button><button class="wb-btn em sm t95ok" aria-label="Принять: ${n}" ${act(()=>{ sb95Accept(); AU.sfx('lvl',.5); T95.sel=null; rerender(); })}>${ico('check')}<span class="t106l"> Принять ·</span> ${n}</button>` /* v44.2: подписи прячутся в узкой шапке (p106 t105Fit, f4) */
     :seg==='magic'?'':`<button class="wb-btn wd sm t95rs" aria-label="Сброс" ${act(()=>{ T105.seg='weapon'; t95Sel({k:'reset'}); })}>${ico('swap')}<span>Сброс</span></button>`;
   return `<div class="t95hd t105hd"><div class="t105sgw" role="tablist" aria-label="Древо">${sg}</div>${sw}<span class="t105sp"></span>${pts}${acts}</div>`; };
 
@@ -253,7 +253,7 @@ function mg105Card(k){ const Sp=SPELLS[k], I=sp105Info(k), r=I.r, V=SP105_VAL[k]
   let b=`<p>${esc(Sp.d(Math.max(1,r)))}</p>`;
   if(I.open&&r<SPELL_MAX) b+=dlt105(`${r?'Ранг '+(r+1):'Изучить'}: ${V[1]}`,r?V[0](r)+V[2]:'—',V[0](r+1)+V[2],r+1===SPELL_MAX?'<span class="mu">+ печать: +10% урона</span>':'')+req105(I.reqs);
   b+=`<p class="mu">✶ Печать (ранг 5): ${esc(SEAL105[k])} +10% урона.${r>=SPELL_MAX?' <b class="ok">Открыта</b>':''}</p>`;
-  b+=`<p class="mu">◆ Грань школы (ранг 3) — в следующем обновлении.</p>`;
+  b+=mg106FacetLine(k); // v44.2: грань школы — p106
   if(r>0){ const cur=sp.rune[k]; b+=`<p class="t105lbl">Руна: ${cur?`<b>${esc(RUNES[cur].n)}</b> — ${esc(RUNES[cur].d)}`:'нет'}</p><div class="t105rn">${Object.keys(RUNES).map(id=>{ const n=sp.runes[id]||0, on=cur===id;
     return `<button class="t105ru ${on?'on':''}" ${n||on?'':'disabled'} aria-pressed="${on}" aria-label="${esc(RUNES[id].n)}: ${esc(RUNES[id].d)}. ${on?'Вставлена — вынуть':n?'Есть: '+n+' — вставить':'Нет — делают в Храме Угля'}" title="${esc(RUNES[id].n)} — ${esc(RUNES[id].d)}" ${act(()=>mg105Rune(k,id))}>${ico(RUNES[id].ic)}<i>${on?'✓':'×'+n}</i></button>`; }).join('')}</div>`; }
   let foot='', row='';
@@ -265,7 +265,7 @@ function mg105Card(k){ const Sp=SPELLS[k], I=sp105Info(k), r=I.r, V=SP105_VAL[k]
   return card105({ic:Sp.ic,c:Sp.col,t:Sp.n,m:`${Sp.sch} · перезарядка ${Sp.cd} с · ранг ${r}/5${inS?' · слот I':inS2?' · слот II':''}`,body:b,foot,cls:'mg'}); }
 function mg105ThrCard(id){ const t=THR105.find(x=>x.id===id), Y=SYN[id], st=thr105St(t), A=SPELLS[t.a], B=SPELLS[t.b];
   const b=`<p>${esc(Y.d)}</p>`+req105([{t:`${A.sch}: ранг 3`,ok:spellRank(t.a)>=3,v:`${spellRank(t.a)}/3`},{t:`${B.sch}: ранг 3`,ok:spellRank(t.b)>=3,v:`${spellRank(t.b)}/3`}])+
-    `<p class="mu">Синергия работает в бою всегда, когда сходятся стихии. Нить загорается, когда обе школы на 3-м ранге: так видно, что качать в пару.</p><p class="mu">«Созвучия» — усиление одной нити — в следующем обновлении.</p>`;
+    `<p class="mu">Синергия работает в бою всегда, когда сходятся стихии. Нить загорается, когда обе школы на 3-м ранге: так видно, что качать в пару.</p>`;
   return card105({ic:Y.ic,c:'#ffb347',t:Y.n,m:`синергия · ${esc(Y.how)} · ${st==='on'?'горит':'не горит'}`,body:b}); }
 function mg105Heart(){ const g=SP105.map(k=>`${SPELLS[k].sch} — ${sp105Gate(k)}`).join(', ');
   return card105({ic:'flame',c:'#ff7a2e',t:'Сердце-Уголь',m:'центр созвездия',body:`<p>Школы открываются владыками зон: ${g}.</p><p>Ранг школы: фолиант школы + золото + эссенция (+ материал школы со 2-го ранга). Ранг 4 — с 20 ур. героя, ранг 5 — с 30 ур.</p><p class="mu">Слот II — с Пламени Очага 30. Фолианты школ: владыки зон, железные и золотые сундуки, Храм Угля.</p>`}); }
