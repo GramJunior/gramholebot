@@ -1,0 +1,3 @@
+{ "name": "emberveil-asset-build", "private": true, "type": "module",
+  "description": "Offline asset pipeline for apps/emberveil/assets (see ../INTEGRATION.md §10). Not used at runtime.",
+  "dependencies": { "@gltf-transform/core": "4.5.1", "@gltf-transform/extensions": "4.5.1", "@gltf-transform/functions": "4.5.1", "meshoptimizer": "0.22.0", "sharp": "0.35.5" } }
