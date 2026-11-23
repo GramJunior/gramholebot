@@ -1,6 +1,6 @@
 // Abyss (Бездна) runs and leaderboards.
 //   POST /abyss/start  { startFloor }            -> { runId, startFloor }
-//   POST /abyss/finish { runId, floor, timeMs }  -> { recorded, best:{all,week,season} }
+//   POST /abyss/finish { runId, floor, timeMs }  -> { recorded, cleared, newRecord, board }  (v45.2 board: counted on week/season — start floor 1 only)
 //   GET  /lb/abyss?board=week|all|season&filter=global|friends|clan&week=2026-W45&limit=50
 import { fail, json, readJson, int, str } from '../lib/http.js';
 import { requireUser } from './auth.js';
@@ -54,10 +54,13 @@ export async function abyssFinish(c) {
     fail(422, 'run_rejected', 'Результат забега не прошёл проверку', { reason: chk.reason });
   }
   const cfg = await loadConfig(c.env);
-  const out = { ok: true, recorded: chk.cleared > 0, cleared: chk.cleared, newRecord: false };
+  // v45.2: only runs started at floor 1 count on the week/season boards (comparable depth & time, as the game says);
+  // any run still updates the personal record 'all' (it is the verified best: start floor limit, save checks).
+  const onBoard = run.start_floor === 1;
+  const out = { ok: true, recorded: chk.cleared > 0, cleared: chk.cleared, newRecord: false, board: chk.cleared > 0 && onBoard };
   if (chk.cleared > 0) {
     const prevAll = await c.env.DB.prepare("SELECT floor FROM lb_abyss WHERE period='all' AND uid=?").bind(user.id).first();
-    const periods = periodsFor(c.now, c.env, cfg);
+    const periods = periodsFor(c.now, c.env, cfg).filter((p) => onBoard || p === 'all');
     await c.env.DB.batch(periods.map((p) => c.env.DB.prepare(UPSERT_LB).bind(p, user.id, floor, timeMs, c.now)));
     await addContrib(c.env, user.id, chk.cleared, c.now);
     await addBpXp(c.env, user.id, chk.cleared * ((cfg.battlepass.xp && cfg.battlepass.xp.abyssFloor) || 0), c.now, cfg);

@@ -8,6 +8,8 @@ import { upsertUser, getUser, envInt, queueNotification } from '../lib/common.js
 import { dayKey, localHour } from '../lib/time.js';
 import { checkPreCheckout, grantPayment, revokePayment } from './payments.js';
 import { NOTIFY_TEXT, refLink } from './social.js';
+import { runCircleCron } from '../lib/circle.js';
+import { runWeeklyPrizes } from '../lib/prizes.js';
 
 const WELCOME = 'Добро пожаловать в Тлеющий Брод, Искроносец.\n\nПоследний уголь Вейла ещё теплится — и только ты можешь его разжечь. Жми «Играть».';
 
@@ -186,6 +188,11 @@ export async function runCron(env, now) {
       stats.dropped++;
     }
   }
+  // v45.2: «Круг побратимов» (friend milestones: gates, 24 h hold, letters) and weekly cosmetic prizes «Летопись Вече»
+  // (their counters are added to the result only when something happened — the reminder stats stay as they were)
+  const some = (o) => o && Object.values(o).some((v) => v > 0);
+  try { const r = await runCircleCron(env, now); if (some(r)) stats.circle = r; } catch (e) { console.error('circle cron failed', e && e.message); }
+  try { const r = await runWeeklyPrizes(env, now); if (some(r)) stats.prizes = r; } catch (e) { console.error('prizes cron failed', e && e.message); }
   // Housekeeping (cheap, bounded).
   const ret = retentionCutoffs(now);
   await env.DB.batch([
@@ -200,6 +207,7 @@ export async function runCron(env, now) {
     env.DB.prepare('DELETE FROM ad_credits WHERE at<?').bind(now - 3 * 86400000),
     // v41 retention (privacy policy): per-player activity days and milestones — 13 months; anonymous aggregates — 25 months
     env.DB.prepare('DELETE FROM active_days WHERE day<?').bind(ret.day13),
+    env.DB.prepare('DELETE FROM login_days WHERE day<?').bind(ret.day13), // v45.2: anti-fraud login days — 13 months too
     env.DB.prepare('DELETE FROM milestones WHERE ts<?').bind(ret.ms13),
     env.DB.prepare('DELETE FROM ev_counts WHERE day<?').bind(ret.day25),
     env.DB.prepare('DELETE FROM ads_daily WHERE day<?').bind(ret.day25),

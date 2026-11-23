@@ -2,7 +2,7 @@
 // Admins change them through PUT /admin/config/<key> (see README).
 import { CALENDAR, PASSES, GOALS, WB_ROTATION, CLAN_GOAL } from './liveops.js';
 
-export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'raid', 'freeChestHours', 'ads', 'passes', 'goals', 'wb', 'clanGoal'];
+export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'prizes', 'raid', 'freeChestHours', 'ads', 'passes', 'goals', 'wb', 'clanGoal'];
 
 const DAY = 86400000;
 
@@ -99,10 +99,54 @@ export const DEFAULTS = {
     maxQuestsPerDay: 3, // v42: 3 contracts a day (liveops §3)
   },
 
+  // v45.2 «Круг побратимов» (src/lib/circle.js, migration 0009). Every number is here; PUT /admin/config/referral may
+  // store only some keys — the rest come from these defaults (circleConfig merges them). All amounts are provisional
+  // (economy review): a milestone's `rewards` is a list of { type, amount } | { type:'gold', stages } | { type:'cosmetic', id }.
+  //   type — any game grant key (gold, ess, shards, wood, ore, chest_iron, chest_gold, key_gold…) or 'cosmetic';
+  //   stages — gold of N stages at level L = min(recipient level, milestone level): N × gold.base × gold.growth^(L−1);
+  //   rewards:'referrer' — the v41 tier-1 reward object `referrer` below (500 gold + 25 essence).
+  // Tiers 2/3 get shares[1]/shares[2] of every reward whose type is in shareTypes; other types (chests, cosmetics) are tier-1 only.
+  // gates: ageMin — friend's account age (minutes), days — distinct login days, run — 'abyss' | 'wb' | 'any' server-recorded run.
+  // No Самоцветы (sparks) for referrals: they are stripped from any reward (owner decision v45).
   referral: {
     referrer: { gold: 500, ess: 25 },
     referee: { gold: 300, ess: 15 },
-    maxRewarded: 50,
+    maxRewarded: 50,          // distinct tier-1 friends that pay at all (as v41)
+    shares: [1, 0.2, 0.04],   // tier 1 / 2 / 3
+    shareTypes: ['gold'],
+    gold: { base: 200, growth: 1.12 },
+    holdHours: 24,            // «Летописец сверяет запись»
+    capDay: 20,               // letters per recipient per 24 h (over → postponed)
+    capWeek: 60,              // letters per recipient per 7 days (over → postponed)
+    capMonthUpper: 200,       // tier-2/3 letters per recipient per 30 days (over → refused)
+    maxFlags: 0,              // friend with users.flags above this (suspicious saves/runs) → refused
+    tgOnly: true,             // guests never count
+    waitRetryMin: 360,        // re-check of unmet gates by cron
+    capRetryMin: 60,          // re-try after a day/week cap
+    recheckMin: 30,           // cron re-reads cloud saves updated in the last N minutes
+    cronBatch: 200,
+    milestones: [
+      { id: 'join', lvl: 1, join: true, gates: { ageMin: 0, days: 1 }, rewards: [{ type: 'gold', amount: 100 }] },
+      { id: 'l5', lvl: 5, stage: '1-5', gates: { ageMin: 10, days: 1 }, rewards: 'referrer' },
+      { id: 'l10', lvl: 10, gates: { ageMin: 1 * 1440, days: 2 }, rewards: [{ type: 'gold', stages: 3 }, { type: 'chest_iron', amount: 1 }] },
+      { id: 'l20', lvl: 20, gates: { ageMin: 3 * 1440, days: 3, run: 'abyss' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'shards', amount: 20 }, { type: 'cosmetic', id: 'frame_sworn' }] },
+      { id: 'l30', lvl: 30, gates: { ageMin: 7 * 1440, days: 5, run: 'any' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'chest_gold', amount: 1 }] },
+      { id: 'l40', lvl: 40, gates: { ageMin: 12 * 1440, days: 7, run: 'any' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'ess', amount: 300 }, { type: 'cosmetic', id: 'comp_sworn' }] },
+      { id: 'l50', lvl: 50, gates: { ageMin: 18 * 1440, days: 9, run: 'any' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'cosmetic', id: 'title_sworn' }, { type: 'cosmetic', id: 'glow_sworn' }] },
+    ],
+  },
+
+  // v45.2 «Летопись Вече»: weekly prizes by letter `delayHours` after the Monday 05:00 МСК reset. COSMETICS ONLY
+  // (anything else in an entry is ignored). A player gets the best bracket they reach: { top: N } = place ≤ N,
+  // { pct: P } = place ≤ ceil(entries × P / 100). Overlord: ranked inside each (overlord, league) board; one prize a week.
+  // Entries of banned players or with suspicious records (audit kinds in `suspicious`) during the week are skipped.
+  prizes: {
+    delayHours: 24,
+    lookbackWeeks: 2,
+    fromWeek: '2026-W48', // first week settled (weeks before v45.2 had boards with any start floor)
+    suspicious: ['save_rejected', 'save_suspicious', 'abyss_rejected', 'wb_rejected'],
+    wb: [{ top: 10, cosmetic: 'frame_wb_top10' }, { pct: 10, cosmetic: 'frame_wb_p10' }, { pct: 25, cosmetic: 'glow_wb_p25' }, { pct: 50, cosmetic: 'troph_wb_p50' }],
+    abyss: [{ top: 3, cosmetic: 'frame_abyss_top3' }, { top: 10, cosmetic: 'glow_abyss_top10' }, { pct: 50, cosmetic: 'troph_abyss_p50' }],
   },
 
   raid: {

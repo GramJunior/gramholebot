@@ -1,5 +1,6 @@
 // Referrals, friends, reward inbox, reminder scheduling.
 //   GET  /referrals                    -> { code, link, invited, pending, activated, friends:[...] }  (v41: inviter is rewarded when the friend beats 1-5)
+//                                         v45.2: + friends[].{tier,level,activated,ms,next,pending,earned}, tiers, earned, held, milestones, holdHours, shares, myLevel
 //   POST /friends/add { pid }          (one-way "follow" for the friends leaderboard)
 //   GET  /inbox                        -> unclaimed reward letters
 //   POST /inbox/claim { id }           -> { reward }  (idempotent per letter)
@@ -7,6 +8,7 @@
 import { fail, json, readJson, int, str } from '../lib/http.js';
 import { requireUser } from './auth.js';
 import { userByPid, queueNotification, NAME_SQL } from '../lib/common.js';
+import { circleView } from '../lib/circle.js';
 
 export function refLink(env, code) {
   const bot = env.BOT_USERNAME;
@@ -19,8 +21,14 @@ export function refLink(env, code) {
 export async function getReferrals(c) {
   const user = await requireUser(c);
   const invited = await c.env.DB.prepare("SELECT COUNT(*) n, SUM(ref_state='pending') pending, SUM(ref_state='done') activated FROM users WHERE referred_by=?").bind(user.id).first();
-  const friends = (await c.env.DB.prepare(`SELECT u.ref_code, ${NAME_SQL} FROM friends f JOIN users u ON u.id=f.friend_uid WHERE f.uid=? ORDER BY f.created_at DESC LIMIT 200`).bind(user.id).all()).results;
-  return json({ ok: true, code: user.ref_code, link: refLink(c.env, user.ref_code), invited: invited ? invited.n : 0, pending: (invited && invited.pending) || 0, activated: (invited && invited.activated) || 0, friends: friends.map((f) => ({ pid: f.ref_code, name: (f.first_name || 'Искроносец').slice(0, 32) })) });
+  const friends = (await c.env.DB.prepare(`SELECT u.id uid, u.ref_code, u.ref_state, ${NAME_SQL} FROM friends f JOIN users u ON u.id=f.friend_uid WHERE f.uid=? ORDER BY f.created_at DESC LIMIT 200`).bind(user.id).all()).results;
+  // v45.2 «Круг побратимов»: optional fields per friend (tier, level, activated, ms, next, pending, earned) and totals — old fields unchanged
+  const cv = await circleView(c.env, user, friends, c.now);
+  return json({
+    ok: true, code: user.ref_code, link: refLink(c.env, user.ref_code), invited: invited ? invited.n : 0, pending: (invited && invited.pending) || 0, activated: (invited && invited.activated) || 0,
+    friends: friends.map((f, i) => ({ pid: f.ref_code, name: (f.first_name || 'Искроносец').slice(0, 32), ...cv.per[i] })),
+    ...cv.extra,
+  });
 }
 
 export async function addFriend(c) {

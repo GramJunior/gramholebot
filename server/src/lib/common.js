@@ -3,6 +3,7 @@ import { randomId } from './crypto.js';
 import { isoWeek } from './time.js';
 import { getConfigKey, loadConfig, activeSeason } from './config.js';
 import { fail } from './http.js';
+import { startCircle } from './circle.js';
 
 export const envInt = (env, key, def) => {
   const v = Number(env[key]);
@@ -112,12 +113,16 @@ export async function applyReferral(env, user, startParam, now) {
   await addFriendPair(env, user.id, ref.id, now);
   await addInbox(env, user.id, 'referee', 'Подарок за приглашение', cfg.referee, now);
   await env.DB.prepare('INSERT OR IGNORE INTO milestones (uid, m, ts) VALUES (?,?,?)').bind(ref.id, 'ref:joined', now).run();
+  // v45.2: the three-tier chain (written once, immutable) + milestone «join» (src/lib/circle.js)
+  await startCircle(env, { ...user, referred_by: ref.id, ref_state: 'pending' }, now);
   return true;
 }
 
 /**
- * The invited friend reached the activation milestone: reward the inviter once (cap: referral.maxRewarded letters).
+ * The invited friend reached the activation milestone (beat 1-5): the referral counts as «activated» (GET /referrals).
  * Safe to call repeatedly — only a 'pending' referral flips to 'done' (atomic UPDATE).
+ * v45.2: the inviter's reward is no longer sent here (the phone's word): it is milestone l5 of «Круг побратимов»,
+ * detected from the cloud save and paid by src/lib/circle.js after the gates and the 24 h hold (same amounts: referral.referrer).
  */
 export async function activateReferral(env, user, now) {
   if (!user || user.ref_state !== 'pending' || !user.referred_by) return false;
@@ -126,13 +131,6 @@ export async function activateReferral(env, user, now) {
   if (!r.meta.changes) return false;
   user.ref_state = 'done';
   await env.DB.prepare('INSERT OR IGNORE INTO milestones (uid, m, ts) VALUES (?,?,?)').bind(user.id, 'ref:activated', now).run();
-  const ref = await getUser(env, user.referred_by);
-  if (!ref || ref.banned) return true;
-  const cfg = await getConfigKey(env, 'referral');
-  const rewarded = await env.DB.prepare("SELECT COUNT(*) n FROM inbox WHERE uid=? AND kind='referrer'").bind(ref.id).first();
-  if ((rewarded?.n || 0) < (cfg.maxRewarded ?? 50)) {
-    await addInbox(env, ref.id, 'referrer', `Друг ${shownName(user)} победил владыку 1-5 — награда за приглашение`, cfg.referrer, now);
-  }
   return true;
 }
 

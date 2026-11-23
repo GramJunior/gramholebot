@@ -3,6 +3,7 @@ import { validateInitData, signJwt, verifyJwt, sha256Hex } from '../lib/crypto.j
 import { fail, json, readJson, str } from '../lib/http.js';
 import { upsertUser, getUser, envInt, pub, clanOf, cleanName } from '../lib/common.js';
 import { markActive } from './metrics.js';
+import { recordLogin, circleForgetStatements } from '../lib/circle.js';
 
 async function issue(env, user, now, kind) {
   if (!env.JWT_SECRET || String(env.JWT_SECRET).length < 16) fail(503, 'not_configured', 'Сервер не настроен (JWT_SECRET)');
@@ -40,6 +41,7 @@ export async function authTelegram(c) {
   }, c.now);
   if (user.banned) fail(403, 'banned', 'Аккаунт заблокирован');
   const s = await issue(c.env, user, c.now, 'tg');
+  await recordLogin(c.env, user.id, c.now); // v45.2: day of login for everyone — anti-fraud only (Круг побратимов), not analytics
   if (!user.stats_off) await markActive(c.env, user.id, c.now, user); // v41: «Отправлять статистику» выкл. — день входа не отмечаем
   return json({ ok: true, ...s, isNew, me: meView(user, await clanOf(c.env, user.id)), serverTime: c.now });
 }
@@ -54,6 +56,7 @@ export async function authGuest(c) {
   const { user, isNew } = await upsertUser(c.env, { uid, firstName: str(body.name, 32) || 'Гость', startParam: str(body.startParam, 64) }, c.now);
   if (user.banned) fail(403, 'banned', 'Аккаунт заблокирован');
   const s = await issue(c.env, user, c.now, 'guest');
+  await recordLogin(c.env, user.id, c.now); // v45.2: day of login for everyone — anti-fraud only (Круг побратимов), not analytics
   if (!user.stats_off) await markActive(c.env, user.id, c.now, user); // v41: «Отправлять статистику» выкл. — день входа не отмечаем
   return json({ ok: true, ...s, isNew, me: meView(user, null), serverTime: c.now });
 }
@@ -110,8 +113,9 @@ export async function deleteMe(c) {
   const uid = user.id;
   const clan = await clanOf(c.env, uid);
   if (clan && clan.role === 'leader') fail(409, 'leader', 'Сначала передайте лидерство или покиньте клан');
-  const tables = ['saves', 'runs', 'lb_abyss', 'villages', 'daily', 'quest_claims', 'bp_progress', 'inbox', 'notifications', 'weekly_contrib', 'audit', 'active_days', 'ev_seen', 'milestones'];
+  const tables = ['saves', 'runs', 'lb_abyss', 'villages', 'daily', 'quest_claims', 'bp_progress', 'inbox', 'notifications', 'weekly_contrib', 'audit', 'active_days', 'ev_seen', 'milestones', 'login_days'];
   const st = tables.map((t) => c.env.DB.prepare(`DELETE FROM ${t} WHERE uid=?`).bind(uid));
+  st.push(...circleForgetStatements(c.env, uid)); // v45.2: open friend-milestone rewards are cancelled; the chain stays (like users.referred_by)
   st.push(c.env.DB.prepare('DELETE FROM friends WHERE uid=? OR friend_uid=?').bind(uid, uid));
   if (clan) {
     st.push(c.env.DB.prepare('DELETE FROM clan_members WHERE uid=?').bind(uid));

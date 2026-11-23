@@ -9,6 +9,7 @@ import { fail, json, readJson } from '../lib/http.js';
 import { requireUser } from './auth.js';
 import { summarize, checkSave } from '../lib/savecheck.js';
 import { audit, envInt, activateReferral } from '../lib/common.js';
+import { recordLogin, detectMilestones, processFriend } from '../lib/circle.js';
 
 export async function getSave(c) {
   const user = await requireUser(c);
@@ -68,5 +69,12 @@ export async function putSave(c) {
   }
   // v41: the invited friend's save shows the chapter-1 boss (1-5) beaten -> reward the inviter (also via milestone 'ftue:boss' in /events)
   if (user.ref_state === 'pending' && data.prog && data.prog.stages && typeof data.prog.stages === 'object' && data.prog.stages['1-5']) await activateReferral(c.env, user, c.now);
+  // v45.2: a day in the game (anti-fraud, for everyone) and «Круг побратимов» milestones — from this accepted cloud copy only
+  await recordLogin(c.env, user.id, c.now);
+  if (user.referred_by) {
+    try {
+      if (await detectMilestones(c.env, user, next, c.now)) await processFriend(c.env, user.id, c.now);
+    } catch (e) { console.error('circle failed', e && e.message); } // the save itself is stored; cron re-checks
+  }
   return json({ ok: true, version, updatedAt: c.now, warnings: soft });
 }

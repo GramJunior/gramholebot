@@ -138,7 +138,7 @@ test('events: «Отправлять статистику» off (na:1) — only 
   assert.equal((await call('POST', '/me/settings', { token: s.token, body: { stats: 'no' } })).status, 400);
 });
 
-test('referral v41: the inviter is rewarded only when the friend beats 1-5 (milestone or save), once, capped; legacy not paid twice', async () => {
+test('referral v41→v45.2: 1-5 activates the referral; the inviter is paid from the cloud save only, after the 24 h hold, once; legacy not paid twice', async () => {
   const env = makeEnv({ RATE_LIMIT: '0' });
   const clock = { now: T0 };
   const call = api(env, clock);
@@ -149,48 +149,52 @@ test('referral v41: the inviter is rewarded only when the friend beats 1-5 (mile
   assert.equal((await inbox(b)).length, 1, 'friend gift at once');
   let refs = (await call('GET', '/referrals', { token: a.token })).body;
   assert.deepEqual([refs.invited, refs.pending, refs.activated], [1, 1, 0]);
-  // too fast (bot farm): beating 1-5 within 10 minutes of registering does not pay
+  // too fast (bot farm): beating 1-5 within 10 minutes of registering does not activate
   await ev(call, b, { events: [{ e: 'ftue', k: 'boss', o: 1 }] });
-  assert.equal((await inbox(a)).length, 0);
-  // the milestone exists now; a later save with 1-5 done activates
+  assert.equal((await env.DB.prepare("SELECT ref_state FROM users WHERE id='t2302'").first()).ref_state, 'pending');
+  // a later save with 1-5 done activates; the reward waits («Летописец сверяет запись»)
   clock.now = T0 + 15 * 60000;
   const b2 = await loginTg(call, 2302, 'Мира');
   const put = await call('PUT', '/save', { token: b2.token, body: { baseVersion: 0, data: gameSave({ prog: { stages: { '1-1': { stars: 3 }, '1-5': { stars: 1 } } } }) } });
   assert.equal(put.status, 200, JSON.stringify(put.body));
-  let la = await inbox(a);
-  assert.equal(la.length, 1);
-  assert.equal(la[0].kind, 'referrer');
-  assert.match(la[0].title, /1-5/);
-  assert.ok(la[0].reward.gold > 0);
-  // repeated signals do not pay again
-  await ev(call, b2, { events: [{ e: 'ftue', k: 'boss' }] });
-  await call('PUT', '/save', { token: b2.token, body: { baseVersion: 1, data: gameSave({ prog: { stages: { '1-5': { stars: 2 } } } }) } });
-  assert.equal((await inbox(a)).length, 1);
+  assert.equal((await inbox(a)).length, 0, 'held for 24 h');
   refs = (await call('GET', '/referrals', { token: a.token })).body;
   assert.deepEqual([refs.invited, refs.pending, refs.activated], [1, 0, 1]);
+  assert.deepEqual(refs.friends[0].pending.map((p) => [p.ms, p.status]), [['join', 'hold'], ['l5', 'hold']]);
+  // 24 h later the cron delivers: «join» (100 gold) and l5 = the v41 amounts (referral.referrer)
+  clock.now = T0 + 15 * 60000 + 24 * 3600000;
+  await runCron(env, clock.now);
+  const a1 = await loginTg(call, 2301, 'Горан'); // sessions live 6 h
+  let la = await inbox(a1);
+  assert.equal(la.length, 2);
+  assert.ok(la.every((l) => l.kind === 'referrer'));
+  const l5 = la.find((l) => /1-5/.test(l.title));
+  assert.deepEqual(l5.reward, { gold: 500, ess: 25 });
+  assert.deepEqual(la.find((l) => l !== l5).reward, { gold: 100 });
+  // repeated signals and cron runs do not pay again
+  const b3 = await loginTg(call, 2302, 'Мира');
+  await ev(call, b3, { events: [{ e: 'ftue', k: 'boss' }] });
+  await call('PUT', '/save', { token: b3.token, body: { baseVersion: 1, data: gameSave({ prog: { stages: { '1-5': { stars: 2 } } } }) } });
+  await runCron(env, clock.now + 3600000);
+  assert.equal((await inbox(a1)).length, 2);
   assert.ok(await env.DB.prepare("SELECT 1 FROM milestones WHERE uid='t2302' AND m='ref:activated'").first());
   assert.ok(await env.DB.prepare("SELECT 1 FROM milestones WHERE uid='t2301' AND m='ref:joined'").first());
-  // activation via /events milestone path
+  // activation via the /events milestone path counts as «activated», but pays nothing without the cloud save
   const c = await loginTg(call, 2303, 'Ива', { startParam: 'ref_' + a.me.refCode });
   clock.now += 11 * 60000;
   const c2 = await loginTg(call, 2303, 'Ива');
   await ev(call, c2, { events: [{ e: 'ftue', k: 'boss', o: 1 }] });
-  assert.equal((await inbox(a)).length, 2);
+  assert.equal((await env.DB.prepare("SELECT ref_state FROM users WHERE id='t2303'").first()).ref_state, 'done');
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) n FROM ref_ms WHERE friend='t2303' AND ms='l5'").first()).n, 0);
   assert.ok(c);
-  // cap: referral.maxRewarded letters per inviter
-  await env.DB.prepare("INSERT INTO config (key, value, updated_at) VALUES ('referral', ?, 0)").bind(JSON.stringify({ referrer: { gold: 500, ess: 25 }, referee: { gold: 300, ess: 15 }, maxRewarded: 2 })).run();
-  const d = await loginTg(call, 2304, 'Дан', { startParam: 'ref_' + a.me.refCode });
-  clock.now += 11 * 60000;
-  await ev(call, await loginTg(call, 2304, 'Дан'), { events: [{ e: 'ftue', k: 'boss', o: 1 }] });
-  assert.equal((await inbox(a)).length, 2, 'cap reached');
-  assert.equal((await env.DB.prepare("SELECT ref_state FROM users WHERE id='t2304'").first()).ref_state, 'done');
-  assert.ok(d);
-  // legacy referral (rewarded at registration before v41) is never paid again
-  await env.DB.prepare("UPDATE users SET ref_state='legacy' WHERE id='t2304'").run();
+  // legacy referral (rewarded at registration before v41) is never paid again for join / 1-5
   const e = await loginTg(call, 2305, 'Ель');
   await env.DB.prepare("UPDATE users SET referred_by='t2305', ref_state='legacy' WHERE id='t2301'").run();
-  await ev(call, await loginTg(call, 2301, 'Горан'), { events: [{ e: 'ftue', k: 'boss', o: 1 }] });
-  assert.equal((await inbox(e)).length, 0);
+  const a2 = await loginTg(call, 2301, 'Горан');
+  await call('PUT', '/save', { token: a2.token, body: { baseVersion: 0, data: gameSave({ prog: { stages: { '1-5': { stars: 1 } } } }) } });
+  await runCron(env, clock.now + 30 * 3600000);
+  assert.equal((await inbox(e)).length, 0, 'no letters for the legacy inviter');
+  assert.equal((await env.DB.prepare("SELECT COUNT(*) n FROM ref_ms WHERE friend='t2301'").first()).n, 0);
 });
 
 test('cron retention: active_days and milestones 13 months, aggregates 25 months', async () => {

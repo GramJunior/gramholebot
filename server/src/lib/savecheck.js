@@ -39,6 +39,8 @@ export function summarize(d) {
     ore: num(res.ore ?? 0),
     ess: num(res.ess ?? 0),
     shards: num(res.shards ?? 0),
+    // v45.2: chapter-1 boss beaten in this cloud save (milestone l5 of «Круг побратимов»; not a checked counter)
+    b15: d && d.prog && d.prog.stages && typeof d.prog.stages === 'object' && d.prog.stages['1-5'] ? 1 : 0,
   };
 }
 
