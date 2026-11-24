@@ -3,15 +3,19 @@ STAGE_TYPES.raid={n:'Набег',d:'Отразите волны Хмари и с
 RES_IC.marks='crown'; RES_NAME.marks='Знаки доблести'; RES_COL.marks='#ff9a7a';
 DLG.raid_intro=[['elder','Хмарь учуяла наш огонь, Искроносец. Теперь она будет приходить сама — отрядами, по тропам из леса.'],['elder','У ворот и на тропах есть места под частокол, башни и ловушки. Ставь оборону, бери ополчение — и защищай Сердце.'],['smith','А я подкую башни. Знаки доблести с набегов — лучший металл. Не спрашивай.']];
 // lanes: angle (x=cos a·r, z=sin a·r). N follows the old gate road.
-const RAID_LANES=[{id:'n',n:'север',a:Math.atan2(-31,-6)},{id:'e',n:'восток',a:-.21},{id:'sw',n:'юго-запад',a:2.44},{id:'se',n:'юг',a:1.36,tier:3}];
+// v45.4: тропы — в промежутках между кварталами (север — по тракту от врат; восток — между Северным двором и Двором Духа; юго-восток и
+// юго-запад — по краям Вечевой площади). Места под оборону по-прежнему по id (сохранённая оборона переезжает вместе с местом).
+const RAID_LANES=[{id:'n',n:'север',a:Math.atan2(VGATE.z,VGATE.x)},{id:'e',n:'восток',a:-.5},{id:'sw',n:'юго-запад',a:2.2},{id:'se',n:'юг',a:1.15,tier:3}];
 const RAID_SOCKETS=(()=>{ const out=[]; for(const L of RAID_LANES){ const c=Math.cos(L.a),s=Math.sin(L.a),vx=-s,vz=c;
-    out.push({id:L.id+'w',lane:L.id,slot:'wall',x:c*24.4,z:s*24.4,ry:-L.a-PI/2});
-    out.push({id:L.id+'t1',lane:L.id,slot:'tower',x:c*20.2+vx*5.4,z:s*20.2+vz*5.4});
-    out.push({id:L.id+'t2',lane:L.id,slot:'tower',x:c*20.2-vx*5.4,z:s*20.2-vz*5.4});
-    out.push({id:L.id+'p',lane:L.id,slot:'trap',x:c*15.6,z:s*15.6}); }
-  out.push({id:'it1',lane:null,slot:'tower',x:6.8,z:2.4}); out.push({id:'it2',lane:null,slot:'tower',x:-6.8,z:2.4}); return out; })();
+    out.push({id:L.id+'w',lane:L.id,slot:'wall',x:c*24.4*VK,z:s*24.4*VK,ry:-L.a-PI/2});
+    out.push({id:L.id+'t1',lane:L.id,slot:'tower',x:(c*20.2+vx*5.4)*VK,z:(s*20.2+vz*5.4)*VK});
+    out.push({id:L.id+'t2',lane:L.id,slot:'tower',x:(c*20.2-vx*5.4)*VK,z:(s*20.2-vz*5.4)*VK});
+    out.push({id:L.id+'p',lane:L.id,slot:'trap',x:c*15.6*VK,z:s*15.6*VK}); }
+  out.push({id:'it1',lane:null,slot:'tower',x:7.6,z:2.6}); out.push({id:'it2',lane:null,slot:'tower',x:-7.6,z:2.6}); return out; })();
 // N lane: wall right at the gate road (narrower) — move sockets onto the actual gate segment
-(()=>{ const g={x:-6,z:-31}; const w=RAID_SOCKETS.find(s=>s.id==='nw'); w.x=g.x*.8; w.z=g.z*.8; })();
+(()=>{ const g=VGATE; const w=RAID_SOCKETS.find(s=>s.id==='nw'); w.x=g.x*.8; w.z=g.z*.8;
+  // v45.4: башни северной тропы — по бокам тракта за тропами к Бездне и Кругу Испытаний; ловушка — на тракте у Ратуши
+  const t1=RAID_SOCKETS.find(s=>s.id==='nt1'), t2=RAID_SOCKETS.find(s=>s.id==='nt2'), p=RAID_SOCKETS.find(s=>s.id==='np'); t1.x=g.x+4.2; t1.z=g.z+7; t2.x=g.x-4.2; t2.z=g.z+7; p.x=g.x; p.z=g.z+15.5; })();
 const RAID_STRUCT={
   palisade:{n:'Частокол',slot:'wall',ic:'wall',d:'Перекрывает тропу. Враги ломают его, прежде чем пройти.',cost:{gold:150,wood:160},hp:520},
   barricade:{n:'Шипастая баррикада',slot:'wall',ic:'trap',d:'Слабее частокола, но ранит каждого, кто её бьёт.',cost:{gold:70,wood:80,ore:20},hp:300,thorns:.35},
@@ -73,10 +77,10 @@ function buildRaidStructs(){
 }
 // village lanes: called from makeVillage before the ground is built
 function raidCarveLanes(){
-  for(const L of RAID_LANES){ const c=Math.cos(L.a),s=Math.sin(L.a); if(L.id==='n'){ W.walk.segs.push({ax:-6,az:-31,bx:-7.6,bz:-44,w:5}); W.paths.push({ax:-6,az:-31,bx:-7.6,bz:-44}); continue; }
-    W.walk.segs.push({ax:c*20,az:s*20,bx:c*44,bz:s*44,w:5.2,lane:L.id}); W.paths.push({ax:c*18,az:s*18,bx:c*44,bz:s*44}); }
+  for(const L of RAID_LANES){ const c=Math.cos(L.a),s=Math.sin(L.a); if(L.id==='n'){ W.walk.segs.push({ax:VGATE.x,az:VGATE.z,bx:VGATE.ox,bz:VGATE.oz,w:5}); W.paths.push({ax:VGATE.x,az:VGATE.z,bx:VGATE.ox,bz:VGATE.oz}); continue; }
+    W.walk.segs.push({ax:c*20*VK,az:s*20*VK,bx:c*48*VK,bz:s*48*VK,w:5.2,lane:L.id}); W.paths.push({ax:c*18*VK,az:s*18*VK,bx:c*48*VK,bz:s*48*VK}); }
 }
-const nearLane=(x,z,m)=>RAID_LANES.some(L=>{ if(L.id==='n'){ return segDist(x,z,{ax:-6,az:-31,bx:-7.6,bz:-44})[0]<m; } const c=Math.cos(L.a),s=Math.sin(L.a); return segDist(x,z,{ax:c*18,az:s*18,bx:c*48,bz:s*48})[0]<m; });
+const nearLane=(x,z,m)=>RAID_LANES.some(L=>{ if(L.id==='n'){ return segDist(x,z,{ax:VGATE.x,az:VGATE.z,bx:VGATE.ox,bz:VGATE.oz})[0]<m; } const c=Math.cos(L.a),s=Math.sin(L.a); return segDist(x,z,{ax:c*18*VK,az:s*18*VK,bx:c*52*VK,bz:s*52*VK})[0]<m; });
 // ---------- prep phase ----------
 const RP={sel:null,plan:null,periodic:false,els:[]};
 function raidOpenPrep(){
@@ -156,7 +160,7 @@ function raidStart(){
 function raidSpawnWave(){ const w=RAID.plan.waves[RAID.wi]; RAID.wi++; let i=0;
   for(const q of w.list){ RAID.spawnQ.push(Object.assign({t:i*.32},q)); i++; }
   const names=w.lanes.map(id=>RAID_LANES.find(l=>l.id===id).n); banner(`Волна ${RAID.wi}/${RAID.plan.waves.length}`,'с направления: '+names.join(' и ')); AU.sfx('sting',.6); AU.sfx('roar',.4); }
-function raidLanePoint(id,r){ if(id==='n'){ const t=clamp((r-31)/13,0,1); return [lerp(-6,-7.6,t),lerp(-31,-44,t)]; } const L=RAID_LANES.find(l=>l.id===id); return [Math.cos(L.a)*r,Math.sin(L.a)*r]; }
+function raidLanePoint(id,r){ r*=VK; if(id==='n'){ const g=VGATE, r0=Math.hypot(g.x,g.z), t=clamp((r-r0)/Math.max(1,Math.hypot(g.ox,g.oz)-r0),0,1); return [lerp(g.x,g.ox,t),lerp(g.z,g.oz,t)]; } const L=RAID_LANES.find(l=>l.id===id); return [Math.cos(L.a)*r,Math.sin(L.a)*r]; }
 function raidTick(dt){
   if(PVP) return pvpTick(dt);
   if(!RAID||RAID.done) return; const P=G.P; RAID.t+=dt;

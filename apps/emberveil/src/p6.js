@@ -199,19 +199,42 @@ function objText(){
 }
 
 // ---------- village ----------
-const VPOS={hall:[0,-15,0],forge:[-13,-6,.7],alch:[13,-7,-.7],pen:[14,8,-1.3],tavern:[-14,8,1.3],temple:[10,-19,-.35],store:[-10,17,2.6],saw:[-20,-1,1.5],mine:[20,-1,-1.5],well:[7,16,3.1],walls:null,houses:null};
-const HOUSE_POS=[[-6,-22,.3],[-19,-13,.9],[19,-14,-.9],[0,21,PI],[17,17,-2.3],[-17,18,2.3],[-21,8,1.6],[21,8,-1.6]];
-const TOWER_POS=[[-22,-20],[22,-20],[-23,20],[23,20]];
-const NPC_POS={elder:[4.3,-10.4],smith:[-10,-3.5],alch:[10,-4.2],beast:[8.6,4.0],stranger:[-9.8,4.3]};
+// v45.4: Брод «по кварталам» (план basedesign/emberveil-social-v45.html, вариант Б): Северный двор (врата, Разлом Бездны, Круг
+// Испытаний, Меняла), тракт от врат к Очагу с Ратушей и Таверной по бокам, Ремесленный ряд (запад), Двор Духа и Зверя (восток),
+// Вечевая площадь (юг). Дороги — сеть улиц (тракт, поперечная улица, улицы кварталов, проулки), а не лучи. Фасад здания — (sin ry, cos ry).
+const VPOS={hall:[-11,-14,PI/2],forge:[-18,-4,PI/2],alch:[-18,8,PI/2],store:[-26,1.85,PI/2],saw:[-22,-14,PI/2],tavern:[11.5,-14.5,-PI/2],pen:[18,-4,-PI/2],temple:[17,12.5,PI],mine:[25.5,3,-PI/2],well:[-5.5,18,0],walls:null,houses:null};
+const HOUSE_POS=[[-8.6,-5.8,0],[8.6,-5.8,0],[-6.5,10.5,PI],[6.5,10.5,PI],[-27,-5.8,PI/2],[-24.5,10.5,PI/2],[-1,27.5,PI],[-16.5,-22,PI/2]];
+const TOWER_POS=[[-23,-23],[23,-23],[-23,23],[23,23]];
+const NPC_POS={elder:[-5,-11],smith:[-13.2,-4.5],alch:[-13.6,6.5],beast:[12.6,-4],stranger:[6,-12.5]};
+// врата (поход), выход тракта за частокол; R — радиус частокола (было 25,5: кварталам нужно место), VK — во сколько раз шире прежнего (тропы набегов)
+const VGATE={x:0,z:-34.5,ry:0,ox:0,oz:-56,gap:.3};
+const VLAY={
+  R:31, pit:[11.5,-25], start:[0,-23],
+  // новые места (модели и действия — p109): Вечевой камень, Голубятня, Круг Испытаний, Меняла, жрица Храма, проекты «Восстановления Брода»
+  sites:{veche:[0,15,1.6],dove:[4.5,18.5,1.9],trials:[-10.5,-25.5,3],menyala:[-8.5,-32,1.8],priest:[14.6,4.3,1.1],
+    p_gate:[0,-34.5,0],p_bridge:[0,-41.6,0],p_bell:[0,21.8,1.9],p_light:[17.5,-23.5,2],p_garden:[6,-18.5,2.3],p_statue:[-5,-19.8,1.3]},
+  // брод за вратами: ручей поперёк тракта (вода — только вид; по броду можно пройти)
+  ford:[[-10.5,-42.6,2.4],[-6.4,-42,2.5],[-2.1,-41.6,2.5],[2.1,-41.6,2.5],[6.4,-42,2.5],[10.5,-42.6,2.4]],
+  // улицы: тракт (врата → Очаг → Вечевая площадь), поперечная улица, улицы кварталов, проулки к зданиям, тропы к Бездне и Кругу
+  roads:[[0,-34.5,0,-6.4],[0,6.4,0,13.2],[-6.2,-1.6,-12.5,-1.9],[6.2,-1.6,11.5,-1.9],[-12.5,-9,-12.5,13],[11.5,-1.9,11.5,14.5],
+    [-12.5,-8.7,-17.2,-8.7],[-12.5,1.85,-22.6,1.85],[11.5,3,21.6,3],[0,-14.2,-6.4,-14.2],[0,-14.5,8.6,-14.5],[0,-23,-7.6,-24.8],[0,-23,8.8,-24.6],
+    [-12.5,13,-2,14],[11.5,14.5,2,13.6],[0,-30.6,-6.6,-30.6]],
+  // декор на постоянных местах (проверяется правилами расстановки)
+  deco:[['lantern',-4.6,4.6],['lantern',4.6,-4.6],['lantern',-4.6,-4.6],['lantern',4.6,4.6],['lantern',-1.9,-10],['lantern',1.9,-10],['lantern',-1.9,-20.5],['lantern',1.9,-20.5],['lantern',-1.9,-29.5],['lantern',1.9,-29.5],
+    ['lantern',-10.9,-3.4],['lantern',10,-3.4],['lantern',-10.9,10],['lantern',10,11],['lantern',-2.2,12.6],['lantern',2.2,12.6],['cart',-21.6,-8.4],['hay',22.6,-2.4],['kegStand',7.4,-16.6],['crateStack',-22.8,5.4],
+    ['banner',-2.6,-31.6],['banner',2.6,-31.6],['sign',2.6,-29.8],['fence',22.6,-1.2],['fence',-19.6,-18.8],['v:sack',-21.6,-.7],['v:weaponrack',-13.9,-6.5]]
+};
+const VK=VLAY.R/25.5;
 function npcClear(x,z){ for(const k in NPC_POS){ const [nx,nz]=NPC_POS[k]; const dz=z-nz; if(dz>.3&&dz<6.2&&Math.abs(x-nx)<1.1+dz*.12) return true; } return false; }
 function makeVillage(){
   unloadWorld(); const Z=Object.assign({},ZONES[0],{id:0,fog:0xe8d8b8,fogN:50,fogF:120,hemi:[0xfff0d0,0x8a7a4a,.9],sun:[0xffe0b0,1.0],ground:[0x74a646,0x62943a,0x84b250],path:0xae8c56,rim:0xffe8c0});
   newW('village',Z); setZoneLook(Z);
-  W.walk={nodes:[{x:0,z:0,r:24},{x:-6,z:-31,r:4.5}],segs:[{ax:0,az:0,bx:-6,bz:-31,w:7}]};
-  W.start={x:0,z:6};
-  const b={minX:-46,maxX:46,minZ:-56,maxZ:40}; W.bounds=b;
-  W.pools=[{x:30,z:4,r:5},{x:33,z:-6,r:3.5},{x:-31,z:-10,r:4}];
-  W.paths=[{ax:0,az:0,bx:-6,bz:-31}]; for(const id of ['hall','forge','alch','pen','tavern','temple','store','saw','mine','well']){ const p=VPOS[id]; W.paths.push({ax:0,az:0,bx:p[0]*.8,bz:p[1]*.8}); }
+  const G0=VGATE, M=VLAY.sites.menyala;
+  W.walk={nodes:[{x:0,z:0,r:VLAY.R-1.5},{x:G0.x,z:G0.z,r:4.5},{x:M[0]+1.2,z:M[1]+1.2,r:2.6}],segs:[{ax:0,az:0,bx:G0.x,bz:G0.z,w:7}]};
+  W.start={x:VLAY.start[0],z:VLAY.start[1]};
+  const b={minX:-56,maxX:56,minZ:-66,maxZ:50}; W.bounds=b;
+  W.pools=[{x:36.5,z:5,r:5},{x:40,z:-7,r:3.5},{x:-37.5,z:-12,r:4}].concat(VLAY.ford.map(([x,z,r])=>({x,z,r,ford:1})));
+  W.paths=VLAY.roads.map(([ax,az,bx,bz])=>({ax,az,bx,bz}));
   raidCarveLanes();
   // v8: аккуратная деревня — площадь вокруг Сердца, тропы к каждому зданию, декор у домов; всё через правила расстановки (без наложений)
   fpReset(); W.reserve=[]; W.band=W.paths.map(q=>({ax:q.ax,az:q.az,bx:q.bx,bz:q.bz,hw:1.25}));
@@ -219,28 +242,30 @@ function makeVillage(){
   for(const id in BR){ const q=VPOS[id]; reserve(q[0],q[1],BR[id]+.9,'bld'); }
   for(const h of HOUSE_POS) reserve(h[0],h[1],2.7,'house'); for(const t of TOWER_POS) reserve(t[0],t[1],1.8,'tower');
   for(const sk of RAID_SOCKETS) reserve(sk.x,sk.z,sk.slot==='wall'?3:1.8,'sock'); for(const k in NPC_POS){ const [nx,nz]=NPC_POS[k]; reserve(nx,nz,1.1,'npc'); for(const [dz,r] of [[1.5,1.0],[3.0,1.2],[4.6,1.4]]) reserve(nx,nz+dz,r,'npcView'); } // v10: «коридор» камеры перед жителем — без декора (крупный план в диалогах)
-  reserve(0,0,6,'plaza'); reserve(-15,-21,3.2,'pit'); reserve(-6,-31,3.4,'gate'); reserve(0,6,1.5,'start');
+  for(const k in VLAY.sites){ const q=VLAY.sites[k]; if(q[2]) reserve(q[0],q[1],q[2]+.6,'site'); }
+  reserve(0,0,6,'plaza'); reserve(VLAY.pit[0],VLAY.pit[1],3.2,'pit'); reserve(G0.x,G0.z,3.4,'gate'); reserve(G0.x-3.3,G0.z,1.4,'gateL'); reserve(G0.x+3.3,G0.z,1.4,'gateR'); reserve(W.start.x,W.start.z,1.5,'start');
+  for(const [x,z,r] of VLAY.ford) reserve(x,z,r+.3,'ford');
   buildGround(Z,b,{plaza:6.5,pathW:1.5,noPath:false});
   buildLiquid(Z);
   // palisade ring (gaps at the gate and raid lanes, never in the ponds)
-  for(let i=0;i<36;i++){ const a=i/36*TAU; const x=Math.cos(a)*25.5, z=Math.sin(a)*25.5; if(Math.abs(angWrap(a-Math.atan2(-31,-6)))<.22||nearLane(x,z,3.6)) continue; putProp('palisade',x,z,{out:true,edge:.2,ry:-a+PI/2,poolGap:.8,gap:-.6}); }
-  // forest around: spaced trunks, no trees in ponds or lanes
+  const ga=Math.atan2(G0.z,G0.x);
+  for(let i=0;i<44;i++){ const a=i/44*TAU; const x=Math.cos(a)*VLAY.R, z=Math.sin(a)*VLAY.R; if(Math.abs(angWrap(a-ga))<G0.gap||nearLane(x,z,3.6)) continue; putProp('palisade',x,z,{out:true,edge:.2,ry:-a+PI/2,poolGap:.8,gap:-.6}); }
+  // forest around: spaced trunks, no trees in ponds or lanes (и не на тракте за вратами)
   const wallZ=['treeRound','treeBirch','pine','treeRound','rock','bush','n:tree_bloom','n:tree_wide'];
-  for(let i=0;i<Math.round(300*Q.props);i++){ const a=rand(TAU),r=rand(28,46); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(Math.abs(x+6)<5&&z<-26) continue; if(nearLane(x,z,4.2)) continue; putProp(pick(wallZ),x,z,{out:true,edge:2,s:rand(.9,1.4),poolGap:.8,gap:.1}); }
+  for(let i=0;i<Math.round(330*Q.props);i++){ const a=rand(TAU),r=rand(VLAY.R+2.5,52); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(Math.abs(x-G0.x)<6&&z<-30) continue; if(nearLane(x,z,4.2)) continue; putProp(pick(wallZ),x,z,{out:true,edge:2,s:rand(.9,1.4),poolGap:.8,gap:.1}); }
   // pond shores
-  for(const q of W.pools){ const n=Math.round(q.r*3); for(let i=0;i<n;i++){ const a=i/n*TAU+rand(-.2,.2), rr=q.r+rand(.3,1.0); putProp(pick(['reeds','n:rock_small','reeds']),q.x+Math.cos(a)*rr,q.z+Math.sin(a)*rr,{out:true,edge:-30,s:rand(.8,1.1),poolGap:-.3,gap:0}); } }
+  for(const q of W.pools){ const n=Math.round(q.r*(q.ford?1.6:3)); for(let i=0;i<n;i++){ const a=i/n*TAU+rand(-.2,.2), rr=q.r+rand(.3,1.0); const x=q.x+Math.cos(a)*rr, z=q.z+Math.sin(a)*rr; if(q.ford&&Math.abs(x-G0.x)<3) continue; putProp(pick(['reeds','n:rock_small','reeds']),x,z,{out:true,edge:-30,s:rand(.8,1.1),poolGap:-.3,gap:0}); } }
   // decor (fixed spots, checked) + small dressing around every building plot
-  const deco=[['lantern',-4.6,4.6],['lantern',4.6,-4.6],['lantern',-4.6,-4.6],['lantern',4.6,4.6],['cart',-6.5,12.5],['hay',8.5,12.5],['kegStand',-11.2,1.2],['crateStack',-12.9,2.6],['banner',-2.6,-9.4],['banner',2.6,-9.4],['sign',-4.4,-24.5],['fence',16.5,1.5],['fence',-16.5,-12.5]];
-  for(const [t,x,z] of deco){ if(npcClear(x,z)) continue; putProp(t,x,z,{ry:t==='banner'?0:rand(TAU),noRes:1,band:false}); }
+  for(const [t,x,z] of VLAY.deco){ if(npcClear(x,z)) continue; putProp(t,x,z,{ry:t==='banner'?0:rand(TAU),noRes:1,band:false}); }
   const around=['kegStand','crateStack','v:sack','lantern','hay','v:weaponrack']; // v10: без бочек/ящиков-двойников разбиваемых
-  for(const id in BR){ const q=VPOS[id]; const fa=Math.atan2(-q[1],-q[0]); for(const sd of [-1,1]){ for(let k=0;k<3;k++){ const a=fa+sd*rand(1.0,1.9), rr=BR[id]+rand(1.1,1.8); const x=q[0]+Math.cos(a)*rr, z=q[1]+Math.sin(a)*rr; if(putProp(pick(around),x,z,{s:rand(.85,1.05),noRes:1})) break; } }
-    for(let k=0;k<4;k++){ const a=fa+rand(-.9,.9), rr=BR[id]+rand(.7,1.4); putProp(k%2?'flowers':'grass',q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr,{s:rand(.9,1.2)}); } }
-  for(let i=0;i<Math.round(170*Q.grass);i++){ const a=rand(TAU),r=rand(7,23); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(pathCenterDist(x,z)<1.9) continue; putProp(i%4?'grass':'flowers',x,z,{s:rand(.8,1.2)}); }
+  for(const id in BR){ const q=VPOS[id]; const fa=Math.atan2(Math.cos(q[2]),Math.sin(q[2])); for(const sd of [-1,1]){ for(let k=0;k<3;k++){ const a=fa+sd*rand(1.0,1.9), rr=BR[id]+rand(1.1,1.8); const x=q[0]+Math.cos(a)*rr, z=q[1]+Math.sin(a)*rr; if(putProp(pick(around),x,z,{s:rand(.85,1.05),noRes:1})) break; } }
+    for(let k=0;k<4;k++){ const a=fa+rand(-.9,.9), rr=BR[id]+rand(.7,1.4); if(pathCenterDist(q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr)<1.5) continue; putProp(k%2?'flowers':'grass',q[0]+Math.cos(a)*rr,q[1]+Math.sin(a)*rr,{s:rand(.9,1.2)}); } }
+  for(let i=0;i<Math.round(200*Q.grass);i++){ const a=rand(TAU),r=rand(7,VLAY.R-2); const x=Math.cos(a)*r,z=Math.sin(a)*r; if(pathCenterDist(x,z)<1.9) continue; putProp(i%4?'grass':'flowers',x,z,{s:rand(.8,1.2)}); }
   // heart
   const hg=new THREE.Group(); worldRoot.add(hg); pmesh(OBJ_GEO.heart(),hg); const core=pmesh(OBJ_GEO.heartCore(),hg,0,2.4,0); W.heartCore=core; W.obst.push({x:0,z:0,r:2.0,grp:'heart'});
   W.heartLight=null;
   // gate
-  W.gate=mkObj('gate',-6,-31,{ry:Math.atan2(6,31)*0+0.19});
+  W.gate=mkObj('gate',G0.x,G0.z,{ry:G0.ry});
   W.gate.r=0;
   W.abyssPit=null;
   W.bmesh={};
@@ -272,7 +297,7 @@ function buildVillageBuildings(){
   }
   buildRaidStructs();
   W.abyssOpen=evUnl('abyss');
-  if(W.abyssOpen&&!W.abyssPit){ W.abyssPit=mkObj('abyssPit',-15,-21,{ry:0}); }
+  if(W.abyssOpen&&!W.abyssPit){ W.abyssPit=mkObj('abyssPit',VLAY.pit[0],VLAY.pit[1],{ry:0}); }
 }
 function refreshVillagers(){
   for(const v of W.villagers) worldRoot.remove(v.rig.root);

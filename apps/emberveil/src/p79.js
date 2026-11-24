@@ -10,7 +10,7 @@
 //    наковальни перед кузницей (искры и звон — по нижней точке руки в клипе), Мира у котла (пузыри), трактирщик за стойкой таверны,
 //    строители у лесов, дозорные у башен; наковальня, котёл и стойка — с коллайдером;
 //  • счётчики для стенда: __game.vlife().
-const VNAV={key:'',W:null,C:.5,x0:-26,z0:-34,nx:104,nz:120,g:null,spots:[],work:{},props:[],tel:{stuck:0,repath:0,giveup:0,hits:0,arrive:0}};
+const VNAV={key:'',W:null,C:.5,x0:-32,z0:-40,nx:128,nz:138, /* v45.4: Брод шире (R 31) */g:null,spots:[],work:{},props:[],tel:{stuck:0,repath:0,giveup:0,hits:0,arrive:0}};
 const NPC_POS0=JSON.parse(JSON.stringify(NPC_POS)); // исходные точки (запасной вариант; NPC_POS дальше хранит текущие — по ним коридоры камеры без декора)
 const _vl=(q,lx,lz)=>{ const c=Math.cos(q[2]||0), s=Math.sin(q[2]||0); return [q[0]+lx*c+lz*s, q[1]-lx*s+lz*c]; };
 function vnIdx(x,z){ const i=Math.floor((x-VNAV.x0)/VNAV.C), j=Math.floor((z-VNAV.z0)/VNAV.C); if(i<0||j<0||i>=VNAV.nx||j>=VNAV.nz) return -1; return j*VNAV.nx+i; }
@@ -31,7 +31,7 @@ function vnPath(ax,az,bx,bz){ const s=vnSnap(ax,az,2), e=vnSnap(bx,bz,2); if(!s|
   const pop=()=>{ const top=H[0], last=H.pop(); if(H.length){ H[0]=last; let i=0; for(;;){ const l=i*2+1, r=l+1; let m=i; if(l<H.length&&H[l][0]<H[m][0]) m=l; if(r<H.length&&H[r][0]<H[m][0]) m=r; if(m===i) break; [H[m],H[i]]=[H[i],H[m]]; i=m; } } return top; };
   const ex=E%nx, ez=Math.floor(E/nx), hh=k=>{ const dx=Math.abs(k%nx-ex), dz=Math.abs(Math.floor(k/nx)-ez); return (dx+dz)+(1.4142-2)*Math.min(dx,dz); };
   gS[S0]=0; push(hh(S0),S0); let it=0;
-  while(H.length&&it++<20000){ const [,k]=pop(); if(shut[k]) continue; shut[k]=1; if(k===E) break; const kx=k%nx, kz=Math.floor(k/nx);
+  while(H.length&&it++<40000){ const [,k]=pop(); if(shut[k]) continue; shut[k]=1; if(k===E) break; const kx=k%nx, kz=Math.floor(k/nx);
     for(let dz=-1;dz<=1;dz++) for(let dx=-1;dx<=1;dx++){ if(!dx&&!dz) continue; const x2=kx+dx, z2=kz+dz; if(x2<0||z2<0||x2>=nx||z2>=VNAV.nz) continue; const k2=z2*nx+x2; if(VNAV.g[k2]!==1||shut[k2]) continue;
       if(dx&&dz&&(VNAV.g[kz*nx+x2]!==1||VNAV.g[z2*nx+kx]!==1)) continue; // без срезания углов
       const ng=gS[k]+(dx&&dz?1.4142:1); if(ng<gS[k2]){ gS[k2]=ng; from[k2]=k; push(ng+hh(k2),k2); } } }
@@ -65,7 +65,7 @@ function vlSpots(){ const out=[]; const add=(x,z,k,o)=>{ const s=vnSnap(x,z,2.2)
   for(let i=0;i<Math.min(HOUSE_POS.length,(S.bld.houses||0)*2);i++){ const m=W.bmesh&&W.bmesh['h'+i]; if(!m) continue; const h=HOUSE_POS[i]; front(h,((m.userData&&m.userData.reach)||2.2)-.3,'door','h'+i,{enter:true,home:i}); }
   for(let i=0;i<10;i++){ const a=i/10*TAU+.15, r=7.4; add(Math.cos(a)*r,Math.sin(a)*r,'chat',{face:Math.atan2(-Math.cos(a),-Math.sin(a))}); }
   // дозорные: у построенных башен — у частокола, лицом наружу
-  if((S.bld.walls||0)>0) for(let i=0;i<Math.min(4,S.bld.walls+1);i++){ const [tx,tz]=TOWER_POS[i]; const a=Math.atan2(tz,tx); add(Math.cos(a)*22.3,Math.sin(a)*22.3,'guard',{face:Math.atan2(Math.cos(a),Math.sin(a)),fixed:1,tower:i}); }
+  if((S.bld.walls||0)>0) for(let i=0;i<Math.min(4,S.bld.walls+1);i++){ const [tx,tz]=TOWER_POS[i]; const a=Math.atan2(tz,tx); add(Math.cos(a)*(VLAY.R-3.2),Math.sin(a)*(VLAY.R-3.2),'guard',{face:Math.atan2(Math.cos(a),Math.sin(a)),fixed:1,tower:i}); }
   // строители: перед лесами каждой стройки (рамка лесов — та же, что в p42)
   for(const j of (S.bq&&S.bq.list)||[]){ const p=bldPos(j.id); if(!p) continue; let z1=2.6, x0=-1.6, x1=1.6, ry=0;
     try{ const rid=j.id==='walls'?'walls':j.id; const glv=j.id==='houses'?1+((Math.max(0,S.bld.houses*2-1))%4):Math.max(1,S.bld[j.id]||j.lv||1); const bb=townGeo(rid,glv).geo.boundingBox; z1=bb.max.z+.55; x0=bb.min.x; x1=bb.max.x;
