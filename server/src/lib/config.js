@@ -1,0 +1,244 @@
+// Live config: values stored in the `config` table override these defaults.
+// Admins change them through PUT /admin/config/<key> (see README).
+import { CALENDAR, PASSES, GOALS, WB_ROTATION, CLAN_GOAL } from './liveops.js';
+
+export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'prizes', 'raid', 'freeChestHours', 'ads', 'passes', 'goals', 'wb', 'clanGoal', 'market'];
+
+const DAY = 86400000;
+
+export const DEFAULTS = {
+  // Current season. null = no season (season leaderboard is empty).
+  season: null, // { id:'s1', name:'Сезон 1', start: <ms>, end: <ms> }
+
+  // Season pass «Путь Угля»: 50 tiers × 200 XP (v40; was 30 × 100 — finished in the first week). Existing progress: migration 0006 doubles XP (same tier). `cosmetic` ids are the game's cosmetics (apps/emberveil/src/p18.js COSM).
+  // v42: + «Огниво» tiers 51–60 (cosmetics only). Legacy single-pass key; the dated list is `passes` (s1 → s2 «Долгая Стужа» 15.01.2027), src/lib/liveops.js.
+  // The game counts pass XP from play itself; the server keeps its own XP from validated actions (abyss, raids, daily),
+  // and the game shows the larger of the two. Premium = entitlement `premiumProduct` (Telegram Stars).
+  // XP earned for server-validated actions (`xp`): daily login 60, daily contract 25 (as v34), abyss floor 8, raid star 10.
+  battlepass: PASSES[0],
+  // v42: season passes by date (the one whose [start, end) contains now is active; see liveops.js currentPass)
+  passes: PASSES,
+  // v42: server-wide shared goals (owned by calendar events via modifiers.goal), weekly overlord rotation, clan weekly goal
+  goals: GOALS,
+  wb: { rotation: WB_ROTATION },
+  clanGoal: CLAN_GOAL,
+
+  // [{ id, base, name, start, end, modifiers: { goldMul, dropMul, abyssMod, goal, ... }, descr }]
+  // v42: dated calendar 16.11.2026 – 14.02.2027 (liveops.md §5.4) instead of the eternal weekly rotation; the game has the same list as a fallback.
+  // PUT /admin/config/events replaces it (see README «События и сезоны v42»); [] = no events at all.
+  events: CALENDAR,
+
+  // Village shop rotation (prices in game currency, applied on the client).
+  // Free wooden chest timer (POST /chest/free), hours.
+  freeChestHours: 4,
+
+  // v39.4: rewarded ads (Adsgram). Block ids are public (they end up in the page anyway), not secrets.
+  // blockRewarded — id of the Rewarded block (e.g. "12345"); blockInterstitial — optional Interstitial block (e.g. "int-12345").
+  // verify — true once the block's Reward URL points at GET /ads/reward: valuable ad rewards then need a server credit.
+  // caps — per-placement daily limits for spending credits on the server (the game has the same caps, src/p18.js ADS.lim).
+  ads: { blockRewarded: '', blockInterstitial: '', verify: false, caps: { revive: 2, chest: 1, fchest: 1 } },
+
+  shop: {
+    rotationHours: 24,
+    slots: 4,
+    pool: [
+      { id: 'potion5', name: 'Связка зелий ×5', cost: { gold: 300 }, give: { potion: 5 } },
+      { id: 'bomb3', name: 'Бомбы ×3', cost: { gold: 240 }, give: { bomb: 3 } },
+      { id: 'ess40', name: 'Эссенция ×40', cost: { gold: 500 }, give: { ess: 40 } },
+      { id: 'ore80', name: 'Руда ×80', cost: { gold: 350 }, give: { ore: 80 } },
+      { id: 'wood120', name: 'Древесина ×120', cost: { gold: 320 }, give: { wood: 120 } },
+      { id: 'scroll', name: 'Свиток возвращения', cost: { gold: 200 }, give: { scroll: 1 } },
+      { id: 'shards15', name: 'Осколки Бездны ×15', cost: { ess: 60 }, give: { shards: 15 } },
+    ],
+  },
+
+  // Telegram Stars products. Cosmetics/pass/subscription are entitlements; products with `grant` are consumables:
+  // the game claims them once via POST /pay/claim (idempotent). `once` — buy once, `weekly` — once per ISO week.
+  // v41: `firstX2` — the very first purchase of this pack grants its `grant` twice (server-side, once per product);
+  // `days` + `perDay` — a timed card: /pay/seal hands out perDay gems once per game day while the entitlement is active.
+  // Paid chests (open_gold/open_leg) share the game's daily chest limit (gold ≤ 3, legendary ≤ 1; extras wait until the next day),
+  // items from paid chests are capped at the last cleared stage level and legendary rarity (src/p93.js).
+  // Grant keys (applied by the game, src/p21.js grantBundle): sparks (= «Самоцветы»), open_<tier> (chest opened now),
+  // chest_<tier> (stored chest), key_iron/key_gold/key_leg, frag, prot/tome/potion…, slot2 (second builder), spin (Wheel of Fortune spins, src/p71.js).
+  // No combat power is sold directly: gems buy time/chests; PvP raids & Abyss board use «Честный бой» (see game README).
+  products: [
+    { id: 'crys_80', title: 'Горсть самоцветов', description: '80 самоцветов', stars: 49, type: 'currency', grant: { sparks: 80 }, firstX2: true },
+    { id: 'crys_450', title: 'Мешочек самоцветов', description: '450 самоцветов (+12%)', stars: 249, type: 'currency', grant: { sparks: 450 }, tag: 'Хит', firstX2: true },
+    { id: 'crys_1000', title: 'Сундучок самоцветов', description: '1000 самоцветов (+25%)', stars: 499, type: 'currency', grant: { sparks: 1000 }, firstX2: true },
+    { id: 'crys_2200', title: 'Казна самоцветов', description: '2200 самоцветов (+37%)', stars: 999, type: 'currency', grant: { sparks: 2200 }, tag: 'Выгодно', firstX2: true },
+    { id: 'starter_pack', title: 'Набор новичка', description: '300 самоцветов, 2 золотых сундука, 2 железных сундука, 3 свитка удачи', stars: 99, type: 'bundle', once: true, grant: { sparks: 300, open_gold: 2, chest_iron: 2, prot: 3 }, tag: '×4 выгода' },
+    // v41: «Набор приключенца» — первая покупка «на пробу» (один раз): самоцветы и рамка портрета (cos_<id> — косметика из src/p18.js COSM)
+    { id: 'adv_pack', title: 'Набор приключенца', description: '100 самоцветов и рамка портрета «Приключенца»', stars: 29, type: 'bundle', once: true, grant: { sparks: 100, cos_frame_adv: 1 }, tag: 'Проба' },
+    { id: 'weekly_pack', title: 'Недельный набор', description: '400 самоцветов, легендарный сундук (в дневном лимите), 2 золотых ключа', stars: 149, type: 'bundle', weekly: true, grant: { sparks: 400, open_leg: 1, key_gold: 2 } },
+    { id: 'build_slot', title: 'Второй строитель', description: 'Навсегда: две стройки одновременно (+50 самоцветов)', stars: 199, type: 'bundle', once: true, grant: { slot2: 1, sparks: 50 } },
+    { id: 'chest_gold3', title: 'Три золотых сундука', description: 'Открываются сразу (в дневном лимите: 3 золотых в день)', stars: 99, type: 'bundle', grant: { open_gold: 3 } },
+    { id: 'chest_leg1', title: 'Легендарный сундук', description: 'Легендарная вещь гарантирована (1 легендарный сундук в день)', stars: 119, type: 'bundle', grant: { open_leg: 1 } },
+    // Колесо судьбы (игра v34, хаб «Награды»): купленные вращения копятся в сохранении и не сгорают; grant.spin — число вращений
+    { id: 'spin_1', title: 'Вращение Колеса', description: '1 вращение Колеса судьбы', stars: 25, type: 'spin', grant: { spin: 1 } },
+    { id: 'spin_10', title: '10 вращений Колеса', description: '10 вращений Колеса судьбы (−20%)', stars: 200, type: 'spin', grant: { spin: 10 }, tag: '−20%' },
+    { id: 'bp_s1', title: 'Боевой пропуск — Сезон 1', description: 'Премиум-дорожка: облики, рамки, эмоции питомцев', stars: 250, type: 'battlepass', once: true, season: 's1' },
+    // v42: S2 «Долгая Стужа» (15.01–26.02.2027); the game shows only the product of the current season
+    { id: 'bp_s2', title: 'Боевой пропуск — «Долгая Стужа»', description: 'Премиум-дорожка сезона 2: облики, свечения, рамки и самоцветы', stars: 250, type: 'battlepass', once: true, season: 's2' },
+    { id: 'skin_cloak_ember', title: 'Плащ «Тлеющий»', description: 'Косметический облик героя', stars: 100, type: 'cosmetic', once: true },
+    { id: 'pack_village_lanterns', title: 'Фонари Брода', description: 'Украшения для деревни', stars: 75, type: 'cosmetic', once: true },
+    { id: 'pet_skin_frost', title: 'Иней для питомца', description: 'Скин питомца', stars: 90, type: 'cosmetic', once: true },
+    { id: 'pack_dawn', title: 'Набор «Рассвет Вейла»', description: 'Облик, свечение оружия и рамка портрета', stars: 150, type: 'cosmetic', once: true },
+    // v41: «Хранитель Брода» — только удобство (как в игре, src/p20.js/p21.js): склад +6 ч, +10 мест в сумке, стройка и ковка на 10% быстрее, рамка. Боевых бонусов нет.
+    { id: 'keeper_30d', title: 'Хранитель Брода (30 дней)', description: 'Склад копит на 6 ч дольше, +10 мест в сумке, стройка и ковка на 10% быстрее, рамка. Без боевых бонусов', stars: 200, type: 'subscription', once: false, days: 30 },
+    // v41: месячная карта «Угольная печать»: 150 самоцветов сразу (grant, /pay/claim) + perDay самоцветов раз в игровой день за вход (POST /pay/seal), пока печать действует (days)
+    { id: 'coal_seal', title: 'Угольная печать (30 дней)', description: '150 самоцветов сразу и 40 каждый день за вход — 30 дней (в «Наградах»)', stars: 199, type: 'bundle', days: 30, perDay: 40, grant: { sparks: 150 }, tag: '×7' },
+  ],
+
+  // 7-day cycle of login rewards (resource keys match the game save: gold/wood/ore/ess/shards).
+  daily: {
+    rewards: [
+      { gold: 150 }, { wood: 80, ore: 40 }, { ess: 15 }, { gold: 300 },
+      { shards: 8 }, { gold: 400, ess: 20 }, { shards: 20, gold: 500 },
+    ],
+    quests: ['d_kill', 'd_chest', 'd_stage', 'd_elite', 'd_abyss', 'd_salv', 'd_boss', 'd_nopot'],
+    maxQuestsPerDay: 3, // v42: 3 contracts a day (liveops §3)
+  },
+
+  // v45.2 «Круг побратимов» (src/lib/circle.js, migration 0009). Every number is here; PUT /admin/config/referral may
+  // store only some keys — the rest come from these defaults (circleConfig merges them). All amounts are provisional
+  // (economy review): a milestone's `rewards` is a list of { type, amount } | { type:'gold', stages } | { type:'cosmetic', id }.
+  //   type — any game grant key (gold, ess, shards, wood, ore, chest_iron, chest_gold, key_gold…) or 'cosmetic';
+  //   stages — gold of N stages at level L = min(recipient level, milestone level): N × gold.base × gold.growth^(L−1);
+  //   rewards:'referrer' — the v41 tier-1 reward object `referrer` below (500 gold + 25 essence).
+  // Tiers 2/3 get shares[1]/shares[2] of every reward whose type is in shareTypes; other types (chests, cosmetics) are tier-1 only.
+  // gates: ageMin — friend's account age (minutes), days — distinct login days, run — 'abyss' | 'wb' | 'any' server-recorded run.
+  // No Самоцветы (sparks) for referrals: they are stripped from any reward (owner decision v45).
+  referral: {
+    referrer: { gold: 500, ess: 25 },
+    referee: { gold: 300, ess: 15 },
+    maxRewarded: 50,          // distinct tier-1 friends that pay at all (as v41)
+    shares: [1, 0.2, 0.04],   // tier 1 / 2 / 3
+    shareTypes: ['gold', 'dust'], // v45.3: tiers 2–3 — gold and rune dust only
+    gold: { base: 200, growth: 1.12 },
+    holdHours: 24,            // «Летописец сверяет запись»
+    capDay: 20,               // letters per recipient per 24 h (over → postponed)
+    capWeek: 60,              // letters per recipient per 7 days (over → postponed)
+    capMonthUpper: 200,       // tier-2/3 letters per recipient per 30 days (over → refused)
+    maxFlags: 0,              // friend with users.flags above this (suspicious saves/runs) → refused
+    tgOnly: true,             // guests never count
+    waitRetryMin: 360,        // re-check of unmet gates by cron
+    capRetryMin: 60,          // re-try after a day/week cap
+    recheckMin: 30,           // cron re-reads cloud saves updated in the last N minutes
+    cronBatch: 200,
+    // v45.3 (economy v45, owner decision: 40% gold / 60% materials): from l10 the gold part is 1.2 stages (40% of the old 3 stages,
+    // still min(recipient, milestone) level); the rest is scarce material — rune dust 5/10/20/35/60, Abyss shards, an iron chest at l30,
+    // 2 gold-key fragments at l50. No Самоцветы, no gold/legendary chests. Tiers 2–3 share gold and dust (shareTypes).
+    milestones: [
+      { id: 'join', lvl: 1, join: true, gates: { ageMin: 0, days: 1 }, rewards: [{ type: 'gold', amount: 100 }] },
+      { id: 'l5', lvl: 5, stage: '1-5', gates: { ageMin: 10, days: 1 }, rewards: 'referrer' },
+      { id: 'l10', lvl: 10, gates: { ageMin: 1 * 1440, days: 2 }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 5 }, { type: 'shards', amount: 10 }] },
+      { id: 'l20', lvl: 20, gates: { ageMin: 3 * 1440, days: 3, run: 'abyss' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 10 }, { type: 'shards', amount: 20 }, { type: 'cosmetic', id: 'frame_sworn' }] },
+      { id: 'l30', lvl: 30, gates: { ageMin: 7 * 1440, days: 5, run: 'any' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 20 }, { type: 'shards', amount: 30 }, { type: 'chest_iron', amount: 1 }] },
+      { id: 'l40', lvl: 40, gates: { ageMin: 12 * 1440, days: 7, run: 'any' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 35 }, { type: 'shards', amount: 40 }, { type: 'cosmetic', id: 'comp_sworn' }] },
+      { id: 'l50', lvl: 50, gates: { ageMin: 18 * 1440, days: 9, run: 'any' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 60 }, { type: 'shards', amount: 50 }, { type: 'frag', amount: 2 }, { type: 'cosmetic', id: 'title_sworn' }, { type: 'cosmetic', id: 'glow_sworn' }] },
+    ],
+  },
+
+  // v45.2 «Летопись Вече»: weekly prizes by letter `delayHours` after the Monday 05:00 МСК reset. COSMETICS ONLY
+  // (anything else in an entry is ignored). A player gets the best bracket they reach: { top: N } = place ≤ N,
+  // { pct: P } = place ≤ ceil(entries × P / 100). Overlord: ranked inside each (overlord, league) board; one prize a week.
+  // Entries of banned players or with suspicious records (audit kinds in `suspicious`) during the week are skipped.
+  prizes: {
+    delayHours: 24,
+    lookbackWeeks: 2,
+    fromWeek: '2026-W48', // first week settled (weeks before v45.2 had boards with any start floor)
+    suspicious: ['save_rejected', 'save_suspicious', 'abyss_rejected', 'wb_rejected'],
+    wb: [{ top: 10, cosmetic: 'frame_wb_top10' }, { pct: 10, cosmetic: 'frame_wb_p10' }, { pct: 25, cosmetic: 'glow_wb_p25' }, { pct: 50, cosmetic: 'troph_wb_p50' }],
+    abyss: [{ top: 3, cosmetic: 'frame_abyss_top3' }, { top: 10, cosmetic: 'glow_abyss_top10' }, { pct: 50, cosmetic: 'troph_abyss_p50' }],
+  },
+
+  // v45.3 «Меняла» (apps/emberveil/src/p108.js MK108_DEF — the same defaults; the game merges this key over them).
+  // Unit price of a lot = B × F(L)^pow × g^n (F(L) = 1.12^(L−1), L = hero level, n = units of this lot bought this week);
+  // cap — units per week (cap2 — in chapter II, zone 7+); zone — lot appears from that zone; rot:1 — rotating lots (`rot` of them a week,
+  // seeded by the ISO week, reset Monday 05:00 МСК); off:true hides a lot. res: 'el' — element essence of the player's choice,
+  // 'zone' — material of the current chapter-II zone. Never sold (the game drops such lots): core, sparks, keys, key fragments, chests, scrolls.
+  // fair — «Большая ярмарка»: caps ×mul in the player's first trading week if the hero is minLvl+. buy — unlimited ore/essence (n for n·k·F^0.6).
+  // tigel — material exchange fee fee·F(L)^pow per operation, dust recipe ≤ dustCap a day, alchemist level; polish — B·F(ilvl)^pow·g^k, forge level.
+  market: {
+    open: { hall: 3 },
+    fair: { mul: 2, minLvl: 30 },
+    pow: 0.9,
+    lots: {
+      dust: { res: 'dust', B: 25, g: 1.02, cap: 50, cap2: 100, grp: 'def' },
+      steel: { res: 'steel', B: 14, g: 1.04, cap: 30, grp: 'def' },
+      mithril: { res: 'mithril', B: 120, g: 1.08, cap: 10, zone: 6, grp: 'def' },
+      ess: { res: 'el', B: 20, g: 1.05, cap: 20, grp: 'mat' },
+      shards: { res: 'shards', B: 28, g: 1.05, cap: 30, grp: 'mat' },
+      zmat: { res: 'zone', B: 70, g: 1.07, cap: 15, zone: 7, grp: 'mat' },
+      cingot: { res: 'cingot', B: 400, g: 1.15, cap: 3, rot: 1, grp: 'mat' },
+      silk: { res: 'silk', B: 30, g: 1.06, cap: 10, rot: 1, grp: 'mat' },
+      ironwood: { res: 'ironwood', B: 30, g: 1.06, cap: 10, rot: 1, grp: 'mat' },
+      dhide: { res: 'dhide', B: 90, g: 1.08, cap: 5, rot: 1, grp: 'mat' },
+    },
+    rot: 1,
+    buy: { ore: { n: 25, k: 3 }, ess: { n: 10, k: 9 } },
+    tigel: { fee: 150, pow: 0.8, dustCap: 20, alch: 2 },
+    polish: { B: 300, pow: 0.9, g: 1.5, forge: 3 },
+  },
+
+  raid: {
+    // loot = base * hallLevel * starMul[stars]
+    base: { gold: 120, wood: 60, ore: 30 },
+    starMul: [0.15, 0.5, 0.8, 1.2],
+    shieldHours: 4,
+    revengeHours: 48,
+  },
+};
+
+/** Load all config rows merged over defaults. */
+export async function loadConfig(env) {
+  const out = structuredClone(DEFAULTS);
+  let version = 0;
+  const stored = [];
+  const rows = (await env.DB.prepare('SELECT key, value, updated_at FROM config').all()).results || [];
+  for (const r of rows) {
+    if (!CONFIG_KEYS.includes(r.key)) continue;
+    try { out[r.key] = JSON.parse(r.value); stored.push(r.key); } catch { /* keep default */ }
+    version = Math.max(version, r.updated_at);
+  }
+  out.version = version;
+  Object.defineProperty(out, '_stored', { value: stored, enumerable: false }); // v42: which keys an admin overrode (liveops.js currentPass)
+  return out;
+}
+
+export async function getConfigKey(env, key) {
+  const r = await env.DB.prepare('SELECT value FROM config WHERE key=?').bind(key).first();
+  if (r) { try { return JSON.parse(r.value); } catch { /* fallthrough */ } }
+  return structuredClone(DEFAULTS[key]);
+}
+
+export function activeSeason(cfg, now) {
+  const s = cfg.season && cfg.season.id ? cfg.season : null;
+  if (!s) return datedSeason(cfg, now); // v42: no explicit season → the dated pass (s1, s2…) is the season
+  if (s.start && now < s.start) return null;
+  if (s.end && now >= s.end) return null;
+  return s;
+}
+
+export function activeEvents(events, now) {
+  return (Array.isArray(events) ? events : []).filter((e) => e && (!e.start || now >= e.start) && (!e.end || now < e.end));
+}
+
+/** Deterministic shop rotation for the current time bucket. */
+export function shopRotation(shop, now) {
+  const hours = Math.max(1, Number(shop.rotationHours) || 24);
+  const bucket = Math.floor(now / (hours * 3600000));
+  const pool = Array.isArray(shop.pool) ? shop.pool.slice() : [];
+  let seed = (bucket * 2654435761) >>> 0;
+  const rnd = () => { seed = (seed + 0x6d2b79f5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return { rotation: bucket, items: pool.slice(0, Math.max(0, Number(shop.slots) || 4)), endsAt: (bucket + 1) * hours * 3600000 };
+}
+
+function datedSeason(cfg, now) {
+  const list = Array.isArray(cfg.passes) ? cfg.passes : [];
+  const p = list.find((x) => x && x.season && x.start && x.end && now >= x.start && now < x.end);
+  return p ? { id: p.season, name: p.name, start: p.start, end: p.end } : null;
+}
+
+export { DAY };

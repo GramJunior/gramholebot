@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Звуки Эмбервейла</title>
+<style>
+:root{--bg:#17110c;--card:#241a12;--line:#4a3726;--ink:#f1e4cc;--mut:#b49c7c;--acc:#e8a33c;--acc2:#7ad0ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:2;background:linear-gradient(#1f160e,#17110cee);border-bottom:1px solid var(--line);padding:12px 16px}
+h1{margin:0 0 4px;font-size:20px;color:var(--acc)}
+.sub{color:var(--mut);font-size:13px}
+.ctl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-top:8px;font-size:13px}
+.ctl input[type=range]{width:140px;accent-color:var(--acc)}
+main{padding:8px 16px 40px;max-width:1100px;margin:0 auto}
+h2{font-size:16px;margin:22px 0 8px;color:var(--acc);border-bottom:1px solid var(--line);padding-bottom:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.snd{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.snd b{font-weight:600;font-size:14px}
+.snd small{color:var(--mut);font-size:12px}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{background:#3a2a1b;color:var(--ink);border:1px solid #6a4e33;border-radius:8px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;min-height:34px}
+button:hover{border-color:var(--acc)}
+button.on{background:var(--acc);color:#1b120a;border-color:var(--acc)}
+button.rnd{border-color:var(--acc2)}
+#stat{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Звуки Эмбервейла — v42</h1>
+  <div class="sub">Все звуки собраны офлайн генератором <code>tools/sfxgen.js</code>. «Случайный» — как в игре: случайный вариант, лёгкий разброс высоты и громкости.</div>
+  <div class="ctl">
+    <label>Громкость <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+    <label><input id="fmt" type="checkbox"> AAC (.m4a) вместо Opus</label>
+    <button id="stop">Остановить всё</button>
+    <span id="stat"></span>
+  </div>
+</header>
+<main id="m">Загрузка…</main>
+<script>
+(function(){
+  var GR={ui:'Интерфейс, сундуки, кузня, уровень',cb:'Бой: оружие, удары, враги, владыки',st:'Шаги по поверхностям',vil:'Деревня',z1:'Зона 1 · Солнечные Луга',z2:'Зона 2 · Шепчущая Чаща',z3:'Зона 3 · Гнилые Топи',z4:'Зона 4 · Склепы Остена',z5:'Зона 5 · Пепельные Пустоши',z6:'Зона 6 · Логово Игнара',z7:'Зона 7 · Ледяной Предел',z8:'Зона 8 · Затонувший Златоверх',z9:'Зона 9 · Небесные Руины',z10:'Зона 10 · Изнанка Хмари'};
+  var ORDER=['ui','cb','st','vil','z1','z2','z3','z4','z5','z6','z7','z8','z9','z10'];
+  var CAT={sfx:'эффект',voc:'голос',ui:'интерфейс',step:'шаги',amb:'фон, петля',spot:'окружение'};
+  var ctx=null, out=null, man=null, cache={}, live=[], loops={};
+  var a=document.createElement('audio');
+  var canOgg=!!(a.canPlayType&&a.canPlayType('audio/ogg; codecs="opus"'));
+  var fmtBox=document.getElementById('fmt'); if(!canOgg) fmtBox.checked=true;
+  function ext(){ return fmtBox.checked?'m4a':'ogg'; }
+  function ac(){ if(!ctx){ ctx=new (window.AudioContext||window.webkitAudioContext)(); out=ctx.createGain(); out.gain.value=+document.getElementById('vol').value; out.connect(ctx.destination); } if(ctx.state!=='running') ctx.resume(); return ctx; }
+  document.getElementById('vol').oninput=function(){ if(out) out.gain.value=+this.value; };
+  fmtBox.onchange=function(){ cache={}; };
+  function load(base){ var f=base+'.'+ext(), m=man.files[f]; if(cache[f]) return cache[f];
+    cache[f]=fetch(f+'?v='+(m?m.h:'')).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); }).then(function(b){ return new Promise(function(res,rej){ var p=ac().decodeAudioData(b,res,rej); if(p&&p.then) p.then(res,rej); }); });
+    cache[f].catch(function(e){ stat('Ошибка: '+f+' — '+e); delete cache[f]; }); return cache[f]; }
+  function stat(t){ document.getElementById('stat').textContent=t; }
+  function play(e,k,rand,btn){ ac(); load(e.id+'_'+k).then(function(b){ var s=ctx.createBufferSource(); s.buffer=b; var g=ctx.createGain(); g.gain.value=1;
+      if(rand){ s.playbackRate.value=1+(Math.random()*2-1)*.035; g.gain.value=1+(Math.random()*2-1)*.08; }
+      if(e.loop){ if(loops[e.id]){ loops[e.id].stop(); delete loops[e.id]; btn.classList.remove('on'); return; } s.loop=true; loops[e.id]=s; btn.classList.add('on'); }
+      s.connect(g); g.connect(out); s.start(); live.push(s); stat(e.ru+' · вариант '+(k+1)+' · '+(e.len?e.len[k]+' с':''));
+      s.onended=function(){ var i=live.indexOf(s); if(i>=0) live.splice(i,1); }; }); }
+  document.getElementById('stop').onclick=function(){ live.forEach(function(s){ try{ s.stop(); }catch(e){} }); live=[]; for(var k in loops) delete loops[k]; document.querySelectorAll('button.on').forEach(function(b){ b.classList.remove('on'); }); };
+  fetch('sfx.json',{cache:'no-cache'}).then(function(r){ return r.json(); }).then(function(j){ man=j; var M=document.getElementById('m'); M.innerHTML='';
+    var tot=j.total||{}; stat(j.list.length+' звуков · Opus '+Math.round((tot.ogg||0)/1024)+' КБ · AAC '+Math.round((tot.m4a||0)/1024)+' КБ'+(canOgg?'':' · Opus не поддерживается — играет AAC'));
+    ORDER.forEach(function(g){ var L=j.list.filter(function(e){ return e.g===g; }); if(!L.length) return;
+      var h=document.createElement('h2'); h.textContent=GR[g]||g; M.appendChild(h); var grid=document.createElement('div'); grid.className='grid'; M.appendChild(grid);
+      L.forEach(function(e){ var d=document.createElement('div'); d.className='snd'; d.innerHTML='<b></b><small></small><div class="row"></div>';
+        d.querySelector('b').textContent=e.ru; d.querySelector('small').textContent=CAT[e.c]+' · '+e.id+(e.n>1?' · вариантов: '+e.n:'');
+        var row=d.querySelector('.row');
+        if(e.loop){ var b=document.createElement('button'); b.textContent='▶ Слушать петлю'; b.onclick=function(){ play(e,0,false,b); }; row.appendChild(b); }
+        else { if(e.n>1){ var r=document.createElement('button'); r.className='rnd'; r.textContent='▶ Случайный'; r.onclick=function(){ play(e,Math.floor(Math.random()*e.n),true,r); }; row.appendChild(r); }
+          for(var k=0;k<e.n;k++)(function(k){ var b=document.createElement('button'); b.textContent=e.n>1?String(k+1):'▶ Слушать'; b.setAttribute('aria-label',e.ru+', вариант '+(k+1)); b.onclick=function(){ play(e,k,false,b); }; row.appendChild(b); })(k); }
+        grid.appendChild(d); }); }); }).catch(function(e){ document.getElementById('m').textContent='Не удалось загрузить sfx.json: '+e; });
+})();
+</script>
+</body>
+</html>

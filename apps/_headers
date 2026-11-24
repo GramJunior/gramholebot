@@ -1,0 +1,43 @@
+# Cloudflare Pages: заголовки для apps/ (корень публикации). Сжатие (brotli/gzip) Pages включает сам для HTML/JS/JSON/CSS.
+# Одно правило на путь для Cache-Control: при совпадении нескольких правил Pages склеивает значения через запятую.
+
+# страницы: всегда сверяться с сервером (ETag → 304), чтобы обновление игры доходило сразу, в т.ч. в WebView Telegram
+/*.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+/emberveil/
+  Cache-Control: no-cache
+
+# движок Three.js r128 и его дополнения не меняются — кэш на год
+/emberveil/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# модели, анимации, атласы: игра запрашивает .glb с ?v=<хэш содержимого> (build.sh → EV_MANIFEST.hash), новая версия = новый адрес;
+# внешние атласы (.jpg/.png) — без хэша, поэтому неделя + фоновая перепроверка
+/emberveil/assets/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+# v42: звуки — игра запрашивает sfx/*.ogg|m4a с ?v=<хэш> (sfx/sfx.json), манифест и страница прослушивания — всегда свежие
+/emberveil/sfx/*.ogg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+  Content-Type: audio/ogg
+/emberveil/sfx/*.m4a
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+  Content-Type: audio/mp4
+
+/*.glb
+  Content-Type: model/gltf-binary
+  X-Content-Type-Options: nosniff
+
+# v39: политика безопасности контента — пока только «Report-Only» (ничего не блокирует, нарушения видны в консоли браузера):
+# игре нужны встроенные скрипты (весь код — в index.html), WebAssembly декодера meshopt, blob:/data: для текстур и шрифты Google.
+# Когда консоль в Telegram (Android/iOS/Desktop) чистая — можно переименовать в Content-Security-Policy.
+/emberveil/*
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org https://sad.adsgram.ai; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' data: blob: https://*.workers.dev https://*.adsgram.ai https://telegram.org; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org
+
+# v41: страница аналитики (apps/admin/index.html): не индексировать, без Referer, только встроенный код + запросы к API по HTTPS
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer
+  Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
