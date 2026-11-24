@@ -2,7 +2,7 @@
 // Admins change them through PUT /admin/config/<key> (see README).
 import { CALENDAR, PASSES, GOALS, WB_ROTATION, CLAN_GOAL } from './liveops.js';
 
-export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'prizes', 'raid', 'freeChestHours', 'ads', 'passes', 'goals', 'wb', 'clanGoal'];
+export const CONFIG_KEYS = ['season', 'battlepass', 'events', 'shop', 'products', 'daily', 'referral', 'prizes', 'raid', 'freeChestHours', 'ads', 'passes', 'goals', 'wb', 'clanGoal', 'market'];
 
 const DAY = 86400000;
 
@@ -113,7 +113,7 @@ export const DEFAULTS = {
     referee: { gold: 300, ess: 15 },
     maxRewarded: 50,          // distinct tier-1 friends that pay at all (as v41)
     shares: [1, 0.2, 0.04],   // tier 1 / 2 / 3
-    shareTypes: ['gold'],
+    shareTypes: ['gold', 'dust'], // v45.3: tiers 2–3 — gold and rune dust only
     gold: { base: 200, growth: 1.12 },
     holdHours: 24,            // «Летописец сверяет запись»
     capDay: 20,               // letters per recipient per 24 h (over → postponed)
@@ -125,14 +125,17 @@ export const DEFAULTS = {
     capRetryMin: 60,          // re-try after a day/week cap
     recheckMin: 30,           // cron re-reads cloud saves updated in the last N minutes
     cronBatch: 200,
+    // v45.3 (economy v45, owner decision: 40% gold / 60% materials): from l10 the gold part is 1.2 stages (40% of the old 3 stages,
+    // still min(recipient, milestone) level); the rest is scarce material — rune dust 5/10/20/35/60, Abyss shards, an iron chest at l30,
+    // 2 gold-key fragments at l50. No Самоцветы, no gold/legendary chests. Tiers 2–3 share gold and dust (shareTypes).
     milestones: [
       { id: 'join', lvl: 1, join: true, gates: { ageMin: 0, days: 1 }, rewards: [{ type: 'gold', amount: 100 }] },
       { id: 'l5', lvl: 5, stage: '1-5', gates: { ageMin: 10, days: 1 }, rewards: 'referrer' },
-      { id: 'l10', lvl: 10, gates: { ageMin: 1 * 1440, days: 2 }, rewards: [{ type: 'gold', stages: 3 }, { type: 'chest_iron', amount: 1 }] },
-      { id: 'l20', lvl: 20, gates: { ageMin: 3 * 1440, days: 3, run: 'abyss' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'shards', amount: 20 }, { type: 'cosmetic', id: 'frame_sworn' }] },
-      { id: 'l30', lvl: 30, gates: { ageMin: 7 * 1440, days: 5, run: 'any' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'chest_gold', amount: 1 }] },
-      { id: 'l40', lvl: 40, gates: { ageMin: 12 * 1440, days: 7, run: 'any' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'ess', amount: 300 }, { type: 'cosmetic', id: 'comp_sworn' }] },
-      { id: 'l50', lvl: 50, gates: { ageMin: 18 * 1440, days: 9, run: 'any' }, rewards: [{ type: 'gold', stages: 3 }, { type: 'cosmetic', id: 'title_sworn' }, { type: 'cosmetic', id: 'glow_sworn' }] },
+      { id: 'l10', lvl: 10, gates: { ageMin: 1 * 1440, days: 2 }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 5 }, { type: 'shards', amount: 10 }] },
+      { id: 'l20', lvl: 20, gates: { ageMin: 3 * 1440, days: 3, run: 'abyss' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 10 }, { type: 'shards', amount: 20 }, { type: 'cosmetic', id: 'frame_sworn' }] },
+      { id: 'l30', lvl: 30, gates: { ageMin: 7 * 1440, days: 5, run: 'any' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 20 }, { type: 'shards', amount: 30 }, { type: 'chest_iron', amount: 1 }] },
+      { id: 'l40', lvl: 40, gates: { ageMin: 12 * 1440, days: 7, run: 'any' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 35 }, { type: 'shards', amount: 40 }, { type: 'cosmetic', id: 'comp_sworn' }] },
+      { id: 'l50', lvl: 50, gates: { ageMin: 18 * 1440, days: 9, run: 'any' }, rewards: [{ type: 'gold', stages: 1.2 }, { type: 'dust', amount: 60 }, { type: 'shards', amount: 50 }, { type: 'frag', amount: 2 }, { type: 'cosmetic', id: 'title_sworn' }, { type: 'cosmetic', id: 'glow_sworn' }] },
     ],
   },
 
@@ -147,6 +150,35 @@ export const DEFAULTS = {
     suspicious: ['save_rejected', 'save_suspicious', 'abyss_rejected', 'wb_rejected'],
     wb: [{ top: 10, cosmetic: 'frame_wb_top10' }, { pct: 10, cosmetic: 'frame_wb_p10' }, { pct: 25, cosmetic: 'glow_wb_p25' }, { pct: 50, cosmetic: 'troph_wb_p50' }],
     abyss: [{ top: 3, cosmetic: 'frame_abyss_top3' }, { top: 10, cosmetic: 'glow_abyss_top10' }, { pct: 50, cosmetic: 'troph_abyss_p50' }],
+  },
+
+  // v45.3 «Меняла» (apps/emberveil/src/p108.js MK108_DEF — the same defaults; the game merges this key over them).
+  // Unit price of a lot = B × F(L)^pow × g^n (F(L) = 1.12^(L−1), L = hero level, n = units of this lot bought this week);
+  // cap — units per week (cap2 — in chapter II, zone 7+); zone — lot appears from that zone; rot:1 — rotating lots (`rot` of them a week,
+  // seeded by the ISO week, reset Monday 05:00 МСК); off:true hides a lot. res: 'el' — element essence of the player's choice,
+  // 'zone' — material of the current chapter-II zone. Never sold (the game drops such lots): core, sparks, keys, key fragments, chests, scrolls.
+  // fair — «Большая ярмарка»: caps ×mul in the player's first trading week if the hero is minLvl+. buy — unlimited ore/essence (n for n·k·F^0.6).
+  // tigel — material exchange fee fee·F(L)^pow per operation, dust recipe ≤ dustCap a day, alchemist level; polish — B·F(ilvl)^pow·g^k, forge level.
+  market: {
+    open: { hall: 3 },
+    fair: { mul: 2, minLvl: 30 },
+    pow: 0.9,
+    lots: {
+      dust: { res: 'dust', B: 25, g: 1.02, cap: 50, cap2: 100, grp: 'def' },
+      steel: { res: 'steel', B: 14, g: 1.04, cap: 30, grp: 'def' },
+      mithril: { res: 'mithril', B: 120, g: 1.08, cap: 10, zone: 6, grp: 'def' },
+      ess: { res: 'el', B: 20, g: 1.05, cap: 20, grp: 'mat' },
+      shards: { res: 'shards', B: 28, g: 1.05, cap: 30, grp: 'mat' },
+      zmat: { res: 'zone', B: 70, g: 1.07, cap: 15, zone: 7, grp: 'mat' },
+      cingot: { res: 'cingot', B: 400, g: 1.15, cap: 3, rot: 1, grp: 'mat' },
+      silk: { res: 'silk', B: 30, g: 1.06, cap: 10, rot: 1, grp: 'mat' },
+      ironwood: { res: 'ironwood', B: 30, g: 1.06, cap: 10, rot: 1, grp: 'mat' },
+      dhide: { res: 'dhide', B: 90, g: 1.08, cap: 5, rot: 1, grp: 'mat' },
+    },
+    rot: 1,
+    buy: { ore: { n: 25, k: 3 }, ess: { n: 10, k: 9 } },
+    tigel: { fee: 150, pow: 0.8, dustCap: 20, alch: 2 },
+    polish: { B: 300, pow: 0.9, g: 1.5, forge: 3 },
   },
 
   raid: {

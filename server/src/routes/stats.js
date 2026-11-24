@@ -159,6 +159,10 @@ export async function adminStats(c) {
     return { dir: r.name.startsWith('eco_in:') ? 'in' : 'out', res: i > 0 ? key.slice(0, i) : key, src: i > 0 ? key.slice(i + 1) : '', amount: r.v || 0, events: r.n, users: r.users };
   }).sort((a, b) => b.amount - a.amount);
 
+  // v45.3: idle gold by level band (client eco_gidle:<band>, v = gold on hand, once per game day) — avg per report
+  const goldIdle = ev('eco_gidle:').map((r) => ({ band: after(r.name), reports: r.n, users: r.users, avg: r.n ? Math.round((r.v || 0) / r.n) : 0 }))
+    .sort((x, y) => (x.band < y.band ? -1 : 1));
+
   const q = async (sql, ...a) => n(sql, ...a);
   return json({
     ok: true, from, to, days, serverTime: now,
@@ -175,6 +179,6 @@ export async function adminStats(c) {
     dau, newByDay, newBySource: bySrc.map((r) => ({ src: r.src, n: r.n, d1Pct: pct(r.r1, r.n1), d7Pct: pct(r.r7, r.n7), payers: r.payers })),
     cohorts, funnel, stageFails, sessions, ads, adsServer,
     starsRevenue: { byProduct, byDay: starsByDay, refunds: { n: refunds.n || 0, stars: refunds.stars || 0 } },
-    referrals: refs, economy,
+    referrals: refs, economy, goldIdle,
   });
 }

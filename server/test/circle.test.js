@@ -35,21 +35,29 @@ test('chain resolution: three tiers up, never self, never repeats (no cycles)', 
   assert.deepEqual(resolveChain('x', 'd', { t1: 'd', t2: 'c' }), { t1: 'd', t2: null, t3: null }, 'repeat is cut');
 });
 
-test('milestone payout math: spec gold (≈200×1.12^(L−1)×3), 100/20/4 shares, min(recipient, milestone) level, tier-1-only items, no sparks', () => {
+test('milestone payout math: v45.3 gold 40% (≈200×1.12^(L−1)×1.2) + 60% materials, 100/20/4 shares of gold and dust, min(recipient, milestone) level, tier-1-only items, no sparks', () => {
   assert.deepEqual([niceRound(4), niceRound(68), niceRound(1040), niceRound(1664), niceRound(49848), niceRound(154800)], [4, 70, 1000, 1700, 50000, 155000]);
   const g = (id, tier, lvl = 50) => msReward(cfg0, ms(id), tier, lvl).res.gold;
-  // table from the spec (emberveil-social-v45 «Вехи и награды»)
-  assert.deepEqual(['join', 'l5', 'l10', 'l20', 'l30', 'l40', 'l50'].map((id) => g(id, 1)), [100, 500, 1700, 5200, 16000, 50000, 155000]);
-  assert.deepEqual(['join', 'l5', 'l10', 'l20', 'l30', 'l40', 'l50'].map((id) => g(id, 2)), [20, 100, 340, 1000, 3200, 10000, 31000]);
-  assert.deepEqual(['join', 'l5', 'l10', 'l20', 'l30', 'l40', 'l50'].map((id) => g(id, 3)), [4, 20, 70, 210, 640, 2000, 6200]);
+  // v45.3 (economy v45, «Рефералы: 40% золотом, 60% материалами»): gold = 40% of the v45.2 table (1.2 stages instead of 3)
+  assert.deepEqual(['join', 'l5', 'l10', 'l20', 'l30', 'l40', 'l50'].map((id) => g(id, 1)), [100, 500, 670, 2100, 6400, 20000, 62000]);
+  assert.deepEqual(['join', 'l5', 'l10', 'l20', 'l30', 'l40', 'l50'].map((id) => g(id, 2)), [20, 100, 130, 420, 1300, 4000, 12000]);
+  assert.deepEqual(['join', 'l5', 'l10', 'l20', 'l30', 'l40', 'l50'].map((id) => g(id, 3)), [4, 20, 30, 80, 260, 800, 2500]);
+  // the rest — scarce materials: rune dust 5/10/20/35/60, Abyss shards, iron chest at l30, 2 gold-key fragments at l50
+  const d = (id, tier) => msReward(cfg0, ms(id), tier, 50).res.dust || 0;
+  assert.deepEqual(['l10', 'l20', 'l30', 'l40', 'l50'].map((id) => d(id, 1)), [5, 10, 20, 35, 60]);
+  assert.deepEqual(['l10', 'l20', 'l30', 'l40', 'l50'].map((id) => d(id, 2)), [1, 2, 4, 7, 10]);
+  assert.deepEqual(msReward(cfg0, ms('l30'), 1, 50).res, { gold: 6400, dust: 20, shards: 30, chest_iron: 1 });
+  assert.deepEqual(msReward(cfg0, ms('l50'), 1, 50).res, { gold: 62000, dust: 60, shards: 50, frag: 2 });
+  // no Самоцветы, no gold/legendary chests in the defaults
+  assert.ok(DEFAULTS.referral.milestones.every((m) => m.rewards === 'referrer' || m.rewards.every((r) => !['sparks', 'chest_gold', 'chest_leg', 'open_gold', 'open_leg'].includes(r.type))));
   // items: chests/shards/essence/cosmetics only for tier 1
-  assert.deepEqual(msReward(cfg0, ms('l10'), 1, 50), { res: { gold: 1700, chest_iron: 1 }, cosmetics: [] });
-  assert.deepEqual(msReward(cfg0, ms('l10'), 2, 50), { res: { gold: 340 }, cosmetics: [] });
+  assert.deepEqual(msReward(cfg0, ms('l10'), 1, 50), { res: { gold: 670, dust: 5, shards: 10 }, cosmetics: [] });
+  assert.deepEqual(msReward(cfg0, ms('l10'), 2, 50), { res: { gold: 130, dust: 1 }, cosmetics: [] });
   assert.deepEqual(msReward(cfg0, ms('l50'), 1, 50).cosmetics, ['title_sworn', 'glow_sworn']);
   assert.deepEqual(msReward(cfg0, ms('l5'), 1, 1).res, { gold: 500, ess: 25 }, 'fixed amounts are not level-scaled');
   // min level rule: a level-3 inviter of a level-30 friend gets gold of level 3
-  assert.equal(g('l30', 1, 3), niceRound(3 * 200 * 1.12 ** 2));
-  assert.equal(g('l30', 2, 3), niceRound(niceRound(3 * 200 * 1.12 ** 2) * 0.2));
+  assert.equal(g('l30', 1, 3), niceRound(1.2 * 200 * 1.12 ** 2));
+  assert.equal(g('l30', 2, 3), niceRound(niceRound(1.2 * 200 * 1.12 ** 2) * 0.2));
   // config-driven mixes (economy review): materials, a shared material, sparks are stripped
   const cfg = circleConfig({ shareTypes: ['gold', 'ore'], milestones: [{ id: 'l10', lvl: 10, rewards: [{ type: 'ore', amount: 500 }, { type: 'sparks', amount: 99 }, { type: 'chest_gold', amount: 2 }] }] });
   assert.deepEqual(msReward(cfg, cfg.milestones[0], 1, 50).res, { ore: 500, chest_gold: 2 });
@@ -122,10 +130,10 @@ test('3-tier circle end to end: chain on first login, join + level milestones fr
   l10 = (await rows(env, 't4005')).filter((r) => r.ms === 'l10');
   assert.ok(l10.every((r) => r.status === 'paid'), JSON.stringify(l10));
   const dl = await letters(env, 't4004');
-  assert.deepEqual(dl[1].reward, { gold: niceRound(3 * 200 * 1.12 ** 2), chest_iron: 1 }, 'level-3 inviter: gold of level 3, tier-1 chest');
+  assert.deepEqual(dl[1].reward, { gold: niceRound(1.2 * 200 * 1.12 ** 2), dust: 5, shards: 10 }, 'level-3 inviter: gold of level 3, tier-1 shards');
   assert.equal(dl[1].kind, 'referrer');
   assert.match(dl[1].title, /10-го уровня/);
-  assert.deepEqual((await paid('l10')).map((x) => x[2]), [{ gold: niceRound(3 * 200 * 1.12 ** 2), chest_iron: 1 }, { gold: 340 }, { gold: 70 }]);
+  assert.deepEqual((await paid('l10')).map((x) => x[2]), [{ gold: niceRound(1.2 * 200 * 1.12 ** 2), dust: 5, shards: 10 }, { gold: 130, dust: 1 }, { gold: 30 }]);
 
   // l20 needs a server-recorded Abyss run
   clock.now = T0 + 4 * DAY;
@@ -141,7 +149,7 @@ test('3-tier circle end to end: chain on first login, join + level milestones fr
   await runCircleCron(env, clock.now + 7 * HOUR);
   const l20 = (await rows(env, 't4005')).filter((r) => r.ms === 'l20');
   assert.ok(l20.every((r) => r.status === 'paid'), JSON.stringify(l20));
-  assert.deepEqual((await letters(env, 't4004')).at(-1).reward, { gold: niceRound(3 * 200 * 1.12 ** 2), shards: 20, cosmetic: 'frame_sworn' });
+  assert.deepEqual((await letters(env, 't4004')).at(-1).reward, { gold: niceRound(1.2 * 200 * 1.12 ** 2), dust: 10, shards: 20, cosmetic: 'frame_sworn' });
 
   // GET /referrals: old fields unchanged + v45.2 fields
   const Dn = await loginTg(call, 4004, 'Гоша');
@@ -150,13 +158,13 @@ test('3-tier circle end to end: chain on first login, join + level milestones fr
   assert.deepEqual([r.invited, r.pending, r.activated], [1, 1, 0]);
   const fe = r.friends.find((f) => f.name === 'Даша');
   assert.deepEqual([fe.pid, fe.tier, fe.level, fe.activated, fe.ms, fe.next], [E.me.refCode, 1, 20, false, ['join', 'l10', 'l20'], 'l5']);
-  assert.deepEqual(fe.earned, { gold: 100 + 2 * niceRound(3 * 200 * 1.12 ** 2), chest_iron: 1, shards: 20 });
+  assert.deepEqual(fe.earned, { gold: 100 + 2 * niceRound(1.2 * 200 * 1.12 ** 2), dust: 15, shards: 30 });
   assert.equal(r.friends.find((f) => f.name === 'Вера').tier, null, 'the inviter is a friend, not a tier');
   assert.deepEqual(r.tiers, { t1: 1, t2: 0, t3: 0 });
   assert.deepEqual(r.earned, fe.earned);
   assert.deepEqual(r.held, []);
   assert.equal(r.milestones.length, 7);
-  assert.deepEqual(r.milestones[2], { id: 'l10', lvl: 10, rewards: [{ gold: 750, chest_iron: 1 }, { gold: 150 }, { gold: 30 }] });
+  assert.deepEqual(r.milestones[2], { id: 'l10', lvl: 10, rewards: [{ gold: 300, dust: 5, shards: 10 }, { gold: 60, dust: 1 }, { gold: 10 }] });
   const Bn = await loginTg(call, 4002, 'Борис');
   assert.deepEqual((await call('GET', '/referrals', { token: Bn.token })).body.tiers, { t1: 1, t2: 1, t3: 1 });
 

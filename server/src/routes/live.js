@@ -33,6 +33,8 @@ export async function getConfig(c) {
     adsBlockInterstitial: String((cfg.ads && cfg.ads.blockInterstitial) || ''),
     adsVerify: !!(cfg.ads && cfg.ads.verify),
     daily: { rewards: (cfg.daily || {}).rewards || [] },
+    // v45.3: «Меняла» prices / caps / pool (the game merges it over its own defaults, src/p108.js)
+    market: cfg.market || null,
   }, 200, { 'cache-control': 'public, max-age=60' });
 }
 
@@ -138,6 +140,16 @@ function validateConfig(key, v) {
     }
   } else if (key === 'wb') {
     if (!v || !Array.isArray(v.rotation) || !v.rotation.length || v.rotation.some((w) => !w || typeof w.boss !== 'string' || !Array.isArray(w.mods))) bad('wb.rotation — массив [{boss, mods:[…]}]');
+  } else if (key === 'market') {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) bad('market — объект {lots, rot, fair, buy, tigel, polish}');
+    if (v.lots !== undefined && (!v.lots || typeof v.lots !== 'object' || Array.isArray(v.lots))) bad('market.lots — объект {id: лот}');
+    for (const [id, x] of Object.entries(v.lots || {})) {
+      if (!/^[a-z0-9_]{1,24}$/.test(id) || !x || typeof x !== 'object') bad('market.lots.' + id + ': лот — объект');
+      if (x.B !== undefined && !(Number.isFinite(x.B) && x.B > 0 && x.B <= 1e6)) bad('market.lots.' + id + '.B — цена > 0');
+      if (x.g !== undefined && !(Number.isFinite(x.g) && x.g >= 1 && x.g <= 3)) bad('market.lots.' + id + '.g — шаг 1..3');
+      for (const k of ['cap', 'cap2']) if (x[k] !== undefined && !(Number.isInteger(x[k]) && x[k] >= 0 && x[k] <= 10000)) bad('market.lots.' + id + '.' + k + ' — целое 0..10000');
+      if (x.res !== undefined && (typeof x.res !== 'string' || /^(core|sparks|crys|key|frag|chest|open_|prot|scroll|tome|cos|gold$)/.test(x.res))) bad('market.lots.' + id + '.res — ядро, самоцветы, ключи, сундуки и свитки за золото не продаются');
+    }
   } else if (!v || typeof v !== 'object') bad('ожидался объект');
 }
 

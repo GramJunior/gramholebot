@@ -22,11 +22,13 @@ const REF107={
   // вехи друга: награда по звеньям [побратим, его побратим, дальний круг]
   ms:[{k:'join',n:'Пришёл',w:'первый вход по ссылке',r:[{gold:100},{gold:20},{gold:4}]},
       {k:'l5',lv:5,n:'Ур. 5',w:'владыка 1-5',r:[{gold:500,ess:25},{gold:100},{gold:20}]},
-      {k:'l10',lv:10,n:'Ур. 10',w:'Шепчущая Чаща',r:[{gold:1700,chest_iron:1},{gold:340},{gold:70}]},
-      {k:'l20',lv:20,n:'Ур. 20',w:'4-я зона',r:[{gold:5200,shards:20,cosmetic:'frame_sworn'},{gold:1000},{gold:210}]},
-      {k:'l30',lv:30,n:'Ур. 30',w:'конец Главы I',r:[{gold:16000,chest_gold:1},{gold:3200},{gold:640}]},
-      {k:'l40',lv:40,n:'Ур. 40',w:'Затонувший Златоверх',r:[{gold:50000,ess:300,cosmetic:'comp_sworn'},{gold:10000},{gold:2000}]},
-      {k:'l50',lv:50,n:'Ур. 50',w:'финал Главы II',r:[{gold:155000,cosmetics:['title_sworn','glow_sworn']},{gold:31000},{gold:6200}]}],
+      {k:'l10',lv:10,n:'Ур. 10',w:'Шепчущая Чаща',r:[{gold:670,dust:5,shards:10},{gold:130,dust:1},{gold:30}]},
+      {k:'l20',lv:20,n:'Ур. 20',w:'4-я зона',r:[{gold:2100,dust:10,shards:20,cosmetic:'frame_sworn'},{gold:420,dust:2},{gold:80}]},
+      {k:'l30',lv:30,n:'Ур. 30',w:'конец Главы I',r:[{gold:6400,dust:20,shards:30,chest_iron:1},{gold:1300,dust:4},{gold:260,dust:1}]},
+      {k:'l40',lv:40,n:'Ур. 40',w:'Затонувший Златоверх',r:[{gold:20000,dust:35,shards:40,cosmetic:'comp_sworn'},{gold:4000,dust:7},{gold:800,dust:1}]},
+      {k:'l50',lv:50,n:'Ур. 50',w:'финал Главы II',r:[{gold:62000,dust:60,shards:50,frag:2,cosmetics:['title_sworn','glow_sworn']},{gold:12000,dust:10},{gold:2500,dust:2}]}],
+  // v45.3: вехи — 40% золотом (1,2 этапа по уровню, как на сервере) и 60% дефицитом: рунная пыль, осколки Бездны, железный сундук (30), обломки золотого ключа (50);
+  // звенья 2–3 — доля золота и пыли (server/src/lib/config.js referral.milestones, shareTypes ['gold','dust'])
   cosm:[[1,'рамка «Друга»',1],[3,'свечение «Братство»',1],[5,'знамя побратимов',0],[10,'облик Очага',0]], // [друзей, награда, есть в игре]
   share:g=>`Брод держится, пока горят очаги. Пойдём со мной в Эмбервейл — у ворот тебя ждёт подарок: ${g.gold} золота и ${g.ess} эссенции. 🔥`,
   data:null,busy:false,at:0,err:''};
@@ -122,7 +124,8 @@ function ref107Share(){ const link=ref107Link(); const text=REF107.share(REF107.
 function circle107Open(from,tab){ track('ref_panel',from||'open'); if(PANEL.kind) closePanel(); openPanel('circle',{tab:tab||'list'}); ref107Load(); if(!netOn()&&window.EVNet&&!NET.busy&&typeof netRetry==='function'){ NET.busy=true; netRetry(); } }
 const g107=n=>{ n=Math.round(n||0); if(n<1000) return String(n); const k=n/1000; return (k>=100||k===Math.round(k)?String(Math.round(k)):k.toFixed(1).replace('.',','))+' тыс.'; };
 function ref107Rw(r,short){ if(!r) return '—'; const x=[]; if(r.gold) x.push(`${ico('gold')}${short?g107(r.gold):fmt(r.gold)}`); if(r.ess) x.push(short?'+ эсс.':`${ico('ess')}${r.ess}`);
-  if(r.shards&&!short) x.push(`${ico('shard')}${r.shards}`); for(const k in r) if(/^chest_/.test(k)&&r[k]) x.push('+ сундук');
+  if(r.dust) x.push(`${ico('dust')}${r.dust}`);
+  if(r.shards&&!short) x.push(`${ico('shard')}${r.shards}`); for(const k in r) if(/^chest_/.test(k)&&r[k]) x.push('+ сундук'); if(r.frag) x.push(short?'+ ключ':`+ ${r.frag} обл. золотого ключа`);
   const cs=[].concat(r.cosmetic?[r.cosmetic]:[],Array.isArray(r.cosmetics)?r.cosmetics:[]); for(const id of cs){ const C=COSM[id]; x.push('+ '+(C?({frame:'рамка',glow:'свечение',pet:'облик спутника',title:'титул',trophy:'трофей'}[C.t]||'облик'):'облик')); }
   if(r.x) x.push('+ '+esc(r.x)); return x.join(' '); }
 function ref107Ini(n){ const w=String(n||'?').replace(/[^A-Za-zА-Яа-яЁё0-9 ]/g,' ').trim().split(/\s+/); return esc(((w[0]||'?').slice(0,1)+((w[1]||w[0]||'').slice(w[1]?0:1,w[1]?1:2))).toUpperCase()||'?'); }
